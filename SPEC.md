@@ -387,7 +387,7 @@ P Authorization is enforced in service/database rules, not only SwiftUI. Users w
 | Minimum iOS | C — iOS 18 (decided 2026-10-13) | No iOS 26-only APIs such as Liquid Glass. |
 | Backend/auth/storage | Supabase local Docker recommended, not confirmed | Provider choice, public access/private-note rules, identity, migrations, test fixtures. |
 | Auth methods | TBD | Sign in with Apple/email/phone and recovery flow; real SMS service if needed. |
-| App identity | Roam C; bundle/team IDs TBD | Signing configuration; do not invent a Team ID. |
+| App identity | C — Roam; bundle ID `com.daniellarkin.roam`; `DEVELOPMENT_TEAM = H5V24G3F3D` (paid team, decided 2026-10-13) | Set both in `project.yml`. Never use the personal team `6KKPN7P748`. Sign in with Apple capability required. |
 | Observable state, service protocols, feature folders | P | Choose with minimum OS; keep ranking/city calculations independently testable. |
 | Photo limits, upload/storage, moderation | TBD | Approved limits, retention, retries, abuse/support operator. |
 | Country polygons / globe renderer | P approach, feasibility unknown | Source/license and native rendering spike preserving confirmed globe goal. |

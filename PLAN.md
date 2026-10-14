@@ -86,7 +86,7 @@ Sources:
 - `brew install supabase/tap/supabase` (if we confirm Supabase)
 - `git init` in this folder (it isn't a git repo yet)
 - Add **XcodeBuildMCP** to Claude Code (check its README for the current `claude mcp add …` command). It lets Claude build, launch, tap through and screenshot the simulator, which is the verification loop. Fallback without it: `xcrun simctl io booted screenshot`.
-- Find your **Team ID** (developer.apple.com → Membership) and choose a **bundle ID**, like `com.daniellarkin.<appname>`.
+- ~~Find Team ID and bundle ID~~ Done: `DEVELOPMENT_TEAM = H5V24G3F3D`, bundle ID `com.daniellarkin.roam` (see §9 #2).
 
 ## 5. Phase 0: capturing Beli (done 2026-10-13)
 
@@ -174,7 +174,7 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 
 **Setup and identity**
 1. **App name:** decided 2026-10-13: **Roam**. Proposed bundle ID `com.daniellarkin.roam`.
-2. **Team ID and bundle ID.** Signing team: **Somang Larkin Developer Team** (paid; Apple ID sdaniellarkin@gmail.com, Admin role). Not the free "Daniel Larkin (Personal Team)" `6KKPN7P748`. Team ID still to confirm (2026-10-13). Bundle ID `com.daniellarkin.roam`. Sign in with Apple stays in scope.
+2. **Team ID and bundle ID:** decided 2026-10-13. `DEVELOPMENT_TEAM = H5V24G3F3D` (Somang Larkin, Apple Developer Program — Individual, renews 2027-09-27; Apple ID sdaniellarkin@gmail.com). Never use the free personal team `6KKPN7P748`. Bundle ID `com.daniellarkin.roam`. Sign in with Apple stays in scope.
 3. **Backend:** confirm Supabase running locally. The alternatives are Firebase or CloudKit; CloudKit makes friend and feed queries awkward.
 4. **Minimum iOS:** iOS 18, for wider device support and newer MapKit place categories; or iOS 26 only, to use the new Liquid Glass design throughout.
 
