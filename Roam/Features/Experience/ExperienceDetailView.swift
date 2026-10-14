@@ -48,6 +48,9 @@ struct ExperienceDetailView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
     @State private var model: ExperienceDetailModel?
+    @State private var memoriesModel: PublicMemoriesModel?
+    @State private var editingVisit: Visit?
+    @State private var showsPrivateNote = false
     @State private var reportTarget: ReportTarget?
     @State private var reportReason: ReportReason?
     @State private var pendingDeletion: DetailDeletion?
@@ -80,8 +83,16 @@ struct ExperienceDetailView: View {
             }
         }
         .sheet(item: $reportTarget) { target in
-            ReportSheet(target: target, title: reportReason == .incorrectPlaceOrCategory ? "Report category issue" : "Report a problem",
-                        suggestedReason: reportReason)
+            ReportSheet(target: target, title: reportTitle(target), suggestedReason: reportReason)
+        }
+        .sheet(item: $editingVisit) { visit in
+            VisitMemoryEditor(visit: visit, destinationTimeZone: model?.detail?.timeZoneIdentifier) { _ in
+                library.noteChanged()
+                Task { await reload() }
+            }
+        }
+        .sheet(isPresented: $showsPrivateNote) {
+            PrivateNoteEditor(experienceID: experienceID) { Task { await model?.load() } }
         }
         .alert(pendingDeletion?.title ?? "Confirm removal", isPresented: Binding(
             get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { action in
@@ -105,9 +116,11 @@ struct ExperienceDetailView: View {
                 }
             }
             if model == nil { model = ExperienceDetailModel(experienceID: experienceID, services: services) }
-            await model?.load()
+            if memoriesModel == nil { memoriesModel = PublicMemoriesModel(experienceID: experienceID, service: services.memories) }
+            await reload()
         }
-        .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
+        .onChange(of: library.revision) { _, _ in Task { await reload() } }
+        .onChange(of: memoriesModel?.authError) { _, error in if let error { _ = session.handle(error) } }
         .screenIdentifier("experience-detail")
     }
 
@@ -138,13 +151,30 @@ struct ExperienceDetailView: View {
                 actionRow(detail)
                 scores(detail)
                 memories(detail)
+                privateNote(detail)
                 about(detail)
-                activity(detail)
+                if let memoriesModel {
+                    PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
+                                          onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
+                                          onReport: { target in reportReason = nil; reportTarget = target })
+                }
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.xxl)
         }
-        .refreshable { await model?.load() }
+        .refreshable { await reload() }
+    }
+
+    private func reload() async {
+        async let detail: Void = model?.load() ?? ()
+        async let memories: Void = memoriesModel?.load() ?? ()
+        _ = await (detail, memories)
+    }
+
+    private func reportTitle(_ target: ReportTarget) -> String {
+        if reportReason == .incorrectPlaceOrCategory { return "Report category issue" }
+        if case .visit = target { return "Report memory" }
+        return "Report a problem"
     }
 
     private func hero(_ detail: ExperienceDetail) -> some View {
@@ -239,7 +269,7 @@ struct ExperienceDetailView: View {
     }
 
     @ViewBuilder private func memories(_ detail: ExperienceDetail) -> some View {
-        if !detail.myVisits.isEmpty || detail.hasPrivateNote {
+        if !detail.myVisits.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Text("Your memories").font(.roamTitle(.title3))
                 ForEach(detail.myVisits) { visit in
@@ -248,28 +278,61 @@ struct ExperienceDetailView: View {
                         if !visit.publicNote.isEmpty { Text(visit.publicNote).font(.body) }
                         if !visit.media.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack { ForEach(visit.media) { RemoteImageView(path: $0.path).frame(width: 96, height: 96).clipShape(RoundedRectangle(cornerRadius: 10)) } }
+                                HStack {
+                                    ForEach(Array(visit.media.sorted { $0.position < $1.position }.enumerated()), id: \.element.id) { index, media in
+                                        Button { router.push(.gallery(experienceID: experienceID, visitID: visit.id)) } label: {
+                                            RemoteImageView(path: media.path, accessibilityLabel: "Photo \(index + 1) from your visit")
+                                                .frame(width: 96, height: 96).clipShape(RoundedRectangle(cornerRadius: 10))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityIdentifier("detail-visit-photo-\(visit.id.uuidString)-\(index)")
+                                    }
+                                }
                             }
                         }
-                        Button("Delete visit", role: .destructive) {
-                            pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visit.id,
-                                                             lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)
+                        HStack(spacing: Theme.Spacing.l) {
+                            Button { editingVisit = visit } label: { Label("Edit", systemImage: "pencil") }
+                                .frame(minHeight: Theme.minimumHitTarget)
+                                .disabled(deleting || failedDeletion != nil)
+                                .accessibilityLabel("Edit note, date and photos for this visit")
+                                .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
+                            Button("Delete visit", role: .destructive) {
+                                pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visit.id,
+                                                                 lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)
+                            }
+                            .frame(minHeight: Theme.minimumHitTarget)
+                            .disabled(deleting || failedDeletion != nil)
+                            .accessibilityIdentifier("detail-delete-visit-\(visit.id.uuidString)")
                         }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                        .disabled(deleting || failedDeletion != nil)
-                        .accessibilityIdentifier("detail-delete-visit-\(visit.id.uuidString)")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .contain)
                     Divider()
                 }
-                if detail.hasPrivateNote {
-                    Label("You have a private note (only you can see it)", systemImage: "lock.fill").font(.footnote).foregroundStyle(.secondary)
-                }
             }
             .roamCard()
             .accessibilityIdentifier("detail-memories")
         }
+    }
+
+    /// Owner-only note, separate from public visit notes and never part of any public projection.
+    private func privateNote(_ detail: ExperienceDetail) -> some View {
+        Button { showsPrivateNote = true } label: {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: "lock.fill").foregroundStyle(Theme.accent).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(detail.hasPrivateNote ? "Private note" : "Add a private note").font(.subheadline.weight(.semibold))
+                    Text("Only you can see this.").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+            }
+            .frame(minHeight: Theme.minimumHitTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .roamCard()
+        .accessibilityIdentifier("detail-private-note")
     }
 
     private func about(_ detail: ExperienceDetail) -> some View {
@@ -284,42 +347,32 @@ struct ExperienceDetailView: View {
             } else {
                 Label("Address not available", systemImage: "mappin.slash").font(.subheadline).foregroundStyle(.secondary)
             }
-            HStack(spacing: Theme.Spacing.s) {
-                Button { openInMaps(detail) } label: { PillLabel(title: "Directions", systemImage: "arrow.triangle.turn.up.right.diamond") }
-                    .buttonStyle(PillButtonStyle())
-                    .accessibilityIdentifier("detail-directions")
-                if let website = detail.website {
-                    Button { openURL(website) } label: { PillLabel(title: "Website", systemImage: "safari") }
-                        .buttonStyle(PillButtonStyle())
-                        .accessibilityIdentifier("detail-website")
-                }
-                if let phone = detail.phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
-                    Button { openURL(url) } label: { PillLabel(title: "Call", systemImage: "phone") }
-                        .buttonStyle(PillButtonStyle())
-                        .accessibilityIdentifier("detail-call")
-                }
+            // Pills never shrink, so a row that cannot fit (large text) stacks instead of widening the screen.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Spacing.s) { utilityPills(detail) }
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
             }
             Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Fictional test place (fixture data).")
                 .font(.caption).foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .roamCard()
     }
 
-    @ViewBuilder private func activity(_ detail: ExperienceDetail) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("From travellers").font(.roamTitle(.title3))
-            if detail.publicActivity.isEmpty {
-                Text("No public visits yet. When people rank or revisit this place, their notes and photos appear here.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(detail.publicActivity) { item in
-                    ActivityCardView(item: item, onOpenAuthor: { router.push(.member(item.author.id)) }, onOpen: { router.push(.activity(item.id)) })
-                    Divider()
-                }
-            }
+    @ViewBuilder private func utilityPills(_ detail: ExperienceDetail) -> some View {
+        Button { openInMaps(detail) } label: { PillLabel(title: "Directions", systemImage: "arrow.triangle.turn.up.right.diamond") }
+            .buttonStyle(PillButtonStyle())
+            .accessibilityIdentifier("detail-directions")
+        if let website = detail.website {
+            Button { openURL(website) } label: { PillLabel(title: "Website", systemImage: "safari") }
+                .buttonStyle(PillButtonStyle())
+                .accessibilityIdentifier("detail-website")
         }
-        .roamCard()
-        .accessibilityIdentifier("detail-activity")
+        if let phone = detail.phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
+            Button { openURL(url) } label: { PillLabel(title: "Call", systemImage: "phone") }
+                .buttonStyle(PillButtonStyle())
+                .accessibilityIdentifier("detail-call")
+        }
     }
 
     private func overflowMenu(_ detail: ExperienceDetail) -> some View {

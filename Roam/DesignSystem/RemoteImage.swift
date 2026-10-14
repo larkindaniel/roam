@@ -8,7 +8,13 @@ final class ImageStore {
     private let media: (any MediaService)?
     private var cache: [String: UIImage] = [:]
     private var failures: Set<String> = []
-    private var inFlight: [String: Task<UIImage?, Never>] = [:]
+    private struct Flight {
+        let id: UUID
+        let generation: Int
+        let task: Task<UIImage?, Never>
+    }
+    private var inFlight: [String: Flight] = [:]
+    private(set) var generation = 0
 
     init(media: (any MediaService)?) {
         self.media = media
@@ -19,29 +25,42 @@ final class ImageStore {
     func hasFailed(_ path: String) -> Bool { failures.contains(path) }
 
     func image(for path: String) async -> UIImage? {
-        if let image = cache[path] { return image }
-        if let task = inFlight[path] { return await task.value }
+        if let image = cache[path] { return Task.isCancelled ? nil : image }
         guard let media else { return nil }
-        failures.remove(path)
-        let task = Task<UIImage?, Never> {
-            guard let data = try? await media.imageData(path: path) else { return nil }
-            return UIImage(data: data)
+        let flight: Flight
+        if let pending = inFlight[path] { flight = pending }
+        else {
+            failures.remove(path)
+            let task = Task<UIImage?, Never> {
+                guard let data = try? await media.imageData(path: path) else { return nil }
+                return UIImage(data: data)
+            }
+            flight = Flight(id: UUID(), generation: generation, task: task)
+            inFlight[path] = flight
         }
-        inFlight[path] = task
-        let image = await task.value
-        inFlight[path] = nil
-        if let image { cache[path] = image } else { failures.insert(path) }
-        return image
+        let image = await flight.task.value
+        guard generation == flight.generation else { return nil }
+        if inFlight[path]?.id == flight.id {
+            inFlight[path] = nil
+            if let image { cache[path] = image } else { failures.insert(path) }
+        }
+        return Task.isCancelled ? nil : cache[path]
     }
 
     func clear() {
+        generation += 1
         cache.removeAll()
         failures.removeAll()
-        inFlight.values.forEach { $0.cancel() }
+        inFlight.values.forEach { $0.task.cancel() }
         inFlight.removeAll()
     }
 
-    func store(_ image: UIImage, for path: String) { cache[path] = image }
+    func store(_ image: UIImage, for path: String, generation expectedGeneration: Int? = nil) {
+        guard expectedGeneration.map({ $0 == generation }) ?? true else { return }
+        inFlight.removeValue(forKey: path)?.task.cancel()
+        failures.remove(path)
+        cache[path] = image
+    }
 }
 
 /// Visit photo with loading, error (tap to retry) and missing states; never a stock image.
@@ -54,16 +73,19 @@ struct RemoteImageView: View {
     @State private var image: UIImage?
     @State private var failed = false
     @State private var attempt = 0
+    @State private var loadedIdentity: String?
+    @State private var activeRequest = UUID()
+    private var identity: String { "\(path ?? "-")-\(attempt)-\(store.generation)" }
 
     var body: some View {
         ZStack {
             Rectangle().fill(Theme.subtleFill)
-            if let image {
+            if let image, loadedIdentity == identity {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
                     .accessibilityLabel(accessibilityLabel)
-            } else if failed || path == nil {
+            } else if (failed && loadedIdentity == identity) || path == nil {
                 Button {
                     attempt += 1
                 } label: {
@@ -81,13 +103,18 @@ struct RemoteImageView: View {
             }
         }
         .clipped()
-        .task(id: "\(path ?? "-")-\(attempt)") {
-            guard let path else { return }
-            if let cached = store.cached(path) { image = cached; return }
+        .task(id: identity) {
+            let request = UUID(), currentIdentity = identity
+            activeRequest = request
+            image = nil
+            loadedIdentity = nil
             failed = false
+            guard let path else { return }
             let loaded = await store.image(for: path)
+            guard !Task.isCancelled, activeRequest == request, currentIdentity == identity else { return }
             image = loaded
             failed = loaded == nil
+            loadedIdentity = currentIdentity
         }
     }
 }
@@ -99,11 +126,14 @@ struct AvatarView: View {
 
     @Environment(ImageStore.self) private var store
     @State private var image: UIImage?
+    @State private var loadedIdentity: String?
+    @State private var activeRequest = UUID()
+    private var identity: String { "\(member.id.uuidString)-\(member.avatarPath ?? "-")-\(store.generation)" }
 
     var body: some View {
         ZStack {
             Circle().fill(Theme.accentFill)
-            if let image {
+            if let image, loadedIdentity == identity {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
                 Text(initials)
@@ -115,9 +145,16 @@ struct AvatarView: View {
         .clipShape(Circle())
         .overlay(Circle().strokeBorder(Theme.hairline.opacity(0.6)))
         .accessibilityHidden(true)
-        .task(id: member.avatarPath) {
-            guard let path = member.avatarPath else { image = nil; return }
-            image = await store.image(for: path)
+        .task(id: identity) {
+            let request = UUID(), currentIdentity = identity
+            activeRequest = request
+            image = nil
+            loadedIdentity = nil
+            guard let path = member.avatarPath else { return }
+            let loaded = await store.image(for: path)
+            guard !Task.isCancelled, activeRequest == request, currentIdentity == identity else { return }
+            image = loaded
+            loadedIdentity = currentIdentity
         }
     }
 

@@ -12,7 +12,7 @@ enum ScoreSource: Hashable {
         case .you: return "You"
         case .following: return "Following"
         case .owner(let name): return name
-        case .snapshot: return "When posted"
+        case .snapshot: return "Score when posted"
         }
     }
 }

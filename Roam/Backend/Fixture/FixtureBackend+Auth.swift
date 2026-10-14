@@ -153,21 +153,22 @@ extension FixtureBackend: ProfileService {
     }
 
     func updateProfile(_ update: ProfileUpdate) async throws -> OwnProfile {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         if let issue = Validation.displayName(update.displayName) { throw RoamError.validation(issue.localizedDescription) }
         if let issue = Validation.handle(update.handle) { throw RoamError.validation(issue.localizedDescription) }
         if let issue = Validation.bio(update.bio) { throw RoamError.validation(issue.localizedDescription) }
         if members.values.contains(where: { $0.handle == update.handle && $0.id != me }) {
             throw RoamError.conflict("That handle is taken. Your other changes are still here.")
         }
+        if let path = update.avatarPath {
+            guard let asset = media.values.first(where: { $0.path == path && $0.owner == me && $0.purpose == .avatar }),
+                  asset.attached || asset.createdAt.addingTimeInterval(86_400) > Date() else { throw RoamError.forbidden }
+        }
         members[me]?.displayName = update.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         members[me]?.handle = update.handle
         members[me]?.bio = update.bio
         members[me]?.homeCity = update.homeCity
-        if let path = update.avatarPath {
-            guard media.values.contains(where: { $0.path == path && $0.owner == me && $0.purpose == .avatar }) else { throw RoamError.forbidden }
-        }
+        if let path = update.avatarPath, let assetID = media.values.first(where: { $0.path == path && $0.owner == me })?.id { media[assetID]?.attached = true }
         members[me]?.avatarPath = update.avatarPath
         return ownProfileModel(me)!
     }

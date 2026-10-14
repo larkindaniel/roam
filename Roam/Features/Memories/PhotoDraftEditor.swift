@@ -1,0 +1,158 @@
+import PhotosUI
+import SwiftUI
+
+/// A working copy of the photo selection. Cancel restores its checkpoint, including order
+/// and failures, and discards only uploads created during this editor session.
+struct PhotoDraftEditor: View {
+    let model: PhotoDraftModel
+    var failureMessage: () -> String? = { nil }
+    let onDone: () -> Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedItems: [PhotosPickerItem] = []
+    @State private var checkpoint: PhotoDraftCheckpoint?
+    @State private var importing = false
+    @State private var restoring = false
+    @State private var error: String?
+    @State private var importGeneration = 0
+    @State private var importTask: Task<Void, Never>?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - model.assets.count),
+                                 selectionBehavior: .ordered, matching: .images) {
+                        Label("Choose photos", systemImage: "photo.on.rectangle.angled")
+                            .frame(minHeight: Theme.minimumHitTarget)
+                    }
+                    .disabled(model.assets.count >= 6 || importing || restoring)
+                    .accessibilityIdentifier("photo-picker")
+                    Text("\(model.assets.count) of 6 photos").accessibilityIdentifier("photo-count")
+                    if importing { ProgressView("Reading selected photos…").accessibilityIdentifier("photo-reading") }
+                } footer: {
+                    Text("Only photos you choose are read. Photos are private until your visit is saved. Failed photos must be retried or removed.")
+                }
+                ForEach(Array(model.assets.enumerated()), id: \.element.id) { index, asset in
+                    Section {
+                        HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                            thumbnail(asset)
+                                .frame(width: 80, height: 80).clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                                Text("Photo \(index + 1)").font(.headline)
+                                Text(status(asset)).font(.subheadline).foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("photo-status-\(asset.id.uuidString)")
+                                if let message = asset.error { Text(message).font(.footnote).foregroundStyle(Theme.disliked) }
+                            }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("photo-asset-\(asset.id.uuidString)")
+                        HStack {
+                            if asset.status == .failed {
+                                Button("Retry upload") { Task { await model.retry(assetID: asset.id) } }
+                                    .disabled(model.isBusy || restoring)
+                                    .accessibilityIdentifier("photo-retry-\(asset.id.uuidString)")
+                            }
+                            Button("Remove", role: .destructive) { Task { await model.remove(assetID: asset.id) } }
+                                .disabled(restoring)
+                                .accessibilityIdentifier("photo-remove-\(asset.id.uuidString)")
+                            Spacer(minLength: 0)
+                            Button { model.move(fromOffsets: IndexSet(integer: index), toOffset: index - 1) } label: {
+                                Image(systemName: "arrow.up").frame(width: 44, height: 44)
+                            }
+                            .disabled(index == 0 || restoring)
+                            .accessibilityLabel("Move photo \(index + 1) earlier")
+                            .accessibilityIdentifier("photo-earlier-\(asset.id.uuidString)")
+                            Button { model.move(fromOffsets: IndexSet(integer: index), toOffset: index + 2) } label: {
+                                Image(systemName: "arrow.down").frame(width: 44, height: 44)
+                            }
+                            .disabled(index + 1 == model.assets.count || restoring)
+                            .accessibilityLabel("Move photo \(index + 1) later")
+                            .accessibilityIdentifier("photo-later-\(asset.id.uuidString)")
+                        }
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: Theme.minimumHitTarget)
+                    }
+                }
+                if let message = error ?? model.error {
+                    Section { Text(message).foregroundStyle(Theme.disliked).accessibilityIdentifier("photo-editor-error") }
+                }
+            }
+            .accessibilityIdentifier("photo-editor-list")
+            .navigationTitle("Visit photos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        importGeneration += 1; importTask?.cancel()
+                        restoring = true
+                        Task {
+                            if let checkpoint { await model.restore(checkpoint) }
+                            dismiss()
+                        }
+                    }.disabled(restoring).accessibilityIdentifier("photo-editor-cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if onDone() { dismiss() }
+                        else { error = failureMessage() ?? "Your photo changes couldn't be kept. Try again." }
+                    }
+                    .disabled(!model.canCommit || importing || restoring)
+                    .accessibilityIdentifier("photo-editor-done")
+                }
+            }
+            .interactiveDismissDisabled()
+            .onAppear { if checkpoint == nil { checkpoint = model.checkpoint() } }
+            .onChange(of: selectedItems) { _, items in
+                guard !items.isEmpty else { return }
+                importTask?.cancel()
+                importGeneration += 1
+                let token = importGeneration
+                importing = true
+                importTask = Task { @MainActor in
+                    for item in items {
+                        guard token == importGeneration, !Task.isCancelled else { break }
+                        do {
+                            let data = try await item.loadTransferable(type: Data.self)
+                            guard token == importGeneration, !Task.isCancelled else { break }
+                            if let data { await model.add(data: data) }
+                            else { model.addFailure(message: "This selected photo couldn't be read. Remove it or choose it again.") }
+                        } catch {
+                            guard token == importGeneration, !Task.isCancelled else { break }
+                            model.addFailure(message: "This selected photo couldn't be read. Remove it or choose it again.")
+                        }
+                    }
+                    guard token == importGeneration else { return }
+                    importing = false
+                    selectedItems = []
+                }
+            }
+            .onDisappear { importGeneration += 1; importTask?.cancel() }
+        }
+        .screenIdentifier("photo-editor")
+    }
+
+    @ViewBuilder private func thumbnail(_ asset: PhotoDraftAsset) -> some View {
+        if let data = model.thumbnailData(assetID: asset.id), let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill().accessibilityLabel("Selected visit photo")
+        } else if let existing = asset.existing {
+            RemoteImageView(path: existing.path)
+        } else if let staged = asset.staged {
+            RemoteImageView(path: staged.path)
+        } else {
+            Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.subtleFill)
+                .accessibilityLabel("Selected photo not ready")
+        }
+    }
+
+    private func status(_ asset: PhotoDraftAsset) -> String {
+        switch asset.status {
+        case .preparing: return "Processing…"
+        case .uploading: return "Uploading…"
+        case .ready: return "Ready"
+        case .existing: return "Saved photo"
+        case .failed: return "Upload failed · Retry or remove"
+        }
+    }
+}

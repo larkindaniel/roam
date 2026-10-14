@@ -142,11 +142,13 @@ final class M2AuthIntegrationTests: BackendTestCase {
 
     func testAvatarUploadIsOwnerScopedAndBlockStopsReads() async throws {
         let (owner, _) = try await newMember(handlePrefix: "av")
-        let jpeg = try XCTUnwrap(UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
+        // The app's real upload preparation: M5 server inspection rejects raw UIKit JPEG metadata.
+        let photo = try ImageProcessor.prepare(XCTUnwrap(UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
             UIColor.systemTeal.setFill()
             context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
-        }.jpegData(compressionQuality: 0.8))
-        let staged = try await owner.stage(jpegData: jpeg, width: 64, height: 64, purpose: .avatar)
+        }.jpegData(compressionQuality: 0.8)))
+        let jpeg = photo.data
+        let staged = try await owner.stage(jpegData: jpeg, width: photo.width, height: photo.height, purpose: .avatar)
         let ownProfile = try await owner.ownProfile()
         let current = try XCTUnwrap(ownProfile)
         let updated = try await owner.updateProfile(ProfileUpdate(displayName: current.displayName, handle: current.handle, bio: "",

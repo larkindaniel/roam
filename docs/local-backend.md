@@ -58,6 +58,40 @@ TEST_RUNNER_ROAM_BACKEND_TESTS=1 xcodebuild -project Roam.xcodeproj -scheme Roam
   CODE_SIGNING_ALLOWED=NO test -only-testing:RoamTests
 ```
 
+## Photo inspection and media cleanup (M5)
+
+`supabase start` serves every function in `supabase/functions/`, including `prepare-media`. A function
+added while the stack is running is not picked up until the stack restarts (`supabase stop` keeps data;
+never add `--no-backup`). Check it is served:
+
+```sh
+source scripts/.fixture-env
+curl -s -X POST "$ROAM_API_URL/functions/v1/prepare-media" -H "apikey: $ROAM_PUBLISHABLE_KEY" -d '{}'
+# {"message":"roam:not_signed_in"}  (served; it rejects calls without a member session)
+```
+
+The app uploads each photo to `visit-media/<member>/<uploadAttemptID>.jpg` (or `avatars/…`) and then calls
+`prepare-media`. The function downloads only the caller's own object, inspects the real JPEG bytes and
+registers them through the service-role-only `finalize_media_inspection`. The service key stays in the
+function's server environment. The first call after a restart downloads `npm:jpeg-js@0.4.4`, so it needs
+network access.
+
+Unattached uploads expire after 24 hours. The cleanup worker is server-side only and refuses non-loopback
+URLs:
+
+```sh
+python3 -I scripts/media-cleanup.py --once            # sweep, claim, delete, acknowledge; prints counts only
+python3 -I scripts/media-cleanup.py --watch --interval 60
+python3 -I scripts/tests/test_media_cleanup.py        # unit tests (fake transport)
+ROAM_LIVE_CLEANUP=1 python3 -I scripts/tests/test_media_cleanup.py   # really deletes an aged local orphan
+```
+
+A hosted deployment needs the same worker on a schedule (for example a cron job with the hosted service key
+in its secret store). That is release setup, not part of the local build run.
+
+Operators can inspect the queue with `docker exec supabase_db_roam psql -U postgres -d postgres -c "select
+reason, attempts, last_error, done_at from app_private.storage_cleanup order by created_at desc limit 20"`.
+
 ## Stop
 
 ```sh

@@ -191,6 +191,7 @@ enum RoamError: Error, Equatable, LocalizedError {
     case staleRevision
     case alreadyRated
     case lastVisitConfirmationRequired
+    case mediaExpired
     case server(String)
     case timeout
 
@@ -207,6 +208,7 @@ enum RoamError: Error, Equatable, LocalizedError {
         case .staleRevision: return "Your list changed since you started. Refresh the comparisons to place this experience."
         case .alreadyRated: return "Already been — add a visit instead."
         case .lastVisitConfirmationRequired: return "This is now your last visit. Confirm deleting it and its ranking before continuing."
+        case .mediaExpired: return "This upload expired. Your photo is kept; retry uploads it again."
         case .server(let message): return message
         case .timeout: return "This is taking longer than expected. Check your connection and try again."
         }

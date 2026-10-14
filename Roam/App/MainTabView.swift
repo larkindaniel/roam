@@ -60,6 +60,8 @@ struct RouteDestinationView: View {
             ProfileView(userID: id)
         case .memberList(let id, let kind):
             PersonalListsView(ownerID: id, initialKind: kind)
+        case .gallery(let experienceID, let visitID):
+            VisitGalleryView(experienceID: experienceID, visitID: visitID)
         default:
             UnavailableRouteView()
         }

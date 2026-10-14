@@ -110,7 +110,8 @@ set local request.jwt.claims to '{"sub":"c0000000-0000-4000-8000-000000000003","
 select throws_ok($$insert into storage.objects (bucket_id, name, owner) values ('visit-media', 'a0000000-0000-4000-8000-000000000001/x.jpg', 'c0000000-0000-4000-8000-000000000003')$$,
   '42501', null, 'cannot upload into another member''s folder');
 select throws_ok($$select public.register_media('visit-media', 'a0000000-0000-4000-8000-000000000001/x.jpg', 'visit', 10, 10)$$, '42501', null, 'cannot register another member''s object');
-select throws_ok($$select public.register_media('visit-media', 'c0000000-0000-4000-8000-000000000003/missing.jpg', 'visit', 10, 10)$$, '22023', null, 'cannot register an object that was never uploaded');
+-- M5: registration requires server-side inspection, so clients cannot call it at all.
+select throws_ok($$select public.register_media('visit-media', 'c0000000-0000-4000-8000-000000000003/missing.jpg', 'visit', 10, 10)$$, '42501', null, 'clients cannot register media without server inspection');
 reset role;
 
 select * from finish();

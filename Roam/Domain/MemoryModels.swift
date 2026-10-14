@@ -54,6 +54,21 @@ struct Visit: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// Public Visit content survives removal of its ranking-linked activity.
+struct PublicMemory: Codable, Hashable, Identifiable, Sendable {
+    let id: UUID
+    var author: MemberSummary
+    var experienceID: UUID
+    var visitDate: VisitDate
+    var publicNote: String
+    var media: [MediaRef]
+    var createdAt: Date
+    var updatedAt: Date
+    var isOwn: Bool
+    /// Latest feed post for this Visit; nil once rating activity was removed.
+    var activityID: UUID? = nil
+}
+
 struct PrivateNote: Codable, Hashable, Sendable {
     var experienceID: UUID
     var text: String
@@ -218,6 +233,8 @@ enum ReportTarget: Hashable, Sendable {
     case comment(UUID)
     case media(UUID)
     case member(UUID)
+    /// A Visit's public note/photos (a memory), reportable even after its post was removed.
+    case visit(UUID)
 
     var kind: String {
         switch self {
@@ -226,12 +243,13 @@ enum ReportTarget: Hashable, Sendable {
         case .comment: return "comment"
         case .media: return "media"
         case .member: return "member"
+        case .visit: return "visit"
         }
     }
 
     var targetID: UUID {
         switch self {
-        case .experience(let id), .activity(let id), .comment(let id), .media(let id), .member(let id): return id
+        case .experience(let id), .activity(let id), .comment(let id), .media(let id), .member(let id), .visit(let id): return id
         }
     }
 }

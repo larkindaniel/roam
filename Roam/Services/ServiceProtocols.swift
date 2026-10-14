@@ -217,19 +217,40 @@ struct StagedMedia: Codable, Hashable, Sendable {
     let path: String
     let width: Int
     let height: Int
+    var expiresAt: Date? = nil
 }
 
 protocol MemoryService: AnyObject, Sendable {
-    func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID]) async throws -> Visit
+    func visit(visitID: UUID) async throws -> Visit
+    func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory>
+    func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit
     func privateNote(experienceID: UUID) async throws -> PrivateNote?
-    func savePrivateNote(experienceID: UUID, text: String) async throws -> PrivateNote
-    func deletePrivateNote(experienceID: UUID) async throws
+    func savePrivateNote(experienceID: UUID, text: String, operationID: UUID) async throws -> PrivateNote
+    func deletePrivateNote(experienceID: UUID, operationID: UUID) async throws
+}
+
+extension MemoryService {
+    func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID]) async throws -> Visit {
+        try await updateVisit(visitID: visitID, note: note, date: date, mediaIDs: mediaIDs, operationID: UUID())
+    }
+    func savePrivateNote(experienceID: UUID, text: String) async throws -> PrivateNote {
+        try await savePrivateNote(experienceID: experienceID, text: text, operationID: UUID())
+    }
+    func deletePrivateNote(experienceID: UUID) async throws {
+        try await deletePrivateNote(experienceID: experienceID, operationID: UUID())
+    }
 }
 
 protocol MediaService: AnyObject, Sendable {
-    func stage(jpegData: Data, width: Int, height: Int, purpose: MediaPurpose) async throws -> StagedMedia
+    func stage(jpegData: Data, width: Int, height: Int, purpose: MediaPurpose, uploadAttemptID: UUID) async throws -> StagedMedia
     func discardStaged(mediaID: UUID) async throws
     func imageData(path: String) async throws -> Data
+}
+
+extension MediaService {
+    func stage(jpegData: Data, width: Int, height: Int, purpose: MediaPurpose) async throws -> StagedMedia {
+        try await stage(jpegData: jpegData, width: width, height: height, purpose: purpose, uploadAttemptID: UUID())
+    }
 }
 
 // MARK: People, feed and notifications

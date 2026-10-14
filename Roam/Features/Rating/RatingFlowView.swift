@@ -10,6 +10,7 @@ struct RatingFlowView: View {
     @State private var showsCancel = false
     @State private var showsNote = false
     @State private var showsDate = false
+    @State private var showsPhotos = false
 
     var body: some View {
         NavigationStack {
@@ -24,7 +25,10 @@ struct RatingFlowView: View {
                     Button("Close") {
                         guard let model else { dismiss(); return }
                         if model.completion != nil { dismiss() }
-                        else if model.hasNonemptyDraft { showsCancel = true } else { model.discardDraft(); dismiss() }
+                        else if model.hasNonemptyDraft { showsCancel = true }
+                        else {
+                            Task { await model.photos?.discard(); model.discardDraft(); dismiss() }
+                        }
                     }
                     .disabled(model?.isBusy == true)
                     .accessibilityIdentifier("rating-close")
@@ -33,7 +37,13 @@ struct RatingFlowView: View {
             .confirmationDialog("Keep your draft?", isPresented: $showsCancel, titleVisibility: .visible) {
                 Button("Keep draft") { model?.keepDraft(); dismiss() }
                 if model?.hasPendingSave != true {
-                    Button("Discard draft", role: .destructive) { model?.discardDraft(); dismiss() }
+                    Button("Discard draft", role: .destructive) {
+                        Task {
+                            await model?.photos?.discard()
+                            model?.discardDraft()
+                            dismiss()
+                        }
+                    }
                 }
                 Button("Continue editing", role: .cancel) {}
             } message: {
@@ -44,8 +54,12 @@ struct RatingFlowView: View {
             .interactiveDismissDisabled(model?.completion == nil && (model?.hasNonemptyDraft == true || model?.isBusy == true))
             .task {
                 guard model == nil, let userID = account.userID else { return }
+                let draftID = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)-photos"
+                let photos = PhotoDraftModel(ownerID: userID, draftID: draftID,
+                                             existingMedia: request.mode == .rerank ? request.existingVisit?.media ?? [] : [],
+                                             storage: services.storage, media: services.media, currentAccount: { account.userID })
                 model = RatingFlowModel(request: request, accountID: userID, ranking: services.ranking,
-                                        storage: services.storage, currentAccount: { account.userID })
+                                        storage: services.storage, currentAccount: { account.userID }, photos: photos)
             }
         }
         .screenIdentifier("rating-flow")
@@ -97,6 +111,20 @@ struct RatingFlowView: View {
         .accessibilityIdentifier("rating-scroll")
         .onChange(of: model.completion) { _, completion in if let completion { onSaved(completion) } }
         .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
+        .onChange(of: model.photos?.assets) { _, _ in
+            // Only a fully ready selection is mirrored into the draft; in-progress uploads are not errors.
+            guard model.canEdit, let photos = model.photos, photos.canCommit, let ids = try? photos.attachmentIDs() else { return }
+            _ = model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: ids)
+        }
+        .sheet(isPresented: $showsPhotos) {
+            if let photos = model.photos {
+                PhotoDraftEditor(model: photos, failureMessage: { model.persistenceError ?? model.message }) {
+                    do {
+                        return model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: try photos.attachmentIDs())
+                    } catch { return false }
+                }
+            }
+        }
         .sheet(isPresented: $showsNote) {
             RatingNoteEditor(note: model.visit.publicNote, failureMessage: { model.persistenceError ?? model.message }) { note in
                 model.updateDetails(note: note, date: model.visit.date)
@@ -151,11 +179,18 @@ struct RatingFlowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
             }
             .accessibilityIdentifier("rating-edit-date")
+            if let photos = model.photos {
+                Button { showsPhotos = true } label: {
+                    Label("\(photos.assets.count) \(photos.assets.count == 1 ? "photo" : "photos")", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
+                }.accessibilityIdentifier("rating-edit-photos")
+                if !photos.canCommit { Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked).accessibilityIdentifier("rating-photo-error") }
+            }
             if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(.secondary) }
             Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.")
                 .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("rating-publication-disclosure")
             Button("Okay") { Task { await model.okay() } }
-                .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-okay")
+                .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false).accessibilityIdentifier("rating-okay")
             if request.mode != .addVisit {
                 Button("Change how you felt") { model.backToSentiment() }
                     .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-change-sentiment")
@@ -232,14 +267,14 @@ private struct RatingNoteEditor: View {
         NavigationStack {
             Form {
                 TextEditor(text: $note).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
-                Text("\(note.count) / 5,000 characters").foregroundStyle(note.count > 5_000 ? Color.red : Color.gray)
+                Text("\(Validation.characterCount(note)) / 5,000 characters").foregroundStyle(Validation.characterCount(note) > 5_000 ? Color.red : Color.gray)
                 if let error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-editor-error") }
             }.navigationTitle("Public note").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         if onDone(note) { dismiss() } else { error = failureMessage() ?? "Your changes couldn't be kept. Try again." }
-                    }.disabled(note.count > 5_000).accessibilityIdentifier("rating-editor-done")
+                    }.disabled(Validation.characterCount(note) > 5_000).accessibilityIdentifier("rating-editor-done")
                 }
             }
         }

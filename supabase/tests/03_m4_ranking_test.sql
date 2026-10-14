@@ -56,8 +56,10 @@ insert into m4_assets values
   ('missing','d4000000-0000-4000-8000-000000000004','a4000000-0000-4000-8000-000000000001','a4000000-0000-4000-8000-000000000001/m4-'||current_setting('roam.test.m4_token')||'-missing.jpg');
 grant select on m4_assets to authenticated;
 insert into storage.objects(bucket_id,name,owner,metadata) select 'visit-media',path,owner,'{"size":128,"mimetype":"image/jpeg"}' from m4_assets where label<>'missing';
-insert into public.media(id,owner_id,purpose,bucket,object_path,byte_size,width,height)
-select id,owner,'visit','visit-media',path,128,64,64 from m4_assets;
+-- Rows look like M5 inspected uploads: measured, hashed and bound to their exact stored object.
+insert into public.media(id,owner_id,purpose,bucket,object_path,byte_size,width,height,inspected_at,content_sha256,storage_object_id,expires_at)
+select a.id,a.owner,'visit','visit-media',a.path,128,64,64,now(),repeat('a',64),o.id,now()+interval '24 hours'
+from m4_assets a left join storage.objects o on o.bucket_id='visit-media' and o.name=a.path;
 
 -- Shared docs/data/m4-ranking-golden.json inputs are embedded below so pgTAP does not depend
 -- on a host filesystem path. Swift's engine tests consume that same checked-in source.

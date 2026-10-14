@@ -137,6 +137,9 @@ actor FixtureBackend {
     var settingsByUser: [UUID: UserSettings] = [:]
     var revisions: [String: Int] = [:]
     var receipts: [String: (hash: String, result: Any)] = [:]
+    var uploadAttempts: [String: (hash: String, mediaID: UUID)] = [:]
+    var injectedContentFaults: Set<String> = []
+    var mediaUploadCallCount = 0
     var pendingCodes: [String: String] = [:]
     var currentUserID: UUID?
     var recoveryUserID: UUID?

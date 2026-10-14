@@ -9,10 +9,13 @@ class RoamUITestCase: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// `resetState: false` keeps this simulator's account-scoped drafts from the previous launch
+    /// (the in-memory fixture backend itself always starts from its seed).
     func launch(account: String? = "maya", scenario: String = "default", tab: String? = nil, latency: Int = 0,
-                location: String? = nil, extra: [String] = []) {
+                location: String? = nil, resetState: Bool = true, extra: [String] = []) {
         app = XCUIApplication()
-        var arguments = ["-roam-backend", "fixture", "-roam-ui-testing", "-roam-reset-state", "-roam-fixture-scenario", scenario]
+        var arguments = ["-roam-backend", "fixture", "-roam-ui-testing", "-roam-fixture-scenario", scenario]
+        if resetState { arguments.append("-roam-reset-state") }
         if let account { arguments += ["-roam-fixture-account", account] }
         if let tab { arguments += ["-roam-initial-tab", tab] }
         if latency > 0 { arguments += ["-roam-fixture-latency", String(latency)] }

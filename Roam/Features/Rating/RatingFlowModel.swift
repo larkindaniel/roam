@@ -34,6 +34,7 @@ private struct RatingFlowDraft: Codable {
 final class RatingFlowModel {
     let request: LogRequest
     let accountID: UUID
+    let photos: PhotoDraftModel?
     private(set) var step: RatingFlowStep
     private(set) var category: ExperienceCategory?
     private(set) var sentiment: Sentiment?
@@ -63,6 +64,8 @@ final class RatingFlowModel {
     var hasNonemptyDraft: Bool {
         sentiment != nil || visit != initialVisit || hasPendingSave
             || category != (request.experience.category ?? request.suggestedCategory)
+            || photos?.assets.contains(where: { $0.status != .existing }) == true
+            || (photos.map { $0.assets.compactMap { $0.existing?.id } != initialVisit.mediaIDs } ?? false)
     }
     var timeZone: TimeZone {
         (visit.timeZoneIdentifier ?? request.destinationTimeZone).flatMap(TimeZone.init(identifier:)) ?? .current
@@ -71,9 +74,10 @@ final class RatingFlowModel {
     var comparison: RankedEntry? { session?.currentComparison }
 
     init(request: LogRequest, accountID: UUID, ranking service: any RankingService, storage: AccountStorage,
-         currentAccount: (() -> UUID?)? = nil, now: @escaping () -> Date = Date.init) {
+         currentAccount: (() -> UUID?)? = nil, now: @escaping () -> Date = Date.init, photos: PhotoDraftModel? = nil) {
         self.request = request
         self.accountID = accountID
+        self.photos = photos
         self.service = service
         self.storage = storage
         self.currentAccount = currentAccount ?? { accountID }
@@ -160,7 +164,7 @@ final class RatingFlowModel {
     @discardableResult
     func updateDetails(note: String, date: LocalDate?, mediaIDs: [UUID]? = nil) -> Bool {
         guard canEdit else { return false }
-        guard note.count <= 5_000 else { message = "Public notes can have up to 5,000 characters."; return false }
+        guard Validation.characterCount(note) <= 5_000 else { message = "Public notes can have up to 5,000 characters."; return false }
         guard date.map({ $0 <= today }) ?? true else { message = "Choose today or an earlier visit date."; return false }
         let assets = mediaIDs ?? visit.mediaIDs
         guard assets.count <= 6 else { message = "A visit can have up to six photos."; return false }
@@ -183,7 +187,11 @@ final class RatingFlowModel {
 
     func okay() async {
         guard canEdit, step == .details, accountMatches() else { return }
-        guard visit.publicNote.count <= 5_000, visit.date.map({ $0 <= today }) ?? true else {
+        if let photos {
+            do { visit.mediaIDs = try photos.attachmentIDs() }
+            catch { message = error.roamMessage; return }
+        }
+        guard Validation.characterCount(visit.publicNote) <= 5_000, visit.date.map({ $0 <= today }) ?? true else {
             message = "Check the note length and choose today or an earlier visit date."
             return
         }
@@ -275,6 +283,7 @@ final class RatingFlowModel {
             guard accountMatches() else { step = .retry; return }
             completion = acknowledged
             step = .result
+            photos?.committed()
             pendingRating = nil
             pendingVisit = nil
             storage.remove(name: draftName, userID: accountID)
@@ -295,6 +304,7 @@ final class RatingFlowModel {
                 pendingVisit = nil
                 operationID = UUID()
                 step = .details
+                if roam == .mediaExpired { photos?.expireStagedUploads() }
                 record(error)
                 persist()
             } else {
@@ -308,7 +318,7 @@ final class RatingFlowModel {
 
     private static func isDefiniteRejection(_ error: RoamError) -> Bool {
         switch error {
-        case .validation, .conflict, .alreadyRated, .forbidden, .notFound: return true
+        case .validation, .conflict, .alreadyRated, .forbidden, .notFound, .mediaExpired: return true
         default: return false
         }
     }

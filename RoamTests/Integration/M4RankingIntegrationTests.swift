@@ -265,12 +265,13 @@ final class M4RankingIntegrationTests: BackendTestCase {
         XCTAssertEqual(final.myVisits.count, 1, "Replaying old deletion must not remove the new Visit")
     }
 
+    /// The app's real upload preparation: M5 server inspection rejects raw UIKit JPEG metadata.
     @MainActor
-    private func jpeg() throws -> Data {
-        try XCTUnwrap(UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
+    private func jpeg() throws -> ImageProcessor.Processed {
+        try ImageProcessor.prepare(XCTUnwrap(UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64)).image { context in
             UIColor.systemTeal.setFill()
             context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
-        }.jpegData(compressionQuality: 0.8))
+        }.jpegData(compressionQuality: 0.8)))
     }
 
     func testStaleTwoClientVisitDeletionRequiresExplicitRatingRemovalConsent() async throws {
@@ -318,9 +319,10 @@ final class M4RankingIntegrationTests: BackendTestCase {
     func testRerankEditsRetainedMemoryAndReusesOnlyCompletedOwnedMedia() async throws {
         let (owner, _) = try await newMember(handlePrefix: "rp")
         let (other, _) = try await newMember(handlePrefix: "ro")
-        let data = try await jpeg()
-        let first = try await owner.stage(jpegData: data, width: 64, height: 64, purpose: .visit)
-        let second = try await owner.stage(jpegData: data, width: 64, height: 64, purpose: .visit)
+        let photo = try await jpeg()
+        let data = photo.data
+        let first = try await owner.stage(jpegData: data, width: photo.width, height: photo.height, purpose: .visit)
+        let second = try await owner.stage(jpegData: data, width: photo.width, height: photo.height, purpose: .visit)
         let experience = try await place(owner)
         let payload = VisitPayload(date: LocalDate(isoString: "2020-01-02"), timeZoneIdentifier: "UTC", publicNote: "Original photo memory", mediaIDs: [first.id, second.id])
         let intent = try await request(owner, experience: experience.id, visit: payload)

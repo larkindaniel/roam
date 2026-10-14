@@ -82,12 +82,15 @@ enum Validation {
     }
 
     static func publicNote(_ value: String) -> ValidationIssue? {
-        value.count > Limits.publicNoteMax ? .tooLong(maximum: Limits.publicNoteMax) : nil
+        characterCount(value) > Limits.publicNoteMax ? .tooLong(maximum: Limits.publicNoteMax) : nil
     }
 
     static func privateNote(_ value: String) -> ValidationIssue? {
-        value.count > Limits.privateNoteMax ? .tooLong(maximum: Limits.privateNoteMax) : nil
+        characterCount(value) > Limits.privateNoteMax ? .tooLong(maximum: Limits.privateNoteMax) : nil
     }
+
+    /// PostgreSQL char_length counts Unicode scalars, including combining marks.
+    static func characterCount(_ value: String) -> Int { value.unicodeScalars.count }
 
     static func comment(_ value: String) -> ValidationIssue? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)

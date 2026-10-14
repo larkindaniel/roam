@@ -20,6 +20,11 @@ struct RootView: View {
             #endif
         }
         .task { await session.bootstrap() }
+        .onChange(of: session.userID) { _, _ in
+            library.reset()
+            destinations.reset()
+            router.reset(initialTab: services.options.initialTab ?? .feed)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -40,13 +45,20 @@ struct RootView: View {
                     .id(auth.userID)
             case .ready:
                 MainTabView()
+                    .id(session.userID)
                     .task(id: session.userID) {
+                        let owner = session.userID
                         await library.refresh()
+                        guard owner == session.userID else { return }
                         if let userID = session.userID {
                             destinations.load(userID: userID, home: session.profile?.homeCity)
                         }
                         if session.consumeJustCompletedSetup() {
                             router.reset(initialTab: .lists)
+                        }
+                        if let retained = session.pendingRouteAfterReauth {
+                            session.pendingRouteAfterReauth = nil
+                            router.push(retained)
                         }
                         #if ROAM_FIXTURES
                         if services.options.initialRoute == "globe", let userID = session.userID {

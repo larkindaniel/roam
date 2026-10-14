@@ -35,7 +35,7 @@ final class SupabaseBackend: @unchecked Sendable {
 
     /// Freeze the authenticated session per request. SupabaseClient's default adapter fetches
     /// the current token at transport time, which can otherwise change actor after an account switch.
-    private func requestClient() async throws -> PostgrestClient {
+    func requestSnapshot() async throws -> BackendRequestSnapshot {
         let snapshot = client.auth.currentSession
         let token: String
         if let snapshot {
@@ -43,8 +43,16 @@ final class SupabaseBackend: @unchecked Sendable {
             guard session.user.id == snapshot.user.id, client.auth.currentSession?.user.id == snapshot.user.id else { throw RoamError.sessionExpired }
             token = session.accessToken
         } else { token = config.publishableKey }
+        return BackendRequestSnapshot(userID: snapshot?.user.id,
+                                      headers: ["apikey": config.publishableKey, "Authorization": "Bearer \(token)"])
+    }
+
+    func send(_ request: URLRequest) async throws -> (Data, URLResponse) { try await rpcFetch(request) }
+
+    private func requestClient() async throws -> PostgrestClient {
+        let snapshot = try await requestSnapshot()
         return PostgrestClient(url: config.supabaseURL.appendingPathComponent("rest/v1"),
-                               headers: ["apikey": config.publishableKey, "Authorization": "Bearer \(token)"],
+                               headers: snapshot.headers,
                                logger: nil, fetch: rpcFetch, encoder: RoamJSON.encoder, decoder: RoamJSON.decoder)
     }
 
@@ -145,6 +153,7 @@ final class SupabaseBackend: @unchecked Sendable {
         case "stale_revision": return .staleRevision
         case "already_rated": return .alreadyRated
         case "confirm_last_visit": return .lastVisitConfirmationRequired
+        case "media_expired": return .mediaExpired
         case "operation_conflict": return .conflict("This save was already used for a different change.")
         case "handle_taken": return .conflict("That handle is taken. Try another.")
         case "validation": return .validation(detail ?? "Check your entry and try again.")
@@ -158,4 +167,9 @@ final class SupabaseBackend: @unchecked Sendable {
         let result: Health? = try? await rpc("roam_health")
         return result?.service == "roam"
     }
+}
+
+struct BackendRequestSnapshot: Sendable {
+    let userID: UUID?
+    let headers: [String: String]
 }
