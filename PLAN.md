@@ -174,7 +174,7 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 
 **Setup and identity**
 1. **App name:** decided 2026-10-13: **Roam**. Proposed bundle ID `com.daniellarkin.roam`.
-2. **Team ID and bundle ID.**
+2. **Team ID and bundle ID.** Signing team: **Somang Larkin Developer Team** (paid; Apple ID sdaniellarkin@gmail.com, Admin role). Not the free "Daniel Larkin (Personal Team)" `6KKPN7P748`. Team ID still to confirm (2026-10-13). Bundle ID `com.daniellarkin.roam`. Sign in with Apple stays in scope.
 3. **Backend:** confirm Supabase running locally. The alternatives are Firebase or CloudKit; CloudKit makes friend and feed queries awkward.
 4. **Minimum iOS:** iOS 18, for wider device support and newer MapKit place categories; or iOS 26 only, to use the new Liquid Glass design throughout.
 
