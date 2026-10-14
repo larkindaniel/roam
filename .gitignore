@@ -1,0 +1,12 @@
+.DS_Store
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+# XcodeGen output (regenerated from project.yml)
+*.xcodeproj
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+.env
