@@ -52,7 +52,8 @@ struct ScoreBadge: View {
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    // Three lines keep "Score when posted" whole at accessibility text sizes.
+                    .lineLimit(3)
                     .minimumScaleFactor(0.8)
                     .frame(maxWidth: size * min(scale, 1.6) + 24)
                     .fixedSize(horizontal: false, vertical: true)

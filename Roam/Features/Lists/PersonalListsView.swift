@@ -366,7 +366,7 @@ private struct ListsContent: View {
                                         latitude: $0.experience.latitude, longitude: $0.experience.longitude) }
         return ZStack(alignment: .bottom) {
             GlobeMapView(pins: pins, shadedCountryCodes: [], style: .standard, interactive: true, selectedPinID: selectedPin,
-                         focusRegion: Self.region(fitting: pins), focusToken: pins.map(\.id).hashValue,
+                         focusRegion: GlobeMapView.region(fitting: pins), focusToken: pins.map(\.id).hashValue,
                          onSelectPin: { selectedPin = $0.id })
                 .mapAccessibility("Map with \(pins.count) places from this list. Switch to the list to browse them.", identifier: "list-map")
             if let selected = visible.first(where: { $0.id.uuidString == selectedPin }) {
@@ -382,12 +382,4 @@ private struct ListsContent: View {
         }
     }
 
-    static func region(fitting pins: [MapPin]) -> MKCoordinateRegion? {
-        guard !pins.isEmpty else { return nil }
-        let lats = pins.map(\.latitude), lons = pins.map(\.longitude)
-        let center = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2, longitude: (lons.min()! + lons.max()!) / 2)
-        let span = MKCoordinateSpan(latitudeDelta: min(170, max(0.05, (lats.max()! - lats.min()!) * 1.4)),
-                                    longitudeDelta: min(355, max(0.05, (lons.max()! - lons.min()!) * 1.4)))
-        return MKCoordinateRegion(center: center, span: span)
-    }
 }

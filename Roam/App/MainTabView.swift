@@ -62,6 +62,14 @@ struct RouteDestinationView: View {
             PersonalListsView(ownerID: id, initialKind: kind)
         case .gallery(let experienceID, let visitID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID)
+        case .activity(let id):
+            ActivityDetailView(activityID: id)
+        case .notifications:
+            NotificationsView()
+        case .followGraph(let id, let segment):
+            FollowListView(userID: id, initialSegment: segment)
+        case .sharedWants(let id):
+            SharedWantsView(otherID: id)
         default:
             UnavailableRouteView()
         }

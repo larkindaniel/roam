@@ -98,6 +98,36 @@ struct GlobeMapView: UIViewRepresentable {
 
     static let startCenter = CLLocationCoordinate2D(latitude: 25, longitude: 10)
 
+    /// A region that frames the pins (used by list and Shared Want to Go maps). A phone-sized flat map
+    /// cannot zoom out far enough for places on opposite sides of the world, so a spread-out set
+    /// frames its densest group instead of opening on empty ocean; the others are a pan away and
+    /// the list view always shows every place.
+    static func region(fitting pins: [MapPin]) -> MKCoordinateRegion? {
+        guard !pins.isEmpty else { return nil }
+        let lats = pins.map(\.latitude), lons = pins.map(\.longitude)
+        if lats.max()! - lats.min()! <= 100, lons.max()! - lons.min()! <= 120 {
+            let center = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2, longitude: (lons.min()! + lons.max()!) / 2)
+            let span = MKCoordinateSpan(latitudeDelta: max(0.05, (lats.max()! - lats.min()!) * 1.4),
+                                        longitudeDelta: max(0.05, (lons.max()! - lons.min()!) * 1.4))
+            return MKCoordinateRegion(center: center, span: span)
+        }
+        func near(_ a: MapPin, _ b: MapPin) -> Bool {
+            let lon = abs(a.longitude - b.longitude)
+            return abs(a.latitude - b.latitude) <= 50 && min(lon, 360 - lon) <= 60
+        }
+        // Stable choice: the first pin with the most neighbours.
+        var best = pins[0], bestCount = 0
+        for pin in pins {
+            let count = pins.filter { near(pin, $0) }.count
+            if count > bestCount { best = pin; bestCount = count }
+        }
+        let group = pins.filter { near(best, $0) && abs($0.longitude - best.longitude) <= 180 }
+        guard var region = region(fitting: group) else { return nil }
+        region.span.latitudeDelta = max(region.span.latitudeDelta, 30)
+        region.span.longitudeDelta = max(region.span.longitudeDelta, 30)
+        return region
+    }
+
     final class Coordinator: NSObject, MKMapViewDelegate {
         static let pinReuse = "roam.pin"
         static let clusterReuse = "roam.cluster"

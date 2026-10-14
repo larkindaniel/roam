@@ -155,12 +155,17 @@ extension FixtureBackend: FeedService {
         if let issue = Validation.comment(body) { throw RoamError.validation(issue.localizedDescription) }
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         if let existing = comments.values.first(where: { $0.author == me && $0.operationID == operationID }) {
+            guard existing.activity == activityID, existing.body == body else {
+                throw RoamError.conflict("This save was already used for a different change.")
+            }
             return Comment(id: existing.id, activityID: existing.activity, author: memberSummary(me), body: existing.body, createdAt: existing.createdAt, isOwn: true)
         }
         let id = UUID()
         let now = Date()
         comments[id] = CommentRow(id: id, activity: activityID, author: me, body: body, createdAt: now, operationID: operationID)
         notify(recipient: row.author, actor: me, type: .comment, activity: activityID, comment: id, eventKey: "comment:\(id)", now: now)
+        // The comment is stored but the response is lost once; the retry must not duplicate it.
+        if scenario == "comment-uncertain", injectedContentFaults.insert("comment-post").inserted { throw RoamError.timeout }
         return Comment(id: id, activityID: activityID, author: memberSummary(me), body: body, createdAt: now, isOwn: true)
     }
 

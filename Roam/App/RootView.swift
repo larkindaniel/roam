@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
+    @Environment(ActivityChangeStore.self) private var activityChanges
 
     var body: some View {
         Group {
@@ -23,6 +24,7 @@ struct RootView: View {
         .onChange(of: session.userID) { _, _ in
             library.reset()
             destinations.reset()
+            activityChanges.reset()
             router.reset(initialTab: services.options.initialTab ?? .feed)
         }
     }

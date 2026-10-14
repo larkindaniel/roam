@@ -6,8 +6,16 @@ struct ActivityCardView: View {
     var compact = false
     var onOpenAuthor: (() -> Void)?
     var onOpen: (() -> Void)?
+    /// When set, photos open the Visit gallery instead of the post.
+    var onOpenPhotos: (() -> Void)?
 
     @State private var expanded = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// At accessibility sizes the area moves under the category instead of being squeezed out.
+    private var categoryRow: AnyLayout {
+        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -19,10 +27,12 @@ struct ActivityCardView: View {
                     (Text(item.author.displayName).bold() + Text(" \(item.type.verb) ") + Text(item.experience.name).bold())
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 6) {
-                        CategoryBadge(category: item.category, compact: true)
+                    categoryRow {
+                        CategoryBadge(category: item.category, compact: true).fixedSize()
                         if !item.experience.areaLine.isEmpty {
-                            Text("· \(item.experience.areaLine)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Text(typeSize.isAccessibilitySize ? item.experience.areaLine : "· \(item.experience.areaLine)")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                         }
                     }
                     Text(dateLine).font(.caption).foregroundStyle(.secondary)
@@ -43,9 +53,13 @@ struct ActivityCardView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.s) {
                         ForEach(item.media) { media in
-                            RemoteImageView(path: media.path, accessibilityLabel: "Photo from \(item.author.displayName)'s visit")
-                                .frame(width: 150, height: 112)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            if let onOpenPhotos {
+                                Button(action: onOpenPhotos) { photo(media) }
+                                    .buttonStyle(.plain)
+                                    .accessibilityHint("Opens the visit photos")
+                            } else {
+                                photo(media)
+                            }
                         }
                     }
                 }
@@ -55,6 +69,12 @@ struct ActivityCardView: View {
         .onTapGesture { onOpen?() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
+    }
+
+    private func photo(_ media: MediaRef) -> some View {
+        RemoteImageView(path: media.path, accessibilityLabel: "Photo from \(item.author.displayName)'s visit")
+            .frame(width: 150, height: 112)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var dateLine: String {

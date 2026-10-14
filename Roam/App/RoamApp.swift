@@ -8,6 +8,7 @@ struct RoamApp: App {
     @State private var library: LibraryStore
     @State private var router: AppRouter
     @State private var destinations: DestinationStore
+    @State private var activityChanges = ActivityChangeStore()
 
     init() {
         let services = AppServices.make()
@@ -29,6 +30,7 @@ struct RoamApp: App {
                 .environment(library)
                 .environment(router)
                 .environment(destinations)
+                .environment(activityChanges)
                 .environment(services.images)
                 .tint(Theme.accent)
                 .onOpenURL { url in
