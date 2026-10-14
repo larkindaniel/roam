@@ -25,7 +25,11 @@ An iOS app that recreates nearly every screen and flow of **Beli** (the restaura
 | Capturing Beli's UI | iPhone Mirroring on the Mac. A computer-use agent (Codex) does the broad sweep; you capture the sensitive flows yourself (§5) |
 | Building | Spec first, then **one long build run at `/effort max`** that verifies its own work (§6) |
 | Project file | **XcodeGen** (`project.yml`). Never hand-edit `.pbxproj` |
-| Backend | **Recommended, not yet confirmed:** Supabase running locally via Docker (database, auth, photo storage, access rules for public profiles and private notes). The same code later deploys to hosted Supabase |
+| Score visibility (D01) | **A 0–10 score shows from the first rating** in a category, unlike Beli's 10-item threshold. Scores shift as more items are ranked (2026-10-13) |
+| Posting (D03) | **Every completed rating posts to followers' feeds automatically**, with notes/photos if added, like Beli (2026-10-13) |
+| v1 scope (D07) | **Core + adapted only**: the Keep and Adapt items in the §6 triage. Guides, list sharing, leaderboard, imports, curated/trending discovery and city insights/city scores are deferred past v1 (city-score principles below still stand for later) (2026-10-13) |
+| Sign-in (D06) | **Sign in with Apple + email.** No phone sign-in, so no SMS provider (2026-10-13) |
+| Backend | **Confirmed 2026-10-13:** Supabase running locally via Docker (database, auth, photo storage, access rules for public profiles and private notes). The same code later deploys to hosted Supabase |
 | Minimum iOS | **iOS 18** (2026-10-13). Wider device support; no Liquid Glass-only APIs |
 | App name | **Roam**, "Beli but for experiences" (2026-10-13) |
 | Categories | **7 broad categories**, each with its own ranked list: Food & Drink, Outdoors, Day Trips, Culture, Nightlife, Activities, Stays (2026-10-13) |
@@ -115,7 +119,7 @@ Sources:
 - a build-and-check loop the agent runs itself,
 - milestones, so it's never stuck in a broken state.
 
-### Draft feature triage (proposed 2026-10-13, not yet confirmed)
+### Feature triage (proposed 2026-10-13; v1 = Keep + Adapt, confirmed 2026-10-13)
 
 The test for each feature: does it help someone remember, rank or discover experiences, or see where friends have been? Only Keep and Adapt go into `SPEC.md`.
 
