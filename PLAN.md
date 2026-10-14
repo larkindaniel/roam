@@ -153,8 +153,9 @@ The test for each feature: does it help someone remember, rank or discover exper
 ## 8. Build prompt (run at `/effort max` once the spec files exist)
 
 ```
-Read CLAUDE.md, SPEC.md, MILESTONES.md and docs/beli-inventory.md.
-Reference screenshots are in reference/beli/.
+Read CLAUDE.md, SPEC.md, MILESTONES.md, DECISIONS.md and docs/beli-inventory.md.
+Reference screenshots are in reference/beli/ (01–322 and nc001–nc053).
+Test on the iOS 26.2 simulator only; iOS 18 validation comes later.
 
 Build the app one milestone at a time, in order. For each milestone:
 1. Implement it per SPEC.md.
@@ -165,8 +166,10 @@ Build the app one milestone at a time, in order. For each milestone:
    reference screenshot. Fix what doesn't match.
 5. Commit, naming the milestone.
 
-Don't stop between milestones to ask me. If the spec is unclear, pick the
-option closest to Beli's behavior, log it in DECISIONS.md, and keep going.
+Don't stop between milestones to ask me. If the spec is unclear, follow DECISIONS.md;
+if it doesn't cover the case, pick the option closest to Beli's behavior,
+log it in DECISIONS.md, and keep going. If something needs me (e.g. a real
+Apple sign-in), note it and continue with the rest.
 At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 ```
 
