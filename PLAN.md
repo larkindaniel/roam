@@ -1,5 +1,7 @@
 # Capstone plan: Roam, "Beli, but for experiences" (iOS)
 
+**Build handoff updated 2026-10-13:** [SPEC.md](SPEC.md) and the eight milestones in [MILESTONES.md](MILESTONES.md) now implement the confirmed v1 scope. [DECISIONS.md](DECISIONS.md) records effective defaults, including ties, revisits and Want removal; [CLAUDE.md](CLAUDE.md) contains the build/test/simulator runbook. Historical draft choices/open questions below are superseded where these documents settle them. No build has started.
+
 Saved 2026-10-04 from a planning session with Claude Code. This file holds everything decided so far, the workflow, and the open questions. Start a new session by asking Claude to read it (see "Resuming" at the bottom).
 
 ---
@@ -40,7 +42,7 @@ An iOS app that recreates nearly every screen and flow of **Beli** (the restaura
 
 ### Rating-flow fidelity (confirmed 2026-10-13)
 
-Roam must follow Beli’s user-facing rating flow. The user authorized defining Roam’s own comparison-selection, tie and score rules **after reviewing the missing captures**, while preserving that flow. This does not approve specific score bands, first-rating defaults, permanent ties, extra confirmation steps or a different manual scoring UI. See SPEC R05 for public-source research and pending interaction details. Historical algorithm claims in §3 remain unverified implementation hypotheses.
+Roam must follow Beli’s user-facing rating flow. The user authorized defining Roam’s own comparison-selection, tie and score rules **after reviewing the missing captures**, while preserving that flow. Subsequent user instructions confirm Too tough as a tie and authorize sensible defaults; SPEC R05 and DECISIONS now define Roam-owned score bands, first-rating values and tie/skip behavior. This does not authorize extra confirmation steps or a manual scoring UI. See SPEC R05 for public-source research and pending interaction details. Historical algorithm claims in §3 remain unverified implementation hypotheses.
 
 ### City scoring principles (confirmed 2026-10-13)
 
@@ -211,12 +213,12 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 - [x] Rating flow and onboarding captured on a new test account → `reference/beli/nc001`–`nc053` (screenshots, not video)
 - [x] Install tools, `git init`, add XcodeBuildMCP (done 2026-10-13: xcodegen 2.46.0, xcbeautify 3.2.1, supabase 2.120.0; MCP is now named MobileBuildMCP, pinned to 2.7.1, project-scoped)
 - [x] Inventory and drafts written: `docs/beli-inventory.md`, `docs/roam-*.md`, `docs/capture-gaps.md`, `SPEC.md`, `MILESTONES.md`
-- [ ] Resolve the remaining decisions (§9 leftovers and D01–D12 in `docs/capture-gaps.md` / end of `SPEC.md`)
-- [ ] Trim scope to the triage in §6, write `CLAUDE.md`, mark `SPEC.md` ready to build
+- [x] Resolve v1 decisions and document effective defaults in `DECISIONS.md`; city formula stays deferred with city scoring
+- [x] Trim to Keep + Adapt, reduce to eight milestones, write `CLAUDE.md`, mark `SPEC.md` ready for the separate build run
 - [ ] Build run at `/effort max`
 
 ## Resuming
 
 Start a new Claude Code session in this folder and say:
 
-> Read PLAN.md, SPEC.md, MILESTONES.md and docs/capture-gaps.md. Captures are done and the spec is drafted. Walk me through the remaining decisions (D01–D12) and the scope trim, then update the spec, write CLAUDE.md and mark it ready to build.
+> Read CLAUDE.md, SPEC.md, MILESTONES.md and DECISIONS.md. Build Roam v1 through the eight milestones, verify each milestone, record small implementation judgments, and preserve the confirmed scope. Use docs/roam-reference-map.md for visual references; historical capture gaps are not new product approval gates.
