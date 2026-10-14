@@ -61,7 +61,10 @@ final class AppServices {
 
     static func make(options: LaunchOptions = .current()) -> AppServices {
         let storage = AccountStorage()
-        if options.resetLocalState { storage.clearAll() }
+        if options.resetLocalState {
+            storage.clearAll()
+            UserDefaults.standard.removeObject(forKey: "roam.lastEmail")
+        }
         #if ROAM_FIXTURES
         if options.backend == .fixture {
             let backend = FixtureBackend(scenario: options.fixtureScenario, signedInHandle: options.fixtureAccount,

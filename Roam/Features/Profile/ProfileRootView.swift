@@ -4,12 +4,21 @@ import SwiftUI
 struct ProfileRootView: View {
     @Environment(SessionStore.self) private var session
 
+    @Environment(AppRouter.self) private var router
+
     var body: some View {
         Group {
             if let userID = session.userID {
                 ProfileView(userID: userID)
             } else {
                 ProgressView()
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { router.push(.settings) } label: { Image(systemName: "gearshape") }
+                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("open-settings")
             }
         }
     }

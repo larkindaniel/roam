@@ -5,6 +5,7 @@ struct RootView: View {
     @Environment(SessionStore.self) private var session
     @Environment(LibraryStore.self) private var library
     @Environment(AppRouter.self) private var router
+    @Environment(DestinationStore.self) private var destinations
 
     var body: some View {
         Group {
@@ -22,24 +23,28 @@ struct RootView: View {
     }
 
     @ViewBuilder private var content: some View {
-        switch session.phase {
-        case .launching:
-            LaunchView()
-        case .notConfigured:
-            ConfigurationMissingView()
-        case .restoreFailed(let message):
-            RestoreFailedView(message: message)
-        case .signedOut:
-            WelcomeFlowView()
-        case .needsProfile(let auth):
-            ProfileSetupFlowView(auth: auth)
-        case .ready:
-            if session.isRecoveringPassword {
-                SetNewPasswordView()
-            } else {
+        if session.isRecoveringPassword && session.userID != nil {
+            SetNewPasswordView()
+        } else {
+            switch session.phase {
+            case .launching:
+                LaunchView()
+            case .notConfigured:
+                ConfigurationMissingView()
+            case .restoreFailed(let message):
+                RestoreFailedView(message: message)
+            case .signedOut:
+                WelcomeFlowView()
+            case .needsProfile(let auth):
+                ProfileSetupFlowView(auth: auth)
+                    .id(auth.userID)
+            case .ready:
                 MainTabView()
                     .task(id: session.userID) {
                         await library.refresh()
+                        if let userID = session.userID {
+                            destinations.load(userID: userID, home: session.profile?.homeCity)
+                        }
                         if session.consumeJustCompletedSetup() {
                             router.reset(initialTab: .lists)
                         }

@@ -4,17 +4,6 @@ import MapKit
 // Real-backend services that later milestones replace with RPC-backed implementations.
 // Until then they fail honestly with `RoamError.unavailable` rather than fabricating data.
 
-extension SupabaseBackend: ProfileService {
-    func ownProfile() async throws -> OwnProfile? { throw RoamError.unavailable }
-    func checkHandle(_ handle: String) async throws -> HandleAvailability { throw RoamError.unavailable }
-    func createProfile(displayName: String, handle: String) async throws -> OwnProfile { throw RoamError.unavailable }
-    func updateProfile(_ update: ProfileUpdate) async throws -> OwnProfile { throw RoamError.unavailable }
-    func setSetupCheckpoint(_ checkpoint: SetupCheckpoint) async throws -> OwnProfile { throw RoamError.unavailable }
-    func markBeenIntroSeen() async throws { throw RoamError.unavailable }
-    func publicProfile(userID: UUID) async throws -> PublicProfile { throw RoamError.unavailable }
-    func suggestedMembers(limit: Int) async throws -> [MemberRow] { throw RoamError.unavailable }
-}
-
 extension SupabaseBackend: ExperienceService {
     func resolve(_ candidate: PlaceCandidate) async throws -> ExperienceSummary { throw RoamError.unavailable }
     func matches(for candidates: [PlaceCandidate]) async throws -> [String: ExperienceSummary] { throw RoamError.unavailable }
@@ -45,14 +34,7 @@ extension SupabaseBackend: MemoryService {
     func deletePrivateNote(experienceID: UUID) async throws { throw RoamError.unavailable }
 }
 
-extension SupabaseBackend: MediaService {
-    func stage(jpegData: Data, width: Int, height: Int, purpose: MediaPurpose) async throws -> StagedMedia { throw RoamError.unavailable }
-    func discardStaged(mediaID: UUID) async throws { throw RoamError.unavailable }
-    func imageData(path: String) async throws -> Data { throw RoamError.unavailable }
-}
-
 extension SupabaseBackend: SocialService {
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool { throw RoamError.unavailable }
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> { throw RoamError.unavailable }
     func following(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> { throw RoamError.unavailable }
     func searchMembers(query: String, cursor: String?) async throws -> Page<MemberRow> { throw RoamError.unavailable }

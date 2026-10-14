@@ -7,7 +7,8 @@ final class SupabaseBackend: @unchecked Sendable {
     let client: SupabaseClient
     let config: AppConfig
 
-    init(config: AppConfig) {
+    /// `authStorage` defaults to the Keychain; tests inject isolated in-memory storage per client.
+    init(config: AppConfig, authStorage: (any AuthLocalStorage)? = nil) {
         self.config = config
         let sessionConfiguration = URLSessionConfiguration.default
         sessionConfiguration.timeoutIntervalForRequest = 20
@@ -18,7 +19,7 @@ final class SupabaseBackend: @unchecked Sendable {
             supabaseKey: config.publishableKey,
             options: SupabaseClientOptions(
                 db: .init(encoder: RoamJSON.encoder, decoder: RoamJSON.decoder),
-                auth: .init(storage: KeychainLocalStorage(service: "com.daniellarkin.roam.auth"),
+                auth: .init(storage: authStorage ?? KeychainLocalStorage(service: "com.daniellarkin.roam.auth"),
                             redirectToURL: AppConfig.authCallbackURL,
                             flowType: .pkce,
                             emitLocalSessionAsInitialSession: true),

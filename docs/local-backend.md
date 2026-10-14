@@ -40,8 +40,23 @@ supabase db reset --local
 supabase test db --local
 ```
 
-Fixture accounts are provisioned by the documented fixture procedure (M2) using the local service-role key
-from `scripts/.fixture-env`, never from the app.
+Fixture accounts and content (test-only, local only):
+
+```sh
+python3 scripts/fixtures/setup.py   # idempotent; run after start or reset
+./scripts/check-secrets.sh          # service/secret keys absent from tracked files and the built app
+```
+
+The runner uses the local service-role key from `scripts/.fixture-env` and never prints it.
+
+Real-backend Swift integration tests run with `TEST_RUNNER_ROAM_BACKEND_TESTS=1` (otherwise they are skipped and
+reported as skipped):
+
+```sh
+TEST_RUNNER_ROAM_BACKEND_TESTS=1 xcodebuild -project Roam.xcodeproj -scheme Roam \
+  -destination "platform=iOS Simulator,id=$ROAM_SIMULATOR_ID" -derivedDataPath build/DerivedData \
+  CODE_SIGNING_ALLOWED=NO test -only-testing:RoamTests
+```
 
 ## Stop
 

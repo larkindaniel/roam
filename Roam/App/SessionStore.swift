@@ -26,6 +26,8 @@ final class SessionStore {
     private(set) var sessionExpired = false
     /// Error from an auth callback link (expired/invalid), shown on the welcome screen.
     var callbackError: String?
+    /// Name Apple supplies on first authorization only; pre-fills profile setup.
+    var pendingAppleName: String?
 
     let services: AppServices
     private var listenTask: Task<Void, Never>?
@@ -70,6 +72,11 @@ final class SessionStore {
     }
 
     func didAuthenticate(_ session: AuthSession) async {
+        if let expiredUserID, expiredUserID != session.userID {
+            // A different member signed in after expiry: the old route intent is not theirs.
+            pendingRouteAfterReauth = nil
+        }
+        expiredUserID = nil
         self.session = session
         sessionExpired = false
         do {
@@ -93,6 +100,20 @@ final class SessionStore {
         self.profile = profile
     }
 
+    /// Routes an error from any feature: an expired session keeps drafts and asks for sign-in.
+    @discardableResult
+    func handle(_ error: Error, routeIntent: AppRoute? = nil) -> String {
+        if case RoamError.sessionExpired = error { markSessionExpired(routeIntent: routeIntent) }
+        return error.roamMessage
+    }
+
+    func markBeenIntroSeen() async {
+        guard var current = profile, !current.hasSeenBeenIntro else { return }
+        current.hasSeenBeenIntro = true
+        profile = current
+        try? await services.profiles.markBeenIntroSeen()
+    }
+
     func completeSetup(_ profile: OwnProfile) {
         self.profile = profile
         justCompletedSetup = true
@@ -104,10 +125,25 @@ final class SessionStore {
         return justCompletedSetup
     }
 
-    /// Marks the session expired: drafts stay, nothing submits until the same member signs in again.
-    func markSessionExpired() {
+    /// Marks the session expired: drafts stay on disk (scoped to that account), nothing submits,
+    /// and the member signs in again. Another account never sees them.
+    func markSessionExpired(routeIntent: AppRoute? = nil) {
+        guard phase == .ready else { return }
         sessionExpired = true
+        pendingRouteAfterReauth = routeIntent
+        let expiredUser = session?.userID
+        Task {
+            await services.auth.signOut()
+            self.session = nil
+            self.profile = nil
+            self.services.images.clear()
+            self.expiredUserID = expiredUser
+            self.phase = .signedOut
+        }
     }
+
+    /// The account whose session expired (drafts are kept for it).
+    private(set) var expiredUserID: UUID?
 
     func signOut() async {
         let userID = session?.userID
@@ -133,6 +169,7 @@ final class SessionStore {
 
     private func clearLocalState(for userID: UUID?) {
         if let userID { services.storage.clearAccount(userID) }
+        pendingAppleName = nil
         services.images.clear()
         session = nil
         profile = nil

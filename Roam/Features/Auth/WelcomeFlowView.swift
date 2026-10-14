@@ -1,97 +1,242 @@
+import AuthenticationServices
 import SwiftUI
 
-/// S01 welcome (expanded with Apple sign-in, sign-up and recovery in M2).
+/// S01: welcome, Apple/email sign-in, sign-up with verification and password recovery.
 struct WelcomeFlowView: View {
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
-    @State private var email = ""
-    @State private var password = ""
-    @State private var error: String?
-    @State private var busy = false
+    @State private var model: AuthFlowModel?
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.Spacing.l) {
-                    Text("Roam").font(.system(size: 48, weight: .bold, design: .serif)).foregroundStyle(Theme.accent)
-                    Text("Rank every place you've been. Remember every trip.")
-                        .font(.title3).multilineTextAlignment(.center)
-                    TextField("Email", text: $email)
-                        .textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never)
-                        .padding().background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .padding().background(RoundedRectangle(cornerRadius: 12).fill(Theme.card))
-                    if let error { Text(error).font(.footnote).foregroundStyle(Theme.disliked) }
-                    Button(busy ? "Signing in…" : "Sign in") { Task { await signIn() } }
-                        .buttonStyle(PrimaryButtonStyle()).disabled(busy || email.isEmpty || password.isEmpty)
-                }
-                .padding(Theme.Spacing.xl)
+        Group {
+            if let model {
+                WelcomeNavigation(model: model)
+            } else {
+                Color.clear
             }
         }
-    }
-
-    private func signIn() async {
-        busy = true
-        defer { busy = false }
-        do {
-            let auth = try await services.auth.signIn(email: email, password: password)
-            await session.didAuthenticate(auth)
-        } catch {
-            self.error = error.roamMessage
+        .task {
+            if model == nil { model = AuthFlowModel(services: services, session: session) }
         }
     }
 }
 
-/// Minimal profile setup (expanded in M2).
-struct ProfileSetupFlowView: View {
-    let auth: AuthSession
-    @Environment(AppServices.self) private var services
+private struct WelcomeNavigation: View {
+    @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
-    @State private var name = ""
-    @State private var handle = ""
-    @State private var error: String?
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.l) {
-            TextField("Display name", text: $name)
-            TextField("Handle", text: $handle).textInputAutocapitalization(.never)
-            if let error { Text(error).foregroundStyle(Theme.disliked) }
-            Button("Continue") {
-                Task {
-                    do {
-                        _ = try await services.profiles.createProfile(displayName: name, handle: handle)
-                        let profile = try await services.profiles.setSetupCheckpoint(.complete)
-                        session.completeSetup(profile)
-                    } catch { self.error = error.roamMessage }
+        NavigationStack(path: $model.path) {
+            WelcomeView(model: model)
+                .navigationDestination(for: AuthRoute.self) { route in
+                    switch route {
+                    case .signUp: SignUpView(model: model)
+                    case .signIn: SignInView(model: model)
+                    case .verify: VerifyEmailView(model: model)
+                    case .forgot: ForgotPasswordView(model: model)
+                    case .resetCode: ResetCodeView(model: model)
+                    }
                 }
-            }
-            .buttonStyle(PrimaryButtonStyle())
         }
-        .padding()
+        .onChange(of: model.path) { _, _ in model.clearMessages() }
+        .overlay(alignment: .top) {
+            if session.sessionExpired {
+                Text("Your session expired. Sign in again to continue — your drafts are kept.")
+                    .font(.footnote.weight(.semibold))
+                    .padding(Theme.Spacing.m)
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.fineFill)
+                    .accessibilityIdentifier("session-expired-banner")
+            }
+        }
     }
 }
 
-struct SetNewPasswordView: View {
-    @Environment(AppServices.self) private var services
+struct WelcomeView: View {
+    @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
-    @State private var password = ""
-    @State private var error: String?
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.l) {
-            SecureField("New password", text: $password).textContentType(.newPassword)
-            if let error { Text(error).foregroundStyle(Theme.disliked) }
-            Button("Save password") {
-                Task {
-                    do {
-                        try await services.auth.updatePassword(password)
-                        session.isRecoveringPassword = false
-                    } catch { self.error = error.roamMessage }
+        ScrollView {
+            VStack(spacing: Theme.Spacing.xl) {
+                WelcomeArtwork()
+                    .frame(height: 260)
+                    .accessibilityHidden(true)
+                VStack(spacing: Theme.Spacing.s) {
+                    Text("Roam")
+                        .font(.system(size: 46, weight: .bold, design: .serif))
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Rank the places that made your trips.")
+                        .font(.roamTitle(.title2))
+                        .multilineTextAlignment(.center)
+                    Text("Log trails, cafés, museums, stays and day trips. Compare them two at a time and Roam gives each a score out of 10.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal)
+
+                VStack(spacing: Theme.Spacing.m) {
+                    SignInWithAppleButton(.continue) { request in
+                        model.prepareAppleRequest(request)
+                    } onCompletion: { result in
+                        Task { await model.completeApple(result) }
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 50)
+                    .clipShape(Capsule())
+                    .accessibilityIdentifier("sign-in-with-apple")
+
+                    Button("Continue with email") { model.path.append(.signUp) }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .accessibilityIdentifier("continue-with-email")
+
+                    Button("I already have an account") { model.path.append(.signIn) }
+                        .font(.headline)
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .accessibilityIdentifier("existing-account")
+                }
+                .padding(.horizontal, Theme.Spacing.xl)
+
+                if let error = model.error ?? session.callbackError {
+                    ErrorText(error)
+                }
+
+                Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Theme.Spacing.xl)
+            }
+            .padding(.vertical, Theme.Spacing.xl)
+        }
+        .background(Theme.groupedCanvas)
+        .toolbar(.hidden, for: .navigationBar)
+        .screenIdentifier("welcome")
+    }
+}
+
+/// Original Roam artwork: a stylised globe with floating score markers.
+struct WelcomeArtwork: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(LinearGradient(colors: [Theme.accent.opacity(0.85), Theme.accent.opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 200, height: 200)
+            Image(systemName: "globe.europe.africa.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 170, height: 170)
+                .foregroundStyle(.white.opacity(0.9))
+            marker("9.1", .liked).offset(x: -110, y: -70)
+            marker("7.4", .liked).offset(x: 105, y: -95)
+            marker("5.0", .fine).offset(x: 120, y: 50)
+            marker("8.4", .liked).offset(x: -95, y: 85)
+        }
+    }
+
+    private func marker(_ text: String, _ sentiment: Sentiment) -> some View {
+        Text(text)
+            .font(.system(.subheadline, design: .rounded).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .foregroundStyle(Theme.color(for: sentiment))
+            .background(Capsule().fill(Theme.raisedCard))
+            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+    }
+}
+
+struct ErrorText: View {
+    let message: String
+    init(_ message: String) { self.message = message }
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.circle.fill")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.disliked)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal)
+            .accessibilityIdentifier("auth-error")
+    }
+}
+
+struct InfoText: View {
+    let message: String
+    init(_ message: String) { self.message = message }
+
+    var body: some View {
+        Label(message, systemImage: "envelope.badge")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("auth-info")
+    }
+}
+
+/// Shared form chrome: serif question title, explanation, fields, primary action.
+struct AuthFormScaffold<Fields: View, Footer: View>: View {
+    let title: String
+    let message: String
+    let actionTitle: String
+    let actionEnabled: Bool
+    let busy: Bool
+    let action: () -> Void
+    @ViewBuilder var fields: Fields
+    @ViewBuilder var footer: Footer
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+                Text(message).font(.body).foregroundStyle(.secondary)
+                fields
+                Button(action: action) {
+                    if busy { ProgressView().tint(.white) } else { Text(actionTitle) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(!actionEnabled || busy)
+                .accessibilityIdentifier("auth-primary")
+                footer
+            }
+            .padding(Theme.Spacing.xl)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Theme.groupedCanvas)
+    }
+}
+
+struct RoamTextField: View {
+    let title: String
+    @Binding var text: String
+    var isSecure = false
+    var contentType: UITextContentType?
+    var keyboard: UIKeyboardType = .default
+    var hint: String?
+    var identifier: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline.weight(.semibold))
+            Group {
+                if isSecure {
+                    SecureField(title, text: $text)
+                } else {
+                    TextField(title, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .textContentType(contentType)
+            .padding(Theme.Spacing.m)
+            .frame(minHeight: Theme.minimumHitTarget)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.raisedCard))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
+            .accessibilityIdentifier(identifier)
+            if let hint {
+                Text(hint).font(.caption).foregroundStyle(.secondary)
+            }
         }
-        .padding()
     }
 }

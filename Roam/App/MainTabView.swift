@@ -52,6 +52,8 @@ struct RouteDestinationView: View {
         switch route {
         case .globe(let userID):
             ExpandedGlobeView(userID: userID)
+        case .settings:
+            SettingsView()
         default:
             UnavailableRouteView()
         }

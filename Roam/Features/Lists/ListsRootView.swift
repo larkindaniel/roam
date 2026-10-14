@@ -2,7 +2,10 @@ import SwiftUI
 
 struct ListsRootView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
+    @Environment(AppServices.self) private var services
     @State private var kind: ListKind = .been
+    @State private var showsCoachmark = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +27,24 @@ struct ListsRootView: View {
             }
         }
         .background(Theme.groupedCanvas)
+        .overlay {
+            if session.profile?.hasSeenBeenIntro == false {
+                ZStack {
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    BeenIntroCard {
+                        Task {
+                            await session.markBeenIntroSeen()
+                            showsCoachmark = true
+                        }
+                    }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if showsCoachmark {
+                LogCoachmark { showsCoachmark = false }
+            }
+        }
         .navigationTitle("Your Lists")
         .screenIdentifier("lists-root")
     }
