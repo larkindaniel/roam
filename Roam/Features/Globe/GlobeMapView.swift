@@ -132,13 +132,13 @@ struct GlobeMapView: UIViewRepresentable {
             DispatchQueue.main.async { [weak self, weak map] in
                 guard let self, let map else { return }
                 self.cameraReady = true
-                self.currentPinIDs = []
+                self.currentPins = []
                 self.sync(map: map, with: self.parent)
             }
         }
 
         private var cameraReady = false
-        fileprivate var currentPinIDs: [String] = []
+        fileprivate var currentPins: [MapPin] = []
         private var currentShaded: Set<String> = []
 
         init(parent: GlobeMapView) {
@@ -146,18 +146,22 @@ struct GlobeMapView: UIViewRepresentable {
         }
 
         func sync(map: MKMapView, with view: GlobeMapView) {
-            let newIDs = view.pins.map(\.id)
-            if cameraReady, newIDs != currentPinIDs {
+            if cameraReady, view.pins != currentPins {
                 let existing = map.annotations.compactMap { $0 as? ExperiencePinAnnotation }
                 map.removeAnnotations(existing)
                 map.addAnnotations(view.pins.map(ExperiencePinAnnotation.init(pin:)))
-                currentPinIDs = newIDs
+                currentPins = view.pins
             }
             if view.shadedCountryCodes != currentShaded {
                 map.removeOverlays(map.overlays)
                 let polygons = CountryGeometry.shared.polygons(for: view.shadedCountryCodes)
                 map.addOverlays(polygons, level: .aboveRoads)
                 currentShaded = view.shadedCountryCodes
+            }
+            for annotation in map.selectedAnnotations {
+                if let pin = annotation as? ExperiencePinAnnotation, pin.pin.id != view.selectedPinID {
+                    map.deselectAnnotation(annotation, animated: false)
+                }
             }
             if let selected = view.selectedPinID,
                let annotation = map.annotations.compactMap({ $0 as? ExperiencePinAnnotation }).first(where: { $0.pin.id == selected }),

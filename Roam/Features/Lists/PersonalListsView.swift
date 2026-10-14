@@ -16,12 +16,17 @@ final class PersonalListsModel {
     private(set) var been: LoadPhase<[ListEntry]> = .idle
     private(set) var want: LoadPhase<[ListEntry]> = .idle
     private(set) var refreshError: String?
-    private let services: AppServices
+    private let lists: any ListService
+    private var loadGeneration = 0
 
-    init(ownerID: UUID, kind: ListKind, services: AppServices) {
+    init(ownerID: UUID, kind: ListKind, lists: any ListService) {
         self.ownerID = ownerID
         self.kind = kind
-        self.services = services
+        self.lists = lists
+    }
+
+    convenience init(ownerID: UUID, kind: ListKind, services: AppServices) {
+        self.init(ownerID: ownerID, kind: kind, lists: services.lists)
     }
 
     private var scopeKey: String {
@@ -52,24 +57,32 @@ final class PersonalListsModel {
 
     /// Refresh keeps existing rows (and filters/scroll) on failure.
     func load() async {
-        async let beenResult = result { try await self.services.lists.been(ownerID: self.ownerID) }
-        async let wantResult = result { try await self.services.lists.want(ownerID: self.ownerID) }
+        loadGeneration += 1
+        let generation = loadGeneration
+        async let beenResult = result { try await self.lists.been(ownerID: self.ownerID) }
+        async let wantResult = result { try await self.lists.want(ownerID: self.ownerID) }
         let (b, w) = await (beenResult, wantResult)
-        apply(b, to: \.been)
-        apply(w, to: \.want)
+        guard generation == loadGeneration, !Task.isCancelled else { return }
+        let beenError = apply(b, to: \.been)
+        let wantError = apply(w, to: \.want)
+        refreshError = beenError ?? wantError
     }
 
     private func result(_ work: @escaping () async throws -> [ListEntry]) async -> Result<[ListEntry], Error> {
         do { return .success(try await work()) } catch { return .failure(error) }
     }
 
-    private func apply(_ result: Result<[ListEntry], Error>, to keyPath: ReferenceWritableKeyPath<PersonalListsModel, LoadPhase<[ListEntry]>>) {
+    private func apply(_ result: Result<[ListEntry], Error>, to keyPath: ReferenceWritableKeyPath<PersonalListsModel, LoadPhase<[ListEntry]>>) -> String? {
         switch result {
         case .success(let entries):
             self[keyPath: keyPath] = .loaded(entries)
-            refreshError = nil
+            return nil
         case .failure(let error):
-            if self[keyPath: keyPath].value == nil { self[keyPath: keyPath] = .failed(error.roamMessage) } else { refreshError = error.roamMessage }
+            if self[keyPath: keyPath].value == nil {
+                self[keyPath: keyPath] = .failed(error.roamMessage)
+                return nil
+            }
+            return error.roamMessage
         }
     }
 
@@ -134,6 +147,7 @@ private struct ListsContent: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var distanceNote: String?
 
     var body: some View {
@@ -159,45 +173,23 @@ private struct ListsContent: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("list-kind")
-            HStack(spacing: Theme.Spacing.s) {
-                if model.kind == .been {
-                    Menu {
-                        Button("All categories") { model.beenScope = .all }
-                        ForEach(ExperienceCategory.allCases) { category in
-                            Button { model.beenScope = .category(category) } label: { Label(category.title, systemImage: category.symbolName) }
-                        }
-                    } label: {
-                        PillLabel(title: scopeTitle, systemImage: scopeSymbol)
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(Capsule().fill(Theme.accentFill))
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    facetControls
+                    sortControl
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        facetControls
+                        sortControl
                     }
-                    .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("category-scope")
-                }
-                Button { showsFilters = true } label: {
-                    PillLabel(title: model.filter.activeCount > 0 ? "Filters (\(model.filter.activeCount))" : "Filters",
-                              systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .buttonStyle(PillButtonStyle(isSelected: model.filter.activeCount > 0))
-                .accessibilityIdentifier("open-filters")
-                Menu {
-                    ForEach(ListEngine.availableSorts(kind: model.kind, scope: model.beenScope)) { option in
-                        Button {
-                            Task { await choose(option) }
-                        } label: {
-                            if option == model.sort { Label(option.title, systemImage: "checkmark") } else { Text(option.title) }
-                        }
+                    .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                        HStack(spacing: Theme.Spacing.s) { facetControls }
+                        sortControl
                     }
-                } label: {
-                    PillLabel(title: model.sort.title, systemImage: "arrow.up.arrow.down")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(Capsule().fill(Theme.accentFill))
                 }
-                .frame(minHeight: Theme.minimumHitTarget)
-                .accessibilityIdentifier("sort-menu")
-                Spacer(minLength: 0)
             }
             SearchField(prompt: "Search names and places", text: $model.query, identifier: "list-search-field")
             if model.sort == .distance, let note = distanceNote ?? model.reference.map({ "Distance \($0.label)" }) {
@@ -206,6 +198,49 @@ private struct ListsContent: View {
         }
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.vertical, Theme.Spacing.s)
+    }
+
+    @ViewBuilder private var facetControls: some View {
+        if model.kind == .been {
+            Menu {
+                Button("All categories") { model.beenScope = .all }
+                ForEach(ExperienceCategory.allCases) { category in
+                    Button { model.beenScope = .category(category) } label: { Label(category.title, systemImage: category.symbolName) }
+                }
+            } label: {
+                PillLabel(title: scopeTitle, systemImage: scopeSymbol)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Capsule().fill(Theme.accentFill))
+            }
+            .frame(minHeight: Theme.minimumHitTarget)
+            .accessibilityIdentifier("category-scope")
+        }
+        Button { showsFilters = true } label: {
+            PillLabel(title: model.filter.activeCount > 0 ? "Filters (\(model.filter.activeCount))" : "Filters",
+                      systemImage: "line.3.horizontal.decrease.circle")
+        }
+        .buttonStyle(PillButtonStyle(isSelected: model.filter.activeCount > 0))
+        .accessibilityIdentifier("open-filters")
+    }
+
+    private var sortControl: some View {
+        Menu {
+            ForEach(ListEngine.availableSorts(kind: model.kind, scope: model.beenScope)) { option in
+                Button {
+                    Task { await choose(option) }
+                } label: {
+                    if option == model.sort { Label(option.title, systemImage: "checkmark") } else { Text(option.title) }
+                }
+            }
+        } label: {
+            PillLabel(title: model.sort.title, systemImage: "arrow.up.arrow.down")
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(Capsule().fill(Theme.accentFill))
+        }
+        .frame(minHeight: Theme.minimumHitTarget)
+        .accessibilityIdentifier("sort-menu")
     }
 
     private var scopeTitle: String {

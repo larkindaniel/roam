@@ -12,20 +12,28 @@ final class LibraryStore {
     /// Bumped after any acknowledged write so open screens can refresh derived data.
     private(set) var revision = 0
 
-    private let services: AppServices
+    private let lists: any ListService
+    private var accountGeneration = 0
 
     init(services: AppServices) {
-        self.services = services
+        self.lists = services.lists
     }
 
+    init(lists: any ListService) { self.lists = lists }
+
     func refresh() async {
-        if let latest = try? await services.lists.library() {
+        let generation = accountGeneration
+        let requestedRevision = revision
+        if let latest = try? await lists.library(), generation == accountGeneration, requestedRevision == revision {
+            // A snapshot begun before an acknowledged write must not undo that write locally.
             library = latest
             revision += 1
         }
     }
 
     func reset() {
+        accountGeneration += 1
+        lastError = nil
         library = .empty
         pending = [:]
         revision += 1
@@ -46,16 +54,19 @@ final class LibraryStore {
     @discardableResult
     func setBookmark(_ experienceID: UUID, saved: Bool) async -> Bool {
         guard pending[experienceID] == nil else { return false }
+        let generation = accountGeneration
         let previous = library.bookmarked.contains(experienceID)
         pending[experienceID] = saved
         lastError = nil
         do {
-            let persisted = try await services.lists.setBookmark(experienceID: experienceID, saved: saved)
+            let persisted = try await lists.setBookmark(experienceID: experienceID, saved: saved)
+            guard generation == accountGeneration else { return false }
             if persisted { library.bookmarked.insert(experienceID) } else { library.bookmarked.remove(experienceID) }
             pending[experienceID] = nil
             revision += 1
             return true
         } catch {
+            guard generation == accountGeneration else { return false }
             if previous { library.bookmarked.insert(experienceID) } else { library.bookmarked.remove(experienceID) }
             pending[experienceID] = nil
             lastError = error.roamMessage

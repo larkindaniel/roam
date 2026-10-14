@@ -56,7 +56,8 @@ struct SearchField: View {
                 .accessibilityIdentifier(identifier)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary).frame(width: 36, height: 36)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                        .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
                 }
                 .accessibilityLabel("Clear search")
                 .accessibilityIdentifier("\(identifier)-clear")
@@ -101,6 +102,7 @@ struct ExperienceSearchView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(SessionStore.self) private var session
     @State private var openError: String?
+    @State private var pendingSaves: Set<String> = []
 
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
@@ -141,6 +143,14 @@ struct ExperienceSearchView: View {
             }
         case .results:
             List {
+                if let message = model.refreshError {
+                    InlineRetryView(message: message) { Task { await model.search(model.query, near: destinations.search) } }
+                        .accessibilityIdentifier("experience-search-refresh-error")
+                    if !model.hits.isEmpty {
+                        Text("Showing the last successful results for “\(model.lastQuery)”. The new query or destination has not loaded yet.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
                 if model.isRefreshing {
                     HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(.secondary) }
                 }
@@ -185,6 +195,9 @@ struct ExperienceSearchView: View {
     }
 
     private func toggleSave(_ hit: SearchHit) async {
+        guard !pendingSaves.contains(hit.id) else { return }
+        pendingSaves.insert(hit.id)
+        defer { pendingSaves.remove(hit.id) }
         do {
             let summary = try await model.resolve(hit)
             await library.setBookmark(summary.id, saved: !library.isBookmarked(summary.id))
@@ -201,6 +214,9 @@ struct MemberSearchView: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
             SearchField(prompt: "Name or @handle", text: $model.query, identifier: "member-search-field")
+            if let message = model.followError {
+                InlineRetryView(message: message, retryTitle: "Dismiss") { model.clearFollowError() }
+            }
             switch model.phase {
             case .idle:
                 ScrollView {
@@ -213,11 +229,22 @@ struct MemberSearchView: View {
             case .loaded where model.rows.isEmpty:
                 ScrollView {
                     EmptyStateView(systemImage: "person.crop.circle.badge.questionmark", title: "No members found",
-                                   message: "No one matches “\(model.query)”.")
+                                   message: "No one matches “\(model.lastQuery)”.")
                         .accessibilityIdentifier("member-no-results")
                 }
             case .loaded:
                 List {
+                    if let message = model.refreshError {
+                        InlineRetryView(message: message) { Task { await model.search(model.query) } }
+                            .accessibilityIdentifier("member-search-refresh-error")
+                        if model.query.trimmingCharacters(in: .whitespacesAndNewlines) != model.lastQuery {
+                            Text("Showing the previous results for “\(model.lastQuery)” until the new search succeeds.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                    if model.isRefreshing {
+                        HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(.secondary) }
+                    }
                     ForEach(model.rows) { row in
                         MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,
                                       followState: model.pendingFollows.contains(row.id) ? .pending
@@ -225,7 +252,8 @@ struct MemberSearchView: View {
                                       onOpen: { router.push(.member(row.id)) },
                                       onToggleFollow: { Task { await model.toggleFollow(row) } })
                     }
-                    PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
+                    PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError,
+                                     hasMore: model.nextCursor != nil && !model.isRefreshing) {
                         Task { await model.loadMore() }
                     }
                 }

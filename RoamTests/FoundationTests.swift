@@ -201,4 +201,22 @@ final class LocalityIdentityTests: XCTestCase {
         XCTAssertFalse(PlaceIdentity.isSamePlace(locality("Portland", region: "Oregon", country: "US"),
                                                  locality("Portland", region: "Maine", country: "US")))
     }
+
+    func testCandidateIDsDistinguishPOIAndLocalityAndDisambiguateSameNamedCities() {
+        var city = locality("Portland", region: "Oregon", country: "US")
+        city.address = "Portland"
+        var poi = city
+        poi.isLocality = false
+        poi.suggestedCategory = .culture
+        XCTAssertNotEqual(city.id, poi.id, "Enrichment lookup must not overwrite one type with the other")
+        XCTAssertNotEqual(city.id, locality("Portland", region: "Maine", country: "US").id)
+        var shiftedCity = city
+        shiftedCity.latitude += 0.1
+        shiftedCity.address = "Different provider locality presentation"
+        XCTAssertEqual(city.id, shiftedCity.id, "Canonical locality identity survives provider coordinate/address variation")
+        city.countryCode = nil
+        poi.countryCode = nil
+        XCTAssertNotEqual(city.id, poi.id, "An unresolved locality must not reuse the POI lookup key")
+        XCTAssertFalse(PlaceIdentity.isSamePlace(city, poi))
+    }
 }

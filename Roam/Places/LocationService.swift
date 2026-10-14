@@ -29,13 +29,27 @@ enum LocationOutcome: Equatable {
     }
 }
 
+@MainActor
+protocol LocationManaging: AnyObject {
+    var delegate: (any CLLocationManagerDelegate)? { get set }
+    var desiredAccuracy: CLLocationAccuracy { get set }
+    var authorizationStatus: CLAuthorizationStatus { get }
+    var accuracyAuthorization: CLAccuracyAuthorization { get }
+    func requestWhenInUseAuthorization()
+    func requestLocation()
+    func stopUpdatingLocation()
+}
+
+extension CLLocationManager: LocationManaging {}
+
 /// Requests "when in use" location only when the member taps a location action. Never background.
 @MainActor
 @Observable
 final class LocationService: NSObject, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
-    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
-    private var locationContinuation: CheckedContinuation<CLLocation?, Never>?
+    private let manager: any LocationManaging
+    private var waiters: [UUID: CheckedContinuation<LocationOutcome, Never>] = [:]
+    private var timeoutTask: Task<Void, Never>?
+    private var requestID: UUID?
     private let simulated: String?
 
     private(set) var lastOutcome: LocationOutcome?
@@ -45,56 +59,69 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways
     }
 
-    init(simulated: String? = nil) {
+    init(simulated: String? = nil, manager: any LocationManaging = CLLocationManager()) {
         self.simulated = simulated
+        self.manager = manager
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
     func currentLocation(timeout: Duration = .seconds(10)) async -> LocationOutcome {
-        let outcome = await resolve(timeout: timeout)
-        lastOutcome = outcome
-        return outcome
+        if let simulated {
+            let outcome = Self.simulatedOutcome(simulated)
+            lastOutcome = outcome
+            return outcome
+        }
+        let waiterID = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else { continuation.resume(returning: .unavailable); return }
+                waiters[waiterID] = continuation
+                // Coalesce repeated taps without overwriting an outstanding continuation.
+                guard requestID == nil else { return }
+                let id = UUID()
+                requestID = id
+                timeoutTask = Task { @MainActor [weak self] in
+                    do { try await Task.sleep(for: timeout) } catch { return }
+                    guard let self, self.requestID == id else { return }
+                    self.finish(.timedOut)
+                }
+                requestIfAuthorized()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                guard let self, let waiter = self.waiters.removeValue(forKey: waiterID) else { return }
+                waiter.resume(returning: .unavailable)
+                if self.waiters.isEmpty { self.stopRequest() }
+            }
+        }
     }
 
-    private func resolve(timeout: Duration) async -> LocationOutcome {
-        if let simulated { return Self.simulatedOutcome(simulated) }
-        var status = manager.authorizationStatus
-        if status == .notDetermined {
-            status = await withCheckedContinuation { continuation in
-                authorizationContinuation = continuation
-                manager.requestWhenInUseAuthorization()
-            }
+    private func requestIfAuthorized() {
+        switch manager.authorizationStatus {
+        case .notDetermined: manager.requestWhenInUseAuthorization()
+        case .denied: finish(.denied)
+        case .restricted: finish(.restricted)
+        case .authorizedAlways, .authorizedWhenInUse: manager.requestLocation()
+        default: finish(.unavailable)
         }
-        switch status {
-        case .denied: return .denied
-        case .restricted: return .restricted
-        case .authorizedAlways, .authorizedWhenInUse: break
-        default: return .unavailable
-        }
-        let approximate = manager.accuracyAuthorization == .reducedAccuracy
-        let location: CLLocation? = await withTaskGroup(of: CLLocation?.self) { group in
-            group.addTask { @MainActor in
-                await withCheckedContinuation { continuation in
-                    self.locationContinuation = continuation
-                    self.manager.requestLocation()
-                }
-            }
-            group.addTask {
-                try? await Task.sleep(for: timeout)
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
-        }
-        if let pending = locationContinuation {
-            locationContinuation = nil
-            pending.resume(returning: nil)
-        }
-        guard let location else { return .timedOut }
-        return .located(location.coordinate, approximate: approximate)
+    }
+
+    private func stopRequest() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        requestID = nil
+        manager.stopUpdatingLocation()
+    }
+
+    private func finish(_ outcome: LocationOutcome) {
+        guard requestID != nil else { return }
+        let pending = waiters.values
+        waiters = [:]
+        stopRequest()
+        lastOutcome = outcome
+        for waiter in pending { waiter.resume(returning: outcome) }
     }
 
     private static func simulatedOutcome(_ value: String) -> LocationOutcome {
@@ -112,26 +139,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
         Task { @MainActor in
-            guard status != .notDetermined, let continuation = self.authorizationContinuation else { return }
-            self.authorizationContinuation = nil
-            continuation.resume(returning: status)
+            guard self.requestID != nil, self.manager.authorizationStatus != .notDetermined else { return }
+            self.requestIfAuthorized()
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let location = locations.last
         Task { @MainActor in
-            self.locationContinuation?.resume(returning: location)
-            self.locationContinuation = nil
+            guard let location else { self.finish(.unavailable); return }
+            self.finish(.located(location.coordinate, approximate: self.manager.accuracyAuthorization == .reducedAccuracy))
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            self.locationContinuation?.resume(returning: nil)
-            self.locationContinuation = nil
-        }
+        Task { @MainActor in self.finish(.unavailable) }
     }
 }

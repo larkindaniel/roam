@@ -32,10 +32,23 @@ final class ExploreModel {
     var focusToken = 0
     var locationMessage: String?
     private var generation = 0
-    private let services: AppServices
+    private let places: any PlaceSearchProviding
+    private let experiences: any ExperienceService
+    private var requestedRegion: MKCoordinateRegion?
 
     init(services: AppServices) {
-        self.services = services
+        places = services.places
+        experiences = services.experiences
+    }
+
+    init(places: any PlaceSearchProviding, experiences: any ExperienceService) {
+        self.places = places
+        self.experiences = experiences
+    }
+
+    func retry() async {
+        guard let region = requestedRegion else { return }
+        await load(region: region)
     }
 
     /// True after the member pans/zooms away from the area the results came from.
@@ -59,13 +72,15 @@ final class ExploreModel {
     func load(region: MKCoordinateRegion) async {
         generation += 1
         let current = generation
+        requestedRegion = region
         phase = .loading
         do {
-            async let poiResult = services.places.pointsOfInterest(in: region, category: category)
-            async let roamResult = services.experiences.experiences(in: GeoBounds(region: region), category: category)
+            async let poiResult = places.pointsOfInterest(in: region, category: category)
+            async let roamResult = experiences.experiences(in: GeoBounds(region: region), category: category)
             let pois = try await poiResult
-            let roam = (try? await roamResult) ?? []
-            let matches = (try? await services.experiences.matches(for: pois)) ?? [:]
+            let roam = try await roamResult
+            let matches = try await experiences.matches(for: pois)
+            try Task.checkCancellation()
             guard current == generation else { return }
             var seenExperiences = Set<UUID>()
             var merged: [ExploreItem] = pois.map { poi in
@@ -79,6 +94,8 @@ final class ExploreModel {
             if let selectedID, !items.contains(where: { $0.id == selectedID }) { self.selectedID = nil }
             phase = .loaded(())
         } catch is CancellationError {
+            guard current == generation else { return }
+            phase = loadedRegion == nil ? .idle : .loaded(())
         } catch {
             guard current == generation else { return }
             phase = .failed(error.roamMessage)
@@ -93,7 +110,7 @@ final class ExploreModel {
     func resolve(_ item: ExploreItem) async throws -> ExperienceSummary {
         if let experience = item.experience { return experience }
         guard let candidate = item.candidate else { throw RoamError.notFound }
-        let summary = try await services.experiences.resolve(candidate)
+        let summary = try await experiences.resolve(candidate)
         if let index = items.firstIndex(where: { $0.id == item.id }) { items[index].experience = summary }
         return summary
     }
@@ -109,6 +126,7 @@ struct ExploreRootView: View {
     @Environment(SessionStore.self) private var session
     @State private var model: ExploreModel?
     @State private var actionError: String?
+    @State private var pendingSaves: Set<String> = []
 
     var body: some View {
         // A ZStack always has a view to host `.task`; an empty Group would never run it.
@@ -126,7 +144,9 @@ struct ExploreRootView: View {
         .task {
             if model == nil {
                 model = ExploreModel(services: services)
-                if let destination = destinations.explore { await model?.focus(on: destination) }
+            }
+            if model?.loadedRegion == nil, let destination = destinations.explore {
+                await model?.focus(on: destination)
             }
         }
         .onChange(of: destinations.explore) { _, destination in
@@ -152,6 +172,15 @@ struct ExploreRootView: View {
             }
             .padding(.horizontal, Theme.Spacing.l)
             categoryChips(model)
+            if case .failed(let message) = model.phase {
+                InlineRetryView(message: message) { Task { await model.retry() } }
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .accessibilityIdentifier("explore-load-error")
+                if !model.items.isEmpty {
+                    Text("Showing places from the last successful area search.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
             if let message = model.locationMessage ?? actionError {
                 InlineRetryView(message: message, retryTitle: "Dismiss") { model.locationMessage = nil; actionError = nil }
                     .padding(.horizontal, Theme.Spacing.l)
@@ -229,8 +258,8 @@ struct ExploreRootView: View {
         switch model.phase {
         case .loading where model.items.isEmpty:
             ScrollView { SkeletonList(rows: 6).padding(.horizontal) }
-        case .failed(let message):
-            ScrollView { InlineRetryView(message: message) { Task { await model.searchThisArea() } }.padding() }
+        case .failed where model.items.isEmpty:
+            ScrollView { ContentUnavailableView("Places unavailable", systemImage: "wifi.exclamationmark", description: Text("Retry the last area or choose another destination.")) }
         default:
             if model.items.isEmpty {
                 ScrollView {
@@ -239,8 +268,21 @@ struct ExploreRootView: View {
                 }
             } else {
                 List(model.items) { item in
-                    row(item, model: model)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                        row(item, model: model)
+                        Button {
+                            model.selectedID = item.id
+                            model.focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), latitudinalMeters: 1_500, longitudinalMeters: 1_500)
+                            model.focusToken += 1
+                            model.showsMap = true
+                        } label: { Label("Show on map", systemImage: "mappin.and.ellipse") }
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .accessibilityIdentifier("explore-show-on-map-\(item.name)")
+                    }
                         .listRowBackground(item.id == model.selectedID ? Theme.accentFill : Theme.raisedCard)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityAddTraits(item.id == model.selectedID ? .isSelected : [])
+                        .accessibilityIdentifier("explore-list-row-\(item.name)")
                 }
                 .listStyle(.plain)
                 .accessibilityIdentifier("explore-list")
@@ -255,6 +297,7 @@ struct ExploreRootView: View {
         return ExperienceRow(name: item.name, category: item.category, area: item.area,
                              score: experience?.viewer.myScore, scoreSource: .you,
                              secondaryScore: experience?.followingScore, secondarySource: experience.map { .following(count: $0.followingCount) },
+                             statusLine: item.candidate?.address,
                              saveState: save,
                              onOpen: { Task { await open(item, model) } },
                              onSave: { Task { await toggleSave(item, model) } })
@@ -283,6 +326,9 @@ struct ExploreRootView: View {
     }
 
     private func toggleSave(_ item: ExploreItem, _ model: ExploreModel) async {
+        guard !pendingSaves.contains(item.id) else { return }
+        pendingSaves.insert(item.id)
+        defer { pendingSaves.remove(item.id) }
         do {
             let summary = try await model.resolve(item)
             await library.setBookmark(summary.id, saved: !library.isBookmarked(summary.id))

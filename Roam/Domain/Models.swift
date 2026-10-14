@@ -56,7 +56,11 @@ struct PlaceCandidate: Codable, Hashable, Identifiable, Sendable {
 
     var id: String {
         if let providerPlaceID { return "\(provider.rawValue):\(providerPlaceID)" }
-        return "\(provider.rawValue):\(PlaceIdentity.fallbackKey(name: name, address: address, latitude: latitude, longitude: longitude))"
+        if isLocality {
+            let key = PlaceIdentity.localityKey(self) ?? PlaceIdentity.fallbackKey(name: name, address: address, latitude: latitude, longitude: longitude)
+            return "\(provider.rawValue):locality:\(key)"
+        }
+        return "\(provider.rawValue):poi:\(PlaceIdentity.fallbackKey(name: name, address: address, latitude: latitude, longitude: longitude))"
     }
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }

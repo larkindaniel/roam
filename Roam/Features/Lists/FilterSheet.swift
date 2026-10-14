@@ -9,6 +9,7 @@ struct FilterSheet: View {
     let onApply: (ListFilter) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft = ListFilter()
     @State private var citySearch = ""
 
@@ -51,6 +52,7 @@ struct FilterSheet: View {
                     }
                 }
             }
+            .accessibilityIdentifier("filter-options")
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -59,7 +61,10 @@ struct FilterSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                HStack(spacing: Theme.Spacing.m) {
+                let layout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: Theme.Spacing.s))
+                    : AnyLayout(HStackLayout(spacing: Theme.Spacing.m))
+                layout {
                     Button("Clear all") { draft = ListFilter() }
                         .buttonStyle(SecondaryButtonStyle())
                         .disabled(draft.isEmpty)
@@ -102,14 +107,38 @@ struct FlowChips: View {
     let items: [(id: String, title: String, symbol: String)]
     let selected: Set<String>
     let toggle: (String) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        WrapLayout(spacing: 8) {
-            ForEach(items, id: \.id) { item in
-                Button { toggle(item.id) } label: { PillLabel(title: item.title, systemImage: item.symbol) }
-                    .buttonStyle(PillButtonStyle(isSelected: selected.contains(item.id)))
+        if typeSize.isAccessibilitySize {
+            // Intrinsically sized pills can exceed a compact screen at accessibility sizes.
+            // Full-width rows keep every label and selection reachable in the enclosing List.
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(items, id: \.id) { item in
+                    Button { toggle(item.id) } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                            Image(systemName: selected.contains(item.id) ? "checkmark.square.fill" : "square")
+                                .foregroundStyle(Theme.accent)
+                            Label(item.title, systemImage: item.symbol)
+                                .foregroundStyle(.primary)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     .accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
                     .accessibilityIdentifier("chip-\(item.id)")
+                }
+            }
+        } else {
+            WrapLayout(spacing: 8) {
+                ForEach(items, id: \.id) { item in
+                    Button { toggle(item.id) } label: { PillLabel(title: item.title, systemImage: item.symbol) }
+                        .buttonStyle(PillButtonStyle(isSelected: selected.contains(item.id)))
+                        .accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
+                        .accessibilityIdentifier("chip-\(item.id)")
+                }
             }
         }
     }
