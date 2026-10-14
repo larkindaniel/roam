@@ -157,20 +157,45 @@ Read CLAUDE.md, SPEC.md, MILESTONES.md, DECISIONS.md and docs/beli-inventory.md.
 Reference screenshots are in reference/beli/ (01–322 and nc001–nc053).
 Test on the iOS 26.2 simulator only; iOS 18 validation comes later.
 
-Build the app one milestone at a time, in order. For each milestone:
+Build Roam one milestone at a time, M1 to M8, in order. For each milestone:
 1. Implement it per SPEC.md.
-2. Run xcodegen, build, and run the unit tests. Fix all errors before moving on.
+2. Run xcodegen, build, and run the tests. Fix all errors before moving on.
 3. Launch in the simulator, go through every screen in the milestone,
    and save a screenshot of each to screenshots/<milestone>/.
 4. Check each screen against its acceptance criteria and the matching
    reference screenshot. Fix what doesn't match.
 5. Commit, naming the milestone.
 
-Don't stop between milestones to ask me. If the spec is unclear, follow DECISIONS.md;
-if it doesn't cover the case, pick the option closest to Beli's behavior,
-log it in DECISIONS.md, and keep going. If something needs me (e.g. a real
-Apple sign-in), note it and continue with the rest.
-At the end, summarize what was built, what's left, and every DECISIONS.md entry.
+Don't stop between milestones to ask me. You have my authority to work
+autonomously:
+
+- Unblock yourself. If a build, tool, dependency, simulator or local
+  service fails, diagnose and fix it: install packages with brew/SPM,
+  restart Docker or Supabase, reset the local database, reboot or
+  recreate the simulator, clear DerivedData, try another approach.
+  Don't wait for me on anything you can solve on this machine.
+- Make your own calls. Where SPEC.md and DECISIONS.md are silent or
+  turn out to be wrong in practice, choose what makes the best product
+  for Roam (it doesn't have to match Beli), log the choice and why in
+  DECISIONS.md, and keep going. You may revise "Default" (D-numbered)
+  entries if implementation shows a better option; log the change.
+- If a milestone gets stuck, timebox it: ship the simplest version that
+  meets the core acceptance criteria, log what's missing, move on, and
+  come back at the end if there's time.
+- If something truly needs me (e.g. a real Apple sign-in), note it and
+  continue with everything else.
+
+Stay within these limits:
+- Don't change the confirmed decisions (C01–C12 in DECISIONS.md).
+- Don't push to any remote, publish anything, or spend money.
+- Don't sign in to, or change, any of my real accounts (Apple, Beli,
+  email). Sign with team H5V24G3F3D only.
+- Don't modify or delete anything in reference/.
+- Don't run destructive commands outside this project folder.
+
+When you're done, summarize: what was built per milestone, what's left
+or incomplete, anything that needs me, and every decision you added or
+changed in DECISIONS.md.
 ```
 
 ## 9. Open questions (answer before or during the spec phase)
