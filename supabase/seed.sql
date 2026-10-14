@@ -1,0 +1,3 @@
+-- Local seed for the disposable Roam fixture database.
+-- Auth users are provisioned by scripts/fixtures/setup.sh through the local Auth admin API,
+-- so this file only contains reference data that needs no credentials.

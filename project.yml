@@ -1,0 +1,113 @@
+name: Roam
+options:
+  bundleIdPrefix: com.daniellarkin
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  xcodeVersion: "26.3"
+  groupSortPosition: top
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: H5V24G3F3D
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    exactVersion: 2.55.3
+
+targets:
+  Roam:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    configFiles:
+      Debug: Config/Roam.xcconfig
+      Release: Config/Roam.xcconfig
+    sources:
+      - path: Roam
+        excludes:
+          - "Support/Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.daniellarkin.roam
+        PRODUCT_NAME: Roam
+        INFOPLIST_FILE: Roam/Support/Info.plist
+        INFOPLIST_PREPROCESS: YES
+        CODE_SIGN_ENTITLEMENTS: Roam/Support/Roam.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        ENABLE_PREVIEWS: YES
+      configs:
+        Debug:
+          # Fixture providers and the local-network ATS exception exist only in Debug builds.
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG ROAM_FIXTURES
+          INFOPLIST_PREPROCESSOR_DEFINITIONS: ROAM_DEBUG_LOCAL_NETWORKING=1
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+    dependencies:
+      - package: Supabase
+        product: Supabase
+
+  RoamTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: RoamTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.daniellarkin.roam.tests
+        GENERATE_INFOPLIST_FILE: YES
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG ROAM_FIXTURES
+    dependencies:
+      - target: Roam
+
+  RoamUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: RoamUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.daniellarkin.roam.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Roam
+    dependencies:
+      - target: Roam
+
+schemes:
+  Roam:
+    build:
+      targets:
+        Roam: all
+        RoamTests: [test]
+        RoamUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: RoamTests
+        - name: RoamUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

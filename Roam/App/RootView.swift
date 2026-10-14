@@ -1,0 +1,91 @@
+import SwiftUI
+
+struct RootView: View {
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
+    @Environment(LibraryStore.self) private var library
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        Group {
+            #if ROAM_FIXTURES
+            if services.options.showComponentCatalog {
+                ComponentCatalogView()
+            } else {
+                content
+            }
+            #else
+            content
+            #endif
+        }
+        .task { await session.bootstrap() }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch session.phase {
+        case .launching:
+            LaunchView()
+        case .notConfigured:
+            ConfigurationMissingView()
+        case .restoreFailed(let message):
+            RestoreFailedView(message: message)
+        case .signedOut:
+            WelcomeFlowView()
+        case .needsProfile(let auth):
+            ProfileSetupFlowView(auth: auth)
+        case .ready:
+            if session.isRecoveringPassword {
+                SetNewPasswordView()
+            } else {
+                MainTabView()
+                    .task(id: session.userID) {
+                        await library.refresh()
+                        if session.consumeJustCompletedSetup() {
+                            router.reset(initialTab: .lists)
+                        }
+                        #if ROAM_FIXTURES
+                        if services.options.initialRoute == "globe", let userID = session.userID {
+                            router.push(.globe(userID))
+                        }
+                        #endif
+                    }
+            }
+        }
+    }
+}
+
+struct LaunchView: View {
+    var body: some View {
+        VStack(spacing: Theme.Spacing.l) {
+            Text("Roam")
+                .font(.system(size: 44, weight: .bold, design: .serif))
+                .foregroundStyle(Theme.accent)
+            ProgressView("Opening your travels…")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.groupedCanvas)
+        .screenIdentifier("launch-view")
+    }
+}
+
+struct RestoreFailedView: View {
+    let message: String
+    @Environment(SessionStore.self) private var session
+
+    var body: some View {
+        EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't open Roam", message: message,
+                       primaryTitle: "Try again", primaryAction: { Task { await session.bootstrap() } },
+                       secondaryTitle: "Sign in again", secondaryAction: { Task { await session.signOut() } })
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.groupedCanvas)
+    }
+}
+
+struct ConfigurationMissingView: View {
+    var body: some View {
+        EmptyStateView(systemImage: "gearshape.2", title: "Roam isn't configured",
+                       message: "This build has no backend URL or publishable key. Run scripts/configure-local.sh, then rebuild.")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.groupedCanvas)
+    }
+}

@@ -1,0 +1,79 @@
+import SwiftUI
+
+/// Five tabs, each with its own navigation stack. Tab views stay alive, so query, filter and
+/// scroll state persist for the session.
+struct MainTabView: View {
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        @Bindable var router = router
+        TabView(selection: $router.selectedTab) {
+            Tab(AppTab.feed.title, systemImage: AppTab.feed.symbolName, value: AppTab.feed) {
+                stack(.feed) { FeedRootView() }
+            }
+            .accessibilityIdentifier("tab-feed")
+            Tab(AppTab.lists.title, systemImage: AppTab.lists.symbolName, value: AppTab.lists) {
+                stack(.lists) { ListsRootView() }
+            }
+            .accessibilityIdentifier("tab-lists")
+            Tab(AppTab.search.title, systemImage: AppTab.search.symbolName, value: AppTab.search) {
+                stack(.search) { SearchRootView() }
+            }
+            .accessibilityIdentifier("tab-search")
+            Tab(AppTab.explore.title, systemImage: AppTab.explore.symbolName, value: AppTab.explore) {
+                stack(.explore) { ExploreRootView() }
+            }
+            .accessibilityIdentifier("tab-explore")
+            Tab(AppTab.profile.title, systemImage: AppTab.profile.symbolName, value: AppTab.profile) {
+                stack(.profile) { ProfileRootView() }
+            }
+            .accessibilityIdentifier("tab-profile")
+        }
+        .sheet(item: $router.sheet) { sheet in
+            SheetContent(route: sheet)
+        }
+    }
+
+    private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack(path: router.binding(for: tab)) {
+            root()
+                .navigationDestination(for: AppRoute.self) { route in
+                    RouteDestinationView(route: route)
+                }
+        }
+    }
+}
+
+/// Resolves stable-ID routes to screens.
+struct RouteDestinationView: View {
+    let route: AppRoute
+
+    var body: some View {
+        switch route {
+        case .globe(let userID):
+            ExpandedGlobeView(userID: userID)
+        default:
+            UnavailableRouteView()
+        }
+    }
+}
+
+/// Shown only if a route's screen does not exist in this build; never linked from UI.
+struct UnavailableRouteView: View {
+    var body: some View {
+        EmptyStateView(systemImage: "questionmark.circle", title: "Not available", message: "This screen isn't available.")
+    }
+}
+
+struct SheetContent: View {
+    let route: SheetRoute
+
+    var body: some View {
+        switch route {
+        case .destinationPicker(let purpose):
+            DestinationPickerSheet(purpose: purpose)
+        case .log:
+            UnavailableRouteView()
+        }
+    }
+}

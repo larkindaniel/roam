@@ -4,9 +4,19 @@ build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+*.xcresult
 # XcodeGen output (regenerated from project.yml)
 *.xcodeproj
+# Local, secrets-bearing configuration (examples are checked in)
+Config/Local.xcconfig
+supabase/.env
+supabase/functions/.env
+scripts/.fixture-env
 # Supabase local
 supabase/.branches/
 supabase/.temp/
 .env
+.env.*
+!.env.example
+# MobileBuildMCP local state
+.mobilebuildmcp/
