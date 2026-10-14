@@ -215,7 +215,8 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 - [x] Inventory and drafts written: `docs/beli-inventory.md`, `docs/roam-*.md`, `docs/capture-gaps.md`, `SPEC.md`, `MILESTONES.md`
 - [x] Resolve v1 decisions and document effective defaults in `DECISIONS.md`; city formula stays deferred with city scoring
 - [x] Trim to Keep + Adapt, reduce to eight milestones, write `CLAUDE.md`, mark `SPEC.md` ready for the separate build run
-- [ ] Build run at `/effort max`
+- [ ] Build run at `/effort max` (tests on iOS 26.2 simulator only)
+- [ ] After the build: install the iOS 18 simulator (`xcodebuild -downloadPlatform iOS -buildVersion 18.6`) and run a compatibility pass
 
 ## Resuming
 

@@ -38,7 +38,7 @@ Build tests should have separate deterministic fixture mode and real local-backe
 | Installed simulator runtime | iOS 26.2 only |
 | Default simulator | iPhone 17 Pro, `3C864AD4-9C80-44BF-8B1C-EB57732C2C9C` |
 | Smaller simulator | iPhone 16e, `FF96AB35-BC3B-420C-88FF-CF509F0DCEF6` |
-| iOS 18 runtime validation | Not yet available; deployment target 18.0 is not a runtime test |
+| iOS 18 runtime validation | **Deferred by the user (2026-10-13):** this build run tests on iOS 26.2 only. Do not download or install an iOS 18 runtime. Keep the 18.0 deployment target and availability checks; iOS 18 runtime validation is a separate pass after the run. |
 
 Recheck before execution; UUIDs/tool versions may change. The commands below have valid CLI forms checked via local help; they have **not** been run against a Roam project because no app exists yet. Supabase help needs its per-user settings directory and simulator tools need CoreSimulator access; sandbox failures are not proof those services are broken. Use the execution environment's normal permission mechanism if needed, without weakening macOS security or repurposing `$HOME`/`$CODEX_HOME`.
 
