@@ -82,7 +82,7 @@ enum DestinationPickerPurpose: String, Hashable, Sendable {
 
 /// What a Log/Rank again/Add visit sheet was opened for.
 struct LogRequest: Hashable, Identifiable, Sendable {
-    enum Mode: String, Hashable, Sendable {
+    enum Mode: String, Codable, Hashable, Sendable {
         case firstLog
         case rerank
         case addVisit
@@ -93,6 +93,8 @@ struct LogRequest: Hashable, Identifiable, Sendable {
     let mode: Mode
     var suggestedCategory: ExperienceCategory?
     var destinationTimeZone: String?
+    var categoryLocked = false
+    var existingVisit: Visit? = nil
 }
 
 @MainActor

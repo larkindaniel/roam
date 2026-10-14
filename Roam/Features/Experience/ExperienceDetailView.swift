@@ -8,6 +8,7 @@ final class ExperienceDetailModel {
     private(set) var phase: LoadPhase<ExperienceDetail> = .idle
     private(set) var refreshError: String?
     private let services: AppServices
+    private var generation = 0
 
     init(experienceID: UUID, services: AppServices) {
         self.experienceID = experienceID
@@ -18,11 +19,20 @@ final class ExperienceDetailModel {
 
     /// Refresh keeps the current content on failure.
     func load() async {
+        generation += 1
+        let token = generation
         if detail == nil { phase = .loading }
         do {
-            phase = .loaded(try await services.experiences.detail(experienceID: experienceID))
+            let detail = try await services.experiences.detail(experienceID: experienceID)
+            try Task.checkCancellation()
+            guard token == generation else { return }
+            phase = .loaded(detail)
             refreshError = nil
+        } catch is CancellationError {
+            guard token == generation else { return }
+            if detail == nil { phase = .idle }
         } catch {
+            guard token == generation else { return }
             if detail == nil { phase = .failed(error.roamMessage) } else { refreshError = error.roamMessage }
         }
     }
@@ -40,6 +50,11 @@ struct ExperienceDetailView: View {
     @State private var model: ExperienceDetailModel?
     @State private var reportTarget: ReportTarget?
     @State private var reportReason: ReportReason?
+    @State private var pendingDeletion: DetailDeletion?
+    @State private var failedDeletion: DetailDeletion?
+    @State private var actionError: String?
+    @State private var deleting = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Group {
@@ -68,7 +83,27 @@ struct ExperienceDetailView: View {
             ReportSheet(target: target, title: reportReason == .incorrectPlaceOrCategory ? "Report category issue" : "Report a problem",
                         suggestedReason: reportReason)
         }
+        .alert(pendingDeletion?.title ?? "Confirm removal", isPresented: Binding(
+            get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { action in
+                Button(action.buttonTitle, role: .destructive) { Task { await confirmDeletion(action) } }
+                    .accessibilityIdentifier(action.confirmID)
+                Button("Cancel", role: .cancel) {}
+            } message: { action in Text(action.message) }
+        .safeAreaInset(edge: .bottom) {
+            if let actionError {
+                InlineRetryView(message: actionError, retryTitle: failedDeletion == nil ? "Dismiss" : "Try again") {
+                    if let failedDeletion { Task { await confirmDeletion(failedDeletion) } } else { self.actionError = nil }
+                }.padding().background(.bar).accessibilityIdentifier("detail-action-error")
+            }
+        }
         .task {
+            if let owner = session.userID {
+                let name = "detail-pending-delete-\(experienceID.uuidString)"
+                if let retained = services.storage.read(DetailDeletion.self, name: name, userID: owner) {
+                    failedDeletion = retained
+                    actionError = "A removal response was interrupted. Retry the same request to confirm its result."
+                }
+            }
             if model == nil { model = ExperienceDetailModel(experienceID: experienceID, services: services) }
             await model?.load()
         }
@@ -130,7 +165,8 @@ struct ExperienceDetailView: View {
     @ViewBuilder private func actionRow(_ detail: ExperienceDetail) -> some View {
         let id = detail.summary.id
         let rated = detail.myRating != nil
-        HStack(spacing: Theme.Spacing.s) {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s)) : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
+        layout {
             if rated {
                 Label("Already been", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.semibold))
@@ -153,7 +189,13 @@ struct ExperienceDetailView: View {
                         .accessibilityIdentifier("detail-save")
                 }
             }
-            Spacer(minLength: 0)
+            Button { Task { await openLog(rated ? .addVisit : .firstLog) } } label: {
+                PillLabel(title: rated ? "Add visit" : "Log", systemImage: "plus.circle")
+            }
+            .buttonStyle(PillButtonStyle(isSelected: true))
+            .disabled(deleting || failedDeletion != nil)
+            .accessibilityIdentifier(rated ? "detail-add-visit" : "detail-log")
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
         }
         if let error = library.lastError {
             InlineRetryView(message: error, retryTitle: "Dismiss") { library.clearError() }
@@ -209,9 +251,16 @@ struct ExperienceDetailView: View {
                                 HStack { ForEach(visit.media) { RemoteImageView(path: $0.path).frame(width: 96, height: 96).clipShape(RoundedRectangle(cornerRadius: 10)) } }
                             }
                         }
+                        Button("Delete visit", role: .destructive) {
+                            pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visit.id,
+                                                             lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)
+                        }
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .disabled(deleting || failedDeletion != nil)
+                        .accessibilityIdentifier("detail-delete-visit-\(visit.id.uuidString)")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
+                    .accessibilityElement(children: .contain)
                     Divider()
                 }
                 if detail.hasPrivateNote {
@@ -275,6 +324,16 @@ struct ExperienceDetailView: View {
 
     private func overflowMenu(_ detail: ExperienceDetail) -> some View {
         Menu {
+            if detail.myRating != nil {
+                Button { Task { await openLog(.rerank) } } label: { Label("Rank again", systemImage: "arrow.triangle.2.circlepath") }
+                    .disabled(deleting || failedDeletion != nil)
+                    .accessibilityIdentifier("detail-rerank")
+                Button(role: .destructive) {
+                    pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: nil, lastVisit: false)
+                } label: { Label("Remove ranking", systemImage: "minus.circle") }
+                .disabled(deleting || failedDeletion != nil)
+                .accessibilityIdentifier("detail-remove-ranking")
+            }
             Button { openInMaps(detail) } label: { Label("Open in Maps", systemImage: "map") }
             if detail.categoryLocked {
                 Button {
@@ -290,6 +349,50 @@ struct ExperienceDetailView: View {
             Image(systemName: "ellipsis.circle").accessibilityLabel("More")
         }
         .accessibilityIdentifier("detail-overflow")
+    }
+
+    private func openLog(_ mode: LogRequest.Mode) async {
+        do { router.sheet = .log(try await services.makeLogRequest(experienceID: experienceID, mode: mode)) }
+        catch { actionError = session.handle(error) }
+    }
+
+    private func confirmDeletion(_ action: DetailDeletion) async {
+        guard !deleting, let owner = session.userID else { return }
+        let name = "detail-pending-delete-\(experienceID.uuidString)"
+        deleting = true
+        defer { deleting = false }
+        actionError = nil
+        do {
+            try services.storage.write(action, name: name, userID: owner)
+            if let visitID = action.visitID {
+                let result = try await services.ranking.deleteVisit(visitID: visitID, operationID: action.operationID, allowRatingRemoval: action.lastVisit)
+                guard owner == session.userID else { return }
+                if result.removedRating { library.applyRatingRemoved(experienceID) }
+            } else {
+                try await services.ranking.removeRating(experienceID: experienceID, operationID: action.operationID)
+                guard owner == session.userID else { return }
+                library.applyRatingRemoved(experienceID)
+            }
+            services.storage.remove(name: name, userID: owner)
+            failedDeletion = nil
+            await library.refresh()
+            library.noteChanged()
+            await model?.load()
+        } catch {
+            guard owner == session.userID else { return }
+            if let error = error as? RoamError, error == .lastVisitConfirmationRequired, let visitID = action.visitID {
+                services.storage.remove(name: name, userID: owner)
+                failedDeletion = nil
+                pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visitID, lastVisit: true)
+                await model?.load()
+                return
+            }
+            if let error = error as? RoamError, !error.isRetryable {
+                services.storage.remove(name: name, userID: owner)
+                failedDeletion = nil
+            } else { failedDeletion = action }
+            actionError = session.handle(error)
+        }
     }
 
     /// Hands off to Apple Maps; cancelling there leaves Roam unchanged.
@@ -311,4 +414,23 @@ struct ExperienceDetailView: View {
 
 extension ReportTarget: Identifiable {
     var id: String { "\(kind)-\(targetID.uuidString)" }
+}
+
+private struct DetailDeletion: Codable, Identifiable {
+    let operationID: UUID
+    let experienceID: UUID
+    let visitID: UUID?
+    let lastVisit: Bool
+    var id: UUID { operationID }
+    init(experienceID: UUID, visitID: UUID?, lastVisit: Bool) {
+        operationID = UUID(); self.experienceID = experienceID; self.visitID = visitID; self.lastVisit = lastVisit
+    }
+    var title: String { visitID == nil ? "Remove ranking?" : (lastVisit ? "Delete your last visit?" : "Delete visit?") }
+    var buttonTitle: String { visitID == nil ? "Remove ranking" : "Delete visit" }
+    var confirmID: String { visitID == nil ? "confirm-remove-ranking" : (lastVisit ? "confirm-delete-last-visit" : "confirm-delete-visit") }
+    var message: String {
+        if visitID == nil { return "Your visits, notes and photos will stay; your ranking and rating activity will be removed." }
+        if lastVisit { return "This deletes the visit, its public note and photos, and its activity. Because it is your last visit, your ranking and rating activity will also be removed." }
+        return "This deletes this visit, its public note and photos, and its activity. Other visits stay. Removing the last visit of a ranking requires a separate confirmation."
+    }
 }

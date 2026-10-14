@@ -11,6 +11,7 @@ struct Score: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
 
     /// Parses a decimal such as 8.4 coming from the database (numeric(3,1)).
     init?(decimal: Decimal) {
+        guard !decimal.isNaN, decimal >= 0, decimal <= 10 else { return nil }
         var value = decimal * 10
         var rounded = Decimal()
         NSDecimalRound(&rounded, &value, 0, .plain)

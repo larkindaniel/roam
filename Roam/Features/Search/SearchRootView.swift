@@ -45,15 +45,19 @@ struct SearchField: View {
     let prompt: String
     @Binding var text: String
     var identifier: String
+    var dismissKeyboardToken = 0
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
             TextField(prompt, text: $text)
+                .focused($isFocused)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
                 .accessibilityIdentifier(identifier)
+                .onChange(of: dismissKeyboardToken) { _, _ in isFocused = false }
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
@@ -98,15 +102,18 @@ struct DestinationChip: View {
 struct ExperienceSearchView: View {
     @Bindable var model: ExperienceSearchModel
     @Environment(AppRouter.self) private var router
+    @Environment(AppServices.self) private var services
     @Environment(DestinationStore.self) private var destinations
     @Environment(LibraryStore.self) private var library
     @Environment(SessionStore.self) private var session
     @State private var openError: String?
     @State private var pendingSaves: Set<String> = []
+    @State private var pendingLogs: Set<String> = []
+    @State private var dismissKeyboardToken = 0
 
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
-            SearchField(prompt: "Restaurants, trails, museums, stays…", text: $model.query, identifier: "experience-search-field")
+            SearchField(prompt: "Restaurants, trails, museums, stays…", text: $model.query, identifier: "experience-search-field", dismissKeyboardToken: dismissKeyboardToken)
             DestinationChip(destination: destinations.search) { router.sheet = .destinationPicker(.search) }
             if let message = openError ?? library.lastError {
                 InlineRetryView(message: message, retryTitle: "Dismiss") { openError = nil; library.clearError() }
@@ -114,6 +121,7 @@ struct ExperienceSearchView: View {
             content
         }
         .padding(.horizontal, Theme.Spacing.l)
+        .onChange(of: library.revision) { _, _ in Task { await model.refreshMatches() } }
         .task(id: "\(model.query)|\(destinations.search?.id ?? "-")") {
             try? await Task.sleep(for: Limits.searchDebounce)
             guard !Task.isCancelled else { return }
@@ -180,9 +188,10 @@ struct ExperienceSearchView: View {
             secondaryScore: experience?.followingScore,
             secondarySource: experience.map { .following(count: $0.followingCount) },
             statusLine: hit.candidate.isLocality ? "Town or city · Day trip destination" : hit.candidate.address,
-            saveState: saveState,
+            saveState: saveState, logTitle: rated ? "Add visit" : "Log",
             onOpen: { Task { await open(hit) } },
-            onSave: { Task { await toggleSave(hit) } })
+            onSave: { Task { await toggleSave(hit) } },
+            onLog: { Task { await log(hit) } })
     }
 
     private func open(_ hit: SearchHit) async {
@@ -192,6 +201,17 @@ struct ExperienceSearchView: View {
         } catch {
             openError = session.handle(error)
         }
+    }
+
+    private func log(_ hit: SearchHit) async {
+        guard !pendingLogs.contains(hit.id) else { return }
+        dismissKeyboardToken += 1
+        pendingLogs.insert(hit.id)
+        defer { pendingLogs.remove(hit.id) }
+        do {
+            let summary = try await model.resolve(hit)
+            router.sheet = .log(try await services.makeLogRequest(experienceID: summary.id))
+        } catch { openError = session.handle(error) }
     }
 
     private func toggleSave(_ hit: SearchHit) async {

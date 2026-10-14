@@ -4,14 +4,6 @@ import MapKit
 // Real-backend services that later milestones replace with RPC-backed implementations.
 // Until then they fail honestly with `RoamError.unavailable` rather than fabricating data.
 
-extension SupabaseBackend: RankingService {
-    func categoryRanking(_ category: ExperienceCategory) async throws -> CategoryRanking { throw RoamError.unavailable }
-    func commitRating(_ request: RatingCommitRequest) async throws -> RatingCommitResult { throw RoamError.unavailable }
-    func addVisit(_ request: AddVisitRequest) async throws -> AddVisitResult { throw RoamError.unavailable }
-    func removeRating(experienceID: UUID, operationID: UUID) async throws { throw RoamError.unavailable }
-    func deleteVisit(visitID: UUID, operationID: UUID) async throws -> DeleteVisitResult { throw RoamError.unavailable }
-}
-
 extension SupabaseBackend: MemoryService {
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID]) async throws -> Visit { throw RoamError.unavailable }
     func privateNote(experienceID: UUID) async throws -> PrivateNote? { throw RoamError.unavailable }

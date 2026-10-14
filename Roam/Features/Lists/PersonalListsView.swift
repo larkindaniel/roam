@@ -149,10 +149,12 @@ private struct ListsContent: View {
     @Environment(DestinationStore.self) private var destinations
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var distanceNote: String?
+    @State private var actionError: String?
 
     var body: some View {
         VStack(spacing: 0) {
             controls
+            if let actionError { InlineRetryView(message: actionError, retryTitle: "Dismiss") { self.actionError = nil }.padding(.horizontal) }
             if let refreshError = model.refreshError {
                 InlineRetryView(message: refreshError) { Task { await model.load() } }.padding(.horizontal)
             }
@@ -332,9 +334,13 @@ private struct ListsContent: View {
             score: model.kind == .been ? entry.ownerScore : (isOwn ? nil : experience.viewer.myScore),
             scoreSource: model.kind == .been ? (isOwn ? .you : .owner(name: ownerName ?? "Owner")) : .you,
             statusLine: status(entry),
-            saveState: saveState,
+            saveState: saveState, logTitle: viewerRated ? "Add visit" : "Log",
             onOpen: { router.push(.experience(experience.id)) },
-            onSave: { Task { await library.setBookmark(experience.id, saved: !library.isBookmarked(experience.id)) } })
+            onSave: { Task { await library.setBookmark(experience.id, saved: !library.isBookmarked(experience.id)) } },
+            onLog: { Task {
+                do { router.sheet = .log(try await services.makeLogRequest(experienceID: experience.id)) }
+                catch { actionError = error.roamMessage }
+            } })
     }
 
     private func status(_ entry: ListEntry) -> String {
@@ -366,7 +372,10 @@ private struct ListsContent: View {
             if let selected = visible.first(where: { $0.id.uuidString == selectedPin }) {
                 SelectedPlaceCard(summary: selected.experience, onOpen: { router.push(.experience(selected.id)) },
                                   onSave: { Task { await library.setBookmark(selected.id, saved: !library.isBookmarked(selected.id)) } },
-                                  onLog: nil, saveState: library.saveState(for: selected.id), onClose: { selectedPin = nil })
+                                  onLog: { Task {
+                                      do { router.sheet = .log(try await services.makeLogRequest(experienceID: selected.id)) }
+                                      catch { actionError = error.roamMessage }
+                                  } }, saveState: library.saveState(for: selected.id), onClose: { selectedPin = nil })
                     .padding()
                     .padding(.bottom, 56)
             }

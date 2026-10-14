@@ -152,7 +152,7 @@ struct VisitPayload: Codable, Hashable, Sendable {
     var mediaIDs: [UUID]
 }
 
-struct RatingCommitRequest: Hashable, Sendable {
+struct RatingCommitRequest: Codable, Hashable, Sendable {
     let operationID: UUID
     let intent: RatingIntent
     let experienceID: UUID
@@ -176,7 +176,7 @@ struct RatingCommitResult: Codable, Hashable, Sendable {
     let revision: Int
 }
 
-struct AddVisitRequest: Hashable, Sendable {
+struct AddVisitRequest: Codable, Hashable, Sendable {
     let operationID: UUID
     let experienceID: UUID
     let visit: VisitPayload
@@ -196,7 +196,13 @@ protocol RankingService: AnyObject, Sendable {
     func commitRating(_ request: RatingCommitRequest) async throws -> RatingCommitResult
     func addVisit(_ request: AddVisitRequest) async throws -> AddVisitResult
     func removeRating(experienceID: UUID, operationID: UUID) async throws
-    func deleteVisit(visitID: UUID, operationID: UUID) async throws -> DeleteVisitResult
+    func deleteVisit(visitID: UUID, operationID: UUID, allowRatingRemoval: Bool) async throws -> DeleteVisitResult
+}
+
+extension RankingService {
+    func deleteVisit(visitID: UUID, operationID: UUID) async throws -> DeleteVisitResult {
+        try await deleteVisit(visitID: visitID, operationID: operationID, allowRatingRemoval: false)
+    }
 }
 
 // MARK: Memories and media

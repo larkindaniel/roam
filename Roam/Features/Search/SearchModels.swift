@@ -42,6 +42,9 @@ final class ExperienceSearchModel {
     private(set) var lastQuery = ""
     private(set) var refreshError: String?
     private var generation = 0
+    private var projectionGeneration = 0
+    private var foregroundLoading = false
+    private var projectionRefreshQueued = false
     private let searchPlaces: (String, Destination?) async throws -> [PlaceCandidate]
     private let matchExperiences: ([PlaceCandidate]) async throws -> [String: ExperienceSummary]
     private let resolvePlace: (PlaceCandidate) async throws -> ExperienceSummary
@@ -64,7 +67,17 @@ final class ExperienceSearchModel {
         query = text
         generation += 1
         let current = generation
-        defer { if current == generation { isRefreshing = false } }
+        foregroundLoading = true
+        defer {
+            if current == generation {
+                foregroundLoading = false
+                isRefreshing = false
+                if projectionRefreshQueued {
+                    projectionRefreshQueued = false
+                    Task { await self.refreshMatches() }
+                }
+            }
+        }
         refreshError = nil
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -96,6 +109,27 @@ final class ExperienceSearchModel {
                 refreshError = error.roamMessage
                 phase = .results
             }
+        }
+    }
+
+    func refreshMatches() async {
+        if foregroundLoading { projectionRefreshQueued = true; return }
+        guard !hits.isEmpty else { return }
+        projectionGeneration += 1
+        let projection = projectionGeneration
+        let current = generation
+        let candidates = hits.map(\.candidate)
+        isRefreshing = true
+        defer { if current == generation && projection == projectionGeneration { isRefreshing = false } }
+        do {
+            let matches = try await matchExperiences(candidates)
+            try Task.checkCancellation()
+            guard current == generation, projection == projectionGeneration else { return }
+            hits = candidates.map { SearchHit(candidate: $0, experience: matches[$0.id]) }
+            refreshError = nil
+        } catch {
+            guard current == generation, projection == projectionGeneration else { return }
+            refreshError = error.roamMessage
         }
     }
 

@@ -118,9 +118,7 @@ private struct SetupSteps: View {
                 .clipShape(Circle())
                 Spacer()
             }
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Text(model.avatarPath == nil ? "Choose a photo" : "Choose a different photo")
-            }
+            PhotosPicker(model.avatarPath == nil ? "Choose a photo" : "Choose a different photo", selection: $photoItem, matching: .images)
             .buttonStyle(SecondaryButtonStyle())
             .disabled(model.avatarBusy)
             .accessibilityIdentifier("choose-avatar")

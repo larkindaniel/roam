@@ -136,7 +136,7 @@ actor FixtureBackend {
     var reports: [UUID: (reporter: UUID, receipt: ReportReceipt, targetID: UUID, text: String?)] = [:]
     var settingsByUser: [UUID: UserSettings] = [:]
     var revisions: [String: Int] = [:]
-    var receipts: [String: (hash: Int, result: Any)] = [:]
+    var receipts: [String: (hash: String, result: Any)] = [:]
     var pendingCodes: [String: String] = [:]
     var currentUserID: UUID?
     var recoveryUserID: UUID?
@@ -188,6 +188,15 @@ actor FixtureBackend {
         let id = try requireUser()
         guard members[id]?.handle != nil else { throw RoamError.forbidden }
         return id
+    }
+
+    func authenticatedActor() async throws -> UUID {
+        let actor = try requireProfile()
+        await pause()
+        guard currentUserID == actor else { throw RoamError.sessionExpired }
+        try Task.checkCancellation()
+        _ = try requireProfile()
+        return actor
     }
 
     func isBlockedEitherWay(_ a: UUID, _ b: UUID) -> Bool {

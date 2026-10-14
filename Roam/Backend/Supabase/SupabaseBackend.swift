@@ -6,14 +6,17 @@ import Supabase
 final class SupabaseBackend: @unchecked Sendable {
     let client: SupabaseClient
     let config: AppConfig
+    private let rpcFetch: PostgrestClient.FetchHandler
 
     /// `authStorage` defaults to the Keychain; tests inject isolated in-memory storage per client.
-    init(config: AppConfig, authStorage: (any AuthLocalStorage)? = nil) {
+    init(config: AppConfig, authStorage: (any AuthLocalStorage)? = nil, rpcFetch: PostgrestClient.FetchHandler? = nil) {
         self.config = config
         let sessionConfiguration = URLSessionConfiguration.default
         sessionConfiguration.timeoutIntervalForRequest = 20
         sessionConfiguration.timeoutIntervalForResource = 60
         sessionConfiguration.waitsForConnectivity = false
+        let networkSession = URLSession(configuration: sessionConfiguration)
+        self.rpcFetch = rpcFetch ?? { try await networkSession.data(for: $0) }
         client = SupabaseClient(
             supabaseURL: config.supabaseURL,
             supabaseKey: config.publishableKey,
@@ -23,16 +26,32 @@ final class SupabaseBackend: @unchecked Sendable {
                             redirectToURL: AppConfig.authCallbackURL,
                             flowType: .pkce,
                             emitLocalSessionAsInitialSession: true),
-                global: .init(session: URLSession(configuration: sessionConfiguration))
+                global: .init(session: networkSession)
             )
         )
     }
 
     // MARK: RPC helpers
 
+    /// Freeze the authenticated session per request. SupabaseClient's default adapter fetches
+    /// the current token at transport time, which can otherwise change actor after an account switch.
+    private func requestClient() async throws -> PostgrestClient {
+        let snapshot = client.auth.currentSession
+        let token: String
+        if let snapshot {
+            let session = try await client.auth.session
+            guard session.user.id == snapshot.user.id, client.auth.currentSession?.user.id == snapshot.user.id else { throw RoamError.sessionExpired }
+            token = session.accessToken
+        } else { token = config.publishableKey }
+        return PostgrestClient(url: config.supabaseURL.appendingPathComponent("rest/v1"),
+                               headers: ["apikey": config.publishableKey, "Authorization": "Bearer \(token)"],
+                               logger: nil, fetch: rpcFetch, encoder: RoamJSON.encoder, decoder: RoamJSON.decoder)
+    }
+
     func rpc<T: Decodable>(_ function: String, _ params: some Encodable) async throws -> T {
         do {
-            return try await client.rpc(function, params: params).execute().value
+            let scoped = try await requestClient()
+            return try await scoped.rpc(function, params: params).execute().value
         } catch {
             throw Self.map(error)
         }
@@ -40,7 +59,8 @@ final class SupabaseBackend: @unchecked Sendable {
 
     func rpc<T: Decodable>(_ function: String) async throws -> T {
         do {
-            return try await client.rpc(function).execute().value
+            let scoped = try await requestClient()
+            return try await scoped.rpc(function).execute().value
         } catch {
             throw Self.map(error)
         }
@@ -48,7 +68,8 @@ final class SupabaseBackend: @unchecked Sendable {
 
     func rpcVoid(_ function: String, _ params: some Encodable) async throws {
         do {
-            try await client.rpc(function, params: params).execute()
+            let scoped = try await requestClient()
+            try await scoped.rpc(function, params: params).execute()
         } catch {
             throw Self.map(error)
         }
@@ -123,6 +144,7 @@ final class SupabaseBackend: @unchecked Sendable {
         case "unavailable": return .unavailable
         case "stale_revision": return .staleRevision
         case "already_rated": return .alreadyRated
+        case "confirm_last_visit": return .lastVisitConfirmationRequired
         case "operation_conflict": return .conflict("This save was already used for a different change.")
         case "handle_taken": return .conflict("That handle is taken. Try another.")
         case "validation": return .validation(detail ?? "Check your entry and try again.")

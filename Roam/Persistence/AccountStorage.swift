@@ -8,12 +8,20 @@ final class AccountStorage: @unchecked Sendable {
     private let fileManager = FileManager.default
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(RoamJSON.formatDate(date))
+        }
         return encoder
     }()
     private let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            guard let date = RoamJSON.parseDate(string) else { throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid stored date") }
+            return date
+        }
         return decoder
     }()
 

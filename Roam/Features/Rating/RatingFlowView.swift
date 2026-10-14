@@ -1,0 +1,280 @@
+import SwiftUI
+
+struct RatingFlowView: View {
+    let request: LogRequest
+    var onSaved: (RatingFlowCompletion) -> Void = { _ in }
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var account
+    @Environment(\.dismiss) private var dismiss
+    @State private var model: RatingFlowModel?
+    @State private var showsCancel = false
+    @State private var showsNote = false
+    @State private var showsDate = false
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let model { content(model) }
+                else { ProgressView("Preparing your draft…") }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        guard let model else { dismiss(); return }
+                        if model.completion != nil { dismiss() }
+                        else if model.hasNonemptyDraft { showsCancel = true } else { model.discardDraft(); dismiss() }
+                    }
+                    .disabled(model?.isBusy == true)
+                    .accessibilityIdentifier("rating-close")
+                }
+            }
+            .confirmationDialog("Keep your draft?", isPresented: $showsCancel, titleVisibility: .visible) {
+                Button("Keep draft") { model?.keepDraft(); dismiss() }
+                if model?.hasPendingSave != true {
+                    Button("Discard draft", role: .destructive) { model?.discardDraft(); dismiss() }
+                }
+                Button("Continue editing", role: .cancel) {}
+            } message: {
+                Text(model?.hasPendingSave == true
+                     ? "Saving wasn't confirmed. Keep this draft so the original save can be checked safely."
+                     : "Your draft is kept on this device. Nothing is published before saving finishes.")
+            }
+            .interactiveDismissDisabled(model?.completion == nil && (model?.hasNonemptyDraft == true || model?.isBusy == true))
+            .task {
+                guard model == nil, let userID = account.userID else { return }
+                model = RatingFlowModel(request: request, accountID: userID, ranking: services.ranking,
+                                        storage: services.storage, currentAccount: { account.userID })
+            }
+        }
+        .screenIdentifier("rating-flow")
+    }
+
+    private var title: String {
+        switch request.mode {
+        case .firstLog: return "Log an experience"
+        case .rerank: return "Rank again"
+        case .addVisit: return "Add a visit"
+        }
+    }
+
+    private func content(_ model: RatingFlowModel) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
+                Text(request.experience.areaLine).font(.subheadline).foregroundStyle(.secondary)
+                if let category = model.category {
+                    Label(category.title, systemImage: category.symbolName).font(.headline)
+                        .accessibilityIdentifier("rating-category")
+                }
+                if let sentiment = model.sentiment {
+                    Label(sentiment.title, systemImage: sentiment.symbolName).font(.subheadline)
+                        .foregroundStyle(Theme.color(for: sentiment))
+                        .padding(8).background(Theme.fill(for: sentiment), in: RoundedRectangle(cornerRadius: 8))
+                        .accessibilityIdentifier("rating-sentiment")
+                }
+                if let error = model.persistenceError ?? model.message {
+                    Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-message")
+                }
+                switch model.step {
+                case .sentiment: sentiment(model)
+                case .details: details(model)
+                case .loading:
+                    ProgressView("Loading your category ranking…").accessibilityIdentifier("rating-loading")
+                case .comparison: comparison(model)
+                case .saving:
+                    ProgressView("Saving…").accessibilityIdentifier("rating-saving")
+                    Text("Your result appears after saving is confirmed.").foregroundStyle(.secondary)
+                case .retry:
+                    Button("Retry save") { Task { await model.retrySave() } }
+                        .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
+                case .result: result(model)
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .accessibilityIdentifier("rating-scroll")
+        .onChange(of: model.completion) { _, completion in if let completion { onSaved(completion) } }
+        .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
+        .sheet(isPresented: $showsNote) {
+            RatingNoteEditor(note: model.visit.publicNote, failureMessage: { model.persistenceError ?? model.message }) { note in
+                model.updateDetails(note: note, date: model.visit.date)
+            }
+        }
+        .sheet(isPresented: $showsDate) {
+            RatingDateEditor(date: model.visit.date, zone: model.timeZone, today: model.today, failureMessage: { model.persistenceError ?? model.message }) { date in
+                model.updateDetails(note: model.visit.publicNote, date: date)
+            }
+        }
+    }
+
+    private func sentiment(_ model: RatingFlowModel) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            if !model.categoryLocked {
+                Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
+                    Text("Choose a category").tag(ExperienceCategory?.none)
+                    ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("rating-category-picker")
+                Text("Confirm the category before your first ranking.").font(.footnote).foregroundStyle(.secondary)
+            }
+            Text("How did you feel about it?").font(.title2.weight(.semibold))
+            ForEach(Sentiment.allCases) { sentiment in
+                Button { model.selectSentiment(sentiment) } label: {
+                    Label(sentiment.title, systemImage: sentiment.symbolName)
+                        .foregroundStyle(Theme.color(for: sentiment))
+                        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+                        .padding(12).background(Theme.fill(for: sentiment), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(model.category == nil)
+                .accessibilityIdentifier("rating-sentiment-\(sentiment.rawValue)")
+            }
+        }
+    }
+
+    private func details(_ model: RatingFlowModel) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            Text("Add details if you'd like").font(.title2.weight(.semibold))
+            Button { showsNote = true } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Public note", systemImage: "text.alignleft")
+                    Text(model.visit.publicNote.isEmpty ? "Optional" : model.visit.publicNote)
+                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                }.frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
+            }
+            .accessibilityIdentifier("rating-edit-note")
+            Button { showsDate = true } label: {
+                Label(model.visit.date?.displayString ?? "Date unknown", systemImage: "calendar")
+                    .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
+            }
+            .accessibilityIdentifier("rating-edit-date")
+            if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(.secondary) }
+            Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.")
+                .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("rating-publication-disclosure")
+            Button("Okay") { Task { await model.okay() } }
+                .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-okay")
+            if request.mode != .addVisit {
+                Button("Change how you felt") { model.backToSentiment() }
+                    .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-change-sentiment")
+            }
+        }
+        .screenIdentifier("rating-details")
+    }
+
+    private func comparison(_ model: RatingFlowModel) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            Text("Which did you prefer?").font(.title2.weight(.semibold))
+            if let existing = model.comparison {
+                comparisonCard(name: request.experience.name, city: request.experience.areaLine, identifier: "rating-prefer-new") {
+                    Task { await model.choose(.preferNew) }
+                }
+                comparisonCard(name: existing.name, city: existing.locality ?? "Location unavailable", identifier: "rating-prefer-existing") {
+                    Task { await model.choose(.preferExisting) }
+                }
+            }
+            Text("Only your \(model.category?.title ?? "category") experiences marked \(model.sentiment?.title.lowercased() ?? "the same way") are compared.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Button("Too tough") { Task { await model.choose(.tooTough) } }
+                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("rating-too-tough")
+            Button("Skip") { Task { await model.choose(.skip) } }
+                .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-skip")
+            Text("Skip places this approximately; you can rank again.")
+                .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("rating-skip-explanation")
+            Button("Undo") { model.undo() }.disabled(!model.canUndo)
+                .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-undo")
+        }
+        .screenIdentifier("rating-comparison")
+    }
+
+    private func comparisonCard(name: String, city: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text(name).font(.headline)
+                Text(city).font(.subheadline).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+                .roamCard()
+        }.buttonStyle(.plain).accessibilityIdentifier(identifier)
+    }
+
+    @ViewBuilder private func result(_ model: RatingFlowModel) -> some View {
+        if let completion = model.completion {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                switch completion {
+                case .rating(let result):
+                    Text("Rating saved").font(.title2.weight(.semibold))
+                    Text(result.score.formatted).font(.system(.largeTitle, design: .rounded).bold())
+                        .accessibilityLabel("Your score \(result.score.formatted)").accessibilityIdentifier("rating-result-score")
+                    Text("Position \(result.rank) of \(result.categoryCount) in \(result.category.title)")
+                        .accessibilityIdentifier("rating-result-position")
+                    if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "experience" : "experiences").") }
+                    Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(.secondary)
+                case .visit:
+                    Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
+                    Text("Your existing ranking stays the same.").foregroundStyle(.secondary)
+                }
+                Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.").font(.footnote)
+                Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
+            }.screenIdentifier("rating-result")
+        }
+    }
+}
+
+private struct RatingNoteEditor: View {
+    @State var note: String
+    @State private var error: String?
+    let failureMessage: () -> String?
+    let onDone: (String) -> Bool
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextEditor(text: $note).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
+                Text("\(note.count) / 5,000 characters").foregroundStyle(note.count > 5_000 ? Color.red : Color.gray)
+                if let error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-editor-error") }
+            }.navigationTitle("Public note").toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if onDone(note) { dismiss() } else { error = failureMessage() ?? "Your changes couldn't be kept. Try again." }
+                    }.disabled(note.count > 5_000).accessibilityIdentifier("rating-editor-done")
+                }
+            }
+        }
+    }
+}
+
+private struct RatingDateEditor: View {
+    @State private var date: Date
+    @State private var unknown: Bool
+    @State private var error: String?
+    let zone: TimeZone
+    let today: LocalDate
+    let failureMessage: () -> String?
+    let onDone: (LocalDate?) -> Bool
+    @Environment(\.dismiss) private var dismiss
+    init(date: LocalDate?, zone: TimeZone, today: LocalDate, failureMessage: @escaping () -> String?, onDone: @escaping (LocalDate?) -> Bool) {
+        self.zone = zone; self.today = today; self.failureMessage = failureMessage; self.onDone = onDone
+        _date = State(initialValue: (date ?? today).date(in: zone))
+        _unknown = State(initialValue: date == nil)
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Toggle("Date unknown", isOn: $unknown).accessibilityIdentifier("rating-date-unknown")
+                if !unknown { DatePicker("Visit date", selection: $date, in: ...today.date(in: zone), displayedComponents: .date).environment(\.timeZone, zone) }
+                if let error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-editor-error") }
+            }.navigationTitle("Visit date").toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if onDone(unknown ? nil : LocalDate(date: date, timeZone: zone)) { dismiss() }
+                        else { error = failureMessage() ?? "Your changes couldn't be kept. Try again." }
+                    }.accessibilityIdentifier("rating-editor-done")
+                }
+            }
+        }
+    }
+}

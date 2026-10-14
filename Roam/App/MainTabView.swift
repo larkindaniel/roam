@@ -75,13 +75,20 @@ struct UnavailableRouteView: View {
 
 struct SheetContent: View {
     let route: SheetRoute
+    @Environment(LibraryStore.self) private var library
 
     var body: some View {
         switch route {
         case .destinationPicker(let purpose):
             DestinationPickerSheet(purpose: purpose)
-        case .log:
-            UnavailableRouteView()
+        case .log(let request):
+            RatingFlowView(request: request) { completion in
+                switch completion {
+                case .rating(let result): library.applyRated(request.experience.id, category: result.category)
+                case .visit: library.noteChanged()
+                }
+                Task { await library.refresh() }
+            }
         }
     }
 }

@@ -25,33 +25,34 @@ enum RoamJSON {
         return encoder
     }()
 
-    private static let fractional: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
     private static let whole: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }()
 
-    /// Accepts `2026-10-14T01:34:48.601868+00:00`, `...Z`, without fractions, and Postgres'
-    /// space separator. Fractions beyond milliseconds are truncated before parsing.
+    /// Preserve server microseconds: tie representatives use oldest timestamp before UUID.
     static func parseDate(_ raw: String) -> Date? {
         var string = raw.replacingOccurrences(of: " ", with: "T")
+        if string.hasSuffix("+00") { string += ":00" }
         if let dot = string.firstIndex(of: ".") {
             let afterDot = string.index(after: dot)
             let digitsEnd = string[afterDot...].firstIndex { !$0.isNumber } ?? string.endIndex
             let digits = string[afterDot..<digitsEnd]
-            if digits.count > 3 {
-                string.replaceSubrange(afterDot..<digitsEnd, with: digits.prefix(3))
-            }
+            guard !digits.isEmpty, let fraction = Double("0." + digits) else { return nil }
+            string.removeSubrange(dot..<digitsEnd)
+            guard let base = whole.date(from: string) else { return nil }
+            return base.addingTimeInterval(fraction)
         }
-        if string.hasSuffix("+00") { string += ":00" }
-        return fractional.date(from: string) ?? whole.date(from: string)
+        return whole.date(from: string)
     }
 
-    static func formatDate(_ date: Date) -> String { fractional.string(from: date) }
+    static func formatDate(_ date: Date) -> String {
+        var seconds = floor(date.timeIntervalSince1970)
+        var micros = Int(((date.timeIntervalSince1970 - seconds) * 1_000_000).rounded())
+        if micros == 1_000_000 { seconds += 1; micros = 0 }
+        let base = whole.string(from: Date(timeIntervalSince1970: seconds))
+        return String(base.dropLast()) + String(format: ".%06dZ", micros)
+    }
+
 }

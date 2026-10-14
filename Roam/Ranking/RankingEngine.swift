@@ -21,8 +21,15 @@ struct RankedEntry: Identifiable, Hashable, Codable, Sendable {
 struct TieGroup: Hashable, Codable, Sendable {
     var entries: [RankedEntry]
 
+    private enum CodingKeys: String, CodingKey { case entries }
+
     init(entries: [RankedEntry]) {
         self.entries = entries.sorted(by: RankedEntry.stableOrder)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(entries: try container.decode([RankedEntry].self, forKey: .entries))
     }
 
     /// Deterministic comparison representative: the oldest rating, UUID tie-break.
@@ -51,12 +58,27 @@ struct CategoryRanking: Hashable, Codable, Sendable {
     private(set) var fine: [TieGroup]
     private(set) var disliked: [TieGroup]
 
+    private enum CodingKeys: String, CodingKey { case category, revision, liked, fine, disliked }
+
     init(category: ExperienceCategory, revision: Int = 0, liked: [TieGroup] = [], fine: [TieGroup] = [], disliked: [TieGroup] = []) {
         self.category = category
         self.revision = revision
-        self.liked = liked
-        self.fine = fine
-        self.disliked = disliked
+        self.liked = Self.normalized(liked)
+        self.fine = Self.normalized(fine)
+        self.disliked = Self.normalized(disliked)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(category: try container.decode(ExperienceCategory.self, forKey: .category),
+                  revision: try container.decode(Int.self, forKey: .revision),
+                  liked: try container.decode([TieGroup].self, forKey: .liked),
+                  fine: try container.decode([TieGroup].self, forKey: .fine),
+                  disliked: try container.decode([TieGroup].self, forKey: .disliked))
+    }
+
+    private static func normalized(_ groups: [TieGroup]) -> [TieGroup] {
+        groups.filter { !$0.entries.isEmpty }.map { TieGroup(entries: $0.entries) }
     }
 
     static func empty(_ category: ExperienceCategory) -> CategoryRanking { CategoryRanking(category: category) }
@@ -70,7 +92,7 @@ struct CategoryRanking: Hashable, Codable, Sendable {
     }
 
     mutating func setGroups(_ groups: [TieGroup], for sentiment: Sentiment) {
-        let cleaned = groups.filter { !$0.entries.isEmpty }
+        let cleaned = Self.normalized(groups)
         switch sentiment {
         case .liked: liked = cleaned
         case .fine: fine = cleaned
@@ -184,9 +206,9 @@ struct InsertionSession: Hashable, Sendable {
 
     init(sentiment: Sentiment, groups: [TieGroup]) {
         self.sentiment = sentiment
-        self.groups = groups
+        self.groups = groups.filter { !$0.entries.isEmpty }.map { TieGroup(entries: $0.entries) }
         self.lo = 0
-        self.hi = groups.count
+        self.hi = self.groups.count
         resolveIfBoundsMet()
     }
 

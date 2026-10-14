@@ -32,6 +32,8 @@ final class ExploreModel {
     var focusToken = 0
     var locationMessage: String?
     private var generation = 0
+    private var foregroundLoading = false
+    private var projectionRefreshQueued = false
     private let places: any PlaceSearchProviding
     private let experiences: any ExperienceService
     private var requestedRegion: MKCoordinateRegion?
@@ -73,6 +75,16 @@ final class ExploreModel {
         generation += 1
         let current = generation
         requestedRegion = region
+        foregroundLoading = true
+        defer {
+            if current == generation {
+                foregroundLoading = false
+                if projectionRefreshQueued {
+                    projectionRefreshQueued = false
+                    Task { await self.refreshMatches() }
+                }
+            }
+        }
         phase = .loading
         do {
             async let poiResult = places.pointsOfInterest(in: region, category: category)
@@ -102,6 +114,13 @@ final class ExploreModel {
         }
     }
 
+    /// Refresh acknowledged scores without restoring a previous destination during navigation.
+    func refreshMatches() async {
+        if foregroundLoading { projectionRefreshQueued = true; return }
+        guard let region = requestedRegion ?? loadedRegion else { return }
+        await load(region: region)
+    }
+
     func searchThisArea() async {
         guard let visibleRegion else { return }
         await load(region: visibleRegion)
@@ -127,6 +146,7 @@ struct ExploreRootView: View {
     @State private var model: ExploreModel?
     @State private var actionError: String?
     @State private var pendingSaves: Set<String> = []
+    @State private var pendingLogs: Set<String> = []
 
     var body: some View {
         // A ZStack always has a view to host `.task`; an empty Group would never run it.
@@ -148,6 +168,9 @@ struct ExploreRootView: View {
             if model?.loadedRegion == nil, let destination = destinations.explore {
                 await model?.focus(on: destination)
             }
+        }
+        .onChange(of: library.revision) { _, _ in
+            Task { await model?.refreshMatches() }
         }
         .onChange(of: destinations.explore) { _, destination in
             guard let destination else { return }
@@ -298,9 +321,10 @@ struct ExploreRootView: View {
                              score: experience?.viewer.myScore, scoreSource: .you,
                              secondaryScore: experience?.followingScore, secondarySource: experience.map { .following(count: $0.followingCount) },
                              statusLine: item.candidate?.address,
-                             saveState: save,
+                             saveState: save, logTitle: rated ? "Add visit" : "Log",
                              onOpen: { Task { await open(item, model) } },
-                             onSave: { Task { await toggleSave(item, model) } })
+                             onSave: { Task { await toggleSave(item, model) } },
+                             onLog: { Task { await log(item, model) } })
     }
 
     private func itemCard(_ item: ExploreItem, model: ExploreModel) -> some View {
@@ -323,6 +347,16 @@ struct ExploreRootView: View {
         } catch {
             actionError = session.handle(error)
         }
+    }
+
+    private func log(_ item: ExploreItem, _ model: ExploreModel) async {
+        guard !pendingLogs.contains(item.id) else { return }
+        pendingLogs.insert(item.id)
+        defer { pendingLogs.remove(item.id) }
+        do {
+            let summary = try await model.resolve(item)
+            router.sheet = .log(try await services.makeLogRequest(experienceID: summary.id))
+        } catch { actionError = session.handle(error) }
     }
 
     private func toggleSave(_ item: ExploreItem, _ model: ExploreModel) async {

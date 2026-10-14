@@ -66,6 +66,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: RoamTests
+      - path: docs/data/m4-ranking-golden.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.daniellarkin.roam.tests

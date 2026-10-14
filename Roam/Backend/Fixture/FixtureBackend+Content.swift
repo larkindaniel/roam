@@ -4,8 +4,7 @@ import MapKit
 
 extension FixtureBackend: ExperienceService {
     func resolve(_ candidate: PlaceCandidate) async throws -> ExperienceSummary {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         if let existing = existingExperience(for: candidate) { return summary(existing, viewer: me)! }
         let placeID = UUID()
         let experienceID = UUID()
@@ -38,8 +37,7 @@ extension FixtureBackend: ExperienceService {
     }
 
     func detail(experienceID: UUID) async throws -> ExperienceDetail {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let experience = experiences[experienceID], let place = places[experience.placeID], let summary = summary(experienceID, viewer: me) else {
             throw RoamError.notFound
         }
@@ -61,8 +59,7 @@ extension FixtureBackend: ExperienceService {
     }
 
     func experiences(in bounds: GeoBounds, category: ExperienceCategory?) async throws -> [ExperienceSummary] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         return experiences.values.compactMap { row -> ExperienceSummary? in
             guard let place = places[row.placeID], bounds.contains(latitude: place.candidate.latitude, longitude: place.candidate.longitude) else { return nil }
             if let category, row.category != category { return nil }
@@ -81,8 +78,7 @@ extension FixtureBackend: ListService {
     }
 
     func setBookmark(experienceID: UUID, saved: Bool) async throws -> Bool {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard experiences[experienceID] != nil else { throw RoamError.notFound }
         let key = Pair(a: me, b: experienceID)
         if saved {
@@ -111,8 +107,7 @@ extension FixtureBackend: ListService {
     }
 
     func been(ownerID: UUID) async throws -> [ListEntry] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard ownerID == me || isVisibleMember(ownerID, to: me) else { throw RoamError.notFound }
         let experienceIDs = Set(ratings.values.filter { $0.owner == ownerID }.map(\.experience))
             .union(visits.values.filter { $0.owner == ownerID }.map(\.experience))
@@ -120,15 +115,13 @@ extension FixtureBackend: ListService {
     }
 
     func want(ownerID: UUID) async throws -> [ListEntry] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard ownerID == me || isVisibleMember(ownerID, to: me) else { throw RoamError.notFound }
         return bookmarks.filter { $0.key.a == ownerID }.compactMap { listEntry($0.key.b, owner: ownerID, viewer: me, savedAt: $0.value) }
     }
 
     func sharedWants(with otherUserID: UUID) async throws -> [ListEntry] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard isVisibleMember(otherUserID, to: me), otherUserID != me else { throw RoamError.notFound }
         let mine = bookmarks.filter { $0.key.a == me }
         let theirs = Set(bookmarks.keys.filter { $0.a == otherUserID }.map(\.b))
@@ -140,18 +133,17 @@ extension FixtureBackend: ListService {
 
 extension FixtureBackend: RankingService {
     func categoryRanking(_ category: ExperienceCategory) async throws -> CategoryRanking {
-        await pause()
-        return ranking(owner: try requireProfile(), category: category)
+        return ranking(owner: try await authenticatedActor(), category: category)
     }
 
     private func receiptKey(_ owner: UUID, _ operation: UUID) -> String { "\(owner.uuidString)|\(operation.uuidString)" }
 
     func commitRating(_ request: RatingCommitRequest) async throws -> RatingCommitResult {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         let key = receiptKey(me, request.operationID)
+        let digest = try MutationFingerprint.digest(request)
         if let receipt = receipts[key] {
-            guard receipt.hash == request.hashValue, let result = receipt.result as? RatingCommitResult else {
+            guard receipt.hash == digest, let result = receipt.result as? RatingCommitResult else {
                 throw RoamError.conflict("This save was already used for a different change.")
             }
             return result
@@ -174,15 +166,18 @@ extension FixtureBackend: RankingService {
         do {
             outcome = try InsertionSession.replay(sentiment: request.sentiment, groups: base.groups(for: request.sentiment), answers: request.answers)
         } catch {
-            throw RoamError.staleRevision
+            throw RoamError.validation("The comparisons no longer match this ranking. Compare again.")
         }
-        // Validate media before any write so failure leaves no partial effect.
+        let anchor = visits.values.filter { $0.owner == me && $0.experience == request.experienceID }.map(visitModel).sorted(by: Visit.historyOrder).first
+        if request.intent == .rerank, request.visit != nil, anchor == nil { throw RoamError.validation("No retained visit is available to edit.") }
+        // Validate all enrichment before any write so failure leaves no partial effect.
         if let visit = request.visit {
             if let issue = Validation.publicNote(visit.publicNote) { throw RoamError.validation(issue.localizedDescription) }
-            let zone = visit.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current
+            let zone = try visitTimeZone(visit.timeZoneIdentifier)
             if Validation.visitDate(visit.date, today: LocalDate.today(in: zone)) != nil { throw RoamError.validation(ValidationIssue.futureDate.localizedDescription) }
-            guard visit.mediaIDs.count <= Limits.photosPerVisit,
-                  visit.mediaIDs.allSatisfy({ media[$0]?.owner == me && media[$0]?.attached == false && media[$0]?.purpose == .visit }) else {
+            guard visit.mediaIDs.count <= Limits.photosPerVisit, Set(visit.mediaIDs).count == visit.mediaIDs.count,
+                  visit.mediaIDs.allSatisfy({ media[$0]?.owner == me && media[$0]?.purpose == .visit
+                      && (media[$0]?.attached == false || (request.intent == .rerank && media[$0]?.visit == anchor?.id)) }) else {
                 throw RoamError.validation("A photo isn't finished uploading. Remove it or try again.")
             }
         }
@@ -217,8 +212,21 @@ extension FixtureBackend: RankingService {
             visitID = newVisit
             bookmarks[Pair(a: me, b: request.experienceID)] = nil
         } else {
-            visitID = visits.values.filter { $0.owner == me && $0.experience == request.experienceID }.map(visitModel)
-                .sorted(by: Visit.historyOrder).first?.id
+            visitID = anchor?.id
+            if let visitID, let payload = request.visit, var retained = visits[visitID] {
+                for removed in retained.mediaIDs where !payload.mediaIDs.contains(removed) { media[removed] = nil }
+                for (position, mediaID) in payload.mediaIDs.enumerated() {
+                    media[mediaID]?.attached = true
+                    media[mediaID]?.visit = visitID
+                    media[mediaID]?.position = position
+                }
+                retained.date = payload.date
+                retained.timeZone = payload.timeZoneIdentifier
+                retained.note = payload.publicNote
+                retained.mediaIDs = payload.mediaIDs
+                retained.updatedAt = now
+                visits[visitID] = retained
+            }
         }
         let placement = updated.placement(forExperience: request.experienceID)!
         let activityID = UUID()
@@ -228,16 +236,16 @@ extension FixtureBackend: RankingService {
         let result = RatingCommitResult(ratingID: ratingID, visitID: request.intent == .firstLog ? visitID : nil, activityID: activityID,
                                         category: request.category, sentiment: placement.sentiment, score: placement.score, rank: placement.rank,
                                         groupSize: placement.groupSize, categoryCount: updated.entryCount, revision: updated.revision)
-        receipts[key] = (request.hashValue, result)
+        receipts[key] = (digest, result)
         return result
     }
 
     func addVisit(_ request: AddVisitRequest) async throws -> AddVisitResult {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         let key = receiptKey(me, request.operationID)
+        let digest = try MutationFingerprint.digest(request)
         if let receipt = receipts[key] {
-            guard receipt.hash == request.hashValue, let result = receipt.result as? AddVisitResult else {
+            guard receipt.hash == digest, let result = receipt.result as? AddVisitResult else {
                 throw RoamError.conflict("This save was already used for a different change.")
             }
             return result
@@ -246,7 +254,10 @@ extension FixtureBackend: RankingService {
             throw RoamError.validation("Rank this experience first, then add more visits.")
         }
         if let issue = Validation.publicNote(request.visit.publicNote) { throw RoamError.validation(issue.localizedDescription) }
-        guard request.visit.mediaIDs.allSatisfy({ media[$0]?.owner == me && media[$0]?.attached == false }) else {
+        let zone = try visitTimeZone(request.visit.timeZoneIdentifier)
+        if Validation.visitDate(request.visit.date, today: LocalDate.today(in: zone)) != nil { throw RoamError.validation(ValidationIssue.futureDate.localizedDescription) }
+        guard request.visit.mediaIDs.count <= Limits.photosPerVisit, Set(request.visit.mediaIDs).count == request.visit.mediaIDs.count,
+              request.visit.mediaIDs.allSatisfy({ media[$0]?.owner == me && media[$0]?.attached == false && media[$0]?.purpose == .visit }) else {
             throw RoamError.validation("A photo isn't finished uploading. Remove it or try again.")
         }
         let now = Date()
@@ -265,15 +276,21 @@ extension FixtureBackend: RankingService {
                                              rating: rating.id, category: rating.category, score: placement?.score, rank: placement?.rank,
                                              sentiment: placement?.sentiment, publishedAt: now)
         let result = AddVisitResult(visitID: visitID, activityID: activityID)
-        receipts[key] = (request.hashValue, result)
+        receipts[key] = (digest, result)
         return result
     }
 
     func removeRating(experienceID: UUID, operationID: UUID) async throws {
-        await pause()
-        let me = try requireProfile()
-        guard let rating = ratings.values.first(where: { $0.owner == me && $0.experience == experienceID }) else { return }
-        removeRatingInternal(rating, owner: me)
+        let me = try await authenticatedActor()
+        let key = receiptKey(me, operationID)
+        let digest = try MutationFingerprint.digest(FixtureRemovalIntent(kind: "remove_rating", id: experienceID))
+        if let receipt = receipts[key] {
+            guard receipt.hash == digest, receipt.result is FixtureRemovalReceipt else { throw RoamError.conflict("This save was already used for a different change.") }
+            return
+        }
+        guard experiences[experienceID] != nil else { throw RoamError.notFound }
+        if let rating = ratings.values.first(where: { $0.owner == me && $0.experience == experienceID }) { removeRatingInternal(rating, owner: me) }
+        receipts[key] = (digest, FixtureRemovalReceipt())
     }
 
     func removeRatingInternal(_ rating: RatingRow, owner: UUID) {
@@ -286,27 +303,54 @@ extension FixtureBackend: RankingService {
         for activity in activities.values where activity.rating == rating.id { deleteActivityCascade(activity.id) }
     }
 
-    func deleteVisit(visitID: UUID, operationID: UUID) async throws -> DeleteVisitResult {
-        await pause()
-        let me = try requireProfile()
-        guard let visit = visits[visitID] else { return DeleteVisitResult(removedRating: false) }
+    func deleteVisit(visitID: UUID, operationID: UUID, allowRatingRemoval: Bool) async throws -> DeleteVisitResult {
+        let me = try await authenticatedActor()
+        let key = receiptKey(me, operationID)
+        let digest = try MutationFingerprint.digest(FixtureVisitDeletionIntent(id: visitID, allowRatingRemoval: allowRatingRemoval))
+        if let receipt = receipts[key] {
+            guard receipt.hash == digest, let result = receipt.result as? DeleteVisitResult else { throw RoamError.conflict("This save was already used for a different change.") }
+            return result
+        }
+        guard let visit = visits[visitID] else {
+            let result = DeleteVisitResult(removedRating: false)
+            receipts[key] = (digest, result)
+            return result
+        }
         guard visit.owner == me else { throw RoamError.forbidden }
+        let hasOtherVisits = visits.values.contains { $0.owner == me && $0.experience == visit.experience && $0.id != visitID }
+        if !hasOtherVisits, !allowRatingRemoval,
+           ratings.values.contains(where: { $0.owner == me && $0.experience == visit.experience }) {
+            throw RoamError.lastVisitConfirmationRequired
+        }
         visits[visitID] = nil
         for mediaID in visit.mediaIDs { media[mediaID] = nil }
         for activity in activities.values where activity.visit == visitID { deleteActivityCascade(activity.id) }
         let remaining = visits.values.contains { $0.owner == me && $0.experience == visit.experience }
         if !remaining, let rating = ratings.values.first(where: { $0.owner == me && $0.experience == visit.experience }) {
             removeRatingInternal(rating, owner: me)
-            return DeleteVisitResult(removedRating: true)
+            let result = DeleteVisitResult(removedRating: true)
+            receipts[key] = (digest, result)
+            return result
         }
-        return DeleteVisitResult(removedRating: false)
+        let result = DeleteVisitResult(removedRating: false)
+        receipts[key] = (digest, result)
+        return result
+    }
+
+    private func visitTimeZone(_ identifier: String?) throws -> TimeZone {
+        guard let identifier else { return .current }
+        guard let zone = TimeZone(identifier: identifier) else { throw RoamError.validation("Choose a valid visit time zone.") }
+        return zone
     }
 }
 
+private struct FixtureRemovalIntent: Encodable { let kind: String; let id: UUID }
+private struct FixtureVisitDeletionIntent: Encodable { let kind = "delete_visit"; let id: UUID; let allowRatingRemoval: Bool }
+private struct FixtureRemovalReceipt {}
+
 extension FixtureBackend: MemoryService {
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID]) async throws -> Visit {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard var visit = visits[visitID] else { throw RoamError.notFound }
         guard visit.owner == me else { throw RoamError.forbidden }
         if let issue = Validation.publicNote(note) { throw RoamError.validation(issue.localizedDescription) }
@@ -337,8 +381,7 @@ extension FixtureBackend: MemoryService {
     }
 
     func savePrivateNote(experienceID: UUID, text: String) async throws -> PrivateNote {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         if let issue = Validation.privateNote(text) { throw RoamError.validation(issue.localizedDescription) }
         let note = PrivateNote(experienceID: experienceID, text: text, updatedAt: Date())
         privateNotes[Pair(a: me, b: experienceID)] = note
@@ -353,8 +396,7 @@ extension FixtureBackend: MemoryService {
 
 extension FixtureBackend: MediaService {
     func stage(jpegData: Data, width: Int, height: Int, purpose: MediaPurpose) async throws -> StagedMedia {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard jpegData.count <= Limits.photoMaxBytes, max(width, height) <= Limits.photoLongestSide else {
             throw RoamError.validation("This photo is too large to upload.")
         }
@@ -371,8 +413,7 @@ extension FixtureBackend: MediaService {
     }
 
     func imageData(path: String) async throws -> Data {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let row = media.values.first(where: { $0.path == path }) else { throw RoamError.notFound }
         guard row.owner == me || (row.attached && isVisibleMember(row.owner, to: me)) else { throw RoamError.forbidden }
         if let data = row.data { return data }

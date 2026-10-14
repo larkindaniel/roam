@@ -3,8 +3,7 @@ import Foundation
 
 extension FixtureBackend: SocialService {
     func setFollow(userID: UUID, following: Bool) async throws -> Bool {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID != me else { throw RoamError.validation("You can't follow yourself.") }
         guard isVisibleMember(userID, to: me) else { throw RoamError.notFound }
         let key = Pair(a: me, b: userID)
@@ -36,37 +35,32 @@ extension FixtureBackend: SocialService {
     }
 
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
         return memberRows(follows.keys.filter { $0.b == userID }.map(\.a), viewer: me, query: query, cursor: cursor)
     }
 
     func following(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
         return memberRows(follows.keys.filter { $0.a == userID }.map(\.b), viewer: me, query: query, cursor: cursor)
     }
 
     func searchMembers(query: String, cursor: String?) async throws -> Page<MemberRow> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return .empty }
         return memberRows(members.keys.filter { $0 != me }, viewer: me, query: trimmed, cursor: cursor)
     }
 
     func setMute(userID: UUID, muted: Bool) async throws {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID != me else { return }
         if muted { mutes.insert(Pair(a: me, b: userID)) } else { mutes.remove(Pair(a: me, b: userID)) }
     }
 
     func setBlock(userID: UUID, blocked: Bool) async throws {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID != me else { return }
         if blocked {
             blocks.insert(Pair(a: me, b: userID))
@@ -78,20 +72,17 @@ extension FixtureBackend: SocialService {
     }
 
     func blockedMembers() async throws -> [MemberSummary] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         return blocks.filter { $0.a == me }.map { memberSummary($0.b) }.sorted { $0.handle < $1.handle }
     }
 
     func mutedMembers() async throws -> [MemberSummary] {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         return mutes.filter { $0.a == me }.map { memberSummary($0.b) }.sorted { $0.handle < $1.handle }
     }
 
     func report(target: ReportTarget, reason: ReportReason, text: String?, operationID: UUID) async throws -> ReportReceipt {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         if let text, let issue = Validation.reportText(text) { throw RoamError.validation(issue.localizedDescription) }
         if let existing = reports[operationID] { return existing.receipt }
         let receipt = ReportReceipt(id: operationID, targetKind: target.kind, reason: reason, status: "received", createdAt: Date())
@@ -107,8 +98,7 @@ extension FixtureBackend: SocialService {
 
 extension FixtureBackend: FeedService {
     func feed(cursor: String?) async throws -> Page<ActivityItem> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         let followed = Set(follows.keys.filter { $0.a == me }.map(\.b))
         let rows = activities.values.filter { row in
             row.author == me || (followed.contains(row.author) && !mutes.contains(Pair(a: me, b: row.author)) && isVisibleMember(row.author, to: me))
@@ -117,22 +107,19 @@ extension FixtureBackend: FeedService {
     }
 
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
         return page(of: activities.values.filter { $0.author == userID }, cursor: cursor, viewer: me)
     }
 
     func activity(id: UUID) async throws -> ActivityItem {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let row = activities[id], canSeeActivity(row, viewer: me), let item = activityItem(row, viewer: me) else { throw RoamError.unavailable }
         return item
     }
 
     func setLike(activityID: UUID, liked: Bool) async throws -> Bool {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         let key = Pair(a: me, b: activityID)
         let eventKey = "like:\(me):\(activityID)"
@@ -149,8 +136,7 @@ extension FixtureBackend: FeedService {
     }
 
     func comments(activityID: UUID, cursor: String?) async throws -> Page<Comment> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         let all = comments.values.filter { $0.activity == activityID && isVisibleMember($0.author, to: me) || ($0.activity == activityID && $0.author == me) }
             .sorted { ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString) }
@@ -165,8 +151,7 @@ extension FixtureBackend: FeedService {
     }
 
     func postComment(activityID: UUID, body: String, operationID: UUID) async throws -> Comment {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         if let issue = Validation.comment(body) { throw RoamError.validation(issue.localizedDescription) }
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         if let existing = comments.values.first(where: { $0.author == me && $0.operationID == operationID }) {
@@ -180,8 +165,7 @@ extension FixtureBackend: FeedService {
     }
 
     func deleteComment(id: UUID) async throws {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let comment = comments[id] else { return }
         guard comment.author == me else { throw RoamError.forbidden }
         comments[id] = nil
@@ -189,8 +173,7 @@ extension FixtureBackend: FeedService {
     }
 
     func deleteActivity(id: UUID) async throws {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard let row = activities[id] else { return }
         guard row.author == me else { throw RoamError.forbidden }
         deleteActivityCascade(id)
@@ -204,8 +187,7 @@ extension FixtureBackend: NotificationService {
     }
 
     func notifications(cursor: String?) async throws -> Page<AppNotification> {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         var rows = visibleNotifications(for: me)
         if let (date, id) = Self.parseCursor(cursor) {
             rows = rows.filter { ($0.createdAt, $0.id.uuidString) < (date, id.uuidString) }
@@ -234,8 +216,7 @@ extension FixtureBackend: NotificationService {
     }
 
     func markAllRead() async throws {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         for (id, row) in notifications where row.recipient == me && row.readAt == nil { notifications[id]?.readAt = Date() }
     }
 }
@@ -247,8 +228,7 @@ extension FixtureBackend: SettingsService {
     }
 
     func update(_ settings: UserSettings) async throws -> UserSettings {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         settingsByUser[me] = settings
         return settings
     }
@@ -256,8 +236,7 @@ extension FixtureBackend: SettingsService {
 
 extension FixtureBackend: TravelService {
     func travelProfile(userID: UUID, year: Int) async throws -> TravelProfile {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
         let ownerVisits = visits.values.filter { $0.owner == userID }
         let byExperience = Dictionary(grouping: ownerVisits, by: \.experience)
@@ -306,8 +285,7 @@ extension FixtureBackend: TravelService {
 
 extension FixtureBackend: AccountService {
     func requestDeletion() async throws -> AccountDeletionStatus {
-        await pause()
-        let me = try requireProfile()
+        let me = try await authenticatedActor()
         // Immediately hide and disable the account, then clean up relational data.
         members[me]?.deleted = true
         follows = follows.filter { $0.key.a != me && $0.key.b != me }

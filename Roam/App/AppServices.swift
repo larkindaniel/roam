@@ -59,6 +59,17 @@ final class AppServices {
         await healthCheck?() ?? true
     }
 
+    func makeLogRequest(experienceID: UUID, mode preferredMode: LogRequest.Mode? = nil) async throws -> LogRequest {
+        let detail = try await experiences.detail(experienceID: experienceID)
+        let mode = preferredMode ?? (detail.myRating == nil ? .firstLog : .addVisit)
+        if mode == .rerank && detail.myRating == nil { throw RoamError.notFound }
+        return LogRequest(experience: detail.summary, mode: mode,
+                          suggestedCategory: detail.myRating?.category ?? detail.summary.category,
+                          destinationTimeZone: detail.timeZoneIdentifier,
+                          categoryLocked: detail.categoryLocked || mode != .firstLog,
+                          existingVisit: mode == .rerank ? detail.myVisits.sorted(by: Visit.historyOrder).first : nil)
+    }
+
     static func make(options: LaunchOptions = .current()) -> AppServices {
         let storage = AccountStorage()
         if options.resetLocalState {
