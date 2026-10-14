@@ -54,6 +54,12 @@ struct RouteDestinationView: View {
             ExpandedGlobeView(userID: userID)
         case .settings:
             SettingsView()
+        case .experience(let id):
+            ExperienceDetailView(experienceID: id)
+        case .member(let id):
+            ProfileView(userID: id)
+        case .memberList(let id, let kind):
+            PersonalListsView(ownerID: id, initialKind: kind)
         default:
             UnavailableRouteView()
         }

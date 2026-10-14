@@ -101,6 +101,7 @@ struct ListEntry: Codable, Hashable, Identifiable, Sendable {
     var ownerSentiment: Sentiment?
     var ownerScore: Score?
     var ownerRank: Int?
+    var ownerFirstRatedAt: Date?
     var isRanked: Bool
     var latestVisitDate: LocalDate?
     var latestVisitAt: Date?

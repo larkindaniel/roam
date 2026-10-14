@@ -89,8 +89,12 @@ struct ProfileView: View {
             HStack(spacing: Theme.Spacing.xl) {
                 stat(value.followerCount, "Followers")
                 stat(value.followingCount, "Following")
-                stat(value.rankedCount, "Ranked")
-                stat(value.wantCount, "Want to Go")
+                Button { router.push(.memberList(userID, .been)) } label: { stat(value.rankedCount, "Ranked") }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("profile-been-count")
+                Button { router.push(.memberList(userID, .want)) } label: { stat(value.wantCount, "Want to Go") }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("profile-want-count")
             }
             .padding(.top, Theme.Spacing.s)
         }
@@ -111,7 +115,7 @@ struct ProfileView: View {
             router.push(.globe(userID))
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                GlobeMapView(pins: travel?.pins ?? [], shadedCountryCodes: Set(travel?.countries.map(\.countryCode) ?? []),
+                GlobeMapView(pins: (travel?.pins ?? []).map(MapPin.init), shadedCountryCodes: Set(travel?.countries.map(\.countryCode) ?? []),
                              style: .globe, interactive: false)
                     .frame(height: 230)
                     .allowsHitTesting(false)

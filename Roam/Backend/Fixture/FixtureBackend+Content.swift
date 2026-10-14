@@ -102,7 +102,8 @@ extension FixtureBackend: ListService {
         let ownerVisits = visits.values.filter { $0.owner == owner && $0.experience == experienceID }.map(visitModel).sorted(by: Visit.historyOrder)
         let c = place.candidate
         return ListEntry(experience: summary, ownerCategory: rating?.category ?? experience.category, ownerSentiment: placement?.sentiment,
-                         ownerScore: placement?.score, ownerRank: placement?.rank, isRanked: rating != nil,
+                         ownerScore: placement?.score, ownerRank: placement?.rank, ownerFirstRatedAt: rating?.firstRatedAt,
+                         isRanked: rating != nil,
                          latestVisitDate: ownerVisits.first?.visitDate.date, latestVisitAt: ownerVisits.map(\.createdAt).max(),
                          savedAt: savedAt, viewerSavedAt: bookmarks[Pair(a: viewer, b: experienceID)],
                          cityKey: GeographyKey.cityKey(countryCode: c.countryCode, region: c.region, locality: c.locality),

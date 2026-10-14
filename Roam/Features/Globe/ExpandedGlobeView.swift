@@ -23,11 +23,12 @@ struct ExpandedGlobeView: View {
                 if showsList {
                     list(value)
                 } else {
-                    GlobeMapView(pins: value.pins, shadedCountryCodes: Set(value.countries.map(\.countryCode)),
+                    GlobeMapView(pins: value.pins.map(MapPin.init), shadedCountryCodes: Set(value.countries.map(\.countryCode)),
                                  style: flatMap ? .standard : .globe,
-                                 interactive: true, selectedPinID: selected?.id,
-                                 onSelectPin: { selected = $0 })
+                                 interactive: true, selectedPinID: selected?.id.uuidString,
+                                 onSelectPin: { pin in selected = value.pins.first { $0.experienceID.uuidString == pin.id } })
                         .id(flatMap)
+                        .mapAccessibility("Travel globe with \(value.pins.count) places in \(value.countryCount) countries. Use List to browse them.", identifier: "globe-map")
                         .ignoresSafeArea(edges: .bottom)
                     if let selected {
                         HStack {

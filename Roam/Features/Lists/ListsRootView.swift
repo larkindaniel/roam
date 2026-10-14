@@ -1,32 +1,18 @@
 import SwiftUI
 
+/// Your Lists tab: the signed-in member's Been and Want to Go.
 struct ListsRootView: View {
-    @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
-    @Environment(AppServices.self) private var services
-    @State private var kind: ListKind = .been
     @State private var showsCoachmark = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("List", selection: $kind) {
-                ForEach(ListKind.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .padding(Theme.Spacing.l)
-            ScrollView {
-                if kind == .been {
-                    EmptyStateView(systemImage: "checkmark.seal", title: "Nothing ranked yet",
-                                   message: "Log a place you've been and Roam ranks it within its category.",
-                                   primaryTitle: "Search experiences", primaryAction: { router.selectedTab = .search })
-                } else {
-                    EmptyStateView(systemImage: "bookmark", title: "No saved experiences",
-                                   message: "Save places you want to go. They'll wait here until you've been.",
-                                   primaryTitle: "Explore", primaryAction: { router.selectedTab = .explore })
-                }
+        Group {
+            if let userID = session.userID {
+                PersonalListsView(ownerID: userID, initialKind: .been, isRoot: true)
+            } else {
+                ProgressView()
             }
         }
-        .background(Theme.groupedCanvas)
         .overlay {
             if session.profile?.hasSeenBeenIntro == false {
                 ZStack {
@@ -45,7 +31,5 @@ struct ListsRootView: View {
                 LogCoachmark { showsCoachmark = false }
             }
         }
-        .navigationTitle("Your Lists")
-        .screenIdentifier("lists-root")
     }
 }

@@ -89,8 +89,8 @@ final class CountryGeometryTests: XCTestCase {
     func testGlobePinSelectionAcrossAntimeridianUsesAnnotationIdentity() {
         let east = GlobePin(experienceID: UUID(), name: "East", category: .stays, latitude: -16.7, longitude: 179.9, countryCode: "FJ", cityKey: nil)
         let west = GlobePin(experienceID: UUID(), name: "West", category: .stays, latitude: -16.7, longitude: -179.9, countryCode: "FJ", cityKey: nil)
-        let annotations = [east, west].map(ExperiencePinAnnotation.init(pin:))
-        XCTAssertEqual(annotations.map(\.pin.id), [east.id, west.id])
+        let annotations = [east, west].map { ExperiencePinAnnotation(pin: MapPin($0)) }
+        XCTAssertEqual(annotations.map(\.pin.id), [east.id.uuidString, west.id.uuidString])
         XCTAssertNotEqual(annotations[0].coordinate.longitude, annotations[1].coordinate.longitude)
     }
 }

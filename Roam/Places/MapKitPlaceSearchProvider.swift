@@ -19,12 +19,33 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
     }
 
     func searchDestinations(query: String) async throws -> [Destination] {
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = query
-        request.resultTypes = [.address]
-        let items = try await run(MKLocalSearch(request: request))
+        let completer = await DestinationCompleter()
+        let completions: [MKLocalSearchCompletion]
+        do {
+            completions = try await completer.completions(for: query)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw RoamError.server("Destination search is unavailable right now.")
+        }
+        // Resolve the top suggestions to coordinates and canonical region/country in parallel.
+        let resolved = try await withThrowingTaskGroup(of: (Int, Destination?).self) { group in
+            for (index, completion) in completions.prefix(6).enumerated() {
+                group.addTask {
+                    let request = MKLocalSearch.Request(completion: completion)
+                    request.resultTypes = .address
+                    let items = (try? await self.run(MKLocalSearch(request: request))) ?? []
+                    return (index, items.first.flatMap(Self.destination(from:)))
+                }
+            }
+            var found: [(Int, Destination)] = []
+            for try await (index, destination) in group {
+                if let destination { found.append((index, destination)) }
+            }
+            return found.sorted { $0.0 < $1.0 }.map(\.1)
+        }
         var seen = Set<String>()
-        return items.compactMap(Self.destination(from:)).filter { seen.insert($0.id).inserted }
+        return resolved.filter { seen.insert($0.id).inserted }
     }
 
     func pointsOfInterest(in region: MKCoordinateRegion, category: ExperienceCategory?) async throws -> [PlaceCandidate] {

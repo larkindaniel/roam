@@ -1,12 +1,33 @@
 import MapKit
 import SwiftUI
 
-/// Map annotation for one visited experience (one pin per Experience).
+/// A map pin: a visited experience on the globe, or an experience/place in Explore and lists.
+struct MapPin: Hashable, Identifiable, Sendable {
+    let id: String
+    var name: String
+    var category: ExperienceCategory?
+    var latitude: Double
+    var longitude: Double
+
+    init(id: String, name: String, category: ExperienceCategory?, latitude: Double, longitude: Double) {
+        self.id = id
+        self.name = name
+        self.category = category
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    init(_ pin: GlobePin) {
+        self.init(id: pin.experienceID.uuidString, name: pin.name, category: pin.category, latitude: pin.latitude, longitude: pin.longitude)
+    }
+}
+
+/// Map annotation for one pin (one pin per Experience).
 final class ExperiencePinAnnotation: NSObject, MKAnnotation {
-    let pin: GlobePin
+    let pin: MapPin
     let coordinate: CLLocationCoordinate2D
 
-    init(pin: GlobePin) {
+    init(pin: MapPin) {
         self.pin = pin
         self.coordinate = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
     }
@@ -26,15 +47,15 @@ struct GlobeMapView: UIViewRepresentable {
         case standard
     }
 
-    var pins: [GlobePin]
+    var pins: [MapPin]
     var shadedCountryCodes: Set<String>
     var style: Style = .globe
     var interactive = true
-    var selectedPinID: UUID?
+    var selectedPinID: String?
     /// Region to show when `focusToken` changes; nil keeps the user's camera.
     var focusRegion: MKCoordinateRegion?
     var focusToken: Int = 0
-    var onSelectPin: ((GlobePin) -> Void)?
+    var onSelectPin: ((MapPin) -> Void)?
     var onRegionChange: ((MKCoordinateRegion) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -51,7 +72,7 @@ struct GlobeMapView: UIViewRepresentable {
         map.isScrollEnabled = interactive
         map.isZoomEnabled = interactive
         map.isUserInteractionEnabled = interactive
-        map.accessibilityIdentifier = style == .globe ? "globe-map" : "explore-map"
+        map.accessibilityIdentifier = style == .globe ? "globe-map" : "map-view"
         switch style {
         case .globe:
             // MapKit only draws the zoomed-out 3D globe for imagery-based configurations; standard
@@ -117,7 +138,7 @@ struct GlobeMapView: UIViewRepresentable {
         }
 
         private var cameraReady = false
-        fileprivate var currentPinIDs: [UUID] = []
+        fileprivate var currentPinIDs: [String] = []
         private var currentShaded: Set<String> = []
 
         init(parent: GlobeMapView) {
@@ -162,6 +183,7 @@ struct GlobeMapView: UIViewRepresentable {
             view?.displayPriority = .required
             view?.titleVisibility = .adaptive
             view?.accessibilityLabel = [pinAnnotation.pin.name, pinAnnotation.pin.category?.title].compactMap { $0 }.joined(separator: ", ")
+            view?.accessibilityIdentifier = "map-pin-\(pinAnnotation.pin.name)"
             return view
         }
 
@@ -193,5 +215,17 @@ struct GlobeMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
             parent.onRegionChange?(mapView.region)
         }
+    }
+}
+
+extension View {
+    /// Presents a hosted MapKit view as one labelled accessibility element. Enumerating MapKit's
+    /// own accessibility children hid every sibling control from VoiceOver/XCUITest on the
+    /// iOS 26.2 simulator; pins remain reachable through each screen's List view.
+    func mapAccessibility(_ label: String, identifier: String) -> some View {
+        accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityIdentifier(identifier)
     }
 }
