@@ -93,7 +93,11 @@ Status: local M8 acceptance verified, October 14, 2026. M7 is preserved at `ea47
   - Tools: Xcode 26.3 (17C529), Swift 6.2.4, XcodeGen 2.46.0, Supabase CLI 2.120.0 (2.121.0 is available; not installed, by rule), Docker 29.7.2, Python 3.9.6.
   - Local stack: Postgres 17.11 (`supabase/postgres:17.11.0.004`), GoTrue v2.197.0, PostgREST v16.4, Storage v1.79.36, Edge Runtime v1.77.4 (`npm:jpeg-js@0.4.4` in `prepare-media`), Mailpit v1.31.3.
   - SwiftPM (`Config/Package.resolved`): supabase-swift 2.55.3, swift-crypto 4.5.2, swift-asn1 1.7.3, swift-http-types 1.8.0, swift-clocks 1.1.1, swift-concurrency-extras 1.4.2, xctest-dynamic-overlay 1.13.1. Country geometry: Natural Earth 1:110m v5.1.2 (public domain).
-- **Clean checkout:** CLEAN_CHECKOUT
+- **Clean checkout** of commit `b6db774` into scratch space (`build/evidence/m8-clean-checkout-claude-20261014-221319.log`):
+  - The clone has no generated project. `./scripts/generate.sh` created it from `project.yml`, and `./scripts/configure-local.sh` wrote only the public URL and publishable key.
+  - Packages resolved at the pinned versions (supabase-swift 2.55.3).
+  - It built with no project warnings. RoamTests in fixture mode: **263 executed, 209 passed, 54 skipped, 0 failed**. The 54 skips are the 52 real-backend integration tests, which need `TEST_RUNNER_ROAM_BACKEND_TESTS=1` and ran in the main checkout, plus 2 opt-in MapKit tests.
+  - The clone, with its ignored server environment, was deleted afterwards.
 - **Hygiene:**
   - `scripts/check-secrets.sh` passes (tracked files and the built Debug app).
   - `.gitignore` excludes the generated `*.xcodeproj`, DerivedData, `.xcresult`, `Config/Local.xcconfig`, `scripts/.fixture-env` and `.env` files; the only tracked config is the keyless `Config/Local.xcconfig.example`.
@@ -138,7 +142,7 @@ In the 16e captures, visit dates read Oct 15 because each date is "today" in the
 | M5 Memories, photos, private notes | Verified | `966a0d9`, `checkpoint/m5-verified-2026-10-14` | `docs/m5-verification.md` |
 | M6 Feed, posts, comments, follows, notifications | Verified | `a1094ab`, `checkpoint/m6-verified-2026-10-14` | `docs/m6-verification.md` |
 | M7 Travel profile, globe, settings, sharing, account deletion | Verified; **Apple revocation outstanding** | `ea47646`, `checkpoint/m7-verified-2026-10-14` | `docs/m7-verification.md` |
-| M8 Journeys, compatibility, handoff | Verified locally; **iOS 18 and Apple outstanding** | COMMIT_M8, `checkpoint/m8-verified-2026-10-14` | this file |
+| M8 Journeys, compatibility, handoff | Verified locally; **iOS 18 and Apple outstanding** | `b6db774` plus this evidence commit, `checkpoint/m8-verified-2026-10-14` | this file |
 
 ### Commands
 

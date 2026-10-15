@@ -13,7 +13,7 @@ Updated October 14, 2026. Branch `codex/sol-max-handoff`. One lead (Claude) owne
 | M5 | Verified | `966a0d9`, `checkpoint/m5-verified-2026-10-14` |
 | M6 | Verified | `a1094ab`, `checkpoint/m6-verified-2026-10-14` |
 | M7 | Verified; **Apple revocation outstanding** | `ea47646`, `checkpoint/m7-verified-2026-10-14` |
-| M8 | Verified locally; **iOS 18 and Apple outstanding** | `checkpoint/m8-verified-2026-10-14` (see `git log`) |
+| M8 | Verified locally; **iOS 18 and Apple outstanding** | `b6db774` + evidence commit, `checkpoint/m8-verified-2026-10-14` |
 
 ## Final evidence (October 14, 2026)
 
@@ -21,7 +21,7 @@ Updated October 14, 2026. Branch `codex/sol-max-handoff`. One lead (Claude) owne
 - Full regression on the iPhone 17 Pro (`m8-final-full-claude-20261014-211218`): RoamTests **263 executed, 261 passed, 2 opt-in MapKit skips**; RoamUITests **66/66**.
 - Affected reruns after the last fixes passed (`m8-affected-claude-20261014-214833`, `m8-explore-audit-claude-20261014-220053`).
 - Compact iPhone 16e with Reduce Motion on: **5/5** (`m8-compact-final-claude-20261014-220136`).
-- Workers (unit and live) pass. The Release and device-SDK builds succeed, with no fixture code or secrets in Release.
+- Workers (unit and live) pass. The Release and device-SDK builds succeed, with no fixture code or secrets in Release. A clean checkout of `b6db774` generates, builds and passes RoamTests in fixture mode (`m8-clean-checkout-claude-20261014-221319`).
 - 21-screen accessibility audit: 0 failing findings. 19 findings with no element reference are reported as a follow-up (`docs/m8-verification.md`).
 
 ## Local environment
