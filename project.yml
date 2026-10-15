@@ -32,15 +32,29 @@ targets:
     deploymentTarget: "18.0"
     configFiles:
       Debug: Config/Roam.xcconfig
-      Release: Config/Roam.xcconfig
+      Release: Config/Release.xcconfig
     sources:
       - path: Roam
         excludes:
           - "Support/Info.plist"
+    preBuildScripts:
+      - name: Validate Release backend
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$CONFIGURATION" = "Release" ]; then
+            case "$ROAM_SUPABASE_URL" in
+              https://*.supabase.co) ;;
+              *) echo "error: Release requires the hosted Supabase HTTPS URL in Config/Beta.xcconfig."; exit 1 ;;
+            esac
+            case "$ROAM_SUPABASE_PUBLISHABLE_KEY" in
+              ""|\<*|\$\(*|sb_secret_*) echo "error: Release requires a public Supabase client key."; exit 1 ;;
+            esac
+          fi
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.daniellarkin.roam
         PRODUCT_NAME: Roam
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: Roam/Support/Info.plist
         INFOPLIST_PREPROCESS: YES
         CODE_SIGN_ENTITLEMENTS: Roam/Support/Roam.entitlements
@@ -56,6 +70,9 @@ targets:
           INFOPLIST_PREPROCESSOR_DEFINITIONS: ROAM_DEBUG_LOCAL_NETWORKING=1
         Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: $(ROAM_DISTRIBUTION_PROFILE_UUID)
     dependencies:
       - package: Supabase
         product: Supabase
