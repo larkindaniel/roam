@@ -84,7 +84,7 @@ struct VisitGalleryView: View {
                 }
                 if visitID != nil, let photo = model.photos.first {
                     Text("\(photo.isOwn ? "Your visit" : photo.authorName) · \(photo.date.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.vertical, Theme.Spacing.s)
@@ -199,7 +199,7 @@ private struct GalleryPhotoViewer: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(photo.isOwn ? "Your visit" : photo.authorName).font(.headline)
                     Text(photo.date.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
             }
@@ -216,7 +216,7 @@ private struct GalleryPhotoViewer: View {
                             .disabled(model.isRemoving)
                             .accessibilityIdentifier("viewer-retry-removal")
                     } else {
-                        Button("Remove photo", role: .destructive) { confirmingRemoval = photo }
+                        Button(role: .destructive) { confirmingRemoval = photo } label: { Text("Remove photo").foregroundStyle(Theme.disliked) }
                             .disabled(model.isRemoving)
                             .accessibilityIdentifier("viewer-remove")
                     }

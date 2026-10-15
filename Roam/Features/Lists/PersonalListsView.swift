@@ -196,7 +196,7 @@ private struct ListsContent: View {
             }
             SearchField(prompt: "Search names and places", text: $model.query, identifier: "list-search-field")
             if model.sort == .distance, let note = distanceNote ?? model.reference.map({ "Distance \($0.label)" }) {
-                Text(note).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Text(note).font(.caption).foregroundStyle(Theme.secondaryText).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.horizontal, Theme.Spacing.l)
@@ -369,7 +369,7 @@ private struct ListsContent: View {
             GlobeMapView(pins: pins, shadedCountryCodes: [], style: .standard, interactive: true, selectedPinID: selectedPin,
                          focusRegion: GlobeMapView.region(fitting: pins), focusToken: pins.map(\.id).hashValue,
                          onSelectPin: { selectedPin = $0.id })
-                .mapAccessibility("Map with \(pins.count) places from this list. Switch to the list to browse them.", identifier: "list-map")
+                .mapAccessibility("Map with \(pins.count) \(pins.count == 1 ? "place" : "places") from this list. Switch to the list to browse them.", identifier: "list-map")
             if let selected = visible.first(where: { $0.id.uuidString == selectedPin }) {
                 SelectedPlaceCard(summary: selected.experience, onOpen: { router.push(.experience(selected.id)) },
                                   onSave: { Task { await library.setBookmark(selected.id, saved: !library.isBookmarked(selected.id)) } },

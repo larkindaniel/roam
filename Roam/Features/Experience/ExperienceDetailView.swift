@@ -148,12 +148,12 @@ struct ExperienceDetailView: View {
                     HStack(spacing: Theme.Spacing.s) {
                         CategoryBadge(category: detail.myRating?.category ?? summary.category)
                         if !summary.areaLine.isEmpty {
-                            Text("·").foregroundStyle(.secondary).accessibilityHidden(true)
-                            Text(summary.areaLine).font(.subheadline).foregroundStyle(.secondary)
+                            Text("·").foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
+                            Text(summary.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
                         }
                     }
                     if detail.isLocality {
-                        Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(.secondary)
+                        Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                     }
                 }
                 actionRow(detail)
@@ -249,11 +249,11 @@ struct ExperienceDetailView: View {
                     if let rating = detail.myRating {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("#\(rating.rank) of \(rating.categoryCount) in \(rating.category.title)").font(.subheadline.weight(.semibold))
-                            if rating.groupSize > 1 { Text("Tied with \(rating.groupSize - 1) other\(rating.groupSize == 2 ? "" : "s")").font(.caption).foregroundStyle(.secondary) }
+                            if rating.groupSize > 1 { Text("Tied with \(rating.groupSize - 1) other\(rating.groupSize == 2 ? "" : "s")").font(.caption).foregroundStyle(Theme.secondaryText) }
                             SentimentTag(sentiment: rating.sentiment)
                         }
                     } else {
-                        Text(detail.myVisits.isEmpty ? "Not rated" : "Unranked memory").font(.subheadline).foregroundStyle(.secondary)
+                        Text(detail.myVisits.isEmpty ? "Not rated" : "Unranked memory").font(.subheadline).foregroundStyle(Theme.secondaryText)
                     }
                 }
             }
@@ -266,7 +266,7 @@ struct ExperienceDetailView: View {
                     ScoreBadge(score: detail.summary.followingScore, source: .following(count: detail.summary.followingCount), size: 52, showsLabel: false)
                     Text(detail.summary.followingCount == 0 ? "No following ratings"
                          : "\(detail.summary.followingCount) \(detail.summary.followingCount == 1 ? "person" : "people") you follow")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -304,10 +304,10 @@ struct ExperienceDetailView: View {
                                 .disabled(deleting || failedDeletion != nil)
                                 .accessibilityLabel("Edit note, date and photos for this visit")
                                 .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
-                            Button("Delete visit", role: .destructive) {
+                            Button(role: .destructive) {
                                 pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visit.id,
                                                                  lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)
-                            }
+                            } label: { Text("Delete visit").foregroundStyle(Theme.disliked) }
                             .frame(minHeight: Theme.minimumHitTarget)
                             .disabled(deleting || failedDeletion != nil)
                             .accessibilityIdentifier("detail-delete-visit-\(visit.id.uuidString)")
@@ -330,10 +330,10 @@ struct ExperienceDetailView: View {
                 Image(systemName: "lock.fill").foregroundStyle(Theme.accent).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(detail.hasPrivateNote ? "Private note" : "Add a private note").font(.subheadline.weight(.semibold))
-                    Text("Only you can see this.").font(.caption).foregroundStyle(.secondary)
+                    Text("Only you can see this.").font(.caption).foregroundStyle(Theme.secondaryText)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
             }
             .frame(minHeight: Theme.minimumHitTarget)
             .contentShape(Rectangle())
@@ -353,7 +353,7 @@ struct ExperienceDetailView: View {
             if let address = detail.address {
                 Label(address, systemImage: "mappin.and.ellipse").font(.subheadline).textSelection(.enabled)
             } else {
-                Label("Address not available", systemImage: "mappin.slash").font(.subheadline).foregroundStyle(.secondary)
+                Label("Address not available", systemImage: "mappin.slash").font(.subheadline).foregroundStyle(Theme.secondaryText)
             }
             // Pills never shrink, so a row that cannot fit (large text) stacks instead of widening the screen.
             ViewThatFits(in: .horizontal) {
@@ -361,7 +361,7 @@ struct ExperienceDetailView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
             }
             Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Fictional test place (fixture data).")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Theme.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .roamCard()

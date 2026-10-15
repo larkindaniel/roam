@@ -58,21 +58,21 @@ struct ExperienceRow: View {
                 HStack(spacing: 6) {
                     CategoryBadge(category: category, compact: true).fixedSize()
                     if !area.isEmpty {
-                        Text("·").foregroundStyle(.secondary).accessibilityHidden(true)
-                        Text(area).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text("·").foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
+                        Text(area).font(.caption).foregroundStyle(Theme.secondaryText).lineLimit(1)
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     CategoryBadge(category: category, compact: true)
                     if !area.isEmpty {
-                        Text(area).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(area).font(.caption).foregroundStyle(Theme.secondaryText).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
             if let statusLine {
                 Text(statusLine)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -125,7 +125,7 @@ struct ExperienceRow: View {
             PillLabel(title: "Been", systemImage: "checkmark.circle.fill")
                 .font(.subheadline.weight(.semibold))
                 .fixedSize()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .frame(minHeight: Theme.minimumHitTarget)
                 .accessibilityLabel("Already been")
         case .pending(let target):
@@ -164,9 +164,9 @@ struct MemberRowView: View {
                 AvatarView(member: member, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.displayName).font(.headline).lineLimit(2)
-                    Text("@\(member.handle)").font(.subheadline).foregroundStyle(.secondary)
+                    Text("@\(member.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
                     if let subtitle {
-                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                        Text(subtitle).font(.caption).foregroundStyle(Theme.secondaryText)
                     }
                 }
                 Spacer(minLength: 0)

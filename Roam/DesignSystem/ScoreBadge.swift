@@ -43,14 +43,14 @@ struct ScoreBadge: View {
                 } else {
                     Image(systemName: "minus")
                         .font(.system(size: size * 0.3, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
             .frame(width: size * min(scale, 1.6), height: size * min(scale, 1.6))
             if showsLabel {
                 Text(caption)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
                     // Three lines keep "Score when posted" whole at accessibility text sizes.
                     .lineLimit(3)

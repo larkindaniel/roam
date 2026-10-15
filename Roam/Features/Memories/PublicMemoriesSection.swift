@@ -106,7 +106,7 @@ struct PublicMemoriesSection: View {
                 SkeletonList(rows: 2)
             } else if model.hasLoaded && others.isEmpty {
                 Text("No public memories from other travellers yet. When people log or revisit this place, their notes and photos appear here.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("memories-empty")
             } else {
                 ForEach(others) { memory in
@@ -146,7 +146,7 @@ struct PublicMemoryCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(memory.author.displayName).font(.subheadline.weight(.semibold))
                             Text(memory.visitDate.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(Theme.secondaryText)
                         }
                     }
                     .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)

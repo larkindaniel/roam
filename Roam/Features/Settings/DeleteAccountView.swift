@@ -217,7 +217,7 @@ struct DeleteAccountView: View {
             }
             Text("Your profile disappears for everyone straight away and you're signed out on every device. Text you've already shared outside Roam can't be recalled. Reports you've filed stay with Roam's operators without your name.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -230,7 +230,7 @@ struct DeleteAccountView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             Text("Confirm it's you").font(.headline)
             Text("For your security, sign in again before deleting your account.")
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Theme.secondaryText)
             if model.canUsePassword {
                 SecureField("Password", text: Bindable(model).password)
                     .textContentType(.password)

@@ -1,42 +1,43 @@
 # Roam continuation ledger
 
-Updated October 14, 2026. Branch `codex/sol-max-handoff`. One lead (Claude) owns every file; the earlier Codex worker lanes no longer exist. Per-milestone detail lives in `docs/m3-verification.md` to `docs/m7-verification.md`. This ledger keeps only the current state and the exact next action.
+Updated October 14, 2026. Branch `codex/sol-max-handoff`. One lead (Claude) owned every file through M8. **All eight milestones are locally verified.** The final handoff is `docs/m8-verification.md`, and the human quick start is `README.md`. This ledger keeps only the current state and what is still blocked.
 
 ## Milestone status
 
-| Milestone | Status | Evidence / remaining work |
+| Milestone | Status | Commit / tag |
 | --- | --- | --- |
-| M1 | Verified checkpoint | `b7de0d8`; iOS 18 runtime validation deferred by the user |
-| M2 | Verified checkpoint; real Apple authorization outstanding | `be0c4e1`; needs real Apple credentials/device |
+| M1 | Verified (iOS 18 runtime deferred by the user) | `b7de0d8` |
+| M2 | Verified locally; **real Apple sign-in outstanding** | `be0c4e1` |
 | M3 | Verified | `f081e2e`, `checkpoint/m3-verified-2026-10-13` |
 | M4 | Verified | `97da54e`, `checkpoint/m4-verified-2026-10-14` |
 | M5 | Verified | `966a0d9`, `checkpoint/m5-verified-2026-10-14` |
 | M6 | Verified | `a1094ab`, `checkpoint/m6-verified-2026-10-14` |
-| M7 | Verified; committing | See `docs/m7-verification.md`; tag `checkpoint/m7-verified-2026-10-14`. Apple revocation recorded `not_configured` (release blocker) |
-| M8 | In progress | Drafts in `build/m8-drafts/` (git-ignored): combined two-account UI journey, seven-category session, accessibility audit, layout stress scenario/test, Reduce Motion check, real-backend journey test |
+| M7 | Verified; **Apple revocation outstanding** | `ea47646`, `checkpoint/m7-verified-2026-10-14` |
+| M8 | Verified locally; **iOS 18 and Apple outstanding** | `checkpoint/m8-verified-2026-10-14` (see `git log`) |
 
-## Local environment (checked October 14, 2026)
+## Final evidence (October 14, 2026)
 
-- Xcode 26.3 (17C529), Swift 6.2.4, XcodeGen 2.46.0, Supabase CLI 2.120.0, Docker 29.7.2, Python 3.9.6. Simulators: iPhone 17 Pro `3C864AD4-9C80-44BF-8B1C-EB57732C2C9C`, iPhone 16e `FF96AB35-BC3B-420C-88FF-CF509F0DCEF6` (iOS 26.2).
-- Local stack `*_roam`: Postgres 17.11, GoTrue v2.197.0, PostgREST v16.4, Storage v1.79.36, Edge Runtime v1.77.4, Mailpit v1.31.3. Migrations applied through `20261014000900` (M7). Applied migrations are immutable; fix forward.
-- SwiftPM (`Config/Package.resolved`): supabase-swift 2.55.3, swift-crypto 4.5.2, swift-asn1 1.7.3, swift-http-types 1.8.0, swift-clocks 1.1.1, swift-concurrency-extras 1.4.2, xctest-dynamic-overlay 1.13.1.
-- Backups: `build/backups/m5-pre006-*` and `build/backups/m7-pre009-db-20261014-150541.dump`.
-- Deno is not installed; `inspector_test.ts` cases run against the live function through the Swift integration suite instead.
-- Disk: the Mac's disk ran low earlier (about 0.5 GB free). Unreferenced, superseded result bundles were removed (their logs stay in `build/evidence/`). Check `df -h /` before long runs.
+- pgTAP **538/538** (`build/evidence/m8-db-final-claude-20261014-211327.log`).
+- Full regression on the iPhone 17 Pro (`m8-final-full-claude-20261014-211218`): RoamTests **263 executed, 261 passed, 2 opt-in MapKit skips**; RoamUITests **66/66**.
+- Affected reruns after the last fixes passed (`m8-affected-claude-20261014-214833`, `m8-explore-audit-claude-20261014-220053`).
+- Compact iPhone 16e with Reduce Motion on: **5/5** (`m8-compact-final-claude-20261014-220136`).
+- Workers (unit and live) pass. The Release and device-SDK builds succeed, with no fixture code or secrets in Release.
+- 21-screen accessibility audit: 0 failing findings. 19 findings with no element reference are reported as a follow-up (`docs/m8-verification.md`).
 
-## M7 final evidence
+## Local environment
 
-pgTAP **538/538** (94 new; `m7-db-final-claude-20261014-200154`). Full run on the 17 Pro: RoamTests 262 executed, 260 passed, 2 opt-in skips; RoamUITests M1–M7 53/54, and the one failed journey's fixed test then passed (`m7-final-full-claude-20261014-193157`, `m7-ui-editprofile-claude-20261014-200005`). Workers 4/4 + 4/4 plus live tests (`m7-workers-final-claude-20261014-200110`). M7 UI on the 16e **10/10** (`m7-ui-compact-claude-20261014-200103`).
+- Xcode 26.3 (17C529), Swift 6.2.4, XcodeGen 2.46.0, Supabase CLI 2.120.0, Docker 29.7.2, Python 3.9.6. Simulators: iPhone 17 Pro `3C864AD4-9C80-44BF-8B1C-EB57732C2C9C`, iPhone 16e `FF96AB35-BC3B-420C-88FF-CF509F0DCEF6` (iOS 26.2; Reduce Motion left off).
+- Local stack `*_roam`, with migrations applied through `20261014000900`. Applied migrations are immutable; fix forward.
+- Backups: `build/backups/m5-pre006-*`, `build/backups/m7-pre009-db-20261014-150541.dump`.
+- Deno is not installed; the inspector cases run against the live function through the Swift integration suite.
+- Disk ran low once (about 0.5 GB free); superseded result bundles were removed. Check `df -h /` before long runs.
 
-## Next executable action
+## If a new session resumes here
 
-1. If the M7 commit/tag is missing: run `git diff --check` and `scripts/check-secrets.sh`, stage the M7 files explicitly (never `build/m8-drafts`), commit "M7: …" and tag `checkpoint/m7-verified-2026-10-14`.
-2. M8:
-   - Move `build/m8-drafts/*` into place: `FixtureState+Stress.swift` in `Roam/Backend/Fixture/` (make `nextID`/`rankingSnapshot` internal and call `seedStress()` for scenario `stress`), the UI tests in `RoamUITests/`, and `M8JourneyIntegrationTests.swift` in `RoamTests/Integration/`.
-   - Add the Reduce Motion line to `ComponentCatalogView` (`catalog-reduce-motion`).
-   - Remove the unused `AppRoute.findPeople` and the `UnavailableRouteView` fallback.
-   - Run the M8 suites: on the 16e with Reduce Motion on, then the final full suite, the clean-checkout build and the handoff.
+Nothing in M1–M8 is pending locally. Useful next steps, all needing the user:
 
-## External checks (not local verification)
+1. Configure real Sign in with Apple (team `H5V24G3F3D`, bundle `com.daniellarkin.roam`): the Supabase Apple provider secret, a device build, then verify token exchange, reauthentication before deletion and token revocation (`scripts/account-deletion.py` records `not_configured` until then).
+2. Run the suites on an iOS 18 runtime or device (deferred by the user).
+3. Release setup: hosted Supabase/SMTP, scheduled cleanup and deletion workers, public privacy/terms/support pages, and a moderation owner.
 
-Real Apple capability/provider/token exchange, Sign in with Apple reauthentication for deletion, and Apple token revocation need the user's credentials and a device. iOS 18 runtime validation is deferred by the user. Hosted Supabase/SMTP, the hosted cleanup and deletion schedules, public legal/support pages and operational moderation are release setup.
+Optional local follow-up: work out the 19 findings with no element reference in the audit (combined rows) by splitting a row's accessibility temporarily.

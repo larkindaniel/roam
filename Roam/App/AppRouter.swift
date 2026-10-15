@@ -65,7 +65,6 @@ enum AppRoute: Hashable, Sendable {
     case reportHistory
     case help(HelpTopic)
     case deleteAccount
-    case findPeople
 }
 
 enum SafetyListKind: String, Hashable, Sendable {

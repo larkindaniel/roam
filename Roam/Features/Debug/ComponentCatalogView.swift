@@ -5,6 +5,7 @@ import SwiftUI
 /// `-roam-component-catalog`). Used for Dynamic Type/VoiceOver evidence; not reachable in the app UI.
 struct ComponentCatalogView: View {
     @State private var showsMap = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let sample = ExperienceSummary(
         id: UUID(), placeID: UUID(), name: "Harbor Lantern Café", category: .foodDrink, locality: "Lisbon", region: "Lisboa",
@@ -23,6 +24,11 @@ struct ComponentCatalogView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Motion") {
+                    // Skeleton pulses and map camera moves are skipped when this is on.
+                    Text(reduceMotion ? "Reduce Motion: on" : "Reduce Motion: off")
+                        .accessibilityIdentifier("catalog-reduce-motion")
+                }
                 Section("Score badges") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), alignment: .top)], spacing: Theme.Spacing.m) { badgeSamples }
                 }

@@ -85,9 +85,9 @@ struct NotificationsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(Self.message(notification)).font(.subheadline).foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(notification.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
+                    Text(notification.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(Theme.secondaryText)
                     if !notification.targetAvailable {
-                        Text("No longer available").font(.caption).foregroundStyle(.secondary)
+                        Text("No longer available").font(.caption).foregroundStyle(Theme.secondaryText)
                     }
                 }
                 Spacer(minLength: 0)
@@ -316,7 +316,7 @@ struct SharedWantsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("You and \(otherName)").font(.headline)
                 Text(model.hasLoaded ? "\(model.entries.count) \(model.entries.count == 1 ? "place" : "places") you both want to visit" : "Comparing your lists…")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("shared-wants-count")
             }
             Spacer(minLength: 0)
@@ -334,7 +334,7 @@ struct SharedWantsView: View {
             GlobeMapView(pins: pins, shadedCountryCodes: [], style: .standard, interactive: true, selectedPinID: selectedPin,
                          focusRegion: GlobeMapView.region(fitting: pins), focusToken: pins.map(\.id).hashValue,
                          onSelectPin: { selectedPin = $0.id })
-                .mapAccessibility("Map of \(pins.count) shared places. The list view shows the same places.", identifier: "shared-wants-map")
+                .mapAccessibility("Map of \(pins.count) shared \(pins.count == 1 ? "place" : "places"). The list view shows the same places.", identifier: "shared-wants-map")
             if let selected = model.entries.first(where: { $0.id.uuidString == selectedPin }) {
                 SelectedPlaceCard(summary: selected.experience, onOpen: { router.push(.experience(selected.id)) },
                                   onSave: { Task { await library.setBookmark(selected.id, saved: !library.isBookmarked(selected.id)) } },

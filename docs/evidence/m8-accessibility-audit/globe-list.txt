@@ -1,0 +1,9 @@
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=10 countries · 11 cities | frame={{16, 135}, {174, 20.333333333333343}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=Filter | frame={{335.33333333333337, 137}, {36.666666666666629, 18}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=All-time · 15 places visited | frame={{16, 157.33333333333334}, {148.33333333333331, 14.333333333333314}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=globe-list-toggle | label=Map | frame={{334.66666666666669, 66}, {47.333333333333314, 36}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode

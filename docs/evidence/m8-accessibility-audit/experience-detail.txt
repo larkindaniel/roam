@@ -1,0 +1,6 @@
+Hit area is too small | MapKit attribution | id= | label=Legal | frame={{86.249296824137375, 303}, {28.57526695728302, 11}} | The size of this MKAttributionLabel is too small for user to interact.
+Contrast failed | scroll-edge zone | id= | label=Jun 14, 2026 | frame={{32, 789}, {93.333333333333329, 18}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | scroll-edge zone | id= | label=Custard tarts and a lantern-lit terrace over the water. Go just before sunset. | frame={{32, 811}, {324.33333333333331, 42.333333333333371}} | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=7.5 | frame={{219.66666666666666, 542}, {30.666666666666686, 22.666666666666742}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=10.0 | frame={{36.5, 547.5}, {43, 22.666666666666742}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Text clipped | system navigation title (the full name is in the content) | id= | label=Harbor Lantern Café | frame={{72, 73.666666666666657}, {162, 20.666666666666671}} | Text of this UILabel may be clipped at larger Dynamic Type sizes.

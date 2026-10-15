@@ -55,6 +55,8 @@ private struct WelcomeNavigation: View {
 struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
+    /// The wordmark scales with Dynamic Type like the large title it replaces.
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 46
 
     var body: some View {
         ScrollView {
@@ -64,7 +66,7 @@ struct WelcomeView: View {
                     .accessibilityHidden(true)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("Roam")
-                        .font(.system(size: 46, weight: .bold, design: .serif))
+                        .font(.system(size: wordmarkSize, weight: .bold, design: .serif))
                         .foregroundStyle(Theme.accent)
                         .accessibilityAddTraits(.isHeader)
                     Text("Rank the places that made your trips.")
@@ -72,7 +74,7 @@ struct WelcomeView: View {
                         .multilineTextAlignment(.center)
                     Text("Log trails, cafés, museums, stays and day trips. Compare them two at a time and Roam gives each a score out of 10.")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal)
@@ -112,7 +114,7 @@ struct WelcomeView: View {
 
                 Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.xl)
             }
@@ -175,7 +177,7 @@ struct InfoText: View {
     var body: some View {
         Label(message, systemImage: "envelope.badge")
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.secondaryText)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("auth-info")
     }
@@ -196,7 +198,7 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                Text(message).font(.body).foregroundStyle(.secondary)
+                Text(message).font(.body).foregroundStyle(Theme.secondaryText)
                 fields
                 Button(action: action) {
                     if busy { ProgressView().tint(.white) } else { Text(actionTitle) }
@@ -242,7 +244,7 @@ struct RoamTextField: View {
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
             .accessibilityIdentifier(identifier)
             if let hint {
-                Text(hint).font(.caption).foregroundStyle(.secondary)
+                Text(hint).font(.caption).foregroundStyle(Theme.secondaryText)
             }
         }
     }

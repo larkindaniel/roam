@@ -20,7 +20,7 @@ struct FixtureState {
 
     private var counter = 0
 
-    private mutating func nextID(_ kind: Int) -> UUID {
+    mutating func nextID(_ kind: Int) -> UUID {
         counter += 1
         return FixtureIDs.uuid(kind, counter)
     }
@@ -139,6 +139,7 @@ struct FixtureState {
             key: "follow:\(FixtureIDs.lena):\(FixtureIDs.maya)", daysAgo: 40, read: true)
         add(notification: .follow, recipient: FixtureIDs.maya, actor: FixtureIDs.sam, activity: nil, comment: nil,
             key: "follow:\(FixtureIDs.sam):\(FixtureIDs.maya)", daysAgo: 30, read: true)
+        if scenario == "stress" { seedStress() }
     }
 
     private func placeKey(_ experienceID: UUID) -> String? {
@@ -154,7 +155,7 @@ struct FixtureState {
                                               eventKey: key, createdAt: created, readAt: read ? created.addingTimeInterval(3600) : nil)
     }
 
-    private func rankingSnapshot(owner: UUID, category: ExperienceCategory) -> CategoryRanking {
+    func rankingSnapshot(owner: UUID, category: ExperienceCategory) -> CategoryRanking {
         var ranking = CategoryRanking(category: category)
         let rows = ratings.values.filter { $0.owner == owner && $0.category == category }
         for sentiment in Sentiment.partitionOrder {

@@ -96,16 +96,16 @@ struct ExpandedGlobeView: View {
     /// All-time totals with the active selection underneath.
     private func header(_ value: TravelProfile) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(value.countryCount) \(value.countryCount == 1 ? "country" : "countries") · \(value.cityCount) \(value.cityCount == 1 ? "city" : "cities")")
-                        .font(.headline)
-                    Text("All-time · \(value.pins.count) \(value.pins.count == 1 ? "place" : "places") visited").font(.caption).foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    totals(value)
+                    Spacer()
+                    filterMenu(value)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("globe-totals")
-                Spacer()
-                filterMenu(value)
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    totals(value)
+                    filterMenu(value)
+                }
             }
             if let filter {
                 HStack(spacing: Theme.Spacing.s) {
@@ -123,6 +123,19 @@ struct ExpandedGlobeView: View {
         .padding(.horizontal)
         .padding(.vertical, Theme.Spacing.s)
         .background(Theme.raisedCard)
+    }
+
+    private func totals(_ value: TravelProfile) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value.countryCount) \(value.countryCount == 1 ? "country" : "countries") · \(value.cityCount) \(value.cityCount == 1 ? "city" : "cities")")
+                .font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("All-time · \(value.pins.count) \(value.pins.count == 1 ? "place" : "places") visited")
+                .font(.caption).foregroundStyle(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("globe-totals")
     }
 
     private func filterMenu(_ value: TravelProfile) -> some View {
@@ -171,7 +184,7 @@ struct ExpandedGlobeView: View {
                          focusToken: focusToken,
                          onSelectPin: { pin in selected = value.pins.first { $0.experienceID.uuidString == pin.id } })
                 .id(flatMap)
-                .mapAccessibility("Travel map with \(pins.count) places. Use List to browse them.", identifier: "globe-map")
+                .mapAccessibility("Travel map with \(pins.count) \(pins.count == 1 ? "place" : "places"). Use List to browse them.", identifier: "globe-map")
                 .ignoresSafeArea(edges: .bottom)
             if let selected {
                 pinCard(selected)
@@ -184,13 +197,13 @@ struct ExpandedGlobeView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isSelf ? "Your visits" : "\(ownerName ?? "Their") visits").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(isSelf ? "Your visits" : "\(ownerName ?? "Their") visits").font(.caption.weight(.semibold)).foregroundStyle(Theme.secondaryText)
                     Text(pin.name).font(.headline)
                     HStack(spacing: 6) {
                         CategoryBadge(category: pin.category, compact: true).fixedSize()
-                        if !pin.areaLine.isEmpty { Text("· \(pin.areaLine)").font(.caption).foregroundStyle(.secondary) }
+                        if !pin.areaLine.isEmpty { Text("· \(pin.areaLine)").font(.caption).foregroundStyle(Theme.secondaryText) }
                     }
-                    Text(visitLine(pin)).font(.caption).foregroundStyle(.secondary)
+                    Text(visitLine(pin)).font(.caption).foregroundStyle(Theme.secondaryText)
                 }
                 Spacer()
                 Button { selected = nil } label: {
@@ -223,7 +236,7 @@ struct ExpandedGlobeView: View {
                             HStack {
                                 Text(country.name).foregroundStyle(Color.primary)
                                 Spacer()
-                                Text("\(country.count)").monospacedDigit().foregroundStyle(Color.secondary)
+                                Text("\(country.count)").monospacedDigit().foregroundStyle(Theme.secondaryText)
                             }
                         }
                         .accessibilityElement(children: .combine)
@@ -237,9 +250,9 @@ struct ExpandedGlobeView: View {
                             Text(pin.name).font(.headline).foregroundStyle(Color.primary)
                             HStack(spacing: 6) {
                                 CategoryBadge(category: pin.category, compact: true).fixedSize()
-                                Text(pin.areaLine.isEmpty ? "Location unavailable" : pin.areaLine).font(.caption).foregroundStyle(Color.secondary)
+                                Text(pin.areaLine.isEmpty ? "Location unavailable" : pin.areaLine).font(.caption).foregroundStyle(Theme.secondaryText)
                             }
-                            Text(visitLine(pin)).font(.caption).foregroundStyle(Color.secondary)
+                            Text(visitLine(pin)).font(.caption).foregroundStyle(Theme.secondaryText)
                         }
                     }
                     .accessibilityIdentifier("globe-list-row-\(pin.name)")

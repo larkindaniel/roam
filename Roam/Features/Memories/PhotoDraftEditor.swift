@@ -40,7 +40,7 @@ struct PhotoDraftEditor: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                                 Text("Photo \(index + 1)").font(.headline)
-                                Text(status(asset)).font(.subheadline).foregroundStyle(.secondary)
+                                Text(status(asset)).font(.subheadline).foregroundStyle(Theme.secondaryText)
                                     .accessibilityIdentifier("photo-status-\(asset.id.uuidString)")
                                 if let message = asset.error { Text(message).font(.footnote).foregroundStyle(Theme.disliked) }
                             }
@@ -53,7 +53,9 @@ struct PhotoDraftEditor: View {
                                     .disabled(model.isBusy || restoring)
                                     .accessibilityIdentifier("photo-retry-\(asset.id.uuidString)")
                             }
-                            Button("Remove", role: .destructive) { Task { await model.remove(assetID: asset.id) } }
+                            Button(role: .destructive) { Task { await model.remove(assetID: asset.id) } } label: {
+                                Text("Remove").foregroundStyle(Theme.disliked)
+                            }
                                 .disabled(restoring)
                                 .accessibilityIdentifier("photo-remove-\(asset.id.uuidString)")
                             Spacer(minLength: 0)
@@ -140,7 +142,7 @@ struct PhotoDraftEditor: View {
         } else if let staged = asset.staged {
             RemoteImageView(path: staged.path)
         } else {
-            Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary)
+            Image(systemName: "photo").font(.largeTitle).foregroundStyle(Theme.secondaryText)
                 .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.subtleFill)
                 .accessibilityLabel("Selected photo not ready")
         }

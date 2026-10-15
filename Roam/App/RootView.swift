@@ -79,10 +79,12 @@ struct RootView: View {
 }
 
 struct LaunchView: View {
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 44
+
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
             Text("Roam")
-                .font(.system(size: 44, weight: .bold, design: .serif))
+                .font(.system(size: wordmarkSize, weight: .bold, design: .serif))
                 .foregroundStyle(Theme.accent)
             ProgressView("Opening your travels…")
         }

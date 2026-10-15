@@ -201,7 +201,7 @@ struct ExploreRootView: View {
                     .accessibilityIdentifier("explore-load-error")
                 if !model.items.isEmpty {
                     Text("Showing places from the last successful area search.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
             }
             if let message = model.locationMessage ?? actionError {
@@ -265,7 +265,7 @@ struct ExploreRootView: View {
             GlobeMapView(pins: model.items.map(\.pin), shadedCountryCodes: [], style: .standard, interactive: true,
                          selectedPinID: model.selectedID, focusRegion: model.focusRegion, focusToken: model.focusToken,
                          onSelectPin: { model.selectedID = $0.id }, onRegionChange: { model.visibleRegion = $0 })
-                .mapAccessibility("Map with \(model.items.count) places. Switch to the list to browse them.", identifier: "explore-map")
+                .mapAccessibility("Map with \(model.items.count) \(model.items.count == 1 ? "place" : "places"). Switch to the list to browse them.", identifier: "explore-map")
                 .overlay(alignment: .top) {
                     if model.phase.isLoading { ProgressView().padding(8).background(Capsule().fill(.regularMaterial)).padding(.top, 8) }
                 }

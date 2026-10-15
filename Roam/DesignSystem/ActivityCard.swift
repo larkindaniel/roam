@@ -10,11 +10,26 @@ struct ActivityCardView: View {
     var onOpenPhotos: (() -> Void)?
 
     @State private var expanded = false
-    @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// At accessibility sizes the area moves under the category instead of being squeezed out.
-    private var categoryRow: AnyLayout {
-        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))
+    /// Category and area on one line when they fit; otherwise the area moves under the category
+    /// (compact phones, large text) instead of being squeezed into a narrow column.
+    private var categoryLine: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                CategoryBadge(category: item.category, compact: true)
+                if !item.experience.areaLine.isEmpty {
+                    Text("· \(item.experience.areaLine)").font(.caption).foregroundStyle(Theme.secondaryText)
+                }
+            }
+            .fixedSize()
+            VStack(alignment: .leading, spacing: 2) {
+                CategoryBadge(category: item.category, compact: true).fixedSize()
+                if !item.experience.areaLine.isEmpty {
+                    Text(item.experience.areaLine).font(.caption).foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 
     var body: some View {
@@ -27,15 +42,8 @@ struct ActivityCardView: View {
                     (Text(item.author.displayName).bold() + Text(" \(item.type.verb) ") + Text(item.experience.name).bold())
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
-                    categoryRow {
-                        CategoryBadge(category: item.category, compact: true).fixedSize()
-                        if !item.experience.areaLine.isEmpty {
-                            Text(typeSize.isAccessibilitySize ? item.experience.areaLine : "· \(item.experience.areaLine)")
-                                .font(.caption).foregroundStyle(.secondary)
-                                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
-                        }
-                    }
-                    Text(dateLine).font(.caption).foregroundStyle(.secondary)
+                    categoryLine
+                    Text(dateLine).font(.caption).foregroundStyle(Theme.secondaryText)
                 }
                 Spacer(minLength: 0)
                 ScoreBadge(score: item.scoreSnapshot, source: .snapshot, size: 42)
@@ -43,7 +51,8 @@ struct ActivityCardView: View {
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
-                    .lineLimit(expanded || compact == false && item.note.count < 160 ? nil : 3)
+                    // Only long notes collapse (with See more); a short note is never cut off.
+                    .lineLimit(expanded || item.note.count < 160 ? nil : 3)
                     .fixedSize(horizontal: false, vertical: true)
                 if item.note.count >= 160 && !expanded {
                     Button("See more") { expanded = true }.font(.footnote.weight(.semibold))

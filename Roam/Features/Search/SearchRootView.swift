@@ -50,7 +50,7 @@ struct SearchField: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+            Image(systemName: "magnifyingglass").foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
             TextField(prompt, text: $text)
                 .focused($isFocused)
                 .textInputAutocapitalization(.never)
@@ -60,7 +60,7 @@ struct SearchField: View {
                 .onChange(of: dismissKeyboardToken) { _, _ in isFocused = false }
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.secondaryText)
                         .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
                 }
                 .accessibilityLabel("Clear search")
@@ -83,14 +83,17 @@ struct DestinationChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: "mappin.and.ellipse")
+                // Wraps so "Near Portland, Oregon, United States" stays whole beside Explore's location button.
                 Text(destination.map { "Near \($0.displayName)" } ?? "Anywhere — choose a destination")
-                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.caption)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, Theme.Spacing.m)
+            .padding(.vertical, 6)
             .frame(minHeight: Theme.minimumHitTarget)
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accentFill))
         }
@@ -156,11 +159,11 @@ struct ExperienceSearchView: View {
                         .accessibilityIdentifier("experience-search-refresh-error")
                     if !model.hits.isEmpty {
                         Text("Showing the last successful results for “\(model.lastQuery)”. The new query or destination has not loaded yet.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Theme.secondaryText)
                     }
                 }
                 if model.isRefreshing {
-                    HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(.secondary) }
+                    HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(Theme.secondaryText) }
                 }
                 ForEach(model.hits) { hit in
                     row(hit)
@@ -259,11 +262,11 @@ struct MemberSearchView: View {
                             .accessibilityIdentifier("member-search-refresh-error")
                         if model.query.trimmingCharacters(in: .whitespacesAndNewlines) != model.lastQuery {
                             Text("Showing the previous results for “\(model.lastQuery)” until the new search succeeds.")
-                                .font(.footnote).foregroundStyle(.secondary)
+                                .font(.footnote).foregroundStyle(Theme.secondaryText)
                         }
                     }
                     if model.isRefreshing {
-                        HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(.secondary) }
+                        HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(Theme.secondaryText) }
                     }
                     ForEach(model.rows) { row in
                         MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,

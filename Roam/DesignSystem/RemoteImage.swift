@@ -93,7 +93,7 @@ struct RemoteImageView: View {
                         Image(systemName: "photo.badge.exclamationmark")
                         Text(path == nil ? "No photo" : "Photo unavailable · Retry").font(.caption2)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                 }
                 .disabled(path == nil)
                 .accessibilityLabel(path == nil ? "No photo" : "Photo unavailable. Retry")
@@ -128,7 +128,10 @@ struct AvatarView: View {
     @State private var image: UIImage?
     @State private var loadedIdentity: String?
     @State private var activeRequest = UUID()
+    /// The avatar and its initials grow with Dynamic Type, up to 125%, so rows stay balanced.
+    @ScaledMetric(relativeTo: .body) private var textScale: CGFloat = 1
     private var identity: String { "\(member.id.uuidString)-\(member.avatarPath ?? "-")-\(store.generation)" }
+    private var scaledSize: CGFloat { size * min(max(textScale, 1), 1.25) }
 
     var body: some View {
         ZStack {
@@ -137,11 +140,11 @@ struct AvatarView: View {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
                 Text(initials)
-                    .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
+                    .font(.system(size: scaledSize * 0.38, weight: .semibold, design: .rounded))
                     .foregroundStyle(Theme.accent)
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: scaledSize, height: scaledSize)
         .clipShape(Circle())
         .overlay(Circle().strokeBorder(Theme.hairline.opacity(0.6)))
         .accessibilityHidden(true)

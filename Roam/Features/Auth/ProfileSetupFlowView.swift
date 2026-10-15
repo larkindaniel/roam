@@ -84,7 +84,7 @@ private struct SetupSteps: View {
         case .handle:
             question("Choose your handle", "Lowercase letters, numbers and underscores, 3–20 characters. You can change it later.")
             HStack(spacing: Theme.Spacing.s) {
-                Text("@").font(.title3.weight(.semibold)).foregroundStyle(.secondary)
+                Text("@").font(.title3.weight(.semibold)).foregroundStyle(Theme.secondaryText)
                 RoamTextField(title: "Handle", text: $model.handle, identifier: "handle-field")
                     .onChange(of: model.handle) { _, value in
                         let normalized = Validation.normalizedHandleInput(value)
@@ -175,7 +175,7 @@ private struct SetupSteps: View {
     private func question(_ title: String, _ message: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text(message).font(.body).foregroundStyle(.secondary)
+            Text(message).font(.body).foregroundStyle(Theme.secondaryText)
         }
     }
 
@@ -184,7 +184,7 @@ private struct SetupSteps: View {
         case .idle:
             EmptyView()
         case .checking:
-            Label("Checking…", systemImage: "hourglass").font(.footnote).foregroundStyle(.secondary)
+            Label("Checking…", systemImage: "hourglass").font(.footnote).foregroundStyle(Theme.secondaryText)
         case .available:
             Label("@\(model.handle) is available", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.liked)
                 .accessibilityIdentifier("handle-available")
@@ -201,7 +201,7 @@ private struct SetupSteps: View {
         case .failed(let message):
             InlineRetryView(message: message) { Task { await model.loadSuggestions() } }
         case .loaded(let rows) where rows.isEmpty:
-            Text("No suggestions yet. You can find people any time from Search.").foregroundStyle(.secondary)
+            Text("No suggestions yet. You can find people any time from Search.").foregroundStyle(Theme.secondaryText)
         case .loaded(let rows):
             VStack(spacing: 0) {
                 ForEach(rows) { row in
@@ -232,7 +232,7 @@ struct VisibilityExplainer: View {
             Image(systemName: symbol).foregroundStyle(Theme.accent).frame(width: 28).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.headline)
-                Text(detail).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(detail).font(.subheadline).foregroundStyle(Theme.secondaryText).fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)

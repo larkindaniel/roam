@@ -15,6 +15,14 @@ enum TravelBreakdown: String, CaseIterable, Identifiable, Hashable {
         case .countries: return "Countries"
         }
     }
+
+    var singular: String {
+        switch self {
+        case .categories: return "category"
+        case .cities: return "city"
+        case .countries: return "country"
+        }
+    }
 }
 
 enum TravelSort: String, CaseIterable, Identifiable, Hashable {
@@ -100,7 +108,7 @@ struct TravelProfileSection: View {
             Text(isSelf ? "Your globe fills in as you log places you've been. Bookmarks and your home city don't count."
                         : "\(ownerName) hasn't logged any visits yet.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if isSelf {
@@ -126,11 +134,11 @@ struct TravelProfileSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                     Text("\(value.count)").font(.system(.largeTitle, design: .rounded).weight(.bold)).foregroundStyle(Theme.accent)
                     Text(value.count == 1 ? "place first visited this year" : "places first visited this year")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }
                 if value.unknownDateCount > 0 {
                     Text("\(value.unknownDateCount) \(value.unknownDateCount == 1 ? "place" : "places") with an unknown visit date \(value.unknownDateCount == 1 ? "isn't" : "aren't") counted.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -173,18 +181,19 @@ struct TravelProfileSection: View {
             if breakdown == .cities && travel.placesWithoutCity > 0 {
                 Label("\(travel.placesWithoutCity) \(travel.placesWithoutCity == 1 ? "place has" : "places have") no city (City unavailable). \(travel.placesWithoutCity == 1 ? "It counts" : "They count") toward countries and the globe.",
                       systemImage: "mappin.slash")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("travel-no-city")
             }
             Text("Counts are visited places, all-time. Tap a row to see them.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Theme.secondaryText)
         }
         .roamCard()
     }
 
     private func rowCount(_ count: Int) -> some View {
-        Text("\(count) \(breakdown.title.lowercased())").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+        Text("\(count) \(count == 1 ? breakdown.singular : breakdown.title.lowercased())")
+            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondaryText)
     }
 
     private var sortMenu: some View {
@@ -201,19 +210,19 @@ struct TravelProfileSection: View {
 
     /// Name, area and count side by side; stacked at accessibility sizes so nothing squeezes.
     private func rowLabel(_ row: TravelRow) -> some View {
-        let count = Text("\(row.count) \(row.count == 1 ? "place" : "places")").font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+        let count = Text("\(row.count) \(row.count == 1 ? "place" : "places")").font(.subheadline).monospacedDigit().foregroundStyle(Theme.secondaryText)
         return HStack(spacing: Theme.Spacing.m) {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.title).font(.body.weight(.medium)).foregroundStyle(.primary)
-                    if let subtitle = row.subtitle { Text(subtitle).font(.footnote).foregroundStyle(.secondary) }
+                    if let subtitle = row.subtitle { Text(subtitle).font(.footnote).foregroundStyle(Theme.secondaryText) }
                     count
                 }
                 Spacer(minLength: 0)
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.title).font(.body.weight(.medium)).foregroundStyle(.primary)
-                    if let subtitle = row.subtitle { Text(subtitle).font(.footnote).foregroundStyle(.secondary) }
+                    if let subtitle = row.subtitle { Text(subtitle).font(.footnote).foregroundStyle(Theme.secondaryText) }
                 }
                 Spacer()
                 count
@@ -273,7 +282,7 @@ struct NewThisYearView: View {
             Section {
                 if pins.isEmpty {
                     Text(verbatim: "No places were first visited in \(year) yet.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.secondaryText)
                         .accessibilityIdentifier("new-this-year-empty")
                 }
                 ForEach(pins) { pin in
@@ -282,10 +291,10 @@ struct NewThisYearView: View {
                             Text(pin.name).font(.headline).foregroundStyle(Color.primary)
                             HStack(spacing: 6) {
                                 CategoryBadge(category: pin.category, compact: true).fixedSize()
-                                if !pin.areaLine.isEmpty { Text("· \(pin.areaLine)").font(.caption).foregroundStyle(Color.secondary) }
+                                if !pin.areaLine.isEmpty { Text("· \(pin.areaLine)").font(.caption).foregroundStyle(Theme.secondaryText) }
                             }
                             if let date = pin.firstVisitDate {
-                                Text("First visited \(date.displayString)").font(.caption).foregroundStyle(Color.secondary)
+                                Text("First visited \(date.displayString)").font(.caption).foregroundStyle(Theme.secondaryText)
                             }
                         }
                         .padding(.vertical, 2)

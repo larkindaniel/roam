@@ -164,12 +164,12 @@ struct ProfileView: View {
             AvatarView(member: value.member, size: 88)
             Text(value.member.displayName).font(.roamTitle(.title))
                 .multilineTextAlignment(.center)
-            Text("@\(value.member.handle)").font(.subheadline).foregroundStyle(.secondary)
+            Text("@\(value.member.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
             if !value.bio.isEmpty {
                 Text(value.bio).font(.body).multilineTextAlignment(.center).padding(.horizontal)
             }
             if let home = value.homeCityName {
-                Label("Home: \(home)", systemImage: "house").font(.footnote).foregroundStyle(.secondary)
+                Label("Home: \(home)", systemImage: "house").font(.footnote).foregroundStyle(Theme.secondaryText)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.xl) { stats(value) }
@@ -199,7 +199,7 @@ struct ProfileView: View {
     private func stat(_ count: Int, _ label: String) -> some View {
         VStack(spacing: 2) {
             Text("\(count)").font(.headline).monospacedDigit()
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(label).font(.caption).foregroundStyle(Theme.secondaryText)
         }
         .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
         .accessibilityElement(children: .combine)
@@ -214,7 +214,7 @@ struct ProfileView: View {
                 VStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
             }
             if relationship.isMuted {
-                Label("Muted: their posts are hidden from your feed.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(.secondary)
+                Label("Muted: their posts are hidden from your feed.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("profile-muted")
             }
         }
@@ -309,7 +309,7 @@ struct ProfileView: View {
                             .foregroundStyle(.primary)
                         Text(travelError ?? "All-time places visited")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.secondaryText)
                     }
                     Spacer()
                     Image(systemName: "arrow.up.left.and.arrow.down.right").foregroundStyle(Theme.accent)
@@ -322,7 +322,7 @@ struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
-        .accessibilityLabel("Travel globe: \(value.countryCount) countries, \(value.cityCount) cities. Opens the full globe.")
+        .accessibilityLabel("Travel globe: \(value.countryCount) \(value.countryCount == 1 ? "country" : "countries"), \(value.cityCount) \(value.cityCount == 1 ? "city" : "cities"). Opens the full globe.")
         .accessibilityIdentifier("mini-globe")
     }
 
@@ -337,7 +337,7 @@ struct ProfileView: View {
                 } else if activity.items.isEmpty {
                     Text(value.relationship.isSelf ? "Your rankings and revisits appear here after you log them."
                                                    : "\(value.member.displayName) hasn't posted any rankings yet.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                         .accessibilityIdentifier("profile-activity-empty")
                 } else {
                     ForEach(activity.items) { item in

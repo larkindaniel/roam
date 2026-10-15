@@ -30,7 +30,7 @@ struct DestinationPickerSheet: View {
                         .disabled(locating)
                         .accessibilityIdentifier("use-current-location")
                         if let locationMessage {
-                            Text(locationMessage).font(.footnote).foregroundStyle(.secondary)
+                            Text(locationMessage).font(.footnote).foregroundStyle(Theme.secondaryText)
                                 .accessibilityIdentifier("location-message")
                         }
                     }
@@ -38,13 +38,13 @@ struct DestinationPickerSheet: View {
                 Section {
                     switch results {
                     case .idle:
-                        Text("Type a city or town, like “Portland” or “Kyoto”.").foregroundStyle(.secondary)
+                        Text("Type a city or town, like “Portland” or “Kyoto”.").foregroundStyle(Theme.secondaryText)
                     case .loading:
-                        HStack { ProgressView(); Text("Searching…").foregroundStyle(.secondary) }
+                        HStack { ProgressView(); Text("Searching…").foregroundStyle(Theme.secondaryText) }
                     case .failed(let message):
                         InlineRetryView(message: message) { Task { await search(query) } }
                     case .loaded(let destinations) where destinations.isEmpty:
-                        Text("No places match “\(query)”.").foregroundStyle(.secondary)
+                        Text("No places match “\(query)”.").foregroundStyle(Theme.secondaryText)
                             .accessibilityIdentifier("destination-no-results")
                     case .loaded(let destinations):
                         ForEach(destinations) { destination in
@@ -55,7 +55,7 @@ struct DestinationPickerSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(destination.name).font(.headline).foregroundStyle(.primary)
                                     if !destination.subtitle.isEmpty {
-                                        Text(destination.subtitle).font(.subheadline).foregroundStyle(.secondary)
+                                        Text(destination.subtitle).font(.subheadline).foregroundStyle(Theme.secondaryText)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -23,7 +23,7 @@ struct SettingsView: View {
                             AvatarView(member: profile.summary, size: 44)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(profile.displayName).font(.headline).foregroundStyle(Color.primary)
-                                Text("@\(profile.handle)").font(.subheadline).foregroundStyle(Color.secondary)
+                                Text("@\(profile.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
                             }
                         }
                         Spacer()
@@ -109,10 +109,11 @@ struct SettingsView: View {
                 Button("Email me a password reset code") { Task { await sendReset() } }
                     .accessibilityIdentifier("settings-password-reset")
                 if let resetMessage {
-                    Text(resetMessage).font(.footnote).foregroundStyle(.secondary)
+                    Text(resetMessage).font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
             }
-            Button("Sign out", role: .destructive) { confirmSignOut = true }
+            // Theme red rather than system red, which is 3.6:1 on white.
+            Button { confirmSignOut = true } label: { Text("Sign out").foregroundStyle(Theme.disliked) }
                 .accessibilityIdentifier("settings-sign-out")
             NavigationLink(value: AppRoute.deleteAccount) {
                 Text("Delete account").foregroundStyle(Theme.disliked)

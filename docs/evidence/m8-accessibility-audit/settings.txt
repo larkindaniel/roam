@@ -1,0 +1,9 @@
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=Distances in lists use this unit. Haptics are the small taps when you like, follow, save or compare. | frame={{16, 710}, {370, 45.666666666666629}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=settings-password-reset | label=Email me a password reset code | frame={{16, 392.33333333333331}, {370, 52}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are unsupported | unattributed (no element reference) | id=- | label=- | frame=- | User will not be able to change the font size of this element
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast nearly passed | advisory contrast | id= | label=Distances in lists use this unit. Haptics are the small taps when you like, follow, save or compare. | frame={{16, 710}, {370, 45.666666666666629}} | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode

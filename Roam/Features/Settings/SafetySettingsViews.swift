@@ -128,7 +128,7 @@ struct SafetyMembersView: View {
                             AvatarView(member: member, size: 40)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(member.displayName).font(.headline)
-                                Text("@\(member.handle)").font(.subheadline).foregroundStyle(.secondary)
+                                Text("@\(member.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
                             }
                             Spacer()
                             Button(kind == .blocked ? "Unblock" : "Unmute") { confirming = member }
@@ -173,7 +173,7 @@ struct ReportHistoryView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("\(Self.targetTitle(report.targetKind)) · \(report.reason.title)").font(.headline)
                                 Text("Sent \(report.createdAt.formatted(date: .abbreviated, time: .shortened))")
-                                    .font(.subheadline).foregroundStyle(.secondary)
+                                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
                                 Text(Self.statusText(report.status)).font(.subheadline)
                             }
                             .accessibilityElement(children: .combine)

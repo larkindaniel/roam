@@ -47,7 +47,7 @@ struct EmptyStateView: View {
                     .multilineTextAlignment(.center)
                 Text(message)
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -170,6 +170,7 @@ struct MapListToggle: View {
         } label: {
             Label(showsMap ? "View List" : "View Map", systemImage: showsMap ? "list.bullet" : "map")
                 .font(.subheadline.weight(.semibold))
+                .fixedSize()
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .foregroundStyle(.white)

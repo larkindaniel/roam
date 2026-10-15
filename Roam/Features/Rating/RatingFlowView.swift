@@ -77,7 +77,7 @@ struct RatingFlowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
-                Text(request.experience.areaLine).font(.subheadline).foregroundStyle(.secondary)
+                Text(request.experience.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
                 if let category = model.category {
                     Label(category.title, systemImage: category.symbolName).font(.headline)
                         .accessibilityIdentifier("rating-category")
@@ -89,7 +89,7 @@ struct RatingFlowView: View {
                         .accessibilityIdentifier("rating-sentiment")
                 }
                 if let error = model.persistenceError ?? model.message {
-                    Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-message")
+                    Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-message")
                 }
                 switch model.step {
                 case .sentiment: sentiment(model)
@@ -99,7 +99,7 @@ struct RatingFlowView: View {
                 case .comparison: comparison(model)
                 case .saving:
                     ProgressView("Saving…").accessibilityIdentifier("rating-saving")
-                    Text("Your result appears after saving is confirmed.").foregroundStyle(.secondary)
+                    Text("Your result appears after saving is confirmed.").foregroundStyle(Theme.secondaryText)
                 case .retry:
                     Button("Retry save") { Task { await model.retrySave() } }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
@@ -148,7 +148,7 @@ struct RatingFlowView: View {
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("rating-category-picker")
-                Text("Confirm the category before your first ranking.").font(.footnote).foregroundStyle(.secondary)
+                Text("Confirm the category before your first ranking.").font(.footnote).foregroundStyle(Theme.secondaryText)
             }
             Text("How did you feel about it?").font(.title2.weight(.semibold))
             ForEach(Sentiment.allCases) { sentiment in
@@ -172,7 +172,7 @@ struct RatingFlowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Public note", systemImage: "text.alignleft")
                     Text(model.visit.publicNote.isEmpty ? "Optional" : model.visit.publicNote)
-                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(3)
                 }.frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
             }
             .accessibilityIdentifier("rating-edit-note")
@@ -188,9 +188,9 @@ struct RatingFlowView: View {
                 }.accessibilityIdentifier("rating-edit-photos")
                 if !photos.canCommit { Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked).accessibilityIdentifier("rating-photo-error") }
             }
-            if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(.secondary) }
+            if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.")
-                .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("rating-publication-disclosure")
+                .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-publication-disclosure")
             Button("Okay") { Task { await model.okay() } }
                 .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false).accessibilityIdentifier("rating-okay")
             if request.mode != .addVisit {
@@ -213,13 +213,13 @@ struct RatingFlowView: View {
                 }
             }
             Text("Only your \(model.category?.title ?? "category") experiences marked \(model.sentiment?.title.lowercased() ?? "the same way") are compared.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Theme.secondaryText)
             Button("Too tough") { Task { await model.choose(.tooTough) } }
                 .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("rating-too-tough")
             Button("Skip") { Task { await model.choose(.skip) } }
                 .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-skip")
             Text("Skip places this approximately; you can rank again.")
-                .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("rating-skip-explanation")
+                .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-skip-explanation")
             Button("Undo") { model.undo() }.disabled(!model.canUndo)
                 .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-undo")
         }
@@ -230,7 +230,7 @@ struct RatingFlowView: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Text(name).font(.headline)
-                Text(city).font(.subheadline).foregroundStyle(.secondary)
+                Text(city).font(.subheadline).foregroundStyle(Theme.secondaryText)
             }.frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
                 .roamCard()
         }.buttonStyle(.plain).accessibilityIdentifier(identifier)
@@ -243,14 +243,15 @@ struct RatingFlowView: View {
                 case .rating(let result):
                     Text("Rating saved").font(.title2.weight(.semibold))
                     Text(result.score.formatted).font(.system(.largeTitle, design: .rounded).bold())
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel("Your score \(result.score.formatted)").accessibilityIdentifier("rating-result-score")
                     Text("Position \(result.rank) of \(result.categoryCount) in \(result.category.title)")
                         .accessibilityIdentifier("rating-result-position")
                     if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "experience" : "experiences").") }
-                    Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(Theme.secondaryText)
                 case .visit:
                     Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
-                    Text("Your existing ranking stays the same.").foregroundStyle(.secondary)
+                    Text("Your existing ranking stays the same.").foregroundStyle(Theme.secondaryText)
                 }
                 Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.").font(.footnote)
                 Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
@@ -270,7 +271,7 @@ private struct RatingNoteEditor: View {
             Form {
                 TextEditor(text: $note).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
                 Text("\(Validation.characterCount(note)) / 5,000 characters").foregroundStyle(Validation.characterCount(note) > 5_000 ? Color.red : Color.gray)
-                if let error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-editor-error") }
+                if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
             }.navigationTitle("Public note").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -302,7 +303,7 @@ private struct RatingDateEditor: View {
             Form {
                 Toggle("Date unknown", isOn: $unknown).accessibilityIdentifier("rating-date-unknown")
                 if !unknown { DatePicker("Visit date", selection: $date, in: ...today.date(in: zone), displayedComponents: .date).environment(\.timeZone, zone) }
-                if let error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("rating-editor-error") }
+                if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
             }.navigationTitle("Visit date").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
                 ToolbarItem(placement: .confirmationAction) {

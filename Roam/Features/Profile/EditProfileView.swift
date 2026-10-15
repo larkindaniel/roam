@@ -222,10 +222,10 @@ struct EditProfileView: View {
             if model.restoredDraft {
                 Section {
                     Text("Your unsaved changes were restored.")
-                    Button("Discard changes", role: .destructive) {
+                    Button {
                         model.discard()
                         dismiss()
-                    }
+                    } label: { Text("Discard changes").foregroundStyle(Theme.disliked) }
                     .accessibilityIdentifier("edit-profile-discard")
                 }
                 .accessibilityIdentifier("edit-profile-restored")
@@ -249,7 +249,7 @@ struct EditProfileView: View {
                         .disabled(model.avatarBusy)
                         .accessibilityIdentifier("edit-profile-photo")
                         if model.draft.avatarPath != nil {
-                            Button("Remove photo", role: .destructive) { model.removeAvatar() }
+                            Button { model.removeAvatar() } label: { Text("Remove photo").foregroundStyle(Theme.disliked) }
                                 .disabled(model.avatarBusy)
                                 .accessibilityIdentifier("edit-profile-remove-photo")
                         }
@@ -269,7 +269,7 @@ struct EditProfileView: View {
             } header: { Text("Name") }
             Section {
                 HStack(spacing: 2) {
-                    Text("@").foregroundStyle(.secondary)
+                    Text("@").foregroundStyle(Theme.secondaryText)
                     TextField("handle", text: Binding(get: { model.draft.handle },
                                                       set: { model.draft.handle = $0.lowercased().filter { !$0.isWhitespace } }))
                         .textInputAutocapitalization(.never)
@@ -294,7 +294,7 @@ struct EditProfileView: View {
                 }
                 .accessibilityIdentifier("edit-profile-home")
                 if model.draft.homeCity != nil {
-                    Button("Remove home city", role: .destructive) { model.draft.homeCity = nil }
+                    Button { model.draft.homeCity = nil } label: { Text("Remove home city").foregroundStyle(Theme.disliked) }
                         .accessibilityIdentifier("edit-profile-remove-home")
                 }
             } footer: {
@@ -315,7 +315,7 @@ struct EditProfileView: View {
         case .unchanged:
             if let issue = model.handleIssue { self.issue(issue) }
         case .checking:
-            Label("Checking…", systemImage: "hourglass").font(.footnote).foregroundStyle(.secondary)
+            Label("Checking…", systemImage: "hourglass").font(.footnote).foregroundStyle(Theme.secondaryText)
         case .available:
             Label("@\(model.draft.handle) is available", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Theme.liked)
         case .unavailable(let message):

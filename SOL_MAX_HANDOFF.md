@@ -1,3 +1,5 @@
+> **Superseded (October 14, 2026).** This plan was for the earlier multi-agent Codex run. Its worker lanes and ownership rules no longer apply: one lead finished M5–M8. For the current state, commands and evidence see `README.md`, `docs/build-status.md` and `docs/m8-verification.md`. The rest of this file is kept unchanged as history.
+
 # Roam completion plan for Sol Max
 
 Continue the existing native iOS app from Claude's M3 checkpoint, finish M3 through M8, and leave a reproducible, tested local application. Use parallel agents within each milestone, with one lead integrating and verifying their work. The product requirements are already decided; the remaining work is implementation and verification.

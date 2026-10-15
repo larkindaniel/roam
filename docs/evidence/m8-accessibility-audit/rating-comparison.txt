@@ -1,0 +1,2 @@
+Contrast failed | disabled control | id=rating-undo | label=Undo | frame={{16, 735.33333333333337}, {41.333333333333336, 20.333333333333258}} | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=rating-close | label=Close | frame={{19.999999999999996, 82}, {67, 36}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode

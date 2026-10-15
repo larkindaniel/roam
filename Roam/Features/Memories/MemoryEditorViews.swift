@@ -178,7 +178,7 @@ struct PrivateNoteEditor: View {
                     Text("\(Validation.characterCount(model.text)) / 10,000 characters")
                         .foregroundStyle(Validation.characterCount(model.text) > 10_000 ? Theme.disliked : .secondary)
                     if model.hasSavedNote && model.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("To remove your note, use Delete private note.").font(.footnote).foregroundStyle(.secondary)
+                        Text("To remove your note, use Delete private note.").font(.footnote).foregroundStyle(Theme.secondaryText)
                     }
                 } else if model.isLoading { ProgressView("Loading…") }
             }
@@ -190,7 +190,10 @@ struct PrivateNoteEditor: View {
             }
             if model.isSaving { Section { ProgressView("Saving…").accessibilityIdentifier("private-note-saving") } }
             if model.loaded && model.hasSavedNote && model.pendingID == nil {
-                Section { Button("Delete private note", role: .destructive) { showsDelete = true }.disabled(model.isSaving).accessibilityIdentifier("private-note-delete") }
+                Section {
+                    Button(role: .destructive) { showsDelete = true } label: { Text("Delete private note").foregroundStyle(Theme.disliked) }
+                        .disabled(model.isSaving).accessibilityIdentifier("private-note-delete")
+                }
             }
         }.onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
     }

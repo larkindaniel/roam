@@ -22,7 +22,7 @@ struct BeenIntroCard: View {
             Text("Your Been list").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
             Text("Every place you log is ranked within its category — Food & Drink, Outdoors, Day Trips, Culture, Nightlife, Activities and Stays — so your favourites rise to the top. Your first rating gets a score right away.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.secondaryText)
             Button("Let's go", action: onContinue)
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("been-intro-continue")

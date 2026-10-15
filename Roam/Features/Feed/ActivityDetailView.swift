@@ -102,7 +102,7 @@ struct ActivityDetailView: View {
                                 Task { await model.setLike(!item.likedByViewer); publish() }
                             }
                             Label(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments", systemImage: "bubble.left")
-                                .font(.subheadline).foregroundStyle(.secondary)
+                                .font(.subheadline).foregroundStyle(Theme.secondaryText)
                                 .accessibilityIdentifier("activity-comment-count")
                         }
                     }
@@ -135,7 +135,7 @@ struct ActivityDetailView: View {
                 InlineRetryView(message: error) { Task { await model.load() } }
             }
             if model.commentsLoaded && model.comments.isEmpty {
-                Text("No comments yet. Be the first to say something kind.").font(.subheadline).foregroundStyle(.secondary)
+                Text("No comments yet. Be the first to say something kind.").font(.subheadline).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("comments-empty")
             }
             ForEach(model.comments) { comment in
@@ -208,7 +208,7 @@ struct CommentRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(comment.author.displayName).font(.subheadline.weight(.semibold))
-                    Text(comment.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
+                    Text(comment.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(Theme.secondaryText)
                 }
                 Text(comment.body).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }

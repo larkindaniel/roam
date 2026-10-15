@@ -84,16 +84,7 @@ struct RouteDestinationView: View {
             FollowListView(userID: id, initialSegment: segment)
         case .sharedWants(let id):
             SharedWantsView(otherID: id)
-        default:
-            UnavailableRouteView()
         }
-    }
-}
-
-/// Shown only if a route's screen does not exist in this build; never linked from UI.
-struct UnavailableRouteView: View {
-    var body: some View {
-        EmptyStateView(systemImage: "questionmark.circle", title: "Not available", message: "This screen isn't available.")
     }
 }
 

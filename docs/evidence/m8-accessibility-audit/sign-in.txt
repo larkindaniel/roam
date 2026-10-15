@@ -1,0 +1,1 @@
+Contrast failed | disabled control | id=auth-primary | label=Sign in | frame={{24, 397}, {354, 50}} | Contrast failed for SwiftUI.AccessibilityNode

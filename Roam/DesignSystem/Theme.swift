@@ -6,13 +6,19 @@ import UIKit
 enum Theme {
     static let accent = Color.accentColor
 
-    static let liked = dynamic(light: UIColor(red: 0.13, green: 0.50, blue: 0.29, alpha: 1), dark: UIColor(red: 0.42, green: 0.82, blue: 0.56, alpha: 1))
-    static let fine = dynamic(light: UIColor(red: 0.62, green: 0.40, blue: 0.00, alpha: 1), dark: UIColor(red: 0.96, green: 0.76, blue: 0.33, alpha: 1))
-    static let disliked = dynamic(light: UIColor(red: 0.74, green: 0.19, blue: 0.16, alpha: 1), dark: UIColor(red: 0.98, green: 0.52, blue: 0.47, alpha: 1))
+    // Light-mode sentiment text reaches at least 5.4:1 on its own fill and on white (M8 audit).
+    static let liked = dynamic(light: UIColor(red: 0.08, green: 0.42, blue: 0.23, alpha: 1), dark: UIColor(red: 0.42, green: 0.82, blue: 0.56, alpha: 1))
+    static let fine = dynamic(light: UIColor(red: 0.52, green: 0.33, blue: 0.00, alpha: 1), dark: UIColor(red: 0.96, green: 0.76, blue: 0.33, alpha: 1))
+    static let disliked = dynamic(light: UIColor(red: 0.66, green: 0.15, blue: 0.13, alpha: 1), dark: UIColor(red: 0.98, green: 0.52, blue: 0.47, alpha: 1))
 
     static let likedFill = dynamic(light: UIColor(red: 0.85, green: 0.94, blue: 0.88, alpha: 1), dark: UIColor(red: 0.13, green: 0.27, blue: 0.18, alpha: 1))
     static let fineFill = dynamic(light: UIColor(red: 0.99, green: 0.93, blue: 0.78, alpha: 1), dark: UIColor(red: 0.30, green: 0.24, blue: 0.10, alpha: 1))
     static let dislikedFill = dynamic(light: UIColor(red: 0.98, green: 0.87, blue: 0.85, alpha: 1), dark: UIColor(red: 0.33, green: 0.14, blue: 0.13, alpha: 1))
+
+    /// Secondary text. The system secondary label gray is about 3.5:1 on white, below the 4.5:1
+    /// that small text needs (M8 audit); this reaches about 6.3:1 on white and 5.7:1 on grouped canvas.
+    static let secondaryText = dynamic(light: UIColor(red: 0.37, green: 0.37, blue: 0.39, alpha: 1),
+                                       dark: UIColor(red: 0.70, green: 0.70, blue: 0.73, alpha: 1))
 
     static let canvas = Color(uiColor: .systemBackground)
     static let groupedCanvas = Color(uiColor: .systemGroupedBackground)

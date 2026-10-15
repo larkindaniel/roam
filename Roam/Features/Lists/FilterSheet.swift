@@ -36,7 +36,7 @@ struct FilterSheet: View {
                     if cities.count > 6 {
                         TextField("Search cities", text: $citySearch)
                     }
-                    if cities.isEmpty { Text("No cities yet").foregroundStyle(.secondary) }
+                    if cities.isEmpty { Text("No cities yet").foregroundStyle(Theme.secondaryText) }
                     ForEach(cities.filter { citySearch.isEmpty || $0.title.localizedCaseInsensitiveContains(citySearch) }) { option in
                         checkRow(option, isOn: draft.cityKeys.contains(option.id)) {
                             if draft.cityKeys.contains(option.id) { draft.cityKeys.remove(option.id) } else { draft.cityKeys.insert(option.id) }
@@ -44,7 +44,7 @@ struct FilterSheet: View {
                     }
                 }
                 Section("Country") {
-                    if countries.isEmpty { Text("No countries yet").foregroundStyle(.secondary) }
+                    if countries.isEmpty { Text("No countries yet").foregroundStyle(Theme.secondaryText) }
                     ForEach(countries) { option in
                         checkRow(option, isOn: draft.countryCodes.contains(option.id)) {
                             if draft.countryCodes.contains(option.id) { draft.countryCodes.remove(option.id) } else { draft.countryCodes.insert(option.id) }
@@ -90,10 +90,10 @@ struct FilterSheet: View {
                 Image(systemName: isOn ? "checkmark.square.fill" : "square").foregroundStyle(Theme.accent)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(option.title).foregroundStyle(.primary)
-                    if let subtitle = option.subtitle, !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+                    if let subtitle = option.subtitle, !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(Theme.secondaryText) }
                 }
                 Spacer()
-                Text("\(option.count)").foregroundStyle(.secondary).monospacedDigit()
+                Text("\(option.count)").foregroundStyle(Theme.secondaryText).monospacedDigit()
             }
             .frame(minHeight: Theme.minimumHitTarget)
         }
