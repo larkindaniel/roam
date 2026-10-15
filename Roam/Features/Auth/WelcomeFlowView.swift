@@ -55,6 +55,7 @@ private struct WelcomeNavigation: View {
 struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
+    @Environment(AppServices.self) private var services
     /// The wordmark scales with Dynamic Type like the large title it replaces.
     @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 46
 
@@ -72,10 +73,6 @@ struct WelcomeView: View {
                     Text("Rank the places that made your trips.")
                         .font(.roamTitle(.title2))
                         .multilineTextAlignment(.center)
-                    Text("Log trails, cafés, museums, stays and day trips. Compare them two at a time and Roam gives each a score out of 10.")
-                        .font(.body)
-                        .foregroundStyle(Theme.secondaryText)
-                        .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal)
 
@@ -90,9 +87,13 @@ struct WelcomeView: View {
                     .clipShape(Capsule())
                     .accessibilityIdentifier("sign-in-with-apple")
 
-                    Button("Continue with email") { model.path.append(.signUp) }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .accessibilityIdentifier("continue-with-email")
+                    // Email sign-up is hidden for the beta (no hosted email sender yet). The flow stays
+                    // in the app; Debug UI tests still reach it to keep it covered.
+                    if showsEmailSignUp {
+                        Button("Continue with email") { model.path.append(.signUp) }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .accessibilityIdentifier("continue-with-email")
+                    }
 
                     Button("I already have an account") { model.path.append(.signIn) }
                         .font(.headline)
@@ -111,18 +112,20 @@ struct WelcomeView: View {
                         .padding(.horizontal, Theme.Spacing.xl)
                         .accessibilityIdentifier("deletion-notice")
                 }
-
-                Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Theme.Spacing.xl)
             }
             .padding(.vertical, Theme.Spacing.xl)
         }
         .background(Theme.groupedCanvas)
         .toolbar(.hidden, for: .navigationBar)
         .screenIdentifier("welcome")
+    }
+
+    private var showsEmailSignUp: Bool {
+        #if ROAM_FIXTURES
+        return services.options.uiTesting
+        #else
+        return false
+        #endif
     }
 }
 
