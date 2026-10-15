@@ -143,6 +143,7 @@ struct ExperienceRow: View {
                 PillLabel(title: saved ? "Saved" : "Save", systemImage: saved ? "bookmark.fill" : "bookmark")
             }
             .buttonStyle(PillButtonStyle(isSelected: saved))
+            .roamHaptic(.impact(weight: .light), trigger: saved)
             .accessibilityLabel(saved ? "Saved to Want to Go. Remove \(name)" : "Save \(name) to Want to Go")
             .accessibilityIdentifier("save-\(name)")
         }
@@ -211,6 +212,7 @@ struct FollowButton: View {
         }
         .buttonStyle(PillButtonStyle(isSelected: state == .follow || state == .followBack))
         .disabled(state == .pending)
+        .roamHaptic(.impact(weight: .light), trigger: state == .following)
         .accessibilityLabel(state == .following ? "Following \(name). Unfollow" : "Follow \(name)")
         .accessibilityIdentifier("follow-button")
     }

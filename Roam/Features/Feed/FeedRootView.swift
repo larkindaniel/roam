@@ -188,6 +188,7 @@ struct LikeButton: View {
                 .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
         }
         .disabled(pending)
+        .roamHaptic(.impact(weight: .light), trigger: liked)
         .accessibilityLabel(liked ? "Liked, \(count) \(count == 1 ? "like" : "likes"). Unlike" : "Like, \(count) \(count == 1 ? "like" : "likes")")
         .accessibilityIdentifier("like-button")
     }

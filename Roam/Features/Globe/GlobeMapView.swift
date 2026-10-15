@@ -36,6 +36,41 @@ final class ExperiencePinAnnotation: NSObject, MKAnnotation {
     var subtitle: String? { pin.category?.title }
 }
 
+/// A visited place drawn on the 3D globe as an overlay dot (see `GlobeMapView.Coordinator.sync`).
+final class PinDotOverlay: NSObject, MKOverlay {
+    let pin: MapPin
+    let coordinate: CLLocationCoordinate2D
+    let boundingMapRect: MKMapRect
+
+    init(pin: MapPin) {
+        self.pin = pin
+        coordinate = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
+        // Room for the dot at whole-earth zoom, where a few screen points span hundreds of kilometres.
+        let center = MKMapPoint(coordinate)
+        let half = MKMapPointsPerMeterAtLatitude(pin.latitude) * 1_500_000
+        boundingMapRect = MKMapRect(x: center.x - half, y: center.y - half, width: half * 2, height: half * 2).intersection(.world)
+    }
+}
+
+/// A white-ringed accent dot of constant on-screen size, legible on day and night imagery. Globe
+/// overlay tiles are drawn at twice the screen's zoom scale (measured on the iOS 26.2 simulator), so
+/// 14 map-render points come out about 7 screen points.
+final class PinDotRenderer: MKOverlayRenderer {
+    static let screenRadius: CGFloat = 14
+
+    override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
+        guard let dot = overlay as? PinDotOverlay else { return }
+        let center = point(for: MKMapPoint(dot.coordinate))
+        let bounds = rect(for: dot.boundingMapRect)
+        let radius = min(Self.screenRadius / zoomScale, bounds.width / 2, bounds.height / 2)
+        let outer = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+        context.setFillColor(UIColor.white.cgColor)
+        context.fillEllipse(in: outer)
+        context.setFillColor((UIColor(named: "AccentColor") ?? .systemTeal).cgColor)
+        context.fillEllipse(in: outer.insetBy(dx: radius * 0.28, dy: radius * 0.28))
+    }
+}
+
 /// UIKit-backed map used for the profile globe and Explore. SwiftUI `Map` cannot cluster
 /// annotations, so an MKMapView wrapper provides clustering, cluster zoom, pin selection and
 /// country polygon shading while the app structure stays SwiftUI.
@@ -150,9 +185,6 @@ struct GlobeMapView: UIViewRepresentable {
             didApplyInitialCamera = true
             switch parent.style {
             case .globe:
-                // Known limitation (iOS 26.2 simulator, M1): imagery-globe annotation views only rendered
-                // with this whole-earth starting camera; re-centred cameras hid them. Members can rotate,
-                // switch to the flat map, or use the list alternative. Revisit in M8.
                 map.camera = MKMapCamera(lookingAtCenter: GlobeMapView.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0)
             case .standard:
                 if let region = parent.focusRegion { map.setRegion(region, animated: false) }
@@ -170,22 +202,35 @@ struct GlobeMapView: UIViewRepresentable {
         private var cameraReady = false
         fileprivate var currentPins: [MapPin] = []
         private var currentShaded: Set<String> = []
+        private var countryOverlays: [MKOverlay] = []
+        private var pinOverlays: [MKOverlay] = []
 
         init(parent: GlobeMapView) {
             self.parent = parent
         }
 
         func sync(map: MKMapView, with view: GlobeMapView) {
-            if cameraReady, view.pins != currentPins {
+            if view.style == .globe {
+                // On the imagery globe MapKit places annotation views (and converts points) with a flat
+                // projection, so markers land in the wrong place or vanish (iOS 26.2 simulator, M1/M7
+                // probes). Overlays are projected onto the globe correctly, so globe pins are dots.
+                // Selecting a pin happens on the flat map or in the list.
+                if view.pins != currentPins {
+                    map.removeOverlays(pinOverlays)
+                    pinOverlays = view.pins.map(PinDotOverlay.init(pin:))
+                    map.addOverlays(pinOverlays, level: .aboveLabels)
+                    currentPins = view.pins
+                }
+            } else if cameraReady, view.pins != currentPins {
                 let existing = map.annotations.compactMap { $0 as? ExperiencePinAnnotation }
                 map.removeAnnotations(existing)
                 map.addAnnotations(view.pins.map(ExperiencePinAnnotation.init(pin:)))
                 currentPins = view.pins
             }
             if view.shadedCountryCodes != currentShaded {
-                map.removeOverlays(map.overlays)
-                let polygons = CountryGeometry.shared.polygons(for: view.shadedCountryCodes)
-                map.addOverlays(polygons, level: .aboveRoads)
+                map.removeOverlays(countryOverlays)
+                countryOverlays = CountryGeometry.shared.polygons(for: view.shadedCountryCodes)
+                map.addOverlays(countryOverlays, level: .aboveRoads)
                 currentShaded = view.shadedCountryCodes
             }
             for annotation in map.selectedAnnotations {
@@ -233,6 +278,9 @@ struct GlobeMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let dot = overlay as? PinDotOverlay {
+                return PinDotRenderer(overlay: dot)
+            }
             if let polygon = overlay as? MKPolygon {
                 let renderer = MKPolygonRenderer(polygon: polygon)
                 let teal = UIColor(named: "AccentColor") ?? .systemTeal

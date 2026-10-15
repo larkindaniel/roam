@@ -102,6 +102,13 @@ struct WelcomeView: View {
                 if let error = model.error ?? session.callbackError {
                     ErrorText(error)
                 }
+                if let notice = session.deletionNotice {
+                    Label(notice, systemImage: "checkmark.circle")
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, Theme.Spacing.xl)
+                        .accessibilityIdentifier("deletion-notice")
+                }
 
                 Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
                     .font(.footnote)

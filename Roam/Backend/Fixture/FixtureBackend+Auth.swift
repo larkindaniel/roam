@@ -46,6 +46,7 @@ extension FixtureBackend: AuthService {
         pendingCodes["signup:\(normalized)"] = nil
         members[id]?.emailConfirmed = true
         currentUserID = id
+        authenticatedAt[id] = Date()
         let session = session(for: id)
         sessionBroadcaster.send(session)
         return session
@@ -63,6 +64,7 @@ extension FixtureBackend: AuthService {
             throw RoamError.validation("Email or password is incorrect.")
         }
         currentUserID = member.id
+        authenticatedAt[member.id] = Date()
         let session = session(for: member.id)
         sessionBroadcaster.send(session)
         return session
@@ -88,6 +90,7 @@ extension FixtureBackend: AuthService {
         pendingCodes["recovery:\(normalized)"] = nil
         currentUserID = id
         recoveryUserID = id
+        authenticatedAt[id] = Date()
         return session(for: id)
     }
 
@@ -108,6 +111,7 @@ extension FixtureBackend: AuthService {
         await pause()
         let id = try requireUser()
         guard members[id]?.password == password else { throw RoamError.validation("That password is incorrect.") }
+        authenticatedAt[id] = Date()
     }
 
     func signOut() async {

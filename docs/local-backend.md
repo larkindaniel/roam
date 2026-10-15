@@ -92,6 +92,40 @@ in its secret store). That is release setup, not part of the local build run.
 Operators can inspect the queue with `docker exec supabase_db_roam psql -U postgres -d postgres -c "select
 reason, attempts, last_error, done_at from app_private.storage_cleanup order by created_at desc limit 20"`.
 
+## Reports and account deletion (operators, M7)
+
+Reports are stored in `public.reports`. Members can read only their own receipts (`my_reports`), never
+other members' reports. Locally, an operator inspects them with the database owner role:
+
+```sh
+docker exec supabase_db_roam psql -U postgres -d postgres -c "select r.created_at, r.target_type, r.target_id,
+  r.reason, r.status, p.handle as reporter, left(r.body, 80) as body from public.reports r
+  left join public.profiles p on p.id = r.reporter_id order by r.created_at desc limit 20"
+```
+
+A status changes only when someone has actually reviewed the report. For example, `update public.reports
+set status = 'reviewing' where id = '<report id>'`; the member's report history then shows "Being
+reviewed". A deleted member's reports stay with a null reporter. A public release needs a real moderation
+owner plus support, privacy and terms destinations; that is release setup.
+
+Deleting an account (Settings › Delete account) needs a sign-in within 10 minutes. The request hides the
+profile, stops writes, revokes every session and queues a job. The server-side worker finishes it and,
+like the cleanup worker, refuses non-loopback URLs:
+
+```sh
+python3 -I scripts/account-deletion.py --once       # claim, delete data and auth user, clean Storage, complete
+python3 -I scripts/account-deletion.py --watch --interval 60
+python3 -I scripts/tests/test_account_deletion.py   # unit tests (fake transport)
+ROAM_LIVE_DELETION=1 python3 -I scripts/tests/test_account_deletion.py   # deletes a disposable local member end to end
+docker exec supabase_db_roam psql -U postgres -d postgres -c "select user_id, state, storage_cleanup, apple_revocation,
+  attempts, last_error, requested_at, completed_at from app_private.account_deletion_jobs order by requested_at desc limit 20"
+```
+
+Apple accounts record `apple_revocation = not_configured`: revoking Sign in with Apple needs Apple server
+credentials and the member's Apple refresh token, which this local build doesn't have. Never run the
+deletion worker against fixture accounts you still need; it deletes every account whose owner requested
+deletion.
+
 ## Stop
 
 ```sh

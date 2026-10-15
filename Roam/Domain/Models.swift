@@ -194,6 +194,8 @@ enum RoamError: Error, Equatable, LocalizedError {
     case mediaExpired
     case server(String)
     case timeout
+    /// Account deletion needs a sign-in within the last few minutes.
+    case reauthenticationRequired
 
     var errorDescription: String? {
         switch self {
@@ -211,6 +213,7 @@ enum RoamError: Error, Equatable, LocalizedError {
         case .mediaExpired: return "This upload expired. Your photo is kept; retry uploads it again."
         case .server(let message): return message
         case .timeout: return "This is taking longer than expected. Check your connection and try again."
+        case .reauthenticationRequired: return "For your security, confirm it's you again before deleting your account."
         }
     }
 

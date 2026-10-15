@@ -96,6 +96,7 @@ final class SessionStore {
             pendingRouteAfterReauth = nil
         }
         expiredUserID = nil
+        deletionNotice = nil
         self.session = session
         self.profile = nil
         sessionExpired = false
@@ -189,11 +190,19 @@ final class SessionStore {
         guard token == generation else { return }
     }
 
-    func accountDeleted() {
+    /// Shown on the welcome screen after a deletion request; it says what is still pending.
+    var deletionNotice: String?
+
+    /// The server already revoked every session; this drops the local copy and every cache.
+    func accountDeleted(notice: String) async {
         generation += 1
+        let token = generation
         let userID = session?.userID
         clearLocalState(for: userID)
+        deletionNotice = notice
         phase = .signedOut
+        await auth.signOut()
+        guard token == generation else { return }
     }
 
     private func handleSignedOutExternally() async {

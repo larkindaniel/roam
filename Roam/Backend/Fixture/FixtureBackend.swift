@@ -144,6 +144,8 @@ actor FixtureBackend {
     var currentUserID: UUID?
     var recoveryUserID: UUID?
     var deletionStatus: [UUID: AccountDeletionStatus] = [:]
+    /// When each member last signed in or reauthenticated (the token's `amr` time on the server).
+    var authenticatedAt: [UUID: Date] = [:]
 
     let latency: UInt64
     let scenario: String
@@ -178,12 +180,19 @@ actor FixtureBackend {
 
     // MARK: Helpers
 
+    /// Test seam: makes every recorded sign-in `seconds` older (the server checks the token's sign-in time).
+    func ageAuthentication(by seconds: TimeInterval) {
+        for (id, date) in authenticatedAt { authenticatedAt[id] = date.addingTimeInterval(-seconds) }
+    }
+
     func pause() async {
         if latency > 0 { try? await Task.sleep(nanoseconds: latency) }
     }
 
     func requireUser() throws -> UUID {
-        guard let id = currentUserID, let member = members[id], !member.deleted else { throw RoamError.notSignedIn }
+        guard let id = currentUserID, let member = members[id] else { throw RoamError.notSignedIn }
+        // Like the server's `account_disabled`: a deactivated account's token can no longer act.
+        guard !member.deleted else { throw RoamError.forbidden }
         return id
     }
 

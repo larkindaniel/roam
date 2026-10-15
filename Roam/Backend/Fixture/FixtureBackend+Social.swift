@@ -234,15 +234,19 @@ extension FixtureBackend: SettingsService {
 
     func update(_ settings: UserSettings) async throws -> UserSettings {
         let me = try await authenticatedActor()
+        if scenario == "settings-save-failure", injectedContentFaults.insert("settings").inserted { throw RoamError.timeout }
         settingsByUser[me] = settings
         return settings
     }
 }
 
 extension FixtureBackend: TravelService {
+    /// Mirrors `travel_profile`: Visits only, one pin per Experience, canonical city keys, and New
+    /// this year by each Experience's earliest known visit date.
     func travelProfile(userID: UUID, year: Int) async throws -> TravelProfile {
         let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
+        guard (1900...2999).contains(year) else { throw RoamError.validation("Choose a calendar year.") }
         let ownerVisits = visits.values.filter { $0.owner == userID }
         let byExperience = Dictionary(grouping: ownerVisits, by: \.experience)
         var pins: [GlobePin] = []
@@ -250,7 +254,7 @@ extension FixtureBackend: TravelService {
         var cityCounts: [String: CityCount] = [:]
         var countryCounts: [String: CountryCount] = [:]
         var withoutCity = 0
-        var thisYear: [UUID] = []
+        var thisYear: [GlobePin] = []
         var unknownOnly = 0
         for (experienceID, rows) in byExperience {
             guard let experience = experiences[experienceID], let place = places[experience.placeID] else { continue }
@@ -258,8 +262,11 @@ extension FixtureBackend: TravelService {
             let rating = ratings.values.first { $0.owner == userID && $0.experience == experienceID }
             let category = rating?.category ?? experience.category
             let cityKey = GeographyKey.cityKey(countryCode: c.countryCode, region: c.region, locality: c.locality)
-            pins.append(GlobePin(experienceID: experienceID, name: c.name, category: category, latitude: c.latitude, longitude: c.longitude,
-                                 countryCode: c.countryCode, cityKey: cityKey))
+            let firstKnown = rows.compactMap(\.date).min()
+            let pin = GlobePin(experienceID: experienceID, name: c.name, category: category, latitude: c.latitude, longitude: c.longitude,
+                               countryCode: c.countryCode, cityKey: cityKey, countryName: c.countryName,
+                               cityName: cityKey == nil ? nil : c.locality, firstVisitDate: firstKnown, visitCount: rows.count)
+            pins.append(pin)
             categoryCounts[category, default: 0] += 1
             if let code = c.countryCode {
                 countryCounts[code, default: CountryCount(countryCode: code, name: c.countryName ?? code, count: 0)].count += 1
@@ -270,47 +277,41 @@ extension FixtureBackend: TravelService {
             } else {
                 withoutCity += 1
             }
-            let knownDates = rows.compactMap(\.date)
-            if let earliest = knownDates.min() {
-                if earliest.year == year { thisYear.append(experienceID) }
+            if let firstKnown {
+                if firstKnown.year == year { thisYear.append(pin) }
             } else {
                 unknownOnly += 1
             }
         }
+        let newest = thisYear.sorted { ($0.firstVisitDate!, $1.name) > ($1.firstVisitDate!, $0.name) }
         return TravelProfile(
-            pins: pins.sorted { $0.name < $1.name },
+            pins: pins.sorted { ($0.name, $0.experienceID.uuidString) < ($1.name, $1.experienceID.uuidString) },
             countryCount: countryCounts.count, cityCount: cityCounts.count,
             categories: categoryCounts.map { CategoryCount(category: $0.key, count: $0.value) }.sorted { ($0.count, $1.id) > ($1.count, $0.id) },
-            cities: cityCounts.values.sorted { ($0.count, $1.name) > ($1.count, $0.name) },
+            cities: cityCounts.values.sorted { ($0.count, $1.name, $1.cityKey) > ($1.count, $0.name, $0.cityKey) },
             countries: countryCounts.values.sorted { ($0.count, $1.name) > ($1.count, $0.name) },
             placesWithoutCity: withoutCity,
-            newThisYear: NewThisYear(year: year, count: thisYear.count, unknownDateCount: unknownOnly, experienceIDs: thisYear.sorted { $0.uuidString < $1.uuidString }))
+            newThisYear: NewThisYear(year: year, count: newest.count, unknownDateCount: unknownOnly, experienceIDs: newest.map(\.experienceID)))
     }
 }
 
 extension FixtureBackend: AccountService {
+    /// Mirrors `request_account_deletion`: a sign-in within 10 minutes, then the account is hidden
+    /// and write-disabled at once. The fixture has no deletion worker, so the status stays pending.
     func requestDeletion() async throws -> AccountDeletionStatus {
         let me = try await authenticatedActor()
-        // Immediately hide and disable the account, then clean up relational data.
+        guard let signedInAt = authenticatedAt[me], Date().timeIntervalSince(signedInAt) <= 600 else {
+            throw RoamError.reauthenticationRequired
+        }
+        if scenario == "deletion-failure", injectedContentFaults.insert("deletion").inserted { throw RoamError.timeout }
         members[me]?.deleted = true
-        follows = follows.filter { $0.key.a != me && $0.key.b != me }
-        bookmarks = bookmarks.filter { $0.key.a != me }
-        for row in activities.values where row.author == me { deleteActivityCascade(row.id) }
-        visits = visits.filter { $0.value.owner != me }
-        ratings = ratings.filter { $0.value.owner != me }
-        media = media.filter { $0.value.owner != me }
-        comments = comments.filter { $0.value.author != me }
-        likes = likes.filter { $0.key.a != me }
-        notifications = notifications.filter { $0.value.recipient != me && $0.value.actor != me }
-        let status = AccountDeletionStatus(state: .completed, appleRevocation: "not_applicable", storageCleanup: "completed", updatedAt: Date())
+        let status = AccountDeletionStatus(state: .pending, appleRevocation: "not_applicable", storageCleanup: "pending", updatedAt: Date())
         deletionStatus[me] = status
-        currentUserID = nil
-        sessionBroadcaster.send(nil)
         return status
     }
 
     func deletionStatus() async throws -> AccountDeletionStatus? {
-        guard let id = currentUserID else { return nil }
+        guard let id = currentUserID else { throw RoamError.notSignedIn }
         return deletionStatus[id]
     }
 }

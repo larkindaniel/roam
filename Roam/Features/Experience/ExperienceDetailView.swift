@@ -79,6 +79,14 @@ struct ExperienceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let detail = model?.detail {
+                ToolbarItem(placement: .topBarTrailing) {
+                    // Native text share: public values, an Apple Maps link and only your own current score.
+                    ShareLink(item: ShareText.experience(detail.summary, ownRating: detail.myRating)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share \(detail.summary.name)")
+                    .accessibilityIdentifier("share-experience")
+                }
                 ToolbarItem(placement: .topBarTrailing) { overflowMenu(detail) }
             }
         }

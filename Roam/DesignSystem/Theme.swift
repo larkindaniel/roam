@@ -69,6 +69,8 @@ extension Font {
 
 /// Primary filled call to action.
 struct PrimaryButtonStyle: ButtonStyle {
+    /// Destructive final actions pass `Theme.disliked`.
+    var fill: Color = Theme.accent
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
@@ -77,7 +79,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, Theme.Spacing.l)
             .foregroundStyle(.white)
-            .background(Capsule().fill(isEnabled ? Theme.accent : Color.gray.opacity(0.45)))
+            .background(Capsule().fill(isEnabled ? fill : Color.gray.opacity(0.45)))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .contentShape(Capsule())
     }

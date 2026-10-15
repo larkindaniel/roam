@@ -290,8 +290,41 @@ struct GlobePin: Codable, Hashable, Identifiable, Sendable {
     var longitude: Double
     var countryCode: String?
     var cityKey: String?
+    var countryName: String? = nil
+    var cityName: String? = nil
+    /// Earliest known visit date; nil when every visit has an unknown date.
+    var firstVisitDate: LocalDate? = nil
+    var visitCount: Int = 1
 
     var id: UUID { experienceID }
+
+    /// "Portland, United States", "Greenland" or "" for list rows.
+    var areaLine: String {
+        [cityName, countryName ?? countryCode].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+}
+
+/// A Travel Profile selection: it narrows the owner's visited experiences, never the all-time totals.
+enum TravelFilter: Hashable, Sendable {
+    case category(ExperienceCategory?)
+    case city(key: String, name: String)
+    case country(code: String, name: String)
+
+    var title: String {
+        switch self {
+        case .category(let category): return category?.title ?? "Uncategorized"
+        case .city(_, let name): return name
+        case .country(_, let name): return name
+        }
+    }
+
+    func matches(_ pin: GlobePin) -> Bool {
+        switch self {
+        case .category(let category): return pin.category == category
+        case .city(let key, _): return pin.cityKey == key
+        case .country(let code, _): return pin.countryCode == code
+        }
+    }
 }
 
 struct CategoryCount: Codable, Hashable, Identifiable, Sendable {

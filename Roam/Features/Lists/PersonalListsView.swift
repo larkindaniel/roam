@@ -148,6 +148,7 @@ private struct ListsContent: View {
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.roamDistanceUnit) private var distanceUnit
     @State private var distanceNote: String?
     @State private var actionError: String?
 
@@ -357,7 +358,7 @@ private struct ListsContent: View {
     }
 
     private func distanceText(_ meters: CLLocationDistance) -> String {
-        Measurement(value: meters / 1000, unit: UnitLength.kilometers).formatted(.measurement(width: .abbreviated, usage: .road))
+        DistanceText.format(meters: meters, unit: distanceUnit)
     }
 
     private var mapView: some View {

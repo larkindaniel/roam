@@ -56,9 +56,30 @@ enum AppRoute: Hashable, Sendable {
     case sharedWants(UUID)
     case globe(UUID)
     case newThisYear(UUID, Int)
+    /// S19 with a Travel Profile row selected (category, city or country).
+    case travelFilter(UUID, TravelFilter)
     case gallery(experienceID: UUID, visitID: UUID?)
     case settings
+    case editProfile
+    case safetyList(SafetyListKind)
+    case reportHistory
+    case help(HelpTopic)
+    case deleteAccount
     case findPeople
+}
+
+enum SafetyListKind: String, Hashable, Sendable {
+    case blocked
+    case muted
+}
+
+enum HelpTopic: String, Hashable, Sendable, CaseIterable, Identifiable {
+    case ranking
+    case privacy
+    case terms
+    case support
+
+    var id: String { rawValue }
 }
 
 /// Modal presentations; dismissing returns to the invoker.

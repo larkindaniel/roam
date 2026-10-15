@@ -109,6 +109,8 @@ struct RatingFlowView: View {
             .padding(Theme.Spacing.l)
         }
         .accessibilityIdentifier("rating-scroll")
+        .roamHaptic(.selection, trigger: model.comparison?.id)
+        .roamHaptic(.success, trigger: model.step == .result)
         .onChange(of: model.completion) { _, completion in if let completion { onSaved(completion) } }
         .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
         .onChange(of: model.photos?.assets) { _, _ in

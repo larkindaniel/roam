@@ -52,8 +52,22 @@ struct RouteDestinationView: View {
         switch route {
         case .globe(let userID):
             ExpandedGlobeView(userID: userID)
+        case .travelFilter(let userID, let filter):
+            ExpandedGlobeView(userID: userID, initialFilter: filter)
+        case .newThisYear(let userID, let year):
+            NewThisYearView(userID: userID, year: year)
         case .settings:
             SettingsView()
+        case .editProfile:
+            EditProfileView()
+        case .safetyList(let kind):
+            SafetyMembersView(kind: kind)
+        case .reportHistory:
+            ReportHistoryView()
+        case .help(let topic):
+            HelpView(topic: topic)
+        case .deleteAccount:
+            DeleteAccountView()
         case .experience(let id):
             ExperienceDetailView(experienceID: id)
         case .member(let id):

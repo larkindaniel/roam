@@ -7,6 +7,7 @@ struct RootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
     @Environment(ActivityChangeStore.self) private var activityChanges
+    @Environment(SettingsStore.self) private var settingsStore
 
     var body: some View {
         Group {
@@ -20,11 +21,14 @@ struct RootView: View {
             content
             #endif
         }
+        .environment(\.roamDistanceUnit, settingsStore.applied.distanceUnit)
+        .environment(\.roamHapticsEnabled, settingsStore.applied.hapticsEnabled)
         .task { await session.bootstrap() }
         .onChange(of: session.userID) { _, _ in
             library.reset()
             destinations.reset()
             activityChanges.reset()
+            settingsStore.reset()
             router.reset(initialTab: services.options.initialTab ?? .feed)
         }
     }
@@ -50,6 +54,7 @@ struct RootView: View {
                     .id(session.userID)
                     .task(id: session.userID) {
                         let owner = session.userID
+                        if let owner { Task { await settingsStore.load(userID: owner) } }
                         await library.refresh()
                         guard owner == session.userID else { return }
                         if let userID = session.userID {

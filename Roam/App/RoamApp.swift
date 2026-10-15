@@ -9,6 +9,7 @@ struct RoamApp: App {
     @State private var router: AppRouter
     @State private var destinations: DestinationStore
     @State private var activityChanges = ActivityChangeStore()
+    @State private var settingsStore: SettingsStore
 
     init() {
         let services = AppServices.make()
@@ -17,6 +18,7 @@ struct RoamApp: App {
         _library = State(initialValue: LibraryStore(services: services))
         _router = State(initialValue: AppRouter(initialTab: services.options.initialTab ?? .feed))
         _destinations = State(initialValue: DestinationStore(storage: services.storage))
+        _settingsStore = State(initialValue: SettingsStore(service: services.settings, storage: services.storage))
         if services.options.uiTesting {
             UIView.setAnimationsEnabled(false)
         }
@@ -31,6 +33,7 @@ struct RoamApp: App {
                 .environment(router)
                 .environment(destinations)
                 .environment(activityChanges)
+                .environment(settingsStore)
                 .environment(services.images)
                 .tint(Theme.accent)
                 .onOpenURL { url in

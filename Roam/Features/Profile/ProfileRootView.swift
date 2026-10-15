@@ -31,6 +31,7 @@ struct ProfileView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
     @Environment(ActivityChangeStore.self) private var changes
+    @Environment(LibraryStore.self) private var library
     @State private var profile: LoadPhase<PublicProfile> = .idle
     @State private var travel: TravelProfile?
     @State private var travelError: String?
@@ -40,6 +41,15 @@ struct ProfileView: View {
     @State private var actionError: String?
     @State private var confirmingBlock = false
     @State private var reportTarget: ReportTarget?
+    @State private var tab: ProfileTab = .activity
+
+    enum ProfileTab: String, CaseIterable, Identifiable {
+        case activity
+        case travel
+
+        var id: String { rawValue }
+        var title: String { self == .activity ? "Activity" : "Travel Profile" }
+    }
 
     private var year: Int { Calendar.current.component(.year, from: Date()) }
 
@@ -54,12 +64,30 @@ struct ProfileView: View {
                                    primaryTitle: "Try again", primaryAction: { Task { await load() } })
                 case .loaded(let value):
                     header(value)
-                    if !value.relationship.isSelf { relationshipActions(value) }
+                    if value.relationship.isSelf {
+                        Button { router.push(.editProfile) } label: { PillLabel(title: "Edit profile", systemImage: "pencil") }
+                            .buttonStyle(PillButtonStyle())
+                            .accessibilityIdentifier("profile-edit")
+                    } else {
+                        relationshipActions(value)
+                    }
                     if let actionError {
                         InlineRetryView(message: actionError, retryTitle: "Dismiss") { self.actionError = nil }.padding(.horizontal)
                     }
                     globeCard(value)
-                    activitySection(value)
+                    Picker("Profile section", selection: $tab) {
+                        ForEach(ProfileTab.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .accessibilityIdentifier("profile-tabs")
+                    switch tab {
+                    case .activity:
+                        activitySection(value)
+                    case .travel:
+                        TravelProfileSection(userID: userID, travel: travel, error: travelError, isSelf: value.relationship.isSelf,
+                                             ownerName: value.member.displayName, retry: { Task { await loadTravel() } })
+                    }
                 }
             }
             .padding(.bottom, Theme.Spacing.xl)
@@ -68,8 +96,18 @@ struct ProfileView: View {
         .navigationTitle(profile.value?.member.displayName ?? "Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let value = profile.value, !value.relationship.isSelf {
-                ToolbarItem(placement: .topBarTrailing) { overflow(value) }
+            if let value = profile.value {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ShareLink(item: ShareText.profile(displayName: value.member.displayName, handle: value.member.handle,
+                                                      countryCount: value.countryCount, cityCount: value.cityCount)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("Share profile")
+                    .accessibilityIdentifier("share-profile")
+                }
+                if !value.relationship.isSelf {
+                    ToolbarItem(placement: .topBarTrailing) { overflow(value) }
+                }
             }
         }
         .confirmationDialog("Block @\(profile.value?.member.handle ?? "")?", isPresented: $confirmingBlock, titleVisibility: .visible) {
@@ -82,6 +120,14 @@ struct ProfileView: View {
         .sheet(item: $reportTarget) { target in ReportSheet(target: target, title: "Report member") }
         .task { if profile.value == nil { await load() } }
         .refreshable { await load() }
+        .onChange(of: session.profile) { _, updated in
+            // An own-profile edit or a new visit elsewhere refreshes the header and travel counts.
+            if updated?.id == userID { Task { await load() } }
+        }
+        .onChange(of: library.revision) { _, _ in
+            // Visits logged, edited or deleted elsewhere change travel counts.
+            if userID == session.userID { Task { await loadTravel() } }
+        }
         .screenIdentifier("profile-root")
     }
 
@@ -100,13 +146,17 @@ struct ProfileView: View {
             _ = session.handle(error)
         }
         async let posts: Void = activity?.refresh() ?? ()
+        await loadTravel()
+        await posts
+    }
+
+    private func loadTravel() async {
         do {
             travel = try await services.travel.travelProfile(userID: userID, year: year)
             travelError = nil
         } catch {
             travelError = error.roamMessage
         }
-        await posts
     }
 
     private func header(_ value: PublicProfile) -> some View {

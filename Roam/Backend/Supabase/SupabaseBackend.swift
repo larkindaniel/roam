@@ -158,6 +158,7 @@ final class SupabaseBackend: @unchecked Sendable {
         case "handle_taken": return .conflict("That handle is taken. Try another.")
         case "validation": return .validation(detail ?? "Check your entry and try again.")
         case "account_disabled": return .forbidden
+        case "reauthentication_required": return .reauthenticationRequired
         default: return .server(detail ?? "Something went wrong. Try again.")
         }
     }
