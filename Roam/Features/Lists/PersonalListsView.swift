@@ -176,24 +176,19 @@ private struct ListsContent: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("list-kind")
+            // Beli-style controls: a left-aligned rail of matching pills, then the sort as a quiet
+            // text control on its own line. Accessibility sizes stack the pills instead of scrolling.
             if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    facetControls
-                    sortControl
-                }
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) { facetControls }
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Spacing.s) {
-                        facetControls
-                        sortControl
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        HStack(spacing: Theme.Spacing.s) { facetControls }
-                        sortControl
-                    }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.s) { facetControls }
                 }
+                .scrollClipDisabled()
             }
+            sortControl
+                .frame(maxWidth: .infinity, alignment: .leading)
             SearchField(prompt: "Search names and places", text: $model.query, identifier: "list-search-field")
             if model.sort == .distance, let note = distanceNote ?? model.reference.map({ "Distance \($0.label)" }) {
                 Text(note).font(.caption).foregroundStyle(Theme.secondaryText).frame(maxWidth: .infinity, alignment: .leading)
@@ -204,6 +199,12 @@ private struct ListsContent: View {
     }
 
     @ViewBuilder private var facetControls: some View {
+        Button { showsFilters = true } label: {
+            PillLabel(title: model.filter.activeCount > 0 ? "Filters (\(model.filter.activeCount))" : "Filters",
+                      systemImage: "line.3.horizontal.decrease")
+        }
+        .buttonStyle(PillButtonStyle(isSelected: model.filter.activeCount > 0))
+        .accessibilityIdentifier("open-filters")
         if model.kind == .been {
             Menu {
                 Button("All categories") { model.beenScope = .all }
@@ -211,20 +212,15 @@ private struct ListsContent: View {
                     Button { model.beenScope = .category(category) } label: { Label(category.title, systemImage: category.symbolName) }
                 }
             } label: {
-                PillLabel(title: scopeTitle, systemImage: scopeSymbol)
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(Capsule().fill(Theme.accentFill))
+                HStack(spacing: 5) {
+                    PillLabel(title: scopeTitle, systemImage: scopeSymbol)
+                    Image(systemName: "chevron.down").font(.caption.weight(.bold)).accessibilityHidden(true)
+                }
             }
-            .frame(minHeight: Theme.minimumHitTarget)
+            .menuStyle(.button)
+            .buttonStyle(PillButtonStyle(isSelected: model.beenScope != .all))
             .accessibilityIdentifier("category-scope")
         }
-        Button { showsFilters = true } label: {
-            PillLabel(title: model.filter.activeCount > 0 ? "Filters (\(model.filter.activeCount))" : "Filters",
-                      systemImage: "line.3.horizontal.decrease.circle")
-        }
-        .buttonStyle(PillButtonStyle(isSelected: model.filter.activeCount > 0))
-        .accessibilityIdentifier("open-filters")
     }
 
     private var sortControl: some View {
@@ -239,10 +235,11 @@ private struct ListsContent: View {
         } label: {
             PillLabel(title: model.sort.title, systemImage: "arrow.up.arrow.down")
                 .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(Capsule().fill(Theme.accentFill))
+                .foregroundStyle(Theme.accent)
+                .frame(minHeight: Theme.minimumHitTarget)
+                .contentShape(Rectangle())
         }
-        .frame(minHeight: Theme.minimumHitTarget)
+        .accessibilityLabel("Sort: \(model.sort.title)")
         .accessibilityIdentifier("sort-menu")
     }
 
