@@ -163,7 +163,7 @@ struct RatingFlowView: View {
             Image(systemName: symbol).frame(width: 24).accessibilityHidden(true)
             Text(title)
             Spacer(minLength: Theme.Spacing.m)
-            control()
+            control().fixedSize()
         }
         .frame(minHeight: Theme.minimumHitTarget)
     }
@@ -195,7 +195,7 @@ struct RatingFlowView: View {
             }
             if request.mode == .firstLog {
                 Button("Skip ranking") { model.logWithoutRanking() }
-                    .frame(minHeight: Theme.minimumHitTarget)
+                    .buttonStyle(QuietButtonStyle())
                     .disabled(model.category == nil)
                     .accessibilityIdentifier("rating-skip-ranking")
             }
@@ -257,7 +257,7 @@ struct RatingFlowView: View {
                 .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false || (model.skipsRanking && model.category == nil)).accessibilityIdentifier("rating-okay")
             if model.skipsRanking {
                 Button("Rank this place") { model.backToSentiment() }
-                    .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-start-ranking")
+                    .buttonStyle(QuietButtonStyle()).accessibilityIdentifier("rating-start-ranking")
             }
             if request.mode != .addVisit && !model.skipsRanking {
                 Button("Change how you felt") { model.backToSentiment() }
