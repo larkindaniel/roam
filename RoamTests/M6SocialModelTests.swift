@@ -312,25 +312,41 @@ final class TripRulesTests: XCTestCase {
 }
 
 final class ForYouSectionsTests: XCTestCase {
-    private func place(_ name: String, friends: Int, score: Int? = nil, mine: Int? = nil) -> ExperienceSummary {
-        ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: 0, longitude: 0, followingScore: score.map(Score.init(tenths:)), followingCount: friends,
-                          viewer: ViewerExperienceState(isBookmarked: false, myScore: mine.map(Score.init(tenths:)), hasVisits: mine != nil))
+    private func place(_ name: String, score: Int, friends: [String] = [], mine: Int? = nil) -> DiscoverPlace {
+        let summary = ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: 0, longitude: 0, followingCount: friends.count,
+                                        viewer: ViewerExperienceState(isBookmarked: false, myScore: mine.map(Score.init(tenths:)), hasVisits: mine != nil))
+        return DiscoverPlace(experience: summary, communityScore: Score(tenths: score), communityCount: 1, friendNames: friends, coverPath: nil)
     }
 
     func testAPlaceNoFriendRatedIsNeverPresentedAsAFriendsFind() {
-        let sections = ForYouSections(experiences: [place("Friend pick", friends: 1, score: 80), place("Stranger", friends: 0)])
-        XCTAssertEqual(sections.friends.map(\.name), ["Friend pick"])
-        XCTAssertEqual(sections.community.map(\.name), ["Stranger"])
+        let sections = ForYouSections(places: [place("Friend pick", score: 80, friends: ["Theo"]), place("Stranger", score: 90)])
+        XCTAssertEqual(sections.friends.map(\.experience.name), ["Friend pick"])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Stranger"])
+    }
+
+    func testOnlyHighlyRatedPlacesAreListed() {
+        let sections = ForYouSections(places: [place("Good", score: 70), place("Middling", score: 69)])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Good"])
+    }
+
+    func testAFriendsPlaceShowsEvenBelowTheThreshold() {
+        XCTAssertEqual(ForYouSections(places: [place("Okay", score: 50, friends: ["Sam"])]).friends.count, 1)
     }
 
     func testPlacesYouAlreadyRatedAreNotRecommended() {
-        let sections = ForYouSections(experiences: [place("Been", friends: 2, score: 90, mine: 70)])
-        XCTAssertTrue(sections.friends.isEmpty && sections.community.isEmpty)
+        let sections = ForYouSections(places: [place("Been", score: 90, friends: ["Theo"], mine: 70)])
+        XCTAssertTrue(sections.friends.isEmpty && sections.highlyRated.isEmpty)
     }
 
-    func testFriendsPlacesSortByTheirScore() {
-        let sections = ForYouSections(experiences: [place("Lower", friends: 1, score: 60), place("Higher", friends: 1, score: 90)])
-        XCTAssertEqual(sections.friends.map(\.name), ["Higher", "Lower"])
+    func testBestPlacesComeFirst() {
+        let sections = ForYouSections(places: [place("Lower", score: 75), place("Higher", score: 95)])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Higher", "Lower"])
+    }
+
+    func testFriendEvidenceNamesRealPeople() {
+        XCTAssertEqual(place("A", score: 80, friends: ["Theo Park"]).friendEvidence, "Theo rated this")
+        XCTAssertEqual(place("A", score: 80, friends: ["Sam Rivera", "Theo Park"]).friendEvidence, "Sam and Theo rated this")
+        XCTAssertNil(place("A", score: 80).friendEvidence)
     }
 }
 
@@ -342,5 +358,52 @@ final class ResearchBriefTests: XCTestCase {
         XCTAssertTrue(text.contains("Atmosphere: Quiet"))
         XCTAssertFalse(text.contains("Budget"))
         XCTAssertFalse(text.contains("Places I've enjoyed"))
+    }
+}
+
+final class DiscoverResultsTests: XCTestCase {
+    private func candidate(_ name: String, isLocality: Bool) -> PlaceCandidate {
+        PlaceCandidate(provider: .fixture, providerPlaceID: name, name: name, address: nil, locality: nil, region: nil, countryCode: nil, countryName: nil,
+                       latitude: 0, longitude: 0, phone: nil, website: nil, providerCategory: nil, timeZoneIdentifier: nil, isLocality: isLocality, suggestedCategory: nil)
+    }
+
+    func testTownsAreNotListedAsPlaces() {
+        let results = DiscoverResults(candidates: [candidate("Cafe", isLocality: false), candidate("Porto", isLocality: true)])
+        XCTAssertEqual(results.places.map(\.candidate.name), ["Cafe"])
+    }
+
+    func testAKnownPlaceKeepsItsFriendData() {
+        let cafe = candidate("Cafe", isLocality: false)
+        let known = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 2,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        XCTAssertEqual(DiscoverResults(candidates: [cafe], matches: [cafe.id: known]).places.first?.experience?.followingCount, 2)
+    }
+
+    func testNoMatchesIsEmpty() {
+        XCTAssertTrue(DiscoverResults().isEmpty)
+    }
+}
+
+final class DiscoverCityTests: XCTestCase {
+    private func place(_ city: String?, score: Int, friends: [String] = []) -> DiscoverPlace {
+        let summary = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Place", locality: city, latitude: 10, longitude: 20, followingCount: friends.count,
+                                        viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        return DiscoverPlace(experience: summary, communityScore: Score(tenths: score), communityCount: 1, friendNames: friends, coverPath: nil)
+    }
+
+    func testPlacesGroupIntoOneCity() {
+        let cities = DiscoverCity.cities(from: [place("Lisbon", score: 80), place("Lisbon", score: 90)])
+        XCTAssertEqual(cities.count, 1)
+        XCTAssertEqual(cities.first?.placeCount, 2)
+        XCTAssertEqual(cities.first?.bestScore, Score(tenths: 90))
+    }
+
+    func testCitiesYourFriendsVisitedComeFirst() {
+        let cities = DiscoverCity.cities(from: [place("Kyoto", score: 95), place("Lisbon", score: 70, friends: ["Theo Park"])])
+        XCTAssertEqual(cities.map(\.destination.name), ["Lisbon", "Kyoto"])
+    }
+
+    func testPlacesWithNoCityAreLeftOut() {
+        XCTAssertTrue(DiscoverCity.cities(from: [place(nil, score: 90)]).isEmpty)
     }
 }

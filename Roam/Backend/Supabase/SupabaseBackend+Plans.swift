@@ -58,6 +58,17 @@ extension SupabaseBackend: PlanService {
 
     func sharedWithMe() async throws -> [DirectShare] { try await rpc("shared_with_me") }
 
+    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace] {
+        try await rpc("discover_places", [
+            "p_min_lat": bounds.map { .double($0.minLatitude) } ?? .null, "p_max_lat": bounds.map { .double($0.maxLatitude) } ?? .null,
+            "p_min_lon": bounds.map { .double($0.minLongitude) } ?? .null, "p_max_lon": bounds.map { .double($0.maxLongitude) } ?? .null,
+        ] as RPCParams)
+    }
+
+    func friendMemories(experienceID: UUID) async throws -> [PublicMemory] {
+        try await rpc("friend_memories", ["p_experience_id": RPC.uuid(experienceID)])
+    }
+
     func taste() async throws -> TasteProfile { try await rpc("my_taste") }
 
     func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile {

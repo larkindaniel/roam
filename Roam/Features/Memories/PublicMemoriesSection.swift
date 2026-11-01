@@ -74,8 +74,10 @@ struct PublicMemoriesSection: View {
     let onOpenAuthor: (UUID) -> Void
     let onOpenPhotos: (UUID?) -> Void
     let onReport: (ReportTarget) -> Void
+    /// Friends' entries, already shown in their own section above.
+    var excludedIDs: Set<UUID> = []
 
-    private var others: [PublicMemory] { model.memories.filter { !$0.isOwn } }
+    private var others: [PublicMemory] { model.memories.filter { !$0.isOwn && !excludedIDs.contains($0.id) } }
 
     private var header: some View {
         Text("From travellers").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
@@ -130,6 +132,34 @@ struct PublicMemoriesSection: View {
     }
 }
 
+/// What friends said about this place, kept apart from other travellers.
+struct FriendMemoriesSection: View {
+    let memories: [PublicMemory]
+    let onOpenAuthor: (UUID) -> Void
+    let onOpenPhotos: (UUID?) -> Void
+    let onReport: (ReportTarget) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            SourceLabel(source: .friends)
+            if memories.isEmpty {
+                Text("None of your friends have been here yet.")
+                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
+                    .accessibilityIdentifier("friend-memories-empty")
+            }
+            ForEach(memories) { memory in
+                PublicMemoryCard(memory: memory, onOpenAuthor: { onOpenAuthor(memory.author.id) },
+                                 onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
+                if memory.id != memories.last?.id { Divider() }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .roamCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-friend-memories")
+    }
+}
+
 struct PublicMemoryCard: View {
     let memory: PublicMemory
     let onOpenAuthor: () -> Void
@@ -155,6 +185,13 @@ struct PublicMemoryCard: View {
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
                 .accessibilityHint("Opens the profile")
                 Spacer(minLength: 0)
+                if let score = memory.score {
+                    Text(score.formatted)
+                        .font(.system(.body, design: .rounded).bold())
+                        .monospacedDigit()
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .accessibilityLabel("Rated \(score.formatted) out of 10")
+                }
                 Menu {
                     Button { onReport() } label: { Label("Report memory", systemImage: "flag") }
                 } label: {

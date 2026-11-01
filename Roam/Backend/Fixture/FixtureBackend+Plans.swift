@@ -173,6 +173,37 @@ extension FixtureBackend: PlanService {
             }
     }
 
+    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace] {
+        let me = try await authenticatedActor()
+        return Set(ratings.values.map(\.experience)).compactMap { experience -> DiscoverPlace? in
+            guard let place = summary(experience, viewer: me),
+                  bounds?.contains(latitude: place.latitude, longitude: place.longitude) ?? true else { return nil }
+            let raters = ratings.values.filter { $0.experience == experience && isVisibleMember($0.owner, to: me) || $0.experience == experience && $0.owner == me }
+            let scores = raters.compactMap { ranking(owner: $0.owner, category: $0.category).placement(forExperience: experience)?.score.tenths }
+            guard !scores.isEmpty else { return nil }
+            let friends = raters.filter { $0.owner != me && areFriends(me, $0.owner) }.map { memberSummary($0.owner).displayName }.sorted()
+            let cover = visits.values.filter { $0.experience == experience && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
+                .sorted { $0.createdAt > $1.createdAt }.compactMap { visitModel($0).media.first?.path }.first
+            return DiscoverPlace(experience: place, communityScore: Score(tenths: scores.reduce(0, +) / scores.count), communityCount: scores.count,
+                                 friendNames: friends, coverPath: cover)
+        }.sorted { $0.communityScore > $1.communityScore }
+    }
+
+    func friendMemories(experienceID: UUID) async throws -> [PublicMemory] {
+        let me = try await authenticatedActor()
+        return visits.values
+            .filter { $0.experience == experienceID && $0.owner != me && areFriends(me, $0.owner) && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
+            .sorted { ($0.createdAt, $0.id.uuidString) > ($1.createdAt, $1.id.uuidString) }
+            .map { row in
+                let visit = visitModel(row)
+                let category = ratings.values.first { $0.owner == row.owner && $0.experience == experienceID }?.category
+                let score = category.flatMap { ranking(owner: row.owner, category: $0).placement(forExperience: experienceID)?.score }
+                return PublicMemory(id: visit.id, author: memberSummary(row.owner), experienceID: experienceID, visitDate: visit.visitDate,
+                                    publicNote: visit.publicNote, media: visit.media, createdAt: visit.createdAt, updatedAt: visit.updatedAt,
+                                    isOwn: false, score: score)
+            }
+    }
+
     func taste() async throws -> TasteProfile {
         let me = try await authenticatedActor()
         return tastes[me] ?? .empty

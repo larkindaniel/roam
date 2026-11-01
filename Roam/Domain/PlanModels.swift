@@ -135,6 +135,60 @@ struct PlaceListDetail: Codable, Hashable, Sendable {
     }
 }
 
+/// A rated place on Discover: everyone's score, the friends behind it and a cover picture.
+struct DiscoverPlace: Codable, Hashable, Identifiable, Sendable {
+    var experience: ExperienceSummary
+    var communityScore: Score
+    var communityCount: Int
+    var friendNames: [String]
+    var coverPath: String?
+
+    var id: UUID { experience.id }
+
+    /// "Theo rated this", "Theo and Sam rated this" or "Theo and 2 others rated this".
+    var friendEvidence: String? {
+        guard let first = friendNames.first?.split(separator: " ").first.map(String.init) else { return nil }
+        switch friendNames.count {
+        case 1: return "\(first) rated this"
+        case 2: return "\(first) and \(friendNames[1].split(separator: " ").first.map(String.init) ?? friendNames[1]) rated this"
+        default: return "\(first) and \(friendNames.count - 1) others rated this"
+        }
+    }
+}
+
+/// A city worth browsing: built only from places people actually rated there.
+struct DiscoverCity: Hashable, Identifiable, Sendable {
+    var destination: Destination
+    var placeCount: Int
+    var friendNames: [String]
+    var bestScore: Score
+    var coverPath: String?
+
+    var id: String { destination.id }
+
+    /// Cities your friends have been to come first, then the best rated.
+    static func cities(from places: [DiscoverPlace]) -> [DiscoverCity] {
+        let groups = Dictionary(grouping: places.filter { $0.experience.locality != nil }) {
+            "\($0.experience.locality ?? "")|\($0.experience.region ?? "")|\($0.experience.countryCode ?? "")"
+        }
+        return groups.values.compactMap { group -> DiscoverCity? in
+            guard let first = group.first?.experience, let name = first.locality,
+                  let best = group.max(by: { $0.communityScore < $1.communityScore }) else { return nil }
+            let count = Double(group.count)
+            let destination = Destination(name: name, region: first.region, countryCode: first.countryCode, countryName: first.countryName,
+                                          latitude: group.reduce(0) { $0 + $1.experience.latitude } / count,
+                                          longitude: group.reduce(0) { $0 + $1.experience.longitude } / count, radiusMeters: 15_000)
+            let cover = best.coverPath ?? group.compactMap(\.coverPath).first
+            return DiscoverCity(destination: destination, placeCount: group.count,
+                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore, coverPath: cover)
+        }.sorted { lhs, rhs in
+            if lhs.friendNames.isEmpty != rhs.friendNames.isEmpty { return !lhs.friendNames.isEmpty }
+            if lhs.bestScore != rhs.bestScore { return lhs.bestScore > rhs.bestScore }
+            return lhs.destination.name < rhs.destination.name
+        }
+    }
+}
+
 enum ShareTarget: Hashable, Sendable {
     case place(UUID)
     case list(UUID)

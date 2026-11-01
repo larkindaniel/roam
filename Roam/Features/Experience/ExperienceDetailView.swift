@@ -47,6 +47,7 @@ struct ExperienceDetailView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
+    @State private var friendMemories: [PublicMemory] = []
     @State private var model: ExperienceDetailModel?
     @State private var memoriesModel: PublicMemoriesModel?
     @State private var editingVisit: Visit?
@@ -160,11 +161,15 @@ struct ExperienceDetailView: View {
                 scores(detail)
                 memories(detail)
                 privateNote(detail)
+                FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
+                                      onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
+                                      onReport: { target in reportReason = nil; reportTarget = target })
                 about(detail)
                 if let memoriesModel {
                     PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
                                           onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
-                                          onReport: { target in reportReason = nil; reportTarget = target })
+                                          onReport: { target in reportReason = nil; reportTarget = target },
+                                          excludedIDs: Set(friendMemories.map(\.id)))
                 }
             }
             .padding(.horizontal, Theme.Spacing.l)
@@ -176,7 +181,10 @@ struct ExperienceDetailView: View {
     private func reload() async {
         async let detail: Void = model?.load() ?? ()
         async let memories: Void = memoriesModel?.load() ?? ()
+        async let friends = try? services.plans.friendMemories(experienceID: experienceID)
+        let loadedFriends = await friends
         _ = await (detail, memories)
+        if let loadedFriends { friendMemories = loadedFriends }
     }
 
     private func reportTitle(_ target: ReportTarget) -> String {

@@ -8,6 +8,7 @@
 
 Refuses to run against anything but a loopback API URL. Usage: scripts/fixtures/setup.py
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -105,6 +106,29 @@ def run_sql(path):
         sys.exit(f"Fixture SQL failed ({os.path.basename(path)}):\n{result.stderr.decode()}")
 
 
+def attach_photos(env):
+    """Uploads the generated sample art and attaches one picture to the newest visit of each place."""
+    folder = os.path.join(ROOT, "supabase", "fixtures", "photos")
+    statements = ["begin;", "delete from public.media where object_path like '%/sample-%';"]
+    for filename in sorted(os.listdir(folder)):
+        key = filename.rsplit(".", 1)[0]
+        with open(os.path.join(folder, filename), "rb") as handle:
+            data = handle.read()
+        request_ = urllib.request.Request(f"{env['ROAM_API_URL']}/storage/v1/object/visit-media/fixture/sample-{filename}", data=data, method="POST", headers={
+            "Authorization": "Bearer " + env["ROAM_SERVICE_ROLE_KEY"], "apikey": env["ROAM_SERVICE_ROLE_KEY"],
+            "Content-Type": "image/jpeg", "x-upsert": "true"})
+        urllib.request.urlopen(request_, timeout=30).read()
+        statements.append(f"""insert into public.media (owner_id, purpose, visit_id, bucket, object_path, position, state, byte_size, width, height, attached_at, inspected_at, content_sha256)
+select v.owner_id, 'visit', v.id, 'visit-media', 'fixture/sample-{filename}', 0, 'attached', {len(data)}, 1200, 800, now(), now(), '{hashlib.sha256(data).hexdigest()}'
+from public.visits v join public.experiences e on e.id = v.experience_id join public.places p on p.id = e.place_id
+where p.provider_place_id = 'fixture-{key}' and v.audience = 'public' order by v.created_at desc limit 1;""")
+    statements.append("commit;")
+    result = subprocess.run(["docker", "exec", "-i", "supabase_db_roam", "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-q"],
+                            input="\n".join(statements).encode(), capture_output=True)
+    if result.returncode != 0:
+        sys.exit("Fixture photos failed:\n" + result.stderr.decode())
+
+
 def main():
     env = load_env()
     tokens = {}
@@ -129,6 +153,7 @@ def main():
         if accepted:
             rpc(env, tokens[second], "friend_action", {"p_user_id": ids[first], "p_action": "accept"})
     run_sql(os.path.join(ROOT, "supabase", "fixtures", "fixture-data.sql"))
+    attach_photos(env)
     print(f"Fixture accounts ready (password in scripts/fixtures/setup.py), {len(FRIENDS)} friend links, places and memories loaded.")
 
 

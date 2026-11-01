@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(50);
+select plan(55);
 
 do $$
 declare u record;
@@ -76,7 +76,12 @@ select is(jsonb_array_length(public.public_memories((select second_experience fr
 select throws_ok(format($$select public.visit(%L)$$,(select (value->>'visitID')::uuid from v7 where label='private')),'P0002',null,'nor read it by ID');
 select is(jsonb_array_length(public.feed(null)->'items'),1,'the Friends tab shows only the friends entry');
 select is(jsonb_array_length(public.been_list('a1000000-0000-4000-8000-000000000001')),1,'a friend''s view of Been there hides only-me places');
+select is(jsonb_array_length(public.friend_memories((select experience from ids7))),1,'a friend''s note appears under friends');
+select is(public.friend_memories((select experience from ids7))->0->>'publicNote','for friends','with what they said');
+select is(jsonb_array_length(public.friend_memories((select second_experience from ids7))),0,'an only-me note never does');
 select pg_temp.as_user('c1000000-0000-4000-8000-000000000003');
+select is(jsonb_array_length(public.friend_memories((select experience from ids7))),0,'someone who is not a friend sees none');
+select ok(not exists(select 1 from jsonb_array_elements(public.discover_places()) d where d->'experience'->>'name' like 'Seven%'),'private entries never reach anyone''s Discover');
 select is(jsonb_array_length(public.public_memories((select experience from ids7),null)->'items'),0,'an unrelated member cannot see a friends entry');
 select throws_ok(format($$select public.visit(%L)$$,(select (value->>'visitID')::uuid from v7 where label='friends')),'P0002',null,'nor read it by ID');
 select is((select count(*)::int from public.visits where owner_id='a1000000-0000-4000-8000-000000000001'),0,'row security hides those visits too');

@@ -69,6 +69,8 @@ struct PublicMemory: Codable, Hashable, Identifiable, Sendable {
     var isOwn: Bool
     /// Latest feed post for this Visit; nil once rating activity was removed.
     var activityID: UUID? = nil
+    /// A friend's current score for this place, when they ranked it.
+    var score: Score? = nil
 }
 
 struct PrivateNote: Codable, Hashable, Sendable {
