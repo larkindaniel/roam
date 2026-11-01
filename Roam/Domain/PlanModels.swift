@@ -237,6 +237,26 @@ enum TripTitle {
     }
 }
 
+/// One person's places in one country on the Friends tab.
+struct CountryFeedCard: Codable, Hashable, Identifiable, Sendable {
+    var author: MemberSummary
+    var countryCode: String?
+    var countryName: String?
+    var placeCount: Int
+    var latestAt: Date
+    var isOwn: Bool
+    var entries: [TripFeedEntry]
+
+    var id: String { "\(author.id.uuidString)-\(countryCode ?? "none")" }
+    var title: String { CountryTitle.text(name: countryName, code: countryCode) }
+}
+
+enum CountryTitle {
+    static func text(name: String?, code: String?) -> String {
+        [name ?? "Other places", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
+    }
+}
+
 /// One person's trip on the Friends tab. A nil trip is Home: everything not attributed to a trip.
 struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
     var author: MemberSummary

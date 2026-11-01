@@ -20,7 +20,7 @@ struct BeenIntroCard: View {
             }
             .accessibilityHidden(true)
             Text("Welcome to My Places").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text("Keep your wishlist, the places you've been and your trips together here.")
+            Text("Keep the places you've been, plan to go and want to try together here, by country.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.secondaryText)
             Button("Let's go", action: onContinue)

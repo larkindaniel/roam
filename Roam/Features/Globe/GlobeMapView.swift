@@ -1,4 +1,5 @@
 import MapKit
+import simd
 import SwiftUI
 
 /// A map pin: a visited experience on the globe, or an experience/place in Explore and lists.
@@ -72,6 +73,74 @@ final class PinDotRenderer: MKOverlayRenderer {
     }
 }
 
+/// Converts between the screen and the Earth on the imagery globe, where MapKit's own conversion uses a flat
+/// projection (see `GlobeMapView.Coordinator.sync`). The sphere is centred in the map, above the camera's centre coordinate.
+/// MapKit publishes none of this, so its size and position are fitted to dots measured at two map heights on
+/// the iOS 26 iPhone 17 simulator. Close up the globe is nearly flat and MapKit's conversion is right.
+private struct GlobeProjection {
+    private static let earthRadius = 6_371_000.0
+    private static let flatDistance: CLLocationDistance = 1_500_000
+
+    private let map: MKMapView
+    private let isFlat: Bool
+    private let middle: CGPoint
+    private let focalLength: Double
+    private let distance: Double
+    private let heading: Double
+    private let facing: SIMD3<Double>
+    private let east: SIMD3<Double>
+    private let north: SIMD3<Double>
+
+    init(map: MKMapView) {
+        self.map = map
+        distance = map.camera.centerCoordinateDistance
+        isFlat = distance <= Self.flatDistance
+        heading = map.camera.heading * .pi / 180
+        let height = Double(map.bounds.height)
+        middle = CGPoint(x: map.bounds.midX, y: map.bounds.midY)
+        focalLength = 0.507 * height + 770
+        let focus = map.convert(map.camera.centerCoordinate, toPointTo: map)
+        let offset = max(Double(focus.y - middle.y), 0)
+        var angle = 0.0
+        while angle < .pi / 2, focalLength * Self.earthRadius * sin(angle) / (Self.earthRadius + distance - Self.earthRadius * cos(angle)) < offset { angle += 0.001 }
+        let latitude = map.camera.centerCoordinate.latitude * .pi / 180 + angle
+        let longitude = map.camera.centerCoordinate.longitude * .pi / 180
+        facing = Self.unit(latitude, longitude)
+        east = SIMD3(-sin(longitude), cos(longitude), 0)
+        north = SIMD3(-sin(latitude) * cos(longitude), -sin(latitude) * sin(longitude), cos(latitude))
+    }
+
+    private static func unit(_ latitude: Double, _ longitude: Double) -> SIMD3<Double> {
+        SIMD3(cos(latitude) * cos(longitude), cos(latitude) * sin(longitude), sin(latitude))
+    }
+
+    /// Nil on the far side of the Earth.
+    func point(latitude: Double, longitude: Double) -> CGPoint? {
+        if isFlat { return map.convert(CLLocationCoordinate2D(latitude: latitude, longitude: longitude), toPointTo: map) }
+        let radius = Self.earthRadius
+        let point = Self.unit(latitude * .pi / 180, longitude * .pi / 180)
+        guard simd_dot(point, facing) > radius / (radius + distance) else { return nil }
+        let scale = focalLength * radius / (radius + distance - radius * simd_dot(point, facing))
+        let right = simd_dot(point, east) * scale, up = simd_dot(point, north) * scale
+        return CGPoint(x: middle.x + right * cos(heading) - up * sin(heading), y: middle.y - right * sin(heading) - up * cos(heading))
+    }
+
+    /// Nil off the edge of the Earth.
+    func coordinate(at point: CGPoint) -> CLLocationCoordinate2D? {
+        if isFlat { return map.convert(point, toCoordinateFrom: map) }
+        let x = Double(point.x - middle.x), y = Double(middle.y - point.y)
+        let right = x * cos(heading) - y * sin(heading), up = x * sin(heading) + y * cos(heading)
+        let radius = Self.earthRadius
+        let ray = simd_normalize(east * (right / focalLength) + north * (up / focalLength) - facing)
+        let camera = facing * (radius + distance)
+        let along = simd_dot(camera, ray)
+        let discriminant = along * along - simd_dot(camera, camera) + radius * radius
+        guard discriminant >= 0 else { return nil }
+        let surface = simd_normalize(camera + ray * (-along - discriminant.squareRoot()))
+        return CLLocationCoordinate2D(latitude: asin(surface.z) * 180 / .pi, longitude: atan2(surface.y, surface.x) * 180 / .pi)
+    }
+}
+
 /// UIKit-backed map used for the profile globe and Explore. SwiftUI `Map` cannot cluster
 /// annotations, so an MKMapView wrapper provides clustering, cluster zoom, pin selection and
 /// country polygon shading while the app structure stays SwiftUI.
@@ -98,6 +167,7 @@ struct GlobeMapView: UIViewRepresentable {
     /// Colours by ISO country code for shaded countries, and by pin id for globe dots. Missing entries use the default look.
     var countryTints: [String: UIColor] = [:]
     var pinTints: [String: UIColor] = [:]
+    var onSelectCountry: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -121,6 +191,10 @@ struct GlobeMapView: UIViewRepresentable {
             map.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
         case .standard:
             map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+        }
+        if style == .globe {
+            let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleGlobeTap(_:)))
+            map.addGestureRecognizer(tap)
         }
         context.coordinator.lastFocusToken = focusToken
         context.coordinator.sync(map: map, with: self)
@@ -279,6 +353,39 @@ struct GlobeMapView: UIViewRepresentable {
             view?.accessibilityIdentifier = "map-pin-\(pinAnnotation.pin.name)"
             return view
         }
+
+        /// Opens the dot under a tap, or else the coloured country. Dots close together zoom in to separate them first.
+        @objc func handleGlobeTap(_ tap: UITapGestureRecognizer) {
+            guard let map = tap.view as? MKMapView else { return }
+            let location = tap.location(in: map)
+            let projection = GlobeProjection(map: map)
+            let hits = parent.pins.compactMap { pin -> (pin: MapPin, distance: CGFloat)? in
+                guard let point = projection.point(latitude: pin.latitude, longitude: pin.longitude) else { return nil }
+                let distance = hypot(point.x - location.x, point.y - location.y)
+                return distance <= Self.globeHitRadius ? (pin, distance) : nil
+            }.sorted { $0.distance < $1.distance }
+            guard let nearest = hits.first?.pin else {
+                if let coordinate = projection.coordinate(at: location),
+                   let code = CountryGeometry.shared.code(at: coordinate, among: Set(parent.countryTints.keys)) {
+                    parent.onSelectCountry?(code)
+                }
+                return
+            }
+            let cameraDistance = map.camera.centerCoordinateDistance
+            guard hits.count > 1, cameraDistance > Self.closestGlobeZoom else {
+                parent.onSelectPin?(nearest)
+                return
+            }
+            let locations = hits.map { CLLocation(latitude: $0.pin.latitude, longitude: $0.pin.longitude) }
+            let spread = locations.map { $0.distance(from: locations[0]) }.max() ?? 0
+            let center = CLLocationCoordinate2D(latitude: locations.map(\.coordinate.latitude).reduce(0, +) / Double(locations.count),
+                                                longitude: locations.map(\.coordinate.longitude).reduce(0, +) / Double(locations.count))
+            let camera = MKMapCamera(lookingAtCenter: center, fromDistance: min(cameraDistance / 3, max(spread * 3, Self.closestGlobeZoom)), pitch: 0, heading: 0)
+            map.setCamera(camera, animated: !UIAccessibility.isReduceMotionEnabled)
+        }
+
+        private static let globeHitRadius: CGFloat = 30
+        private static let closestGlobeZoom: CLLocationDistance = 30_000
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
             if let cluster = annotation as? MKClusterAnnotation {

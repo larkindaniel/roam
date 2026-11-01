@@ -221,7 +221,7 @@ struct FollowListView: View {
             EmptyStateView(systemImage: "person.2", title: "No requests", message: "When someone asks to be your friend, they appear here.")
         } else if isOwn {
             EmptyStateView(systemImage: "person.badge.plus", title: "No friends yet",
-                           message: "Add friends to see their trips and places here.",
+                           message: "Add friends to see their places here.",
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
         } else {
             EmptyStateView(systemImage: "person.2", title: "No friends yet", message: "They haven't added any friends yet.")

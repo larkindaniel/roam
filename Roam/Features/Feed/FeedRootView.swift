@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// The Friends tab: one card per person and trip, newest update first.
+/// The Friends tab: one card per person and country, newest update first.
 struct FeedRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
     @Environment(ActivityChangeStore.self) private var changes
-    @State private var cards: LoadPhase<[TripFeedCard]> = .idle
+    @State private var cards: LoadPhase<[CountryFeedCard]> = .idle
     @State private var unreadCount = 0
 
     var body: some View {
@@ -43,18 +43,18 @@ struct FeedRootView: View {
         case .idle, .loading:
             SkeletonList(rows: 4).accessibilityIdentifier("feed-loading")
         case .failed(let message):
-            EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't load your friends' trips", message: message,
+            EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't load your friends' places", message: message,
                            primaryTitle: "Try again", primaryAction: { Task { await load() } })
         case .loaded(let value) where value.isEmpty:
             EmptyStateView(systemImage: "person.2", title: "Nothing from friends yet",
-                           message: "Add friends to follow their trips here.",
+                           message: "Add friends to follow their places here.",
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("feed-empty")
         case .loaded(let value):
             LazyVStack(spacing: Theme.Spacing.l) {
                 ForEach(value) { card in
-                    TripFeedCardView(card: card) {
-                        router.push(.tripUpdates(ownerID: card.author.id, tripID: card.tripID, title: card.title, byline: card.author.displayName))
+                    CountryFeedCardView(card: card) {
+                        router.push(.countryUpdates(ownerID: card.author.id, countryCode: card.countryCode, title: card.title, byline: card.author.displayName))
                     }
                 }
             }
@@ -66,7 +66,7 @@ struct FeedRootView: View {
     private func load() async {
         if cards.value == nil { cards = .loading }
         do {
-            cards = .loaded(try await services.plans.tripFeed().filter { !$0.isOwn })
+            cards = .loaded(try await services.plans.countryFeed().filter { !$0.isOwn })
         } catch {
             if cards.value == nil { cards = .failed(session.handle(error)) }
         }
@@ -74,8 +74,8 @@ struct FeedRootView: View {
     }
 }
 
-struct TripFeedCardView: View {
-    let card: TripFeedCard
+struct CountryFeedCardView: View {
+    let card: CountryFeedCard
     let onOpen: () -> Void
 
     private var pictured: [TripFeedEntry] { card.entries.filter { !$0.media.isEmpty || $0.experience.photoURL != nil } }
@@ -102,14 +102,14 @@ struct TripFeedCardView: View {
                         }
                     }
                 }
-                Text(card.visitCount == 1 ? "1 place so far" : "\(card.visitCount) places so far").font(.footnote.weight(.semibold))
+                Text(card.placeCount == 1 ? "1 place" : "\(card.placeCount) places").font(.footnote.weight(.semibold))
             }
             .foregroundStyle(Roam.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .roamCard()
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-card-\(card.author.handle)-\(card.title)")
+        .accessibilityIdentifier("country-card-\(card.author.handle)-\(card.title)")
     }
 
     private var photoStrip: some View {
@@ -122,10 +122,10 @@ struct TripFeedCardView: View {
     }
 }
 
-/// Everything someone has done on one trip so far, newest first.
-struct TripUpdatesView: View {
+/// Everything someone has done in one country, newest first.
+struct CountryUpdatesView: View {
     let ownerID: UUID
-    let tripID: UUID?
+    let countryCode: String?
     let title: String
     var byline: String? = nil
 
@@ -138,7 +138,7 @@ struct TripUpdatesView: View {
             LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 if let byline {
                     Text("\(byline)\u{2019}s places").font(.subheadline).foregroundStyle(Roam.inkMuted)
-                        .accessibilityIdentifier("trip-updates-byline")
+                        .accessibilityIdentifier("country-updates-byline")
                 }
                 switch entries {
                 case .idle, .loading:
@@ -157,7 +157,7 @@ struct TripUpdatesView: View {
         .navigationTitle(title)
         .task { await load() }
         .refreshable { await load() }
-        .screenIdentifier("trip-updates")
+        .screenIdentifier("country-updates")
     }
 
     private func entry(_ entry: TripFeedEntry) -> some View {
@@ -181,12 +181,12 @@ struct TripUpdatesView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
+        .accessibilityIdentifier("country-entry-\(entry.experience.name)")
     }
 
     private func load() async {
         if entries.value == nil { entries = .loading }
-        do { entries = .loaded(try await services.plans.tripUpdates(ownerID: ownerID, tripID: tripID)) }
+        do { entries = .loaded(try await services.plans.countryUpdates(ownerID: ownerID, countryCode: countryCode)) }
         catch { if entries.value == nil { entries = .failed(error.roamMessage) } }
     }
 }

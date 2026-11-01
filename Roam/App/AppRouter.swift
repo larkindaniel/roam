@@ -46,7 +46,8 @@ enum AppRoute: Hashable, Sendable {
     case explore
     case ownProfile
     case trip(UUID)
-    case tripUpdates(ownerID: UUID, tripID: UUID?, title: String, byline: String?)
+    case countryUpdates(ownerID: UUID, countryCode: String?, title: String, byline: String?)
+    case myCountry(code: String, title: String)
     case lists
     case list(UUID)
     case taste

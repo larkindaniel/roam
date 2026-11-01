@@ -11,7 +11,6 @@ struct RatingFlowView: View {
     @State private var showsNote = false
     @State private var showsDate = false
     @State private var showsPhotos = false
-    @State private var trips: [TripSummary] = []
 
     var body: some View {
         NavigationStack {
@@ -222,18 +221,6 @@ struct RatingFlowView: View {
                 if let photos = model.photos {
                     Divider()
                     detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
-                }
-                if request.mode != .rerank {
-                    Divider()
-                    pickerRow("Trip", symbol: "suitcase") {
-                        Picker("Trip", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
-                            Text("Home").tag(UUID?.none)
-                            ForEach(trips) { Text($0.name).tag(UUID?.some($0.id)) }
-                        }
-                        .labelsHidden()
-                        .task { trips = (try? await services.plans.myTrips()) ?? [] }
-                        .accessibilityIdentifier("rating-trip")
-                    }
                 }
             }
             .roamCard(padding: Theme.Spacing.m)

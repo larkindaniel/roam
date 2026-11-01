@@ -72,7 +72,7 @@ struct WelcomeView: View {
                     Text("Find places you'll love, starting with people you trust.")
                         .font(.roamTitle(.title2))
                         .multilineTextAlignment(.center)
-                    Text("See where your friends have been, save what you want to try, and keep track of your trips.")
+                    Text("See where your friends have been, save what you want to try, and keep track of the countries you've been to.")
                         .font(.body)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)

@@ -40,6 +40,7 @@ final class ExperienceDetailModel {
 
 /// S06 experience detail.
 struct ExperienceDetailView: View {
+    @State private var isPlanned = false
     let experienceID: UUID
 
     @Environment(AppServices.self) private var services
@@ -214,6 +215,13 @@ struct ExperienceDetailView: View {
         .accessibilityLabel("Map showing \(detail.summary.name)")
     }
 
+    private func togglePlanned(_ id: UUID) async {
+        let next = !isPlanned
+        isPlanned = next
+        do { try await PlannedPlaces.set(id, planned: next, services: services) }
+        catch { isPlanned = !next }
+    }
+
     private func actionRow(_ detail: ExperienceDetail) -> some View {
         let id = detail.summary.id
         let rated = detail.myRating != nil
@@ -242,8 +250,12 @@ struct ExperienceDetailView: View {
                 }
             }
             HStack(spacing: Theme.Spacing.s) {
-                Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to trip", systemImage: "suitcase") }
-                    .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-trip")
+                if !visited {
+                    Button { Task { await togglePlanned(id) } } label: { PillLabel(title: isPlanned ? "Planned" : "Plan to go", systemImage: "airplane") }
+                        .buttonStyle(PillButtonStyle(isSelected: isPlanned))
+                        .task(id: id) { isPlanned = (try? await PlannedPlaces.tripsHolding(id, services: services))?.isEmpty == false }
+                        .accessibilityIdentifier("detail-plan")
+                }
                 Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
                     .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-list")
             }
@@ -520,5 +532,37 @@ private struct DetailDeletion: Codable, Identifiable {
         if visitID == nil { return "Your visits, notes and photos will stay; your ranking and rating activity will be removed." }
         if lastVisit { return "This deletes the visit, its public note and photos, and its activity. Because it is your last visit, your ranking and rating activity will also be removed." }
         return "This deletes this visit, its public note and photos, and its activity. Other visits stay. Removing the last visit of a ranking requires a separate confirmation."
+    }
+}
+
+/// Places you plan to go. Stored on your trips, including ones from before places were organized by country;
+/// new plans go on a single "Planned" trip that never appears in the app.
+enum PlannedPlaces {
+    private static let tripName = "Planned"
+
+    @MainActor static func tripsHolding(_ id: UUID, services: AppServices) async throws -> [UUID] {
+        var holding: [UUID] = []
+        for trip in try await services.plans.myTrips() {
+            let detail = try await services.plans.trip(id: trip.id)
+            if detail.places.contains(where: { $0.id == id && $0.isPlanned }) { holding.append(trip.id) }
+        }
+        return holding
+    }
+
+    @MainActor static func set(_ id: UUID, planned: Bool, services: AppServices) async throws {
+        if planned {
+            let trips = try await services.plans.myTrips()
+            let trip: TripSummary
+            if let existing = trips.first(where: { $0.name == tripName }) {
+                trip = existing
+            } else {
+                trip = try await services.plans.saveTrip(TripDraft(name: tripName))
+            }
+            try await services.plans.setTripPlace(tripID: trip.id, experienceID: id, stop: "", present: true)
+        } else {
+            for trip in try await tripsHolding(id, services: services) {
+                try await services.plans.setTripPlace(tripID: trip, experienceID: id, stop: "", present: false)
+            }
+        }
     }
 }

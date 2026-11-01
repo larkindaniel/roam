@@ -70,7 +70,7 @@ struct HelpView: View {
             return [
                 HelpSection(title: "What other people see", paragraphs: [
                     "Anyone signed in can see your name, handle, photo, bio and wishlist. Each visit, with its rating, note and photos, is seen only by the audience you chose: friends, only you, or everyone. Blocked people see none of it.",
-                    "Trips and lists stay private until you share them. If friends can see a visit on a trip, they also see the trip's card with that visit, but not your planned places.",
+                    "Lists stay private until you share them. Friends see the visits you let them see, grouped by country, but not your planned places.",
                 ]),
                 HelpSection(title: "What stays private", paragraphs: [
                     "Private notes, your email address and sign-in details, your settings, your reports, who you've blocked or muted, and unsaved drafts are only visible to you. Drafts and caches stay on this device until you save, discard or sign out.",
@@ -80,7 +80,7 @@ struct HelpView: View {
                     "Roam asks for your location only to sort or search near you. Everything works without it, including your globe.",
                 ]),
                 HelpSection(title: "Deleting your account", paragraphs: [
-                    "Deleting your account hides your profile at once and then permanently deletes your rankings, visits, notes, photos, trips, lists, friends, likes, comments and posts. Text you've already shared outside Roam can't be recalled.",
+                    "Deleting your account hides your profile at once and then permanently deletes your rankings, visits, notes, photos, lists, friends, likes, comments and posts. Text you've already shared outside Roam can't be recalled.",
                 ]),
             ]
         case .terms:

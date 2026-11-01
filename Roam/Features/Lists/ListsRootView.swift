@@ -13,25 +13,28 @@ extension PlaceMapItem {
     }
 }
 
-/// A trip with what's needed to show it: a picture and the date it sorts by.
-struct MyPlacesTrip: Identifiable, Hashable {
-    var summary: TripSummary
-    var coverURL: URL?
-    var latestVisit: LocalDate?
+/// Your places in one country.
+struct MyPlacesCountry: Identifiable, Hashable {
+    let code: String
+    let name: String
+    let items: [PlaceMapItem]
 
-    var id: UUID { summary.id }
-    var sortDate: LocalDate? { summary.endDate ?? summary.startDate ?? latestVisit }
+    var id: String { code }
+    var title: String { CountryTitle.text(name: name, code: code) }
+    var coverURL: URL? { items.compactMap(\.experience.photoURL).first }
 
-    /// Soonest first when looking ahead, most recent first when looking back. Undated trips go last.
-    static func chronological(_ trips: [MyPlacesTrip], newestFirst: Bool) -> [MyPlacesTrip] {
-        trips.sorted { lhs, rhs in
-            switch (lhs.sortDate, rhs.sortDate) {
-            case let (left?, right?) where left != right: return newestFirst ? left > right : left < right
-            case (_?, nil): return true
-            case (nil, _?): return false
-            default: return lhs.summary.name < rhs.summary.name
+    func count(_ state: PlaceState) -> Int { items.filter { $0.state == state }.count }
+
+    /// Countries you've been to most first, then planned, then wishlist.
+    static func countries(_ items: [PlaceMapItem]) -> [MyPlacesCountry] {
+        Dictionary(grouping: items.filter { $0.experience.countryCode != nil }) { $0.experience.countryCode?.uppercased() ?? "" }
+            .map { code, items in
+                MyPlacesCountry(code: code, name: items.compactMap(\.experience.countryName).first ?? code, items: items)
             }
-        }
+            .sorted {
+                let left = ($0.count(.visited), $0.count(.planned), $0.count(.wishlist)), right = ($1.count(.visited), $1.count(.planned), $1.count(.wishlist))
+                return left != right ? left > right : $0.name < $1.name
+            }
     }
 }
 
@@ -39,8 +42,7 @@ struct MyPlacesTrip: Identifiable, Hashable {
 @Observable
 final class MyPlacesModel {
     private(set) var pins: [PlaceMapItem] = []
-    private(set) var upcoming: [MyPlacesTrip] = []
-    private(set) var past: [MyPlacesTrip] = []
+    private(set) var countries: [MyPlacesCountry] = []
     private(set) var hasLoaded = false
     private(set) var error: String?
     private let services: AppServices
@@ -58,17 +60,12 @@ final class MyPlacesModel {
             async let summaries = services.plans.myTrips()
             let (beenEntries, wishlistEntries, trips) = try await (been, wishlist, summaries)
             var planned: [ExperienceSummary] = []
-            var loaded: [MyPlacesTrip] = []
             for trip in trips {
                 let detail = try? await services.plans.trip(id: trip.id)
-                let entries = (try? await services.plans.tripUpdates(ownerID: ownerID, tripID: trip.id)) ?? []
                 planned += detail?.places.filter(\.isPlanned).map(\.experience) ?? []
-                loaded.append(MyPlacesTrip(summary: trip, coverURL: detail?.places.compactMap(\.experience.photoURL).first,
-                                           latestVisit: entries.compactMap(\.visitDate.date).max()))
             }
             pins = PlaceMapItem.items(been: beenEntries.map(\.experience), planned: planned, wishlist: wishlistEntries.map(\.experience))
-            upcoming = MyPlacesTrip.chronological(loaded.filter { $0.summary.status != .past }, newestFirst: false)
-            past = MyPlacesTrip.chronological(loaded.filter { $0.summary.status == .past }, newestFirst: true)
+            countries = MyPlacesCountry.countries(pins)
             hasLoaded = true
             error = nil
         } catch {
@@ -92,14 +89,13 @@ enum MyPlacesSheetDetent: CaseIterable {
     }
 }
 
-/// My Places tab: the globe, with upcoming and past trips on a card that comes up over it.
+/// My Places tab: the globe, with your countries on a card that comes up over it.
 struct MyPlacesRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
-    @State private var creating: TripDraft?
     @State private var showsCoachmark = false
     @State private var detent = MyPlacesSheetDetent.half
     @GestureState private var dragOffset: CGFloat = 0
@@ -129,9 +125,6 @@ struct MyPlacesRootView: View {
                     .accessibilityIdentifier("open-wishlist")
             }
             LogPlaceToolbarFallback()
-        }
-        .sheet(item: $creating) { draft in
-            TripEditorSheet(draft: draft) { Task { await model?.load() } }.presentationBackground(Roam.paper)
         }
         .task {
             if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
@@ -167,9 +160,13 @@ struct MyPlacesRootView: View {
         if let model, model.hasLoaded {
             GlobeMapView(pins: model.pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
-                         globeCenter: PlaceMapItem.startingRegion(model.pins).center,
+                         onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
+                         globeCenter: PlaceMapItem.startingRegion(model.pins.contains { $0.state == .visited } ? model.pins.filter { $0.state == .visited } : model.pins).center,
                          countryTints: PlaceMapItem.countryTints(model.pins),
-                         pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }))
+                         pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
+                         onSelectCountry: { code in
+                             if let country = model.countries.first(where: { $0.code == code }) { router.push(.myCountry(code: code, title: country.title)) }
+                         })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {
             Color.black
@@ -186,8 +183,7 @@ struct MyPlacesRootView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     if let model, model.hasLoaded {
-                        upcomingSection(model.upcoming)
-                        pastSection(model.past)
+                        countriesSection(model.countries)
                         moreSection
                     } else if let error = model?.error {
                         InlineRetryView(message: error) { Task { await model?.load() } }
@@ -252,49 +248,19 @@ struct MyPlacesRootView: View {
         }
     }
 
-    private func upcomingSection(_ trips: [MyPlacesTrip]) -> some View {
+    private func countriesSection(_ countries: [MyPlacesCountry]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack {
-                Text("Upcoming trips").font(.roamTitle()).accessibilityAddTraits(.isHeader)
-                Spacer()
-                Button { creating = TripDraft() } label: { PillLabel(title: "New trip", systemImage: "plus") }
-                    .buttonStyle(PillButtonStyle())
-                    .accessibilityIdentifier("trip-new")
-            }
-            if trips.isEmpty {
-                Text("No upcoming trips yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    .accessibilityIdentifier("trips-empty")
-            }
-            ForEach(trips) { trip in
-                Button { router.push(.trip(trip.id)) } label: {
-                    PhotoCard(url: trip.coverURL, label: "Photo from \(trip.summary.name)", placeholderSymbol: "suitcase", height: 170) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(trip.summary.name).font(.roamTitle()).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
-                            Spacer(minLength: Theme.Spacing.s)
-                            TripStatusPill(status: trip.summary.status)
-                        }
-                        Text(TripText.summaryLine(trip.summary)).font(.footnote).foregroundStyle(Roam.inkMuted).multilineTextAlignment(.leading)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("trip-\(trip.summary.name)")
-            }
-        }
-    }
-
-    private func pastSection(_ trips: [MyPlacesTrip]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("Past trips").font(.roamTitle()).accessibilityAddTraits(.isHeader)
-            if trips.isEmpty {
-                Text("Trips you've finished appear here.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            Text("Countries").font(.roamTitle()).accessibilityAddTraits(.isHeader)
+            if countries.isEmpty {
+                Text("Places you log or save appear here by country.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    .accessibilityIdentifier("countries-empty")
             } else {
                 VStack(spacing: 0) {
-                    ForEach(trips) { trip in
-                        Button { router.push(.trip(trip.id)) } label: { pastRow(trip) }
+                    ForEach(countries) { country in
+                        Button { router.push(.myCountry(code: country.code, title: country.title)) } label: { countryRow(country) }
                             .buttonStyle(.plain)
-                            .accessibilityIdentifier("trip-\(trip.summary.name)")
-                        if trip.id != trips.last?.id { Divider() }
+                            .accessibilityIdentifier("country-\(country.code)")
+                        if country.id != countries.last?.id { Divider() }
                     }
                 }
                 .roamCard(padding: Theme.Spacing.m)
@@ -302,23 +268,31 @@ struct MyPlacesRootView: View {
         }
     }
 
-    private func pastRow(_ trip: MyPlacesTrip) -> some View {
+    private func countryRow(_ country: MyPlacesCountry) -> some View {
         HStack(spacing: Theme.Spacing.m) {
             Roam.fill
                 .frame(width: 52, height: 52)
                 .overlay {
-                    if let url = trip.coverURL {
+                    if let url = country.coverURL {
                         AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
                     } else {
-                        Image(systemName: "suitcase").foregroundStyle(Roam.inkMuted)
+                        Image(systemName: "globe").foregroundStyle(Roam.inkMuted)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(trip.summary.name).font(.headline).foregroundStyle(Roam.ink)
-                Text(trip.sortDate?.displayString ?? "No dates").font(.footnote).foregroundStyle(Roam.inkMuted)
-                Text("\(trip.summary.visitedCount) \(trip.summary.visitedCount == 1 ? "place" : "places") visited").font(.footnote).foregroundStyle(Roam.inkMuted)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(country.title).font(.headline).foregroundStyle(Roam.ink)
+                HStack(spacing: Theme.Spacing.s) {
+                    ForEach([PlaceState.visited, .planned, .wishlist].filter { country.count($0) > 0 }, id: \.self) { state in
+                        HStack(spacing: 3) {
+                            Image(systemName: state.markerSymbol).font(.caption2.weight(.bold)).foregroundStyle(state.markerColor)
+                            Text("\(country.count(state))").font(.footnote).foregroundStyle(Roam.inkMuted).monospacedDigit()
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(country.count(state)) \(state.markerTitle)")
+                    }
+                }
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
@@ -351,4 +325,85 @@ struct MyPlacesRootView: View {
         .frame(minHeight: Theme.minimumHitTarget)
         .contentShape(Rectangle())
     }
+}
+
+/// Your places in one country: a map, then the places you've been, planned and saved.
+struct MyCountryView: View {
+    let code: String
+    let title: String
+
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
+    @Environment(AppRouter.self) private var router
+    @State private var model: MyPlacesModel?
+
+    private var items: [PlaceMapItem] { model?.countries.first { $0.code == code }?.items ?? [] }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                if let model, model.hasLoaded {
+                    if items.isEmpty {
+                        Text("No places here yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    } else {
+                        PlaceMapView(items: items) { router.push(.experience($0)) }
+                            .id(items.map(\.id))
+                            .frame(height: 240)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                    }
+                    ForEach([PlaceState.visited, .planned, .wishlist], id: \.self) { state in
+                        let places = items.filter { $0.state == state }
+                        if !places.isEmpty { section(state, places) }
+                    }
+                } else if let error = model?.error {
+                    InlineRetryView(message: error) { Task { await model?.load() } }
+                } else {
+                    SkeletonList(rows: 4)
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .background(Roam.paper)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
+            await model?.load()
+        }
+        .refreshable { await model?.load() }
+        .screenIdentifier("my-country")
+    }
+
+    private func section(_ state: PlaceState, _ places: [PlaceMapItem]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            Text(state.markerTitle).font(.roamTitle()).accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(places) { item in
+                    Button { router.push(.experience(item.id)) } label: {
+                        HStack(spacing: Theme.Spacing.m) {
+                            StatusMark(state: item.state)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                                if let line = [item.experience.category?.title, item.experience.locality].compactMap({ $0 }).joined(separator: " · ").nilIfEmpty {
+                                    Text(line).font(.footnote).foregroundStyle(Roam.inkMuted)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                        }
+                        .padding(.vertical, Theme.Spacing.s)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("country-place-\(item.experience.name)")
+                    if item.id != places.last?.id { Divider() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+        }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

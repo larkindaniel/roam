@@ -211,7 +211,7 @@ struct ProfileView: View {
                 VStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
             }
             if relationship.isMuted {
-                Label("Muted: their trips are hidden from your Friends tab.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
+                Label("Muted: their places are hidden from your Friends tab.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("profile-muted")
             }
         }

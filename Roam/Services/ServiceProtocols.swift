@@ -312,6 +312,8 @@ protocol PlanService: AnyObject, Sendable {
     func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary
     func setVisitAudience(visitID: UUID, audience: Audience) async throws
     func tripFeed() async throws -> [TripFeedCard]
+    func countryFeed() async throws -> [CountryFeedCard]
+    func countryUpdates(ownerID: UUID, countryCode: String?) async throws -> [TripFeedEntry]
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
     func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]

@@ -90,7 +90,7 @@ struct SafetyMembersView: View {
         } message: { _ in
             Text(kind == .blocked
                  ? "You'll be able to see each other's profiles, posts, lists and comments again. Friendships that the block ended aren't restored."
-                 : "Their trips will appear in your Friends tab again.")
+                 : "Their places will appear in your Friends tab again.")
         }
         .screenIdentifier("safety-\(kind.rawValue)")
     }
@@ -114,7 +114,7 @@ struct SafetyMembersView: View {
                            title: kind == .blocked ? "No one is blocked" : "No one is muted",
                            message: kind == .blocked
                                ? "Blocking someone from their profile hides you from each other everywhere in Roam."
-                               : "Muting someone from their profile hides their trips from your Friends tab. You still see their profile.")
+                               : "Muting someone from their profile hides their places from your Friends tab. You still see their profile.")
                 .frame(maxHeight: .infinity, alignment: .top)
         case .loaded(let members):
             List { Group {

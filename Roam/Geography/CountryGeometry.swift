@@ -37,6 +37,29 @@ final class CountryGeometry: @unchecked Sendable {
         isoCodes.compactMap { shape(for: $0) }.flatMap(\.polygons)
     }
 
+    /// Which of these countries a coordinate falls in.
+    func code(at coordinate: CLLocationCoordinate2D, among codes: Set<String>) -> String? {
+        codes.first { code in
+            shape(for: code)?.polygons.contains { Self.contains(coordinate, in: $0) } ?? false
+        }
+    }
+
+    /// Even-odd test on the polygon's outer ring, in longitude and latitude.
+    private static func contains(_ coordinate: CLLocationCoordinate2D, in polygon: MKPolygon) -> Bool {
+        let points = polygon.points()
+        var inside = false
+        var previous = polygon.pointCount - 1
+        for index in 0..<polygon.pointCount {
+            let a = points[index].coordinate, b = points[previous].coordinate
+            if (a.latitude > coordinate.latitude) != (b.latitude > coordinate.latitude),
+               coordinate.longitude < (b.longitude - a.longitude) * (coordinate.latitude - a.latitude) / (b.latitude - a.latitude) + a.longitude {
+                inside.toggle()
+            }
+            previous = index
+        }
+        return inside
+    }
+
     @discardableResult
     private func loadIfNeeded() -> [String: CountryShape] {
         lock.lock()
