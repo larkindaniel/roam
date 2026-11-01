@@ -462,3 +462,26 @@ final class TripTopPicksTests: XCTestCase {
         XCTAssertEqual(TripText.topPicks([entry(80, place: place), entry(70, place: place)]).count, 1)
     }
 }
+
+final class PlaceMapRulesTests: XCTestCase {
+    private func place(_ name: String, latitude: Double = 0, longitude: Double = 0) -> ExperienceSummary {
+        ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: latitude, longitude: longitude, followingCount: 0, viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+    }
+
+    func testAPlaceGetsOneMarkerInItsMostAdvancedState() {
+        let cafe = place("Cafe")
+        XCTAssertEqual(PlaceMapItem.items(been: [cafe], planned: [cafe], wishlist: [cafe, place("Park")]).map(\.state), [.visited, .wishlist])
+    }
+
+    func testMarkersFollowZoomAndSelection() {
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: false, latitudeSpan: 1), .dot)
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: false, latitudeSpan: 0.01), .marker)
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: true, latitudeSpan: 1), .pin)
+    }
+
+    func testTheMapStartsOnTheLargestGroupOfPlaces() {
+        let items = [place("A", latitude: 43.6, longitude: -79.4), place("B", latitude: 43.7, longitude: -79.3), place("Far", latitude: 1.3, longitude: 103.8)]
+            .map { PlaceMapItem(experience: $0, state: .visited) }
+        XCTAssertEqual(PlaceMapItem.startingRegion(items).center.latitude, 43.65, accuracy: 0.01)
+    }
+}

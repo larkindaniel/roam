@@ -1,111 +1,6 @@
 import MapKit
 import SwiftUI
 
-enum TripTiming: Hashable {
-    /// Planning, upcoming and ongoing trips.
-    case upcoming
-    case past
-
-    func includes(_ status: TripStatus) -> Bool { (status == .past) == (self == .past) }
-}
-
-/// One trips section of My Places.
-struct TripsListView: View {
-    let timing: TripTiming
-
-    @Environment(AppServices.self) private var services
-    @Environment(AppRouter.self) private var router
-    @Environment(SessionStore.self) private var session
-    @State private var trips: LoadPhase<[TripSummary]> = .idle
-    @State private var lists: [PlaceList] = []
-    @State private var editing: TripDraft?
-
-    var body: some View {
-        List { Group {
-            switch trips {
-            case .idle, .loading:
-                Section { SkeletonList(rows: 3) }
-            case .failed(let message):
-                Section { InlineRetryView(message: message) { Task { await load() } } }
-            case .loaded(let all):
-                let value = all.filter { timing.includes($0.status) }
-                if value.isEmpty {
-                    Section {
-                        Text(timing == .past ? "Trips you've finished appear here." : "No upcoming trips. Create one to collect places you're considering.")
-                            .font(.subheadline).foregroundStyle(Roam.inkMuted)
-                            .accessibilityIdentifier("trips-empty")
-                    }
-                    .listRowBackground(Roam.paperRaised)
-                }
-                if !value.isEmpty {
-                    Section {
-                        ForEach(ordered(value)) { trip in
-                            Button { router.push(.trip(trip.id)) } label: { TripRow(trip: trip) }
-                                .accessibilityIdentifier("trip-\(trip.name)")
-                        }
-                    }
-                    .listRowBackground(Roam.paperRaised)
-                }
-            }
-            Section {
-                if timing == .upcoming {
-                    Button("New trip") { editing = TripDraft() }
-                        .accessibilityIdentifier("trip-new")
-                    Button("Custom lists (\(lists.count))") { router.push(.lists) }
-                        .accessibilityIdentifier("open-lists")
-                } else if let me = session.userID {
-                    Button("All places you've been") { router.push(.memberList(me, .been)) }
-                        .accessibilityIdentifier("open-been")
-                }
-            }
-            .listRowBackground(Roam.paperRaised)
-        }
-        .listRowBackground(Roam.paperRaised)
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .sheet(item: $editing) { draft in
-            TripEditorSheet(draft: draft) { Task { await load() } }
-                .presentationBackground(Roam.paper)
-        }
-        .task { await load() }
-        .refreshable { await load() }
-        .screenIdentifier("trips-list")
-    }
-
-    /// Ongoing trips first, then upcoming, then those still being planned.
-    private func ordered(_ value: [TripSummary]) -> [TripSummary] {
-        let rank: [TripStatus: Int] = [.ongoing: 0, .upcoming: 1, .planning: 2, .past: 3]
-        return value.enumerated().sorted { (rank[$0.element.status] ?? 3, $0.offset) < (rank[$1.element.status] ?? 3, $1.offset) }.map(\.element)
-    }
-
-    private func load() async {
-        if trips.value == nil { trips = .loading }
-        do {
-            trips = .loaded(try await services.plans.myTrips())
-            lists = try await services.plans.myLists()
-        } catch {
-            if trips.value == nil { trips = .failed(error.roamMessage) }
-        }
-    }
-}
-
-private struct TripRow: View {
-    let trip: TripSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(trip.name).font(.headline).foregroundStyle(Roam.ink)
-                Spacer(minLength: Theme.Spacing.s)
-                TripStatusPill(status: trip.status)
-            }
-            Text(TripText.summaryLine(trip)).font(.footnote).foregroundStyle(Roam.inkMuted)
-        }
-        .frame(minHeight: Theme.minimumHitTarget)
-    }
-}
-
 struct TripStatusPill: View {
     let status: TripStatus
 
@@ -142,17 +37,6 @@ enum TripViewMode: String, CaseIterable, Identifiable {
 }
 
 enum TripText {
-    /// A region that fits every place, so the pins are always on screen.
-    static func region(_ places: [TripPlace]) -> MKCoordinateRegion {
-        let latitudes = places.map(\.experience.latitude)
-        let longitudes = places.map(\.experience.longitude)
-        guard let minLat = latitudes.min(), let maxLat = latitudes.max(), let minLon = longitudes.min(), let maxLon = longitudes.max() else {
-            return MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20, longitude: 0), span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 300))
-        }
-        return MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-                                  span: MKCoordinateSpan(latitudeDelta: max((maxLat - minLat) * 1.5, 0.02), longitudeDelta: max((maxLon - minLon) * 1.5, 0.02)))
-    }
-
     /// The best places from a trip: ranked visits only, one per place, across types.
     static func topPicks(_ entries: [TripFeedEntry], limit: Int = 5) -> [TripFeedEntry] {
         var seen = Set<UUID>()
@@ -319,14 +203,8 @@ struct TripDetailView: View {
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         if !value.places.isEmpty {
             Section {
-                Map(initialPosition: .region(TripText.region(value.places))) {
-                    ForEach(value.places) { place in
-                        Annotation(place.experience.name, coordinate: place.experience.coordinate) {
-                            StatusMark(state: place.state, size: 18)
-                                .background(Circle().fill(Roam.paperRaised))
-                        }
-                    }
-                }
+                PlaceMapView(items: value.places.map { PlaceMapItem(experience: $0.experience, state: $0.state) }) { router.push(.experience($0)) }
+                .id(value.places.map(\.id))
                 .frame(height: 220)
                 .listRowInsets(EdgeInsets())
                 .accessibilityIdentifier("trip-map")
