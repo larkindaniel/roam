@@ -31,7 +31,12 @@ struct MainTabView: View {
         }
         return Group {
             if #available(iOS 26.0, *) {
-                view.tabViewBottomAccessory { LogPlaceAccessory() }
+                if #available(iOS 26.1, *) {
+                    // Only the tabs' main screens carry it, so it never covers a form or detail page.
+                    view.tabViewBottomAccessory(isEnabled: router.path(for: router.selectedTab).isEmpty) { LogPlaceAccessory() }
+                } else {
+                    view.tabViewBottomAccessory { LogPlaceAccessory() }
+                }
             } else {
                 view
             }

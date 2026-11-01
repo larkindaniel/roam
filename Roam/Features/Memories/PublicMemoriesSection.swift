@@ -141,7 +141,7 @@ struct FriendMemoriesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            SourceLabel(source: .friends)
+            Text("From your friends").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
             if memories.isEmpty {
                 Text("None of your friends have been here yet.")
                     .font(.subheadline).foregroundStyle(Theme.secondaryText)

@@ -148,7 +148,7 @@ struct ExperienceDetailView: View {
                 }
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     Text(summary.name)
-                        .font(.roamDisplay(.largeTitle))
+                        .font(.roamDisplay(.title))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                     HStack(spacing: Theme.Spacing.s) {
@@ -219,11 +219,13 @@ struct ExperienceDetailView: View {
         let rated = detail.myRating != nil
         let visited = rated || detail.summary.viewer.hasVisits
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            HStack(spacing: Theme.Spacing.s) {
-                if visited || library.isBookmarked(id) { StatusMark(state: visited ? .visited : .wishlist) }
-                Text(visited ? "You've been here" : (library.isBookmarked(id) ? "On your wishlist" : "Not on your lists yet"))
-                    .font(.footnote).foregroundStyle(Roam.inkMuted)
-                    .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
+            if visited || library.isBookmarked(id) {
+                HStack(spacing: Theme.Spacing.s) {
+                    StatusMark(state: visited ? .visited : .wishlist)
+                    Text(visited ? "You've been here" : "On your wishlist")
+                        .font(.footnote).foregroundStyle(Roam.inkMuted)
+                        .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
+                }
             }
             HStack(spacing: Theme.Spacing.s) {
                 actionTile(rated ? "Add visit" : "Log visit", symbol: "plus", prominent: true, identifier: rated ? "detail-add-visit" : "detail-log") {
@@ -235,15 +237,15 @@ struct ExperienceDetailView: View {
                 }
                 .disabled(visited && !library.isBookmarked(id))
                 actionTile("Directions", symbol: "arrow.triangle.turn.up.right.diamond", identifier: "detail-directions") { openInMaps(detail) }
-                actionTile("Share", symbol: "square.and.arrow.up", identifier: "detail-recommend") {
+                actionTile("Recommend", symbol: "paperplane", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
             }
             HStack(spacing: Theme.Spacing.s) {
-                Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: { Label("Add to trip", systemImage: "suitcase") }
-                    .buttonStyle(.bordered).buttonBorderShape(.capsule).accessibilityIdentifier("detail-add-to-trip")
-                Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { Label("Add to list", systemImage: "list.bullet") }
-                    .buttonStyle(.bordered).buttonBorderShape(.capsule).accessibilityIdentifier("detail-add-to-list")
+                Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to trip", systemImage: "suitcase") }
+                    .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-trip")
+                Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
+                    .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-list")
             }
             .font(.subheadline)
             if let error = library.lastError {
