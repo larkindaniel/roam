@@ -152,6 +152,12 @@ final class RatingFlowModel {
         persist()
     }
 
+    func setTrip(_ tripID: UUID?) {
+        guard canEdit else { return }
+        visit.tripID = tripID
+        persist()
+    }
+
     func setAudience(_ audience: Audience) {
         guard canEdit else { return }
         visit.audience = audience

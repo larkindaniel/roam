@@ -173,6 +173,36 @@ extension FixtureBackend: PlanService {
             }
     }
 
+    private func tripFeedEntry(_ row: VisitRow, viewer: UUID) -> TripFeedEntry? {
+        guard let place = summary(row.experience, viewer: viewer) else { return nil }
+        let visit = visitModel(row)
+        let category = ratings.values.first { $0.owner == row.owner && $0.experience == row.experience }?.category
+        return TripFeedEntry(id: row.id, experience: place, publicNote: row.note, visitDate: visit.visitDate, media: visit.media, createdAt: row.createdAt,
+                             score: category.flatMap { ranking(owner: row.owner, category: $0).placement(forExperience: row.experience)?.score },
+                             activityID: activities.values.filter { $0.visit == row.id }.max { $0.publishedAt < $1.publishedAt }?.id)
+    }
+
+    func tripFeed() async throws -> [TripFeedCard] {
+        let me = try await authenticatedActor()
+        let visible = visits.values.filter {
+            audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
+                && ($0.owner == me || (areFriends(me, $0.owner) && !mutes.contains(Pair(a: me, b: $0.owner))))
+        }
+        struct Key: Hashable { let owner: UUID; let trip: UUID? }
+        return Dictionary(grouping: visible) { Key(owner: $0.owner, trip: $0.tripID) }.compactMap { key, rows -> TripFeedCard? in
+            let sorted = rows.sorted { $0.createdAt > $1.createdAt }
+            guard let latest = sorted.first else { return nil }
+            return TripFeedCard(author: memberSummary(key.owner), tripID: key.trip, tripName: key.trip.flatMap { trips[$0]?.draft.name }, visitCount: rows.count,
+                                latestAt: latest.createdAt, isOwn: key.owner == me, entries: sorted.prefix(5).compactMap { tripFeedEntry($0, viewer: me) })
+        }.sorted { $0.latestAt > $1.latestAt }
+    }
+
+    func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry] {
+        let me = try await authenticatedActor()
+        return visits.values.filter { $0.owner == ownerID && $0.tripID == tripID && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
+            .sorted { $0.createdAt > $1.createdAt }.compactMap { tripFeedEntry($0, viewer: me) }
+    }
+
     func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace] {
         let me = try await authenticatedActor()
         return Set(ratings.values.map(\.experience)).compactMap { experience -> DiscoverPlace? in

@@ -1,106 +1,197 @@
 import SwiftUI
 
-/// The Friends tab: your own and your friends' posts, newest publication first.
+/// The Friends tab: one card per person and trip, newest update first.
 struct FeedRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
     @Environment(ActivityChangeStore.self) private var changes
-    @State private var model: FeedModel?
+    @State private var cards: LoadPhase<[TripFeedCard]> = .idle
+    @State private var unreadCount = 0
 
     var body: some View {
-        Group {
-            if let model { content(model) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
-        }
-        .background(Theme.groupedCanvas)
-        .navigationTitle("Friends")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
-                } label: { Image(systemName: "person.badge.plus") }
-                .accessibilityLabel("Friends and requests")
-                .accessibilityIdentifier("open-friends")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { router.push(.notifications) } label: {
-                    Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
-                        .symbolRenderingMode(.hierarchical)
+        ScrollView { content.padding(.horizontal, Theme.Spacing.l).padding(.vertical, Theme.Spacing.m) }
+            .background(Roam.paper)
+            .navigationTitle("Friends")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        if let me = session.userID { router.push(.followGraph(me, .friends)) }
+                    } label: { Image(systemName: "person.badge.plus") }
+                    .accessibilityLabel("Friends and requests")
+                    .accessibilityIdentifier("open-friends")
                 }
-                .accessibilityLabel((model?.unreadCount ?? 0) > 0 ? "Notifications, \(model?.unreadCount ?? 0) unread" : "Notifications")
-                .accessibilityIdentifier("open-notifications")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { router.push(.notifications) } label: {
+                        Image(systemName: unreadCount > 0 ? "bell.badge.fill" : "bell").symbolRenderingMode(.hierarchical)
+                    }
+                    .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
+                    .accessibilityIdentifier("open-notifications")
+                }
+                LogPlaceToolbarFallback()
             }
-        }
-        .navigationBarTitleDisplayMode(.large)
-        .task {
-            if model == nil { model = FeedModel(service: services.feed, notifications: services.notifications) }
-            if model?.hasLoaded != true || changes.consumeFeedStale() { await model?.refresh() }
-            await model?.refreshUnreadCount()
-        }
-        .onChange(of: changes.revision) { _, _ in model?.apply(changes) }
-        .onChange(of: model?.authError) { _, error in if let error { _ = session.handle(error) } }
-        .screenIdentifier("feed-root")
+            .navigationBarTitleDisplayMode(.large)
+            .task { await load() }
+            .refreshable { await load() }
+            .onChange(of: changes.revision) { _, _ in Task { await load() } }
+            .screenIdentifier("feed-root")
     }
 
-    @ViewBuilder private func content(_ model: FeedModel) -> some View {
-        if !model.hasLoaded {
-            if let error = model.error, !model.isLoading {
-                ScrollView {
-                    EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't load your feed", message: error,
-                                   primaryTitle: "Try again", primaryAction: { Task { await model.refresh() } })
-                        .padding(.top, Theme.Spacing.xxl)
-                }
-            } else {
-                // State identifiers sit on inner containers; the screen identifier owns the scroll view.
-                ScrollView {
-                    VStack { SkeletonList(rows: 5).padding() }
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("feed-loading")
-                }
-            }
-        } else if model.items.isEmpty {
-            ScrollView {
-                if let error = model.error { InlineRetryView(message: error) { Task { await model.refresh() } }.padding() }
-                VStack {
-                    EmptyStateView(systemImage: "person.2.wave.2", title: "Nothing from friends yet",
-                                   message: "Add friends to see their places here, newest first. Your own appear here too.",
-                                   primaryTitle: "Find people", primaryAction: { router.showFindPeople() },
-                                   secondaryTitle: "Search experiences", secondaryAction: { router.openSearch() })
-                }
-                .accessibilityElement(children: .contain)
+    @ViewBuilder private var content: some View {
+        switch cards {
+        case .idle, .loading:
+            SkeletonList(rows: 4).accessibilityIdentifier("feed-loading")
+        case .failed(let message):
+            EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't load your friends' trips", message: message,
+                           primaryTitle: "Try again", primaryAction: { Task { await load() } })
+        case .loaded(let value) where value.isEmpty:
+            EmptyStateView(systemImage: "person.2", title: "Nothing from friends yet",
+                           message: "Add friends to follow their trips here.",
+                           primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("feed-empty")
-                .padding(.top, Theme.Spacing.xxl)
-            }
-            .refreshable { await model.refresh() }
-        } else {
-            ScrollView {
-                LazyVStack(spacing: Theme.Spacing.m) {
-                    if let error = model.error {
-                        InlineRetryView(message: "Couldn't refresh. Showing the posts you already had. \(error)") { Task { await model.refresh() } }
-                            .accessibilityIdentifier("feed-refresh-error")
-                    }
-                    if let error = model.actionError {
-                        InlineRetryView(message: error, retryTitle: "Dismiss") { Task { await model.refresh() } }
-                    }
-                    ForEach(model.items) { item in
-                        FeedCard(item: item, likePending: model.likePending.contains(item.id),
-                                 onLike: { liked in Task { await model.setLike(item.id, liked: liked) } })
-                    }
-                    PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
-                        Task { await model.loadMore() }
+        case .loaded(let value):
+            LazyVStack(spacing: Theme.Spacing.l) {
+                ForEach(value) { card in
+                    TripFeedCardView(card: card) {
+                        router.push(.tripUpdates(ownerID: card.author.id, tripID: card.tripID, title: card.title))
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.l)
-                .padding(.vertical, Theme.Spacing.m)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("feed-list")
             }
-            .refreshable {
-                await model.refresh()
-                await model.refreshUnreadCount()
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("feed-list")
+        }
+    }
+
+    private func load() async {
+        if cards.value == nil { cards = .loading }
+        do {
+            cards = .loaded(try await services.plans.tripFeed().filter { !$0.isOwn })
+        } catch {
+            if cards.value == nil { cards = .failed(session.handle(error)) }
+        }
+        if let count = try? await services.notifications.unreadCount() { unreadCount = count }
+    }
+}
+
+struct TripFeedCardView: View {
+    let card: TripFeedCard
+    let onOpen: () -> Void
+
+    private var photos: [MediaRef] { card.entries.compactMap { $0.media.first } }
+
+    var body: some View {
+        Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                HStack(spacing: Theme.Spacing.s) {
+                    AvatarView(member: card.author, size: 36)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(card.isOwn ? "You" : card.author.displayName).font(.subheadline.weight(.semibold))
+                        Text("Updated \(card.latestAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(Roam.inkMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                }
+                Text(card.title).font(.roamTitle()).multilineTextAlignment(.leading)
+                if !photos.isEmpty { photoStrip }
+                if let latest = card.entries.first {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(latest.experience.name).font(.headline)
+                        if !latest.publicNote.isEmpty {
+                            Text(latest.publicNote).font(.subheadline).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
+                        }
+                    }
+                }
+                Text(card.visitCount == 1 ? "1 place so far" : "\(card.visitCount) places so far").font(.footnote.weight(.semibold))
+            }
+            .foregroundStyle(Roam.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .roamCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("trip-card-\(card.author.handle)-\(card.title)")
+    }
+
+    private var photoStrip: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            ForEach(photos.prefix(3), id: \.id) { media in
+                Color.clear
+                    .frame(maxWidth: .infinity)
+                    .frame(height: photos.count == 1 ? 180 : 110)
+                    .overlay { RemoteImageView(path: media.path, accessibilityLabel: "Photo from \(card.title)") }
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
+    }
+}
+
+/// Everything someone has done on one trip so far, newest first.
+struct TripUpdatesView: View {
+    let ownerID: UUID
+    let tripID: UUID?
+    let title: String
+
+    @Environment(AppServices.self) private var services
+    @Environment(AppRouter.self) private var router
+    @State private var entries: LoadPhase<[TripFeedEntry]> = .idle
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                switch entries {
+                case .idle, .loading:
+                    SkeletonList(rows: 3)
+                case .failed(let message):
+                    InlineRetryView(message: message) { Task { await load() } }
+                case .loaded(let value) where value.isEmpty:
+                    Text("Nothing here that you can see yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                case .loaded(let value):
+                    ForEach(value) { entry($0) }
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .background(Roam.paper)
+        .navigationTitle(title)
+        .task { await load() }
+        .refreshable { await load() }
+        .screenIdentifier("trip-updates")
+    }
+
+    private func entry(_ entry: TripFeedEntry) -> some View {
+        Button { router.push(.experience(entry.experience.id)) } label: {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                if let photo = entry.media.first {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .overlay { RemoteImageView(path: photo.path, accessibilityLabel: "Photo of \(entry.experience.name)") }
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(entry.experience.name).font(.headline).multilineTextAlignment(.leading)
+                    Spacer(minLength: Theme.Spacing.s)
+                    if let score = entry.score {
+                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit()
+                    }
+                }
+                Text([entry.experience.category?.title, entry.experience.locality, entry.visitDate.date?.displayString].compactMap { $0 }.joined(separator: " · "))
+                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                if !entry.publicNote.isEmpty {
+                    Text(entry.publicNote).font(.body).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .foregroundStyle(Roam.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
+    }
+
+    private func load() async {
+        if entries.value == nil { entries = .loading }
+        do { entries = .loaded(try await services.plans.tripUpdates(ownerID: ownerID, tripID: tripID)) }
+        catch { if entries.value == nil { entries = .failed(error.roamMessage) } }
     }
 }
 

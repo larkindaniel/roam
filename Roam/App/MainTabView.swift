@@ -64,6 +64,8 @@ struct RouteDestinationView: View {
             ProfileRootView()
         case .trip(let id):
             TripDetailView(tripID: id)
+        case .tripUpdates(let ownerID, let tripID, let title):
+            TripUpdatesView(ownerID: ownerID, tripID: tripID, title: title)
         case .lists:
             PlaceListsView()
         case .list(let id):

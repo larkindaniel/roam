@@ -308,6 +308,8 @@ protocol PlanService: AnyObject, Sendable {
     func setListItem(listID: UUID, experienceID: UUID, note: String, present: Bool) async throws
     func share(_ target: ShareTarget, with recipient: UUID, message: String, operationID: UUID) async throws
     func sharedWithMe() async throws -> [DirectShare]
+    func tripFeed() async throws -> [TripFeedCard]
+    func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
     func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
     func taste() async throws -> TasteProfile

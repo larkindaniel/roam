@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 /// The Trips section of My Places: planning, then ongoing, then past.
@@ -197,6 +198,21 @@ struct TripDetailView: View {
             if let actionError { Text(actionError).foregroundStyle(Roam.signal) }
         }
         .listRowBackground(Roam.paperRaised)
+        if !value.places.isEmpty {
+            Section {
+                Map {
+                    ForEach(value.places) { place in
+                        Annotation(place.experience.name, coordinate: place.experience.coordinate) {
+                            StatusMark(state: place.state, size: 18)
+                                .background(Circle().fill(Roam.paperRaised))
+                        }
+                    }
+                }
+                .frame(height: 220)
+                .listRowInsets(EdgeInsets())
+                .accessibilityIdentifier("trip-map")
+            }
+        }
         if value.places.isEmpty {
             Section {
                 Text("No places yet. Open a place and choose Add to trip.")

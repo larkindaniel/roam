@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(55);
+select plan(59);
 
 do $$
 declare u record;
@@ -79,7 +79,11 @@ select is(jsonb_array_length(public.been_list('a1000000-0000-4000-8000-000000000
 select is(jsonb_array_length(public.friend_memories((select experience from ids7))),1,'a friend''s note appears under friends');
 select is(public.friend_memories((select experience from ids7))->0->>'publicNote','for friends','with what they said');
 select is(jsonb_array_length(public.friend_memories((select second_experience from ids7))),0,'an only-me note never does');
+select is((select count(*)::int from jsonb_array_elements(public.trip_feed()) c where c->'author'->>'handle'='owner7'),1,'a friend sees one card for a person''s untripped visits');
+select ok((select c->'tripID'='null'::jsonb and c->>'tripName' is null from jsonb_array_elements(public.trip_feed()) c where c->'author'->>'handle'='owner7'),'those visits sit under Home');
+select is(jsonb_array_length(public.trip_updates('a1000000-0000-4000-8000-000000000001',null)),1,'opening the card lists only what the friend may see');
 select pg_temp.as_user('c1000000-0000-4000-8000-000000000003');
+select is((select count(*)::int from jsonb_array_elements(public.trip_feed()) c where c->'author'->>'handle'='owner7'),0,'someone who is not a friend gets no card');
 select is(jsonb_array_length(public.friend_memories((select experience from ids7))),0,'someone who is not a friend sees none');
 select ok(not exists(select 1 from jsonb_array_elements(public.discover_places()) d where d->'experience'->>'name' like 'Seven%'),'private entries never reach anyone''s Discover');
 select is(jsonb_array_length(public.public_memories((select experience from ids7),null)->'items'),0,'an unrelated member cannot see a friends entry');

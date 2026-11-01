@@ -189,6 +189,32 @@ struct DiscoverCity: Hashable, Identifiable, Sendable {
     }
 }
 
+/// One thing someone did on a trip.
+struct TripFeedEntry: Codable, Hashable, Identifiable, Sendable {
+    let id: UUID
+    var experience: ExperienceSummary
+    var publicNote: String
+    var visitDate: VisitDate
+    var media: [MediaRef]
+    var createdAt: Date
+    var score: Score?
+    var activityID: UUID?
+}
+
+/// One person's trip on the Friends tab. A nil trip is Home: everything not attributed to a trip.
+struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
+    var author: MemberSummary
+    var tripID: UUID?
+    var tripName: String?
+    var visitCount: Int
+    var latestAt: Date
+    var isOwn: Bool
+    var entries: [TripFeedEntry]
+
+    var id: String { "\(author.id.uuidString)-\(tripID?.uuidString ?? "home")" }
+    var title: String { tripName ?? "Home" }
+}
+
 enum ShareTarget: Hashable, Sendable {
     case place(UUID)
     case list(UUID)

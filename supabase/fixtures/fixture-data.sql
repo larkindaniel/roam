@@ -125,6 +125,22 @@ select v.owner_id, 'revisit', v.experience_id, v.id, r.id, r.category, r.score, 
 from public.visits v join public.ratings r on r.owner_id = v.owner_id and r.experience_id = v.experience_id
 where v.source_operation_id = '00000099-0000-4000-8000-000000000000';
 
+-- Sample trips, so the Friends tab groups updates. Anything left out sits under Home.
+delete from public.trips where id::text like '00000050-%';
+insert into public.trips (id, owner_id, name, status, start_date, end_date) values
+  ('00000050-0000-4000-8000-000000000001', '00000010-0000-4000-8000-000000000002', 'Long weekend in Lisbon', 'ongoing', current_date - 10, null),
+  ('00000050-0000-4000-8000-000000000002', '00000010-0000-4000-8000-000000000002', 'Two weeks in Japan', 'past', null, null),
+  ('00000050-0000-4000-8000-000000000003', '00000010-0000-4000-8000-000000000006', 'Portugal with the family', 'ongoing', null, null),
+  ('00000050-0000-4000-8000-000000000004', '00000010-0000-4000-8000-000000000003', 'Lisbon and Copenhagen', 'past', null, null);
+update public.visits v set trip_id = t.trip::uuid
+from (values ('theo', 'harbor', '00000050-0000-4000-8000-000000000001'), ('theo', 'saltmarsh', '00000050-0000-4000-8000-000000000001'), ('theo', 'miradouro', '00000050-0000-4000-8000-000000000001'),
+             ('theo', 'tidewater', '00000050-0000-4000-8000-000000000002'), ('theo', 'aster', '00000050-0000-4000-8000-000000000002'), ('theo', 'lookout', '00000050-0000-4000-8000-000000000002'),
+             ('sam', 'harbor', '00000050-0000-4000-8000-000000000003'), ('sam', 'tiles', '00000050-0000-4000-8000-000000000003'), ('sam', 'bica', '00000050-0000-4000-8000-000000000003'),
+             ('priya', 'saltmarsh', '00000050-0000-4000-8000-000000000004'), ('priya', 'quay', '00000050-0000-4000-8000-000000000004'), ('priya', 'miradouro', '00000050-0000-4000-8000-000000000004')) t(who, key, trip)
+join fixture_entries e on e.who = t.who and e.key = t.key
+join fixture_places p on p.key = t.key
+where v.owner_id = e.owner_id and v.experience_id = ('00000030-0000-4000-8000-' || lpad(p.n::text, 12, '0'))::uuid;
+
 -- Owner-only private memories.
 insert into public.private_notes (owner_id, experience_id, body) values
   ('00000010-0000-4000-8000-000000000001', '00000030-0000-4000-8000-000000000001', 'Ask for the corner table by the window. Card only.'),

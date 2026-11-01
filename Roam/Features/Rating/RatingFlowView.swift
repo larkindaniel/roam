@@ -11,6 +11,7 @@ struct RatingFlowView: View {
     @State private var showsNote = false
     @State private var showsDate = false
     @State private var showsPhotos = false
+    @State private var trips: [TripSummary] = []
 
     var body: some View {
         NavigationStack {
@@ -196,6 +197,15 @@ struct RatingFlowView: View {
             }
             if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
+                Picker(selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
+                    Text("Home (no trip)").tag(UUID?.none)
+                    ForEach(trips) { Text($0.name).tag(UUID?.some($0.id)) }
+                } label: {
+                    Label("Trip", systemImage: "suitcase")
+                }
+                .frame(minHeight: Theme.minimumHitTarget)
+                .task { trips = (try? await services.plans.myTrips()) ?? [] }
+                .accessibilityIdentifier("rating-trip")
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("Who can see this").font(.footnote.weight(.semibold))
                     Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .friends }, set: { model.setAudience($0) })) {
