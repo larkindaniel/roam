@@ -91,6 +91,17 @@ struct PlaceMapItem: Identifiable, Hashable {
 
     var id: UUID { experience.id }
 
+    /// Each country takes the colour of the most advanced state of your places there.
+    static func countryTints(_ items: [PlaceMapItem]) -> [String: UIColor] {
+        var tints: [String: UIColor] = [:]
+        for state in [PlaceState.wishlist, .planned, .visited] {
+            for item in items where item.state == state {
+                if let code = item.experience.countryCode?.uppercased() { tints[code] = UIColor(state.markerColor) }
+            }
+        }
+        return tints
+    }
+
     /// Start on the largest group of nearby places, so a map isn't zoomed out to nothing by one far-off trip.
     static func startingRegion(_ items: [PlaceMapItem]) -> MKCoordinateRegion {
         let group = items.map { item in

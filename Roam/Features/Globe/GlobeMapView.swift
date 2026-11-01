@@ -39,6 +39,7 @@ final class ExperiencePinAnnotation: NSObject, MKAnnotation {
 /// A visited place drawn on the 3D globe as an overlay dot (see `GlobeMapView.Coordinator.sync`).
 final class PinDotOverlay: NSObject, MKOverlay {
     let pin: MapPin
+    var tint: UIColor?
     let coordinate: CLLocationCoordinate2D
     let boundingMapRect: MKMapRect
 
@@ -66,7 +67,7 @@ final class PinDotRenderer: MKOverlayRenderer {
         let outer = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
         context.setFillColor(UIColor.white.cgColor)
         context.fillEllipse(in: outer)
-        context.setFillColor((UIColor(named: "AccentColor") ?? .systemTeal).cgColor)
+        context.setFillColor((dot.tint ?? UIColor(named: "AccentColor") ?? .systemTeal).cgColor)
         context.fillEllipse(in: outer.insetBy(dx: radius * 0.28, dy: radius * 0.28))
     }
 }
@@ -92,6 +93,11 @@ struct GlobeMapView: UIViewRepresentable {
     var focusToken: Int = 0
     var onSelectPin: ((MapPin) -> Void)?
     var onRegionChange: ((MKCoordinateRegion) -> Void)?
+    /// Where the globe first faces; nil uses `startCenter`.
+    var globeCenter: CLLocationCoordinate2D?
+    /// Colours by ISO country code for shaded countries, and by pin id for globe dots. Missing entries use the default look.
+    var countryTints: [String: UIColor] = [:]
+    var pinTints: [String: UIColor] = [:]
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -185,7 +191,7 @@ struct GlobeMapView: UIViewRepresentable {
             didApplyInitialCamera = true
             switch parent.style {
             case .globe:
-                map.camera = MKMapCamera(lookingAtCenter: GlobeMapView.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0)
+                map.camera = MKMapCamera(lookingAtCenter: parent.globeCenter ?? GlobeMapView.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0)
             case .standard:
                 if let region = parent.focusRegion { map.setRegion(region, animated: false) }
             }
@@ -202,6 +208,8 @@ struct GlobeMapView: UIViewRepresentable {
         private var cameraReady = false
         fileprivate var currentPins: [MapPin] = []
         private var currentShaded: Set<String> = []
+        private var currentCountryTints: [String: UIColor] = [:]
+        private var currentPinTints: [String: UIColor] = [:]
         private var countryOverlays: [MKOverlay] = []
         private var pinOverlays: [MKOverlay] = []
 
@@ -215,9 +223,14 @@ struct GlobeMapView: UIViewRepresentable {
                 // projection, so markers land in the wrong place or vanish (iOS 26.2 simulator, M1/M7
                 // probes). Overlays are projected onto the globe correctly, so globe pins are dots.
                 // Selecting a pin happens on the flat map or in the list.
-                if view.pins != currentPins {
+                if view.pins != currentPins || view.pinTints != currentPinTints {
                     map.removeOverlays(pinOverlays)
-                    pinOverlays = view.pins.map(PinDotOverlay.init(pin:))
+                    pinOverlays = view.pins.map { pin in
+                        let dot = PinDotOverlay(pin: pin)
+                        dot.tint = view.pinTints[pin.id]
+                        return dot
+                    }
+                    currentPinTints = view.pinTints
                     map.addOverlays(pinOverlays, level: .aboveLabels)
                     currentPins = view.pins
                 }
@@ -227,7 +240,8 @@ struct GlobeMapView: UIViewRepresentable {
                 map.addAnnotations(view.pins.map(ExperiencePinAnnotation.init(pin:)))
                 currentPins = view.pins
             }
-            if view.shadedCountryCodes != currentShaded {
+            if view.shadedCountryCodes != currentShaded || view.countryTints != currentCountryTints {
+                currentCountryTints = view.countryTints
                 map.removeOverlays(countryOverlays)
                 countryOverlays = CountryGeometry.shared.polygons(for: view.shadedCountryCodes)
                 map.addOverlays(countryOverlays, level: .aboveRoads)
@@ -284,6 +298,12 @@ struct GlobeMapView: UIViewRepresentable {
             if let polygon = overlay as? MKPolygon {
                 let renderer = MKPolygonRenderer(polygon: polygon)
                 let teal = UIColor(named: "AccentColor") ?? .systemTeal
+                if let code = polygon.title, let tint = parent.countryTints[code] {
+                    renderer.fillColor = tint.withAlphaComponent(0.5)
+                    renderer.strokeColor = tint
+                    renderer.lineWidth = 1.5
+                    return renderer
+                }
                 // Bright fill + white outline stays legible on daylit and night-side imagery.
                 renderer.fillColor = UIColor(red: 0.93, green: 0.925, blue: 0.898, alpha: 0.55)
                 renderer.strokeColor = UIColor.white.withAlphaComponent(0.95)

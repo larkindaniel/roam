@@ -104,6 +104,24 @@ select owner_id, 'revisit', experience_id, id, '{entry['kind']}', created_at, id
     return "\n".join(rows)
 
 
+def plans_sql(data):
+    """Gives Kieran upcoming trips and a wishlist in countries they haven't been to. Safe to run twice."""
+    kieran = TEAM[0][0]
+    spots = {city["name"]: city["spots"] for city in data["cities"]}
+    rows = ["begin;"]
+    for name, status, start, end in (("Tokyo", "upcoming", 60, 74), ("Lisbon", "planning", None, None)):
+        trip = uid("00000052", kieran, name)
+        dates = [f"current_date + {day}" if day is not None else "null" for day in (start, end)]
+        rows.append(f"insert into public.trips (id, owner_id, name, status, start_date, end_date) values ({q(trip)}, {q(kieran)}, {q(name)}, '{status}', {dates[0]}, {dates[1]}) on conflict do nothing;")
+        for position, spot in enumerate(spots[name]):
+            rows.append(f"insert into public.trip_places (trip_id, experience_id, position) values ({q(trip)}, {q(uid('00000031', spot['id']))}, {position}) on conflict do nothing;")
+    for name in ("Reykjavík", "Copenhagen", "Medellín", "Lausanne"):
+        for spot in spots[name]:
+            rows.append(f"insert into public.bookmarks (owner_id, experience_id) values ({q(kieran)}, {q(uid('00000031', spot['id']))}) on conflict do nothing;")
+    rows.append("commit;")
+    return "\n".join(rows)
+
+
 def main():
     env = setup.load_env()
     tokens = {}
@@ -120,7 +138,8 @@ def main():
             setup.rpc(env, tokens[first], "friend_action", {"p_user_id": second, "p_action": "request"})
             setup.rpc(env, tokens[second], "friend_action", {"p_user_id": first, "p_action": "accept"})
     with open(os.path.join(ROOT, "supabase", "fixtures", "demo-places.json"), encoding="utf-8") as handle:
-        sql = sql_for(json.load(handle))
+        data = json.load(handle)
+    sql = sql_for(data) + "\n" + plans_sql(data)
     path = os.path.join(os.environ.get("TMPDIR", "/tmp"), "roam-demo.sql")
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(sql)

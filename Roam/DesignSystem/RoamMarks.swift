@@ -56,21 +56,14 @@ enum PlaceState: Hashable, Sendable {
 /// State is carried by shape: dotted, solid outline or filled circle.
 struct StatusMark: View {
     let state: PlaceState
-    var size: CGFloat = 14
+    var size: CGFloat = 24
 
     var body: some View {
-        Group {
-            switch state {
-            case .wishlist:
-                Circle().strokeBorder(Roam.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [0.1, 3.6]))
-            case .planned:
-                Circle().strokeBorder(Roam.ink, lineWidth: 1.5)
-            case .visited:
-                Circle().fill(Roam.ink)
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityLabel(state.title)
+        Circle().fill(state.markerColor)
+            .overlay(Image(systemName: state.markerSymbol).font(.system(size: size * 0.46, weight: .bold)).foregroundStyle(.white))
+            .frame(width: size, height: size)
+            .accessibilityElement()
+            .accessibilityLabel(state.title)
     }
 }
 

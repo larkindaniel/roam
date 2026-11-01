@@ -77,7 +77,22 @@ final class MyPlacesModel {
     }
 }
 
-/// My Places tab: your map, then upcoming trips, then past trips.
+/// How far the My Places lists come up over the globe.
+enum MyPlacesSheetDetent: CaseIterable {
+    case peek
+    case half
+    case full
+
+    func height(in available: CGFloat) -> CGFloat {
+        switch self {
+        case .peek: return 112
+        case .half: return available * 0.5
+        case .full: return available
+        }
+    }
+}
+
+/// My Places tab: the globe, with upcoming and past trips on a card that comes up over it.
 struct MyPlacesRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
@@ -86,27 +101,27 @@ struct MyPlacesRootView: View {
     @State private var model: MyPlacesModel?
     @State private var creating: TripDraft?
     @State private var showsCoachmark = false
+    @State private var detent = MyPlacesSheetDetent.half
+    @GestureState private var dragOffset: CGFloat = 0
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                if let model, model.hasLoaded {
-                    mapCard(model.pins)
-                    upcomingSection(model.upcoming)
-                    pastSection(model.past)
-                    moreSection
-                } else if let error = model?.error {
-                    InlineRetryView(message: error) { Task { await model?.load() } }
-                } else {
-                    SkeletonList(rows: 4)
-                }
+        GeometryReader { proxy in
+            let height = sheetHeight(in: proxy.size.height)
+            ZStack(alignment: .bottom) {
+                globe
+                    .frame(height: max(proxy.size.height - height + proxy.safeAreaInsets.top + 28, 0))
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(edges: .top)
+                sheet(height: height, available: proxy.size.height)
             }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.bottom, Theme.Spacing.xxl)
         }
-        .background(Roam.paper)
+        .background(Color.black.ignoresSafeArea())
         .navigationTitle("My Places")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { openWishlist() } label: { Image(systemName: "bookmark") }
@@ -124,7 +139,6 @@ struct MyPlacesRootView: View {
         }
         .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
         .onChange(of: router.path(for: .myPlaces).isEmpty) { _, isRoot in if isRoot { Task { await model?.load() } } }
-        .refreshable { await model?.load() }
         .overlay {
             if session.profile?.hasSeenBeenIntro == false {
                 ZStack {
@@ -148,17 +162,94 @@ struct MyPlacesRootView: View {
         if let me = session.userID { router.push(.memberList(me, .want)) }
     }
 
-    private func mapCard(_ pins: [PlaceMapItem]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PlaceMapView(items: pins) { router.push(.experience($0)) }
-                .id(pins.map(\.id))
-                .frame(height: 300)
-            PlaceMapLegend().padding(Theme.Spacing.m)
+    /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
+    @ViewBuilder private var globe: some View {
+        if let model, model.hasLoaded {
+            GlobeMapView(pins: model.pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
+                         shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
+                         globeCenter: PlaceMapItem.startingRegion(model.pins).center,
+                         countryTints: PlaceMapItem.countryTints(model.pins),
+                         pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }))
+                .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
+        } else {
+            Color.black
         }
-        .background(Roam.paperRaised)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Roam.rule))
-        .accessibilityIdentifier("myplaces-map")
+    }
+
+    private func sheetHeight(in available: CGFloat) -> CGFloat {
+        min(max(detent.height(in: available) - dragOffset, MyPlacesSheetDetent.peek.height(in: available)), available)
+    }
+
+    private func sheet(height: CGFloat, available: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            sheetHeader(available: available)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                    if let model, model.hasLoaded {
+                        upcomingSection(model.upcoming)
+                        pastSection(model.past)
+                        moreSection
+                    } else if let error = model?.error {
+                        InlineRetryView(message: error) { Task { await model?.load() } }
+                    } else {
+                        SkeletonList(rows: 4)
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.s)
+                .padding(.bottom, Theme.Spacing.xxl)
+            }
+            .refreshable { await model?.load() }
+            .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
+        }
+        .frame(height: height, alignment: .top)
+        .frame(maxWidth: .infinity)
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
+                .fill(Roam.paper)
+                .shadow(color: .black.opacity(0.25), radius: 12, y: -2)
+                .ignoresSafeArea(edges: .bottom)
+        }
+    }
+
+    /// Drag to size the sheet. Tap to swap between the lists filling the screen and sharing it with the map.
+    private func sheetHeader(available: CGFloat) -> some View {
+        VStack(spacing: Theme.Spacing.s) {
+            Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
+            HStack(alignment: .firstTextBaseline) {
+                Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+                Spacer()
+                Image(systemName: detent == .full ? "chevron.down" : "chevron.up")
+                    .font(.footnote.weight(.bold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
+            PlaceMapLegend().frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.bottom, Theme.Spacing.s)
+        .contentShape(Rectangle())
+        .onTapGesture { setDetent(detent == .half ? .full : .half) }
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .updating($dragOffset) { value, offset, _ in offset = value.translation.height }
+                .onEnded { value in
+                    let target = detent.height(in: available) - value.predictedEndTranslation.height
+                    setDetent(MyPlacesSheetDetent.allCases.min { abs($0.height(in: available) - target) < abs($1.height(in: available) - target) } ?? .half)
+                }
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("My Places")
+        .accessibilityHint(detent == .full ? "Shows the map" : "Minimizes the map")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { setDetent(detent == .half ? .full : .half) }
+        .accessibilityIdentifier("myplaces-sheet-header")
+    }
+
+    private func setDetent(_ next: MyPlacesSheetDetent) {
+        if UIAccessibility.isReduceMotionEnabled {
+            detent = next
+        } else {
+            withAnimation(.spring(duration: 0.35)) { detent = next }
+        }
     }
 
     private func upcomingSection(_ trips: [MyPlacesTrip]) -> some View {
