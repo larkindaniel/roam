@@ -74,7 +74,7 @@ private struct SetupSteps: View {
     @ViewBuilder private var content: some View {
         switch model.step {
         case .name:
-            question("What should we call you?", "This is how other travellers see you. You can change it later.")
+            question("What should we call you?", "This is how other people see you. You can change it later.")
             RoamTextField(title: "Display name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
                 .onChange(of: model.displayName) { _, _ in model.saveDraft() }
             Button("Continue") { model.continueFromName() }
@@ -122,10 +122,11 @@ private struct SetupSteps: View {
             .buttonStyle(SecondaryButtonStyle())
             .disabled(model.avatarBusy)
             .accessibilityIdentifier("choose-avatar")
-            Button(model.avatarPath == nil ? "Not now" : "Continue") { model.finishPhotoStep() }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.avatarBusy)
-                .accessibilityIdentifier("setup-continue")
+            if model.avatarPath == nil {
+                Button("Not now") { model.finishPhotoStep() }.buttonStyle(QuietButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+            } else {
+                Button("Continue") { model.finishPhotoStep() }.buttonStyle(PrimaryButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+            }
         case .home:
             question("Where's home?", "Optional. Roam uses it as your starting point for search. Home never counts as a place you've visited.")
             Button {
@@ -237,8 +238,8 @@ private struct SetupSteps: View {
 struct VisibilityExplainer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            row("person.crop.circle", "Visible to members", "Your name, handle, photo, bio, home city, rankings and scores, Wishlist list, travel globe, and the public notes and photos on your visits.")
-            row("dot.radiowaves.left.and.right", "Shared automatically", "When you finish ranking or add a visit, it appears on your profile and in your friends' feeds.")
+            row("person.crop.circle", "Visible to everyone on Roam", "Your name, handle, photo, bio, home city and wishlist, plus any visit you mark Public.")
+            row("dot.radiowaves.left.and.right", "Shared with friends", "Visits are for friends unless you choose otherwise, and appear in their Friends tab.")
             row("lock.fill", "Only you", "Private notes, your email, your settings and who you've blocked or muted.")
         }
         .roamCard()

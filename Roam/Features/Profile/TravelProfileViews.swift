@@ -278,7 +278,7 @@ struct NewThisYearView: View {
     private func list(_ travel: TravelProfile) -> some View {
         let byID = Dictionary(uniqueKeysWithValues: travel.pins.map { ($0.experienceID, $0) })
         let pins = travel.newThisYear.experienceIDs.compactMap { byID[$0] }
-        return List {
+        return List { Group {
             Section {
                 if pins.isEmpty {
                     Text(verbatim: "No places were first visited in \(year) yet.")
@@ -313,6 +313,8 @@ struct NewThisYearView: View {
                     }
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
     }
 }

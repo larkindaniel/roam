@@ -50,16 +50,16 @@ struct HelpView: View {
                     "No one else's ratings change your scores.",
                 ]),
                 HelpSection(title: "How a score is set", paragraphs: [
-                    "When you log a place you say whether you liked it, thought it was fine or didn't like it, then compare it with places you gave the same answer. Each comparison halves the remaining range, so a long list needs only a few choices.",
+                    "Ranking is optional. When you rank a place you say whether you liked it, thought it was fine or didn't like it, then compare it with places you gave the same answer. Each comparison halves the remaining range, so a long list needs only a few choices.",
                     "Scores come from where a place sits: liked places score 6.7 to 10.0, fine places 3.4 to 6.6, and places you didn't like 0.0 to 3.3. Your first liked place is 8.4; with two it's 10.0 and 6.7. Scores move as your list grows, and other categories never change.",
                 ]),
                 HelpSection(title: "Ties, Skip and Undo", paragraphs: [
                     "Too tough means the two places are a tie: tied places share one score and rank, and more places in a tie don't change its score.",
                     "Skip stops comparing and places it approximately, without making it a tie. You can rank again any time. Undo steps back through choices before you save.",
                 ]),
-                HelpSection(title: "What gets posted", paragraphs: [
-                    "Finishing a ranking, a new visit or Rank again posts automatically to your profile and your friends' feeds. Posts show the score at the time you posted, labelled \"Score when posted\".",
-                    "Editing a note, photos or date later updates that post without re-posting it. Removing a post keeps your ranking and visit; removing a ranking keeps your visits, notes and photos.",
+                HelpSection(title: "What gets shared", paragraphs: [
+                    "Each place you log goes to the people you choose: friends, only you, or everyone. Your friends see it under that trip in their Friends tab, or under Home if it isn't on a trip.",
+                    "You can change who sees a visit, or edit its note, photos or date, at any time. Removing a ranking keeps your visits, notes and photos.",
                 ]),
                 HelpSection(title: "Travel counts", paragraphs: [
                     "Your globe, countries, cities and New this year count places you've logged a visit to, whether or not they're still ranked. Saved places and your home city don't count.",
@@ -68,8 +68,9 @@ struct HelpView: View {
             ]
         case .privacy:
             return [
-                HelpSection(title: "What other members see", paragraphs: [
-                    "Signed-in members can see your profile, rankings and scores, Wishlist list, posts, public notes, visit photos, travel counts and who you follow. Blocked members see none of it.",
+                HelpSection(title: "What other people see", paragraphs: [
+                    "Anyone signed in can see your name, handle, photo, bio and wishlist. Each visit, with its rating, note and photos, is seen only by the audience you chose: friends, only you, or everyone. Blocked people see none of it.",
+                    "Trips and lists stay private until you share them. If friends can see a visit on a trip, they also see the trip's card with that visit, but not your planned places.",
                 ]),
                 HelpSection(title: "What stays private", paragraphs: [
                     "Private notes, your email address and sign-in details, your settings, your reports, who you've blocked or muted, and unsaved drafts are only visible to you. Drafts and caches stay on this device until you save, discard or sign out.",
@@ -79,17 +80,17 @@ struct HelpView: View {
                     "Roam asks for your location only to sort or search near you. Everything works without it, including your globe.",
                 ]),
                 HelpSection(title: "Deleting your account", paragraphs: [
-                    "Deleting your account hides your profile at once and then permanently deletes your rankings, visits, notes, photos, follows, likes, comments and posts. Text you've already shared outside Roam can't be recalled.",
+                    "Deleting your account hides your profile at once and then permanently deletes your rankings, visits, notes, photos, trips, lists, friends, likes, comments and posts. Text you've already shared outside Roam can't be recalled.",
                 ]),
             ]
         case .terms:
             return [
                 HelpSection(title: "Using Roam", paragraphs: [
                     "Share your own experiences honestly. Don't post spam, harassment, other people's private information or content you don't have the right to share.",
-                    "Members can report places, posts, comments, photos and members. Reports are stored for review. Repeated or serious misuse may lead to content or accounts being removed.",
+                    "You can report places, posts, comments, photos and people. Reports are stored for review. Repeated or serious misuse may lead to content or accounts being removed.",
                 ]),
                 HelpSection(title: "Your content", paragraphs: [
-                    "You keep ownership of what you post. Posting it lets other signed-in members view it in Roam until you remove it or delete your account.",
+                    "You keep ownership of what you post. Posting it lets the people you chose view it in Roam until you remove it or delete your account.",
                 ]),
             ]
         case .support:

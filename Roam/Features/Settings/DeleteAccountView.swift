@@ -211,7 +211,7 @@ struct DeleteAccountView: View {
     private var explanation: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             Text("Deleting your account permanently removes:").font(.headline)
-            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your Wishlist list",
+            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your wishlist, trips and lists",
                      "Your friends and friend requests", "Your posts, likes and comments"], id: \.self) { item in
                 Label(item, systemImage: "minus.circle").foregroundStyle(.primary)
             }

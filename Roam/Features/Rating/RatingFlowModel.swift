@@ -115,7 +115,7 @@ final class RatingFlowModel {
                 ranking = nil
                 session = nil
                 step = .details
-                message = "This experience is now ranked in \(canonical.title). Your details are kept; tap Okay to refresh comparisons."
+                message = "This place is now ranked in \(canonical.title). Your details are kept; tap Okay to refresh comparisons."
             }
             if step == .comparison, let categoryRanking = draft.ranking, let chosen = draft.sentiment {
                 let base = request.mode == .rerank ? categoryRanking.removing(experienceID: request.experience.id) : categoryRanking

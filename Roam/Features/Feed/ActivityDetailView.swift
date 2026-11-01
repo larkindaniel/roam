@@ -80,7 +80,7 @@ struct ActivityDetailView: View {
             ScrollView {
                 VStack {
                     EmptyStateView(systemImage: "eye.slash", title: "This post isn't available",
-                                   message: "It was removed, or you can no longer see this member's posts.",
+                                   message: "It was removed, or you can no longer see it.",
                                    primaryTitle: "Go back", primaryAction: { dismiss() })
                 }
                 .accessibilityElement(children: .contain)

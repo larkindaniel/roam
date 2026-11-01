@@ -53,10 +53,10 @@ struct EmptyStateView: View {
             }
             VStack(spacing: Theme.Spacing.s) {
                 if let primaryTitle, let primaryAction {
-                    Button(primaryTitle, action: primaryAction).buttonStyle(PrimaryButtonStyle())
+                    Button(primaryTitle, action: primaryAction).buttonStyle(PrimaryButtonStyle(compact: true))
                 }
                 if let secondaryTitle, let secondaryAction {
-                    Button(secondaryTitle, action: secondaryAction).buttonStyle(SecondaryButtonStyle())
+                    Button(secondaryTitle, action: secondaryAction).buttonStyle(QuietButtonStyle())
                 }
             }
             .frame(maxWidth: 320)

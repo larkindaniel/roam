@@ -333,11 +333,12 @@ struct ForYouRootView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             sectionTitle("From your friends")
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: Theme.Spacing.m) {
+                HStack(alignment: .top, spacing: Theme.Spacing.m) {
                     ForEach(places) { place in
                         placeCard(place, evidence: place.friendEvidence, photoHeight: 150).frame(width: 250)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
             .scrollClipDisabled()
             .accessibilityIdentifier("discover-friends")

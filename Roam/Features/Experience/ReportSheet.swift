@@ -19,7 +19,7 @@ struct ReportSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            Form { Group {
                 if let receipt {
                     Section {
                         Label("Report received", systemImage: "checkmark.seal.fill").foregroundStyle(Theme.liked).font(.headline)
@@ -54,6 +54,8 @@ struct ReportSheet: View {
                     if let error { Section { ErrorText(error) } }
                 }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,6 +72,7 @@ struct ReportSheet: View {
             }
             .onAppear { if reason == nil { reason = suggestedReason } }
         }
+        .roamSheetStyle()
     }
 
     private func submit() async {

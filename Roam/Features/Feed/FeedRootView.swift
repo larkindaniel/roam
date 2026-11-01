@@ -54,7 +54,7 @@ struct FeedRootView: View {
             LazyVStack(spacing: Theme.Spacing.l) {
                 ForEach(value) { card in
                     TripFeedCardView(card: card) {
-                        router.push(.tripUpdates(ownerID: card.author.id, tripID: card.tripID, title: card.title))
+                        router.push(.tripUpdates(ownerID: card.author.id, tripID: card.tripID, title: card.title, byline: card.author.displayName))
                     }
                 }
             }
@@ -127,6 +127,7 @@ struct TripUpdatesView: View {
     let ownerID: UUID
     let tripID: UUID?
     let title: String
+    var byline: String? = nil
 
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
@@ -135,6 +136,10 @@ struct TripUpdatesView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                if let byline {
+                    Text("\(byline)\u{2019}s places").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                        .accessibilityIdentifier("trip-updates-byline")
+                }
                 switch entries {
                 case .idle, .loading:
                     SkeletonList(rows: 3)

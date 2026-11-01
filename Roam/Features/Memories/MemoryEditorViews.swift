@@ -52,18 +52,19 @@ struct VisitMemoryEditor: View {
                                          existingMedia: visit.media, storage: services.storage, media: services.media,
                                          currentAccount: { account.userID })
             }
-        }.screenIdentifier("memory-editor")
+        }
+        .roamSheetStyle().screenIdentifier("memory-editor")
     }
 
     private func form(_ model: VisitMemoryEditorModel) -> some View {
         @Bindable var model = model
-        return Form {
+        return Form { Group {
             Section {
                 TextEditor(text: $model.note).frame(minHeight: 180).disabled(!model.canEdit)
                     .accessibilityIdentifier("memory-note-text")
                 Text("\(Validation.characterCount(model.note)) / 5,000 characters")
                     .foregroundStyle(Validation.characterCount(model.note) > 5_000 ? Theme.disliked : .secondary)
-            } header: { Text("Public note") }
+            } header: { Text("Note") }
             footer: { Text("Only the people you choose below can see this note. Editing it does not publish a new activity.") }
             Section("Who can see this") {
                 Picker("Who can see this", selection: Binding(get: { audience ?? visit.audience }, set: { value in
@@ -101,6 +102,8 @@ struct VisitMemoryEditor: View {
             if let error = photoError ?? model.persistenceError ?? model.error {
                 Section { Text(error).foregroundStyle(Theme.disliked).accessibilityIdentifier("memory-editor-error") }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
         .sheet(isPresented: $showsPhotos) {
@@ -180,12 +183,13 @@ struct PrivateNoteEditor: View {
                 }
                 await model?.load()
             }
-        }.screenIdentifier("private-note-editor")
+        }
+        .roamSheetStyle().screenIdentifier("private-note-editor")
     }
 
     private func form(_ model: PrivateNoteEditorModel) -> some View {
         @Bindable var model = model
-        return Form {
+        return Form { Group {
             Section {
                 Label("Only you can see this note", systemImage: "lock.fill").accessibilityIdentifier("private-note-warning")
                 if model.loaded {
@@ -211,6 +215,8 @@ struct PrivateNoteEditor: View {
                         .disabled(model.isSaving).accessibilityIdentifier("private-note-delete")
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }.onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
     }
 

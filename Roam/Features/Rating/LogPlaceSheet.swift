@@ -33,6 +33,7 @@ struct LogPlaceSheet: View {
                             }
                         }
                 }
+        .roamSheetStyle()
             }
         }
         .task { if model == nil { model = ExperienceSearchModel(services: services) } }
@@ -52,7 +53,7 @@ struct LogPlaceSheet: View {
     }
 
     private var searchList: some View {
-        List {
+        List { Group {
             if let error { Text(error).foregroundStyle(Roam.signal).listRowBackground(Roam.paperRaised) }
             ForEach(onRoam) { place in
                 Button { Task { await choose(place) } } label: {
@@ -96,6 +97,8 @@ struct LogPlaceSheet: View {
                     .listRowBackground(Roam.paperRaised)
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .listStyle(.insetGrouped)
         .safeAreaInset(edge: .bottom) {
@@ -155,7 +158,7 @@ struct AddCustomPlaceSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            Form { Group {
                 Section {
                     TextField("Place name", text: $name).accessibilityIdentifier("custom-place-name")
                     Picker("Category", selection: $category) {
@@ -175,6 +178,8 @@ struct AddCustomPlaceSheet: View {
                 }
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .scrollContentBackground(.hidden)
             .navigationTitle("Add a place")
             .navigationBarTitleDisplayMode(.inline)
@@ -190,6 +195,7 @@ struct AddCustomPlaceSheet: View {
                 center = start
             }
         }
+        .roamSheetStyle()
     }
 
     private func save() async {

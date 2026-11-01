@@ -63,6 +63,7 @@ struct RatingFlowView: View {
                                         storage: services.storage, currentAccount: { account.userID }, photos: photos)
             }
         }
+        .roamSheetStyle()
         .screenIdentifier("rating-flow")
     }
 
@@ -79,7 +80,7 @@ struct RatingFlowView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
                 Text(request.experience.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
-                if let category = model.category, !(model.skipsRanking && !model.categoryLocked) {
+                if let category = model.category, model.categoryLocked {
                     Label(category.title, systemImage: category.symbolName).font(.headline)
                         .accessibilityIdentifier("rating-category")
                 }
@@ -140,16 +141,45 @@ struct RatingFlowView: View {
         }
     }
 
+    private func detailRow(_ title: String, symbol: String, value: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: symbol).frame(width: 24).accessibilityHidden(true)
+                Text(title)
+                Spacer(minLength: Theme.Spacing.m)
+                Text(value).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
+            .foregroundStyle(Roam.ink)
+            .frame(minHeight: Theme.minimumHitTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func pickerRow<Control: View>(_ title: String, symbol: String, @ViewBuilder control: () -> Control) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            Image(systemName: symbol).frame(width: 24).accessibilityHidden(true)
+            Text(title)
+            Spacer(minLength: Theme.Spacing.m)
+            control()
+        }
+        .frame(minHeight: Theme.minimumHitTarget)
+    }
+
     private func sentiment(_ model: RatingFlowModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             if !model.categoryLocked {
-                Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
-                    Text("Choose a category").tag(ExperienceCategory?.none)
-                    ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                pickerRow("Category", symbol: model.category?.symbolName ?? "square.grid.2x2") {
+                    Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
+                        Text("Choose").tag(ExperienceCategory?.none)
+                        ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                    }
+                    .labelsHidden()
+                    .accessibilityIdentifier("rating-category-picker")
                 }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("rating-category-picker")
-                Text("Confirm the category before your first ranking.").font(.footnote).foregroundStyle(Theme.secondaryText)
+                .roamCard(padding: Theme.Spacing.m)
             }
             Text("How did you feel about it?").font(.title2.weight(.semibold))
             ForEach(Sentiment.allCases) { sentiment in
@@ -164,7 +194,7 @@ struct RatingFlowView: View {
                 .accessibilityIdentifier("rating-sentiment-\(sentiment.rawValue)")
             }
             if request.mode == .firstLog {
-                Button("Log without ranking") { model.logWithoutRanking() }
+                Button("Skip ranking") { model.logWithoutRanking() }
                     .frame(minHeight: Theme.minimumHitTarget)
                     .disabled(model.category == nil)
                     .accessibilityIdentifier("rating-skip-ranking")
@@ -174,47 +204,44 @@ struct RatingFlowView: View {
 
     private func details(_ model: RatingFlowModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            Text("Add details if you'd like").font(.title2.weight(.semibold))
-            if model.skipsRanking && !model.categoryLocked {
-                Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
-                    Text("Choose a category").tag(ExperienceCategory?.none)
-                    ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+            VStack(spacing: 0) {
+                if model.skipsRanking && !model.categoryLocked {
+                    pickerRow("Category", symbol: model.category?.symbolName ?? "square.grid.2x2") {
+                        Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
+                            Text("Choose").tag(ExperienceCategory?.none)
+                            ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                        }
+                        .labelsHidden()
+                        .accessibilityIdentifier("rating-details-category")
+                    }
+                    Divider()
                 }
-                .pickerStyle(.menu)
-                .frame(minHeight: Theme.minimumHitTarget)
-                .accessibilityIdentifier("rating-details-category")
+                detailRow("Note", symbol: "text.alignleft", value: model.visit.publicNote.isEmpty ? "Optional" : model.visit.publicNote, identifier: "rating-edit-note") { showsNote = true }
+                Divider()
+                detailRow("Date", symbol: "calendar", value: model.visit.date?.displayString ?? "Unknown", identifier: "rating-edit-date") { showsDate = true }
+                if let photos = model.photos {
+                    Divider()
+                    detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
+                }
+                if request.mode != .rerank {
+                    Divider()
+                    pickerRow("Trip", symbol: "suitcase") {
+                        Picker("Trip", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
+                            Text("Home").tag(UUID?.none)
+                            ForEach(trips) { Text($0.name).tag(UUID?.some($0.id)) }
+                        }
+                        .labelsHidden()
+                        .task { trips = (try? await services.plans.myTrips()) ?? [] }
+                        .accessibilityIdentifier("rating-trip")
+                    }
+                }
             }
-            Button { showsNote = true } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Public note", systemImage: "text.alignleft")
-                    Text(model.visit.publicNote.isEmpty ? "Optional" : model.visit.publicNote)
-                        .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(3)
-                }.frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
+            .roamCard(padding: Theme.Spacing.m)
+            if let photos = model.photos, !photos.canCommit {
+                Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked)
             }
-            .accessibilityIdentifier("rating-edit-note")
-            Button { showsDate = true } label: {
-                Label(model.visit.date?.displayString ?? "Date unknown", systemImage: "calendar")
-                    .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
-            }
-            .accessibilityIdentifier("rating-edit-date")
-            if let photos = model.photos {
-                Button { showsPhotos = true } label: {
-                    Label("\(photos.assets.count) \(photos.assets.count == 1 ? "photo" : "photos")", systemImage: "photo.on.rectangle")
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: Theme.minimumHitTarget)
-                }.accessibilityIdentifier("rating-edit-photos")
-                if !photos.canCommit { Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked).accessibilityIdentifier("rating-photo-error") }
-            }
-            if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(Theme.secondaryText) }
+            if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
-                Picker(selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
-                    Text("Home (no trip)").tag(UUID?.none)
-                    ForEach(trips) { Text($0.name).tag(UUID?.some($0.id)) }
-                } label: {
-                    Label("Trip", systemImage: "suitcase")
-                }
-                .frame(minHeight: Theme.minimumHitTarget)
-                .task { trips = (try? await services.plans.myTrips()) ?? [] }
-                .accessibilityIdentifier("rating-trip")
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("Who can see this").font(.footnote.weight(.semibold))
                     Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .friends }, set: { model.setAudience($0) })) {
@@ -251,7 +278,7 @@ struct RatingFlowView: View {
                     Task { await model.choose(.preferExisting) }
                 }
             }
-            Text("Only your \(model.category?.title ?? "category") experiences marked \(model.sentiment?.title.lowercased() ?? "the same way") are compared.")
+            Text("Only your \(model.category?.title ?? "category") places marked \(model.sentiment?.title.lowercased() ?? "the same way") are compared.")
                 .font(.footnote).foregroundStyle(Theme.secondaryText)
             Button("Too tough") { Task { await model.choose(.tooTough) } }
                 .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("rating-too-tough")
@@ -286,7 +313,7 @@ struct RatingFlowView: View {
                         .accessibilityLabel("Your score \(result.score.formatted)").accessibilityIdentifier("rating-result-score")
                     Text("Position \(result.rank) of \(result.categoryCount) in \(result.category.title)")
                         .accessibilityIdentifier("rating-result-position")
-                    if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "experience" : "experiences").") }
+                    if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "place" : "places").") }
                     Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(Theme.secondaryText)
                 case .visit:
                     Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
@@ -307,11 +334,13 @@ private struct RatingNoteEditor: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
-            Form {
+            Form { Group {
                 TextEditor(text: $note).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
                 Text("\(Validation.characterCount(note)) / 5,000 characters").foregroundStyle(Validation.characterCount(note) > 5_000 ? Color.red : Color.gray)
                 if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
-            }.navigationTitle("Public note").toolbar {
+            }
+            .listRowBackground(Roam.paperRaised)
+            }.navigationTitle("Note").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -320,6 +349,7 @@ private struct RatingNoteEditor: View {
                 }
             }
         }
+        .roamSheetStyle()
     }
 }
 
@@ -339,10 +369,12 @@ private struct RatingDateEditor: View {
     }
     var body: some View {
         NavigationStack {
-            Form {
+            Form { Group {
                 Toggle("Date unknown", isOn: $unknown).accessibilityIdentifier("rating-date-unknown")
                 if !unknown { DatePicker("Visit date", selection: $date, in: ...today.date(in: zone), displayedComponents: .date).environment(\.timeZone, zone) }
                 if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
+            }
+            .listRowBackground(Roam.paperRaised)
             }.navigationTitle("Visit date").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
                 ToolbarItem(placement: .confirmationAction) {
@@ -353,5 +385,6 @@ private struct RatingDateEditor: View {
                 }
             }
         }
+        .roamSheetStyle()
     }
 }

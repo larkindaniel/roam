@@ -10,7 +10,7 @@ struct PlaceListsView: View {
     @State private var error: String?
 
     var body: some View {
-        List {
+        List { Group {
             switch lists {
             case .idle, .loading: Section { SkeletonList(rows: 3) }
             case .failed(let message): Section { InlineRetryView(message: message) { Task { await load() } } }
@@ -35,6 +35,8 @@ struct PlaceListsView: View {
                 .listRowBackground(Roam.paperRaised)
             }
             if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
@@ -82,7 +84,7 @@ struct PlaceListDetailView: View {
     @State private var actionError: String?
 
     var body: some View {
-        List {
+        List { Group {
             switch detail {
             case .idle, .loading: Section { SkeletonList(rows: 3) }
             case .failed(let message): Section { InlineRetryView(message: message) { Task { await load() } } }
@@ -117,6 +119,8 @@ struct PlaceListDetailView: View {
                 }
                 .listRowBackground(Roam.paperRaised)
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
@@ -178,7 +182,7 @@ struct AddToListSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section("Note (optional)") {
                     TextField("Why this place?", text: $note, axis: .vertical)
                 }
@@ -202,6 +206,8 @@ struct AddToListSheet: View {
                 .listRowBackground(Roam.paperRaised)
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .scrollContentBackground(.hidden)
             .navigationTitle("Add \(placeName)")
             .navigationBarTitleDisplayMode(.inline)
@@ -211,6 +217,7 @@ struct AddToListSheet: View {
                 catch { lists = .failed(error.roamMessage) }
             }
         }
+        .roamSheetStyle()
         .presentationDetents([.medium, .large])
     }
 
@@ -247,7 +254,7 @@ struct ShareSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section("Friend") {
                     switch friends {
                     case .idle, .loading: ProgressView()
@@ -277,6 +284,8 @@ struct ShareSheet: View {
                 .listRowBackground(Roam.paperRaised)
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .scrollContentBackground(.hidden)
             .navigationTitle("Share \(title)")
             .navigationBarTitleDisplayMode(.inline)
@@ -290,6 +299,7 @@ struct ShareSheet: View {
             }
             .task { await load() }
         }
+        .roamSheetStyle()
         .presentationDetents([.medium, .large])
     }
 

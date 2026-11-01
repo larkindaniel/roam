@@ -53,7 +53,7 @@ struct NotificationsView: View {
             }
             .refreshable { await model.load() }
         } else {
-            List {
+            List { Group {
                 if let error = model.actionError {
                     Text(error).foregroundStyle(Theme.disliked).accessibilityIdentifier("notifications-action-error")
                 }
@@ -70,6 +70,8 @@ struct NotificationsView: View {
                     Task { await model.loadMore() }
                 }
                 .listRowBackground(Color.clear)
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .refreshable { await model.load() }
             .accessibilityIdentifier("notifications-list")
@@ -170,7 +172,7 @@ struct FollowListView: View {
             ScrollView { SkeletonList(rows: 6).padding() }
         } else if !model.hasLoaded, let error = model.error {
             ScrollView {
-                EmptyStateView(systemImage: "person.2.slash", title: "Couldn't load members", message: error,
+                EmptyStateView(systemImage: "person.2.slash", title: "Couldn't load this list", message: error,
                                primaryTitle: "Try again", primaryAction: { Task { await model.load(query: query) } })
             }
         } else if model.rows.isEmpty {
@@ -181,7 +183,7 @@ struct FollowListView: View {
                     .padding(.top, Theme.Spacing.xl)
             }
         } else {
-            List {
+            List { Group {
                 if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: query) } } }
                 if let error = model.actionError { Text(error).foregroundStyle(Theme.disliked) }
                 ForEach(model.rows) { row in
@@ -199,6 +201,8 @@ struct FollowListView: View {
                     Task { await model.loadMore() }
                 }
                 .listRowBackground(Color.clear)
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .accessibilityIdentifier("follow-list-rows")
         }
@@ -220,7 +224,7 @@ struct FollowListView: View {
                            message: "Add friends to see their trips and places here.",
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
         } else {
-            EmptyStateView(systemImage: "person.2", title: "No friends yet", message: "This member hasn't added any friends yet.")
+            EmptyStateView(systemImage: "person.2", title: "No friends yet", message: "They haven't added any friends yet.")
         }
     }
 }
@@ -256,7 +260,7 @@ struct SharedWantsView: View {
         .screenIdentifier("shared-wants")
     }
 
-    private var otherName: String { other?.member.displayName ?? "this member" }
+    private var otherName: String { other?.member.displayName ?? "this person" }
 
     @ViewBuilder private func content(_ model: SharedWantsModel) -> some View {
         VStack(spacing: 0) {
@@ -281,7 +285,7 @@ struct SharedWantsView: View {
             } else if showsMap {
                 sharedMap(model)
             } else {
-                List {
+                List { Group {
                     if let error = model.error {
                         InlineRetryView(message: "Couldn't refresh. Showing the last shared list. \(error)") { Task { await model.load() } }
                     }
@@ -300,6 +304,8 @@ struct SharedWantsView: View {
                                           catch { _ = session.handle(error) }
                                       } })
                     }
+                }
+                .listRowBackground(Roam.paperRaised)
                 }
                 .accessibilityIdentifier("shared-wants-list")
             }

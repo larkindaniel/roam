@@ -117,7 +117,7 @@ struct ProfileView: View {
         } message: {
             Text("You'll stop being friends and won't see each other's profiles, posts, lists, photos or comments. Unblocking later doesn't restore follows.")
         }
-        .sheet(item: $reportTarget) { target in ReportSheet(target: target, title: "Report member") }
+        .sheet(item: $reportTarget) { target in ReportSheet(target: target, title: "Report this person") }
         .task { if profile.value == nil { await load() } }
         .refreshable { await load() }
         .onChange(of: session.profile) { _, updated in
@@ -211,7 +211,7 @@ struct ProfileView: View {
                 VStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
             }
             if relationship.isMuted {
-                Label("Muted: their posts are hidden from your feed.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
+                Label("Muted: their trips are hidden from your Friends tab.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("profile-muted")
             }
         }
@@ -339,8 +339,8 @@ struct ProfileView: View {
                 } else if let error = activity.error, activity.items.isEmpty {
                     InlineRetryView(message: error) { Task { await activity.refresh() } }
                 } else if activity.items.isEmpty {
-                    Text(value.relationship.isSelf ? "Your rankings and revisits appear here after you log them."
-                                                   : "\(value.member.displayName) hasn't posted any rankings yet.")
+                    Text(value.relationship.isSelf ? "Places you log appear here."
+                                                   : "\(value.member.displayName) hasn't shared anything you can see yet.")
                         .font(.subheadline).foregroundStyle(Theme.secondaryText)
                         .accessibilityIdentifier("profile-activity-empty")
                 } else {

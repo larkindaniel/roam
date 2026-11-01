@@ -251,7 +251,7 @@ struct GlobeMapView: UIViewRepresentable {
                 view?.markerTintColor = UIColor(named: "AccentColor") ?? .systemTeal
                 view?.glyphText = "\(cluster.memberAnnotations.count)"
                 view?.displayPriority = .required
-                view?.accessibilityLabel = "\(cluster.memberAnnotations.count) experiences. Double tap to zoom in."
+                view?.accessibilityLabel = "\(cluster.memberAnnotations.count) places. Double tap to zoom in."
                 return view
             }
             guard let pinAnnotation = annotation as? ExperiencePinAnnotation else { return nil }

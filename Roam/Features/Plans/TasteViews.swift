@@ -11,7 +11,7 @@ struct TasteEditorView: View {
     @State private var saving = false
 
     var body: some View {
-        Form {
+        Form { Group {
             ForEach(TasteProfile.questions) { question in
                 Section(question.title) {
                     Picker(question.title, selection: Binding(get: { taste[keyPath: question.keyPath] ?? "" },
@@ -26,6 +26,8 @@ struct TasteEditorView: View {
                 .listRowBackground(Roam.paperRaised)
             }
             if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .scrollContentBackground(.hidden)
         .background(Roam.paper)
@@ -86,6 +88,7 @@ struct ResearchBriefSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
             .task { await build() }
         }
+        .roamSheetStyle()
     }
 
     private func build() async {

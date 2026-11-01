@@ -90,14 +90,13 @@ struct CategoryBadge: View {
     var compact = false
 
     var body: some View {
-        Label {
-            Text(category?.title ?? "Uncategorized")
-        } icon: {
+        HStack(spacing: 4) {
             Image(systemName: category?.symbolName ?? "questionmark.circle")
+            Text(category?.title ?? "Uncategorized")
         }
         .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
         .foregroundStyle(Theme.accent)
-        .labelStyle(.titleAndIcon)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Category: \(category?.title ?? "Uncategorized")")
     }
 }

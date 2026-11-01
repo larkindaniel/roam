@@ -18,7 +18,7 @@ struct PhotoDraftEditor: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section {
                     PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - model.assets.count),
                                  selectionBehavior: .ordered, matching: .images) {
@@ -80,6 +80,8 @@ struct PhotoDraftEditor: View {
                     Section { Text(message).foregroundStyle(Theme.disliked).accessibilityIdentifier("photo-editor-error") }
                 }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .accessibilityIdentifier("photo-editor-list")
             .navigationTitle("Visit photos")
             .navigationBarTitleDisplayMode(.inline)
@@ -131,6 +133,7 @@ struct PhotoDraftEditor: View {
             }
             .onDisappear { importGeneration += 1; importTask?.cancel() }
         }
+        .roamSheetStyle()
         .screenIdentifier("photo-editor")
     }
 

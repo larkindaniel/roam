@@ -46,7 +46,7 @@ enum AppRoute: Hashable, Sendable {
     case explore
     case ownProfile
     case trip(UUID)
-    case tripUpdates(ownerID: UUID, tripID: UUID?, title: String)
+    case tripUpdates(ownerID: UUID, tripID: UUID?, title: String, byline: String?)
     case lists
     case list(UUID)
     case taste
@@ -181,5 +181,5 @@ enum SearchSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
     case members
 
     var id: String { rawValue }
-    var title: String { self == .experiences ? "Experiences" : "Members" }
+    var title: String { self == .experiences ? "Places" : "People" }
 }

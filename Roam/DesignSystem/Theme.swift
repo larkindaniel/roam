@@ -78,12 +78,13 @@ extension Font {
 struct PrimaryButtonStyle: ButtonStyle {
     /// Destructive final actions pass `Theme.destructive`.
     var fill: Color = Roam.ink
+    var compact = false
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .frame(minHeight: 44)
+            .frame(maxWidth: compact ? nil : .infinity, minHeight: 50)
             .padding(.horizontal, Theme.Spacing.xl)
             .foregroundStyle(isEnabled ? Roam.onInk : Roam.inkMuted)
             .background(Capsule().fill(isEnabled ? fill : Roam.fill))
@@ -94,12 +95,13 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 /// Outlined secondary action.
 struct SecondaryButtonStyle: ButtonStyle {
+    var compact = false
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .frame(minHeight: 44)
+            .frame(maxWidth: compact ? nil : .infinity, minHeight: 50)
             .padding(.horizontal, Theme.Spacing.xl)
             .foregroundStyle(isEnabled ? Roam.ink : Roam.inkFaint)
             .background(Capsule().fill(Roam.fill))
@@ -147,6 +149,41 @@ extension View {
         self.padding(padding)
             .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
             .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline))
+    }
+}
+
+/// A quiet text action beneath a page's main button.
+struct QuietButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Roam.ink)
+            .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+extension View {
+    /// The shared look for every sheet: paper behind, with lists and forms showing through.
+    func roamSheetStyle() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Roam.paper)
+            .presentationBackground(Roam.paper)
+    }
+}
+
+/// A titled block of content. Every page section uses this, so headings and spacing match.
+struct RoamSection<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            Text(title).font(.roamTitle(.title3)).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

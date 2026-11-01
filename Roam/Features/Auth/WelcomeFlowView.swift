@@ -95,8 +95,7 @@ struct WelcomeView: View {
                         .accessibilityIdentifier("continue-with-email")
 
                     Button("I already have an account") { model.path.append(.signIn) }
-                        .font(.headline)
-                        .frame(minHeight: Theme.minimumHitTarget)
+                        .buttonStyle(QuietButtonStyle())
                         .accessibilityIdentifier("existing-account")
                 }
                 .padding(.horizontal, Theme.Spacing.xl)

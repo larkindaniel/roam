@@ -60,7 +60,7 @@ struct SafetyMembersView: View {
     @State private var model: SafetyMembersModel?
     @State private var confirming: MemberSummary?
 
-    private var title: String { kind == .blocked ? "Blocked members" : "Muted members" }
+    private var title: String { kind == .blocked ? "Blocked people" : "Muted people" }
 
     var body: some View {
         Group {
@@ -89,8 +89,8 @@ struct SafetyMembersView: View {
             Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text(kind == .blocked
-                 ? "You'll be able to see each other's profiles, posts, lists and comments again. Follows that the block removed aren't restored."
-                 : "Their posts will appear in your feed again.")
+                 ? "You'll be able to see each other's profiles, posts, lists and comments again. Friendships that the block ended aren't restored."
+                 : "Their trips will appear in your Friends tab again.")
         }
         .screenIdentifier("safety-\(kind.rawValue)")
     }
@@ -114,10 +114,10 @@ struct SafetyMembersView: View {
                            title: kind == .blocked ? "No one is blocked" : "No one is muted",
                            message: kind == .blocked
                                ? "Blocking someone from their profile hides you from each other everywhere in Roam."
-                               : "Muting someone from their profile hides their posts from your feed. You still see their profile.")
+                               : "Muting someone from their profile hides their trips from your Friends tab. You still see their profile.")
                 .frame(maxHeight: .infinity, alignment: .top)
         case .loaded(let members):
-            List {
+            List { Group {
                 if let error = model.actionError {
                     Text(error).font(.footnote).foregroundStyle(Theme.disliked)
                         .accessibilityIdentifier("safety-error")
@@ -139,9 +139,11 @@ struct SafetyMembersView: View {
                         .accessibilityElement(children: .contain)
                     }
                 } footer: {
-                    Text(kind == .blocked ? "Blocked members can't see your profile, posts, lists or comments, and you can't see theirs."
-                                          : "Muted members don't know they're muted.")
+                    Text(kind == .blocked ? "Blocked people can't see your profile, posts, lists or comments, and you can't see theirs."
+                                          : "Muted people don't know they're muted.")
                 }
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .accessibilityIdentifier("safety-list")
         }
@@ -167,7 +169,7 @@ struct ReportHistoryView: View {
                                message: "Reports you send about a place, post, comment, photo or member appear here with their status.")
                     .frame(maxHeight: .infinity, alignment: .top)
             case .loaded(let reports):
-                List {
+                List { Group {
                     Section {
                         ForEach(reports) { report in
                             VStack(alignment: .leading, spacing: 4) {
@@ -182,6 +184,8 @@ struct ReportHistoryView: View {
                     } footer: {
                         Text("Reports are stored privately for Roam's operators; the people you report can't see them. A status changes only when someone actually reviews a report.")
                     }
+                }
+                .listRowBackground(Roam.paperRaised)
                 }
             }
         }
@@ -207,7 +211,7 @@ struct ReportHistoryView: View {
         case "activity": return "Post"
         case "comment": return "Comment"
         case "media": return "Photo"
-        case "member": return "Member"
+        case "member": return "Person"
         case "visit": return "Visit"
         default: return "Report"
         }

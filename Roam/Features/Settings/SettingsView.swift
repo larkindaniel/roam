@@ -15,11 +15,7 @@ struct SettingsView: View {
     @State private var confirmSignOut = false
 
     var body: some View {
-        List {
-            Section("Your tastes") {
-                Button("Edit Your Tastes") { router.push(.taste) }
-                    .accessibilityIdentifier("open-taste")
-            }
+        List { Group {
             Section("Profile") {
                 Button { router.push(.editProfile) } label: {
                     HStack(spacing: Theme.Spacing.m) {
@@ -35,20 +31,22 @@ struct SettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("settings-edit-profile")
+                Button("Your Tastes") { router.push(.taste) }
+                    .accessibilityIdentifier("open-taste")
             }
             accountSection
             preferencesSection
             notificationsSection
             Section("Safety") {
-                NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked members", systemImage: "hand.raised") }
+                NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked people", systemImage: "hand.raised") }
                     .accessibilityIdentifier("settings-blocked")
-                NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted members", systemImage: "speaker.slash") }
+                NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted people", systemImage: "speaker.slash") }
                     .accessibilityIdentifier("settings-muted")
                 NavigationLink(value: AppRoute.reportHistory) { Label("Your reports", systemImage: "flag") }
                     .accessibilityIdentifier("settings-reports")
             }
             Section("About & help") {
-                NavigationLink(value: AppRoute.help(.ranking)) { Label("How ranking and posts work", systemImage: "list.number") }
+                NavigationLink(value: AppRoute.help(.ranking)) { Label("How scores and sharing work", systemImage: "list.number") }
                     .accessibilityIdentifier("settings-help-ranking")
                 NavigationLink(value: AppRoute.help(.privacy)) { Label("Privacy", systemImage: "lock") }
                     .accessibilityIdentifier("settings-help-privacy")
@@ -58,6 +56,8 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings-help-support")
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .navigationTitle("Settings")
         .safeAreaInset(edge: .bottom) {

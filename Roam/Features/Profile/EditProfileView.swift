@@ -218,7 +218,7 @@ struct EditProfileView: View {
 
     @ViewBuilder private func form(_ model: EditProfileModel) -> some View {
         @Bindable var model = model
-        Form {
+        Form { Group {
             if model.restoredDraft {
                 Section {
                     Text("Your unsaved changes were restored.")
@@ -300,6 +300,8 @@ struct EditProfileView: View {
             } footer: {
                 Text("Your home city shows on your profile. It never counts as a place you've visited.")
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .task(id: model.draft.handle) { await model.checkHandle() }
     }

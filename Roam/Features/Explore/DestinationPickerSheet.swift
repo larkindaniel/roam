@@ -15,7 +15,7 @@ struct DestinationPickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 if purpose != .homeCity {
                     Section {
                         Button {
@@ -66,6 +66,8 @@ struct DestinationPickerSheet: View {
                     }
                 }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "City or town")
             .navigationTitle(purpose == .homeCity ? "Home city" : "Choose destination")
             .navigationBarTitleDisplayMode(.inline)
@@ -83,6 +85,7 @@ struct DestinationPickerSheet: View {
                 await search(current)
             }
         }
+        .roamSheetStyle()
         .screenIdentifier("destination-picker")
     }
 

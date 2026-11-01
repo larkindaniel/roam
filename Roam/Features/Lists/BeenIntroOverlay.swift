@@ -19,12 +19,12 @@ struct BeenIntroCard: View {
                 }
             }
             .accessibilityHidden(true)
-            Text("Your Been list").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text("Every place you log is ranked within its category — Food & Drink, Outdoors, Day Trips, Culture, Nightlife, Activities and Stays — so your favourites rise to the top. Your first rating gets a score right away.")
+            Text("Welcome to My Places").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+            Text("Keep your wishlist, the places you've been and your trips together here.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.secondaryText)
             Button("Let's go", action: onContinue)
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(PrimaryButtonStyle(compact: true))
                 .accessibilityIdentifier("been-intro-continue")
         }
         .padding(Theme.Spacing.xl)
@@ -43,7 +43,7 @@ struct LogCoachmark: View {
             Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Roam.onInk).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Log your first place").font(.headline).foregroundStyle(Roam.onInk)
-                Text("Open Search, find somewhere you've been and tap Log.").font(.subheadline).foregroundStyle(.white.opacity(0.9))
+                Text("Tap + Log a place and find somewhere you've been.").font(.subheadline).foregroundStyle(Roam.onInk)
             }
             Spacer(minLength: 0)
             Button(action: onDismiss) {

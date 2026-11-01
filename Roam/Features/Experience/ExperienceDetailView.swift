@@ -171,7 +171,7 @@ struct ExperienceDetailView: View {
                 memories(detail)
                 privateNote(detail)
                 about(detail)
-                if let memoriesModel {
+                if let memoriesModel, !memoriesModel.hasLoaded || memoriesModel.memories.contains(where: { !$0.isOwn && !friendMemories.map(\.id).contains($0.id) }) {
                     PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
                                           onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                           onReport: { target in reportReason = nil; reportTarget = target },
@@ -291,7 +291,7 @@ struct ExperienceDetailView: View {
                 HStack(spacing: Theme.Spacing.m) {
                     ScoreBadge(score: detail.summary.followingScore, source: .following(count: detail.summary.followingCount), size: 52, showsLabel: false)
                     Text(detail.summary.followingCount == 0 ? "No friend ratings"
-                         : "\(detail.summary.followingCount) \(detail.summary.followingCount == 1 ? "person" : "people") you follow")
+                         : "\(detail.summary.followingCount) \(detail.summary.followingCount == 1 ? "friend" : "friends") rated this")
                         .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }
             }
@@ -386,8 +386,10 @@ struct ExperienceDetailView: View {
                 HStack(spacing: Theme.Spacing.s) { utilityPills(detail) }
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
             }
-            Text(detail.provider == .mapkit ? "Place details from Apple Maps." : (detail.provider == .custom ? "Added by a Roam member." : "Sample place."))
-                .font(.caption).foregroundStyle(Theme.secondaryText)
+            if detail.provider != .fixture {
+                Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Added by someone on Roam.")
+                    .font(.caption).foregroundStyle(Theme.secondaryText)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .roamCard()

@@ -45,6 +45,8 @@ struct MainTabView: View {
                 .background(Roam.paper)
                 .navigationDestination(for: AppRoute.self) { route in
                     RouteDestinationView(route: route)
+                        .scrollContentBackground(.hidden)
+                        .background(Roam.paper)
                 }
         }
     }
@@ -64,8 +66,8 @@ struct RouteDestinationView: View {
             ProfileRootView()
         case .trip(let id):
             TripDetailView(tripID: id)
-        case .tripUpdates(let ownerID, let tripID, let title):
-            TripUpdatesView(ownerID: ownerID, tripID: tripID, title: title)
+        case .tripUpdates(let ownerID, let tripID, let title, let byline):
+            TripUpdatesView(ownerID: ownerID, tripID: tripID, title: title, byline: byline)
         case .lists:
             PlaceListsView()
         case .list(let id):

@@ -80,7 +80,7 @@ struct PublicMemoriesSection: View {
     private var others: [PublicMemory] { model.memories.filter { !$0.isOwn && !excludedIDs.contains($0.id) } }
 
     private var header: some View {
-        Text("From travellers").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+        Text("From everyone else").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder private var allPhotos: some View {
@@ -107,7 +107,7 @@ struct PublicMemoriesSection: View {
             if !model.hasLoaded && model.isLoading {
                 SkeletonList(rows: 2)
             } else if model.hasLoaded && others.isEmpty {
-                Text("No public memories from other travellers yet. When people log or revisit this place, their notes and photos appear here.")
+                Text("Nobody else has shared anything about this place yet.")
                     .font(.subheadline).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("memories-empty")
             } else {

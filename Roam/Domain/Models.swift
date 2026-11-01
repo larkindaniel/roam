@@ -251,7 +251,7 @@ enum RoamError: Error, Equatable, LocalizedError {
         case .unavailable: return "This content isn't available."
         case .validation(let message): return message
         case .conflict(let message): return message
-        case .staleRevision: return "Your list changed since you started. Refresh the comparisons to place this experience."
+        case .staleRevision: return "Your list changed since you started. Refresh the comparisons to place this one."
         case .alreadyRated: return "Already been — add a visit instead."
         case .lastVisitConfirmationRequired: return "This is now your last visit. Confirm deleting it and its ranking before continuing."
         case .mediaExpired: return "This upload expired. Your photo is kept; retry uploads it again."

@@ -69,7 +69,7 @@ final class VisitGalleryModel {
                 guard visit.experienceID == experienceID else { throw RoamError.notFound }
                 loaded = visit.media.sorted { $0.position < $1.position }.map {
                     GalleryPhoto(media: $0, visitID: visit.id, ownerID: visit.ownerID,
-                                 authorName: visit.ownerID == ownerID ? "Your visit" : "Traveller's visit",
+                                 authorName: visit.ownerID == ownerID ? "Your visit" : "Their visit",
                                  date: visit.visitDate, isOwn: visit.ownerID == ownerID)
                 }
             } else {

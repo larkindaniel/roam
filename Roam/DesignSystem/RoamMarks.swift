@@ -194,6 +194,7 @@ struct PhotoCard<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.m)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Roam.paperRaised)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Roam.rule))

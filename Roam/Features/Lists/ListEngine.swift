@@ -96,7 +96,7 @@ enum ListEngine {
         let needle = GeographyKey.normalize(query)
         let filtered = entries.filter { entry in
             if kind == .been {
-                if filter.unrankedMemories { guard !entry.isRanked else { return false } } else { guard entry.isRanked else { return false } }
+                if filter.unrankedMemories { guard !entry.isRanked else { return false } }
                 if case .category(let category) = scope, entry.ownerCategory != category { return false }
             }
             let category = entry.ownerCategory ?? entry.experience.category

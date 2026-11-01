@@ -10,7 +10,7 @@ struct TripsListView: View {
     @State private var editing: TripDraft?
 
     var body: some View {
-        List {
+        List { Group {
             switch trips {
             case .idle, .loading:
                 Section { SkeletonList(rows: 3) }
@@ -25,9 +25,9 @@ struct TripsListView: View {
                     }
                     .listRowBackground(Roam.paperRaised)
                 }
-                ForEach(sections(value), id: \.title) { section in
-                    Section(section.title) {
-                        ForEach(section.trips) { trip in
+                if !value.isEmpty {
+                    Section {
+                        ForEach(ordered(value)) { trip in
                             Button { router.push(.trip(trip.id)) } label: { TripRow(trip: trip) }
                                 .accessibilityIdentifier("trip-\(trip.name)")
                         }
@@ -43,6 +43,8 @@ struct TripsListView: View {
             }
             .listRowBackground(Roam.paperRaised)
         }
+        .listRowBackground(Roam.paperRaised)
+        }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .sheet(item: $editing) { draft in
@@ -54,11 +56,10 @@ struct TripsListView: View {
         .screenIdentifier("trips-list")
     }
 
-    private func sections(_ value: [TripSummary]) -> [(title: String, trips: [TripSummary])] {
-        let planning = value.filter { $0.status == .planning || $0.status == .upcoming }
-        let ongoing = value.filter { $0.status == .ongoing }
-        let past = value.filter { $0.status == .past }
-        return [("Planning and upcoming", planning), ("Ongoing", ongoing), ("Past", past)].filter { !$0.1.isEmpty }
+    /// Planning and upcoming first, then ongoing, then past.
+    private func ordered(_ value: [TripSummary]) -> [TripSummary] {
+        let rank: [TripStatus: Int] = [.ongoing: 0, .planning: 1, .upcoming: 1, .past: 2]
+        return value.enumerated().sorted { (rank[$0.element.status] ?? 3, $0.offset) < (rank[$1.element.status] ?? 3, $1.offset) }.map(\.element)
     }
 
     private func load() async {
@@ -124,6 +125,17 @@ enum TripViewMode: String, CaseIterable, Identifiable {
 }
 
 enum TripText {
+    /// A region that fits every place, so the pins are always on screen.
+    static func region(_ places: [TripPlace]) -> MKCoordinateRegion {
+        let latitudes = places.map(\.experience.latitude)
+        let longitudes = places.map(\.experience.longitude)
+        guard let minLat = latitudes.min(), let maxLat = latitudes.max(), let minLon = longitudes.min(), let maxLon = longitudes.max() else {
+            return MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20, longitude: 0), span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 300))
+        }
+        return MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
+                                  span: MKCoordinateSpan(latitudeDelta: max((maxLat - minLat) * 1.5, 0.02), longitudeDelta: max((maxLon - minLon) * 1.5, 0.02)))
+    }
+
     /// The best places from a trip: ranked visits only, one per place, across types.
     static func topPicks(_ entries: [TripFeedEntry], limit: Int = 5) -> [TripFeedEntry] {
         var seen = Set<UUID>()
@@ -146,7 +158,7 @@ enum TripText {
         case let (start?, end?): return "\(start.displayString) to \(end.displayString)"
         case let (start?, nil): return "From \(start.displayString)"
         case let (nil, end?): return "Until \(end.displayString)"
-        case (nil, nil): return "No dates yet"
+        case (nil, nil): return "No dates"
         }
     }
 }
@@ -166,7 +178,7 @@ struct TripDetailView: View {
     @State private var entries: [TripFeedEntry] = []
 
     var body: some View {
-        List {
+        List { Group {
             switch detail {
             case .idle, .loading:
                 Section { SkeletonList(rows: 3) }
@@ -175,6 +187,8 @@ struct TripDetailView: View {
             case .loaded(let value):
                 content(value)
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
@@ -288,7 +302,7 @@ struct TripDetailView: View {
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         if !value.places.isEmpty {
             Section {
-                Map {
+                Map(initialPosition: .region(TripText.region(value.places))) {
                     ForEach(value.places) { place in
                         Annotation(place.experience.name, coordinate: place.experience.coordinate) {
                             StatusMark(state: place.state, size: 18)
@@ -375,7 +389,7 @@ struct TripEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            Form { Group {
                 Section {
                     TextField("Trip name", text: $draft.name).accessibilityIdentifier("trip-name")
                     TextField("Description (optional)", text: $draft.description, axis: .vertical)
@@ -396,6 +410,8 @@ struct TripEditorSheet: View {
                 .listRowBackground(Roam.paperRaised)
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .scrollContentBackground(.hidden)
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
@@ -410,6 +426,7 @@ struct TripEditorSheet: View {
                 if let date = draft.endDate?.date() { hasEnd = true; end = date }
             }
         }
+        .roamSheetStyle()
         .presentationDetents([.medium, .large])
     }
 
@@ -442,7 +459,7 @@ struct AddToTripSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section("Stop or city (optional)") {
                     TextField("Lisbon", text: $stop).accessibilityIdentifier("add-to-trip-stop")
                 }
@@ -463,6 +480,8 @@ struct AddToTripSheet: View {
                 .listRowBackground(Roam.paperRaised)
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .scrollContentBackground(.hidden)
             .navigationTitle("Add \(placeName)")
             .navigationBarTitleDisplayMode(.inline)
@@ -472,6 +491,7 @@ struct AddToTripSheet: View {
             }
             .task { await load() }
         }
+        .roamSheetStyle()
         .presentationDetents([.medium, .large])
     }
 
