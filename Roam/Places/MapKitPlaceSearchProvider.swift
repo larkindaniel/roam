@@ -13,6 +13,10 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
             request.region = MKCoordinateRegion(center: destination.coordinate,
                                                 latitudinalMeters: destination.radiusMeters * 2,
                                                 longitudinalMeters: destination.radiusMeters * 2)
+        } else {
+            // Without a region, results depend on device location and can come back empty.
+            request.region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
+                                                span: MKCoordinateSpan(latitudeDelta: 140, longitudeDelta: 359))
         }
         let items = try await run(MKLocalSearch(request: request))
         return items.compactMap(Self.candidate(from:))

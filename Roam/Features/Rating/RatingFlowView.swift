@@ -79,7 +79,7 @@ struct RatingFlowView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
                 Text(request.experience.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
-                if let category = model.category {
+                if let category = model.category, !(model.skipsRanking && !model.categoryLocked) {
                     Label(category.title, systemImage: category.symbolName).font(.headline)
                         .accessibilityIdentifier("rating-category")
                 }
