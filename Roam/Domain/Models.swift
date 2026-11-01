@@ -32,6 +32,8 @@ enum PlaceProviderKind: String, Codable, Hashable, Sendable {
     case mapkit
     /// Deterministic fictional places for tests/debug only; never produced in Release builds.
     case fixture
+    /// Added by a member because no provider had it.
+    case custom
 }
 
 /// A place returned by a provider before (or after) it becomes a Roam experience.

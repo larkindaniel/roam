@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import Supabase
 
@@ -57,6 +58,22 @@ extension SupabaseBackend: PlanService {
     }
 
     func sharedWithMe() async throws -> [DirectShare] { try await rpc("shared_with_me") }
+
+    func searchRoamPlaces(query: String) async throws -> [ExperienceSummary] {
+        try await rpc("search_roam_places", ["p_query": RPC.string(query)])
+    }
+
+    func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary {
+        try await rpc("add_custom_place", [
+            "p_name": RPC.string(name), "p_latitude": .double(coordinate.latitude), "p_longitude": .double(coordinate.longitude),
+            "p_category": RPC.string(category.rawValue), "p_locality": RPC.string(area?.name), "p_region": RPC.string(area?.region),
+            "p_country_code": RPC.string(area?.countryCode), "p_country_name": RPC.string(area?.countryName),
+        ] as RPCParams)
+    }
+
+    func setVisitAudience(visitID: UUID, audience: Audience) async throws {
+        let _: String = try await rpc("set_visit_audience", ["p_visit_id": RPC.uuid(visitID), "p_audience": RPC.string(audience.rawValue)])
+    }
 
     func tripFeed() async throws -> [TripFeedCard] { try await rpc("trip_feed") }
 

@@ -138,20 +138,21 @@ struct PlaceListDetail: Codable, Hashable, Sendable {
 /// A rated place on Discover: everyone's score, the friends behind it and a cover picture.
 struct DiscoverPlace: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary
-    var communityScore: Score
+    /// Nil until someone rates it; a visit alone gives no score.
+    var communityScore: Score?
     var communityCount: Int
     var friendNames: [String]
     var coverPath: String?
 
     var id: UUID { experience.id }
 
-    /// "Theo rated this", "Theo and Sam rated this" or "Theo and 2 others rated this".
+    /// "Theo has been", "Theo and Sam have been" or "Theo and 2 others have been".
     var friendEvidence: String? {
         guard let first = friendNames.first?.split(separator: " ").first.map(String.init) else { return nil }
         switch friendNames.count {
-        case 1: return "\(first) rated this"
-        case 2: return "\(first) and \(friendNames[1].split(separator: " ").first.map(String.init) ?? friendNames[1]) rated this"
-        default: return "\(first) and \(friendNames.count - 1) others rated this"
+        case 1: return "\(first) has been"
+        case 2: return "\(first) and \(friendNames[1].split(separator: " ").first.map(String.init) ?? friendNames[1]) have been"
+        default: return "\(first) and \(friendNames.count - 1) others have been"
         }
     }
 }
@@ -175,7 +176,7 @@ struct DiscoverCity: Hashable, Identifiable, Sendable {
         }
         return groups.values.compactMap { group -> DiscoverCity? in
             guard let first = group.first?.experience, let name = first.locality,
-                  let best = group.max(by: { $0.communityScore < $1.communityScore }) else { return nil }
+                  let best = group.max(by: { ($0.communityScore?.tenths ?? -1) < ($1.communityScore?.tenths ?? -1) }) else { return nil }
             let count = Double(group.count)
             let destination = Destination(name: name, region: first.region, countryCode: first.countryCode, countryName: first.countryName,
                                           latitude: group.reduce(0) { $0 + $1.experience.latitude } / count,
@@ -183,7 +184,7 @@ struct DiscoverCity: Hashable, Identifiable, Sendable {
             let cover = best.coverPath ?? group.compactMap(\.coverPath).first
             let linked = best.experience.photoURL != nil ? best : group.first { $0.experience.photoURL != nil }
             return DiscoverCity(destination: destination, placeCount: group.count,
-                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore, coverPath: cover,
+                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore ?? Score(tenths: 0), coverPath: cover,
                                 coverURL: linked?.experience.photoURL, coverCredit: linked?.experience.photoCredit)
         }.sorted { lhs, rhs in
             if lhs.friendNames.isEmpty != rhs.friendNames.isEmpty { return !lhs.friendNames.isEmpty }

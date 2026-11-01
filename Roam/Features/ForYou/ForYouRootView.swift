@@ -8,15 +8,21 @@ struct ForYouSections: Equatable {
 
     var friends: [DiscoverPlace] = []
     var highlyRated: [DiscoverPlace] = []
+    /// Everything else people have been to, for when you're browsing one city.
+    var more: [DiscoverPlace] = []
 
     init(places: [DiscoverPlace] = []) {
-        let unvisited = places.filter { $0.experience.viewer.myScore == nil }
+        let unvisited = places.filter { $0.experience.viewer.myScore == nil && !$0.experience.viewer.hasVisits }
         friends = unvisited.filter { !$0.friendNames.isEmpty }.sorted(by: Self.order)
-        highlyRated = unvisited.filter { $0.friendNames.isEmpty && $0.communityScore >= Self.highlyRated }.sorted(by: Self.order)
+        let others = unvisited.filter { $0.friendNames.isEmpty }
+        highlyRated = others.filter { ($0.communityScore ?? Score(tenths: 0)) >= Self.highlyRated }.sorted(by: Self.order)
+        more = others.filter { ($0.communityScore ?? Score(tenths: 0)) < Self.highlyRated }.sorted(by: Self.order)
     }
 
     private static func order(_ lhs: DiscoverPlace, _ rhs: DiscoverPlace) -> Bool {
-        lhs.communityScore == rhs.communityScore ? lhs.experience.name < rhs.experience.name : lhs.communityScore > rhs.communityScore
+        let left = lhs.communityScore?.tenths ?? -1
+        let right = rhs.communityScore?.tenths ?? -1
+        return left == right ? lhs.experience.name < rhs.experience.name : left > right
     }
 }
 
@@ -61,14 +67,21 @@ final class ForYouModel {
 /// Search results split into areas to browse and specific places to open.
 struct DiscoverResults: Equatable {
     var destinations: [Destination] = []
+    /// Places already on Roam come first, with what friends said about them.
+    var onRoam: [ExperienceSummary] = []
     var places: [SearchHit] = []
 
-    var isEmpty: Bool { destinations.isEmpty && places.isEmpty }
+    var isEmpty: Bool { destinations.isEmpty && places.isEmpty && onRoam.isEmpty }
 
     /// Towns come back from both searches, so place results keep only points of interest.
-    init(destinations: [Destination] = [], candidates: [PlaceCandidate] = [], matches: [String: ExperienceSummary] = [:]) {
+    init(destinations: [Destination] = [], candidates: [PlaceCandidate] = [], matches: [String: ExperienceSummary] = [:], onRoam: [ExperienceSummary] = []) {
         self.destinations = destinations
-        places = candidates.filter { !$0.isLocality }.map { SearchHit(candidate: $0, experience: matches[$0.id]) }
+        self.onRoam = onRoam
+        let known = Set(onRoam.map(\.id))
+        let knownNames = Set(onRoam.map { $0.name.lowercased() })
+        places = candidates.filter { !$0.isLocality && !knownNames.contains($0.name.lowercased()) }
+            .map { SearchHit(candidate: $0, experience: matches[$0.id]) }
+            .filter { $0.experience.map { !known.contains($0.id) } ?? true }
     }
 }
 
@@ -144,8 +157,12 @@ struct ForYouRootView: View {
             }
             .listRowBackground(Roam.paperRaised)
         case .loaded(let found):
-            if !found.places.isEmpty {
+            if !found.places.isEmpty || !found.onRoam.isEmpty {
                 Section("Places") {
+                    ForEach(found.onRoam) { place in
+                        Button { router.push(.experience(place.id)) } label: { placeResultLabel(name: place.name, category: place.category, area: place.areaLine, experience: place) }
+                            .accessibilityIdentifier("discover-place-\(place.name)")
+                    }
                     ForEach(found.places) { hit in placeResult(hit) }
                 }
                 .listRowBackground(Roam.paperRaised)
@@ -172,23 +189,28 @@ struct ForYouRootView: View {
 
     private func placeResult(_ hit: SearchHit) -> some View {
         Button { Task { await open(hit) } } label: {
-            HStack(spacing: Theme.Spacing.m) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink)
-                    Text([hit.category?.title, hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.uniqued().joined(separator: " · "))
-                        .font(.footnote).foregroundStyle(Roam.inkMuted)
-                    if let count = hit.experience?.followingCount, count > 0 {
-                        Text("\(count) \(count == 1 ? "friend" : "friends") rated this").font(.subheadline).foregroundStyle(Roam.ink)
-                    }
-                }
-                Spacer(minLength: Theme.Spacing.s)
-                if let score = hit.experience?.followingScore {
-                    Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                }
-            }
-            .frame(minHeight: Theme.minimumHitTarget)
+            placeResultLabel(name: hit.candidate.name, category: hit.category,
+                             area: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.uniqued().joined(separator: ", "), experience: hit.experience)
         }
         .accessibilityIdentifier("discover-place-\(hit.candidate.name)")
+    }
+
+    private func placeResultLabel(name: String, category: ExperienceCategory?, area: String, experience: ExperienceSummary?) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(.headline).foregroundStyle(Roam.ink)
+                Text([category?.title, area].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                if let count = experience?.followingCount, count > 0 {
+                    Text("\(count) \(count == 1 ? "friend" : "friends") rated this").font(.subheadline).foregroundStyle(Roam.ink)
+                }
+            }
+            Spacer(minLength: Theme.Spacing.s)
+            if let score = experience?.followingScore {
+                Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
+            }
+        }
+        .frame(minHeight: Theme.minimumHitTarget)
     }
 
     private func open(_ hit: SearchHit) async {
@@ -214,12 +236,13 @@ struct ForYouRootView: View {
             case .loaded(let sections):
                 if !sections.friends.isEmpty { friendsSection(sections.friends) }
                 if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
-                if sections.friends.isEmpty && sections.highlyRated.isEmpty {
-                    Text(selected.map { "Nobody has rated a place in \($0.name) yet." } ?? "")
+                if !sections.more.isEmpty { moreSection(sections.more) }
+                if sections.friends.isEmpty && sections.highlyRated.isEmpty && sections.more.isEmpty {
+                    Text(selected.map { "Nobody has logged a place in \($0.name) yet." } ?? "")
                         .font(.subheadline).foregroundStyle(Roam.inkMuted)
                         .accessibilityIdentifier("discover-empty")
                 }
-                if let selected, sections.friends.count + sections.highlyRated.count < 3 { researchLink(selected) }
+                if let selected, sections.friends.count + sections.highlyRated.count + sections.more.count < 3 { researchLink(selected) }
             }
         }
         .padding(.top, Theme.Spacing.s)
@@ -332,6 +355,13 @@ struct ForYouRootView: View {
         .accessibilityIdentifier("discover-highly-rated")
     }
 
+    private func moreSection(_ places: [DiscoverPlace]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            sectionTitle("More places")
+            ForEach(places) { place in placeCard(place, evidence: nil, photoHeight: 160) }
+        }
+    }
+
     private func sectionTitle(_ title: String) -> some View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
     }
@@ -348,8 +378,9 @@ struct ForYouRootView: View {
                         if let evidence { Text(evidence).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(1) }
                     }
                     Spacer(minLength: Theme.Spacing.s)
-                    Text((evidence != nil ? place.experience.followingScore : nil)?.formatted ?? place.communityScore.formatted)
-                        .font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
+                    if let score = (evidence != nil ? place.experience.followingScore : nil) ?? place.communityScore {
+                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
+                    }
                 }
             }
             .contentShape(Rectangle())
@@ -380,10 +411,12 @@ struct ForYouRootView: View {
         do {
             async let foundDestinations = services.places.searchDestinations(query: text)
             async let foundPlaces = services.places.searchPlaces(query: text, around: selected)
+            async let foundOnRoam = services.plans.searchRoamPlaces(query: text)
             let (destinationList, candidates) = try await (foundDestinations, foundPlaces)
+            let onRoam = (try? await foundOnRoam) ?? []
             let matches = (try? await services.experiences.matches(for: candidates)) ?? [:]
             guard !Task.isCancelled, text == query else { return }
-            let found = DiscoverResults(destinations: destinationList, candidates: candidates, matches: matches)
+            let found = DiscoverResults(destinations: destinationList, candidates: candidates, matches: matches, onRoam: onRoam)
             results = .loaded(found)
         } catch is CancellationError {
         } catch {

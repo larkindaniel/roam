@@ -107,7 +107,32 @@ struct TripStatusPill: View {
     }
 }
 
+enum TripViewMode: String, CaseIterable, Identifiable {
+    case places
+    case timeline
+    case topPicks
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .places: return "Places"
+        case .timeline: return "Timeline"
+        case .topPicks: return "Top Picks"
+        }
+    }
+}
+
 enum TripText {
+    /// The best places from a trip: ranked visits only, one per place, across types.
+    static func topPicks(_ entries: [TripFeedEntry], limit: Int = 5) -> [TripFeedEntry] {
+        var seen = Set<UUID>()
+        return entries.filter { $0.score != nil }
+            .sorted { ($0.score?.tenths ?? 0) > ($1.score?.tenths ?? 0) }
+            .filter { seen.insert($0.experience.id).inserted }
+            .prefix(limit).map { $0 }
+    }
+
     static func summaryLine(_ trip: TripSummary) -> String {
         var parts: [String] = []
         if !trip.stops.isEmpty { parts.append(trip.stops.joined(separator: ", ")) }
@@ -137,6 +162,8 @@ struct TripDetailView: View {
     @State private var actionError: String?
     @State private var confirmingDelete = false
     @State private var showsShare = false
+    @State private var view: TripViewMode = .places
+    @State private var entries: [TripFeedEntry] = []
 
     var body: some View {
         List {
@@ -188,6 +215,64 @@ struct TripDetailView: View {
     }
 
     @ViewBuilder private func content(_ value: TripDetail) -> some View {
+        header(value)
+        Section {
+            Picker("View", selection: $view) {
+                ForEach(TripViewMode.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+            .accessibilityIdentifier("trip-view-mode")
+        }
+        switch view {
+        case .places: places(value)
+        case .timeline: timeline
+        case .topPicks: topPicks
+        }
+    }
+
+    private var timeline: some View {
+        Section {
+            if entries.isEmpty {
+                Text("No visits logged on this trip yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            }
+            ForEach(entries) { entry in entryRow(entry) }
+        }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private var topPicks: some View {
+        Section {
+            let picks = TripText.topPicks(entries)
+            if picks.isEmpty {
+                Text("Rank a place from this trip to see top picks here.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    .accessibilityIdentifier("trip-top-picks-empty")
+            }
+            ForEach(picks) { entry in entryRow(entry) }
+        }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func entryRow(_ entry: TripFeedEntry) -> some View {
+        Button { router.push(.experience(entry.experience.id)) } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(entry.experience.name).font(.headline).foregroundStyle(Roam.ink)
+                    Spacer(minLength: Theme.Spacing.s)
+                    if let score = entry.score {
+                        Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
+                    }
+                }
+                Text(entry.visitDate.date?.displayString ?? "Date unknown").font(.footnote).foregroundStyle(Roam.inkMuted)
+                if !entry.publicNote.isEmpty { Text(entry.publicNote).font(.subheadline).foregroundStyle(Roam.ink) }
+            }
+            .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+        }
+        .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
+    }
+
+    @ViewBuilder private func header(_ value: TripDetail) -> some View {
         Section {
             HStack {
                 TripStatusPill(status: value.summary.status)
@@ -198,6 +283,9 @@ struct TripDetailView: View {
             if let actionError { Text(actionError).foregroundStyle(Roam.signal) }
         }
         .listRowBackground(Roam.paperRaised)
+    }
+
+    @ViewBuilder private func places(_ value: TripDetail) -> some View {
         if !value.places.isEmpty {
             Section {
                 Map {
@@ -260,7 +348,11 @@ struct TripDetailView: View {
 
     private func load() async {
         if detail.value == nil { detail = .loading }
-        do { detail = .loaded(try await services.plans.trip(id: tripID)) }
+        do {
+            let loaded = try await services.plans.trip(id: tripID)
+            detail = .loaded(loaded)
+            entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
+        }
         catch { if detail.value == nil { detail = .failed(error.roamMessage) } else { actionError = error.roamMessage } }
     }
 }

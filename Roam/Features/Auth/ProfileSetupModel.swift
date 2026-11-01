@@ -8,7 +8,7 @@ import UIKit
 @Observable
 final class ProfileSetupModel {
     enum Step: Int, CaseIterable {
-        case name, handle, photo, home, people, visibility
+        case name, handle, photo, home, people, tastes, visibility
     }
 
     enum HandleState: Equatable {
@@ -33,6 +33,7 @@ final class ProfileSetupModel {
     var homeCity: Destination?
     var suggestions: LoadPhase<[MemberRow]> = .idle
     var following: Set<UUID> = []
+    var taste = TasteProfile.empty
     var pendingFollows: Set<UUID> = []
     var busy = false
     var error: String?
@@ -180,6 +181,12 @@ final class ProfileSetupModel {
         } catch {
             self.error = error.roamMessage
         }
+    }
+
+    /// Skipped questions stay unanswered, and everything can be edited later in Your Tastes.
+    func saveTastes() async {
+        if taste != .empty { _ = try? await services.plans.saveTaste(taste) }
+        step = .visibility
     }
 
     func finish() async -> OwnProfile? {

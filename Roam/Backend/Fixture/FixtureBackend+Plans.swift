@@ -1,4 +1,5 @@
 #if ROAM_FIXTURES
+import CoreLocation
 import Foundation
 
 extension FixtureBackend: PlanService {
@@ -182,6 +183,28 @@ extension FixtureBackend: PlanService {
                              activityID: activities.values.filter { $0.visit == row.id }.max { $0.publishedAt < $1.publishedAt }?.id)
     }
 
+    func searchRoamPlaces(query: String) async throws -> [ExperienceSummary] {
+        let me = try await authenticatedActor()
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return [] }
+        return experiences.keys.compactMap { summary($0, viewer: me) }.filter { $0.name.lowercased().contains(needle) }.sorted { $0.name < $1.name }
+    }
+
+    func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary {
+        _ = try await authenticatedActor()
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { throw RoamError.validation("Give this place a name.") }
+        return try await resolve(PlaceCandidate(provider: .fixture, providerPlaceID: "custom-\(name.lowercased())", name: name, address: nil, locality: area?.name,
+                                                region: area?.region, countryCode: area?.countryCode, countryName: area?.countryName,
+                                                latitude: coordinate.latitude, longitude: coordinate.longitude, phone: nil, website: nil, providerCategory: nil,
+                                                timeZoneIdentifier: nil, isLocality: false, suggestedCategory: category))
+    }
+
+    func setVisitAudience(visitID: UUID, audience: Audience) async throws {
+        let me = try await authenticatedActor()
+        guard visits[visitID]?.owner == me else { throw RoamError.notFound }
+        visits[visitID]?.audience = audience
+    }
+
     func tripFeed() async throws -> [TripFeedCard] {
         let me = try await authenticatedActor()
         let visible = visits.values.filter {
@@ -217,7 +240,7 @@ extension FixtureBackend: PlanService {
                 .sorted { $0.createdAt > $1.createdAt }.compactMap { visitModel($0).media.first?.path }.first
             return DiscoverPlace(experience: place, communityScore: Score(tenths: scores.reduce(0, +) / scores.count), communityCount: scores.count,
                                  friendNames: friends, coverPath: cover)
-        }.sorted { $0.communityScore > $1.communityScore }
+        }.sorted { ($0.communityScore?.tenths ?? -1) > ($1.communityScore?.tenths ?? -1) }
     }
 
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory] {

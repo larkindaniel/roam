@@ -212,44 +212,57 @@ struct ExperienceDetailView: View {
         .accessibilityLabel("Map showing \(detail.summary.name)")
     }
 
-    @ViewBuilder private func actionRow(_ detail: ExperienceDetail) -> some View {
+    private func actionRow(_ detail: ExperienceDetail) -> some View {
         let id = detail.summary.id
         let rated = detail.myRating != nil
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s)) : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
-        layout {
-            if rated {
-                Label("Already been", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.liked)
-                    .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("detail-already-been")
-            } else {
-                switch library.saveState(for: id) {
-                case .pending(let target):
-                    Button {} label: { HStack { ProgressView().controlSize(.small); Text(target ? "Saving" : "Removing") } }
-                        .buttonStyle(PillButtonStyle(isSelected: target))
-                        .disabled(true)
-                case .saved:
-                    Button { Task { await library.setBookmark(id, saved: false) } } label: { PillLabel(title: "Saved to Wishlist", systemImage: "bookmark.fill") }
-                        .buttonStyle(PillButtonStyle(isSelected: true))
-                        .accessibilityIdentifier("detail-save")
-                default:
-                    Button { Task { await library.setBookmark(id, saved: true) } } label: { PillLabel(title: "Wishlist", systemImage: "bookmark") }
-                        .buttonStyle(PillButtonStyle(isSelected: false))
-                        .accessibilityIdentifier("detail-save")
+        let visited = rated || detail.summary.viewer.hasVisits
+        return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            HStack(spacing: Theme.Spacing.s) {
+                StatusMark(state: visited ? .visited : .wishlist)
+                    .opacity(visited || library.isBookmarked(id) ? 1 : 0)
+                Text(visited ? "You've been here" : (library.isBookmarked(id) ? "On your wishlist" : "Not on your lists yet"))
+                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                    .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
+            }
+            HStack(spacing: Theme.Spacing.s) {
+                actionTile(rated ? "Add visit" : "Log visit", symbol: "plus", prominent: true, identifier: rated ? "detail-add-visit" : "detail-log") {
+                    Task { await openLog(rated ? .addVisit : .firstLog) }
+                }
+                .disabled(deleting || failedDeletion != nil)
+                actionTile(library.isBookmarked(id) ? "Saved" : "Save", symbol: library.isBookmarked(id) ? "bookmark.fill" : "bookmark", identifier: "detail-save") {
+                    Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
+                }
+                .disabled(visited && !library.isBookmarked(id))
+                actionTile("Directions", symbol: "arrow.triangle.turn.up.right.diamond", identifier: "detail-directions") { openInMaps(detail) }
+                actionTile("Share", symbol: "square.and.arrow.up", identifier: "detail-recommend") {
+                    router.sheet = .share(.place(id), title: detail.summary.name)
                 }
             }
-            Button { Task { await openLog(rated ? .addVisit : .firstLog) } } label: {
-                PillLabel(title: rated ? "Add visit" : "Log", systemImage: "plus.circle")
+            HStack(spacing: Theme.Spacing.s) {
+                Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: { Label("Add to trip", systemImage: "suitcase") }
+                    .buttonStyle(.bordered).buttonBorderShape(.capsule).accessibilityIdentifier("detail-add-to-trip")
+                Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { Label("Add to list", systemImage: "list.bullet") }
+                    .buttonStyle(.bordered).buttonBorderShape(.capsule).accessibilityIdentifier("detail-add-to-list")
             }
-            .buttonStyle(PillButtonStyle(isSelected: true))
-            .disabled(deleting || failedDeletion != nil)
-            .accessibilityIdentifier(rated ? "detail-add-visit" : "detail-log")
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+            .font(.subheadline)
+            if let error = library.lastError {
+                InlineRetryView(message: error, retryTitle: "Dismiss") { library.clearError() }
+            }
         }
-        if let error = library.lastError {
-            InlineRetryView(message: error, retryTitle: "Dismiss") { library.clearError() }
+    }
+
+    private func actionTile(_ title: String, symbol: String, prominent: Bool = false, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: symbol).font(.body.weight(.semibold))
+                Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(prominent ? Roam.onInk : Roam.ink)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(prominent ? Roam.ink : Roam.fill))
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 
     private func scores(_ detail: ExperienceDetail) -> some View {
@@ -372,7 +385,7 @@ struct ExperienceDetailView: View {
                 HStack(spacing: Theme.Spacing.s) { utilityPills(detail) }
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
             }
-            Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Fictional test place (fixture data).")
+            Text(detail.provider == .mapkit ? "Place details from Apple Maps." : (detail.provider == .custom ? "Added by a Roam member." : "Sample place."))
                 .font(.caption).foregroundStyle(Theme.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -380,18 +393,6 @@ struct ExperienceDetailView: View {
     }
 
     @ViewBuilder private func utilityPills(_ detail: ExperienceDetail) -> some View {
-        Button { router.sheet = .addToTrip(experienceID: detail.summary.id, name: detail.summary.name) } label: { PillLabel(title: "Add to trip", systemImage: "suitcase") }
-            .buttonStyle(PillButtonStyle())
-            .accessibilityIdentifier("detail-add-to-trip")
-        Button { router.sheet = .addToList(experienceID: detail.summary.id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
-            .buttonStyle(PillButtonStyle())
-            .accessibilityIdentifier("detail-add-to-list")
-        Button { router.sheet = .share(.place(detail.summary.id), title: detail.summary.name) } label: { PillLabel(title: "Recommend", systemImage: "square.and.arrow.up") }
-            .buttonStyle(PillButtonStyle())
-            .accessibilityIdentifier("detail-recommend")
-        Button { openInMaps(detail) } label: { PillLabel(title: "Directions", systemImage: "arrow.triangle.turn.up.right.diamond") }
-            .buttonStyle(PillButtonStyle())
-            .accessibilityIdentifier("detail-directions")
         if let website = detail.website {
             Button { openURL(website) } label: { PillLabel(title: "Website", systemImage: "safari") }
                 .buttonStyle(PillButtonStyle())

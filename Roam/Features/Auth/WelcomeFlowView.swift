@@ -69,10 +69,10 @@ struct WelcomeView: View {
                         .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.accent)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Rank the places that made your trips.")
+                    Text("Find places you'll love, starting with people you trust.")
                         .font(.roamTitle(.title2))
                         .multilineTextAlignment(.center)
-                    Text("Log trails, cafés, museums, stays and day trips. Compare them two at a time and Roam gives each a score out of 10.")
+                    Text("See where your friends have been, save what you want to try, and keep track of your trips.")
                         .font(.body)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
@@ -112,7 +112,7 @@ struct WelcomeView: View {
                         .accessibilityIdentifier("deletion-notice")
                 }
 
-                Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
+                Text("You choose who sees each place you log: friends, only you, or everyone.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)

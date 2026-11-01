@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 /// + Log a place: find the place, then fill in the visit, all in one sheet.
@@ -11,6 +12,8 @@ struct LogPlaceSheet: View {
     @State private var request: LogRequest?
     @State private var opening: String?
     @State private var error: String?
+    @State private var onRoam: [ExperienceSummary] = []
+    @State private var addingPlace = false
 
     var body: some View {
         Group {
@@ -34,10 +37,16 @@ struct LogPlaceSheet: View {
         }
         .task { if model == nil { model = ExperienceSearchModel(services: services) } }
         .task(id: query) {
-            guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; return }
+            guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; onRoam = []; return }
             try? await Task.sleep(for: Limits.searchDebounce)
             guard !Task.isCancelled else { return }
+            async let known = services.plans.searchRoamPlaces(query: query)
             await model?.search(query, near: nil)
+            onRoam = (try? await known) ?? []
+        }
+        .sheet(isPresented: $addingPlace) {
+            AddCustomPlaceSheet(initialName: query) { place in Task { await choose(place) } }
+                .presentationBackground(Roam.paper)
         }
         .screenIdentifier("log-place-sheet")
     }
@@ -45,6 +54,17 @@ struct LogPlaceSheet: View {
     private var searchList: some View {
         List {
             if let error { Text(error).foregroundStyle(Roam.signal).listRowBackground(Roam.paperRaised) }
+            ForEach(onRoam) { place in
+                Button { Task { await choose(place) } } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(place.name).font(.headline).foregroundStyle(Roam.ink)
+                        Text(place.areaLine).font(.footnote).foregroundStyle(Roam.inkMuted)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+                }
+                .accessibilityIdentifier("log-place-known-\(place.name)")
+                .listRowBackground(Roam.paperRaised)
+            }
             switch model?.phase ?? .idle {
             case .idle:
                 Text("Search for the place you visited.").foregroundStyle(Roam.inkMuted).listRowBackground(Roam.paperRaised)
@@ -53,10 +73,12 @@ struct LogPlaceSheet: View {
             case .failed(let message):
                 InlineRetryView(message: message) { Task { await model?.search(query, near: nil) } }.listRowBackground(Roam.paperRaised)
             case .noResults:
-                Text("No places match \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
-                    .accessibilityIdentifier("log-place-no-results").listRowBackground(Roam.paperRaised)
+                if onRoam.isEmpty {
+                    Text("No places match \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
+                        .accessibilityIdentifier("log-place-no-results").listRowBackground(Roam.paperRaised)
+                }
             case .results:
-                ForEach(model?.hits ?? []) { hit in
+                ForEach((model?.hits ?? []).filter { hit in !onRoam.contains { $0.name.lowercased() == hit.candidate.name.lowercased() } }) { hit in
                     Button { Task { await choose(hit) } } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -76,6 +98,23 @@ struct LogPlaceSheet: View {
             }
         }
         .listStyle(.insetGrouped)
+        .safeAreaInset(edge: .bottom) {
+            if !query.isEmpty {
+                Button("Can't find it? Add it yourself") { addingPlace = true }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .padding(.bottom, Theme.Spacing.s)
+                    .accessibilityIdentifier("log-place-add-custom")
+            }
+        }
+    }
+
+    private func choose(_ place: ExperienceSummary) async {
+        do {
+            var logRequest = try await services.makeLogRequest(experienceID: place.id)
+            logRequest.startsWithDetails = true
+            request = logRequest
+        } catch { self.error = error.roamMessage }
     }
 
     private func choose(_ hit: SearchHit) async {
@@ -87,6 +126,81 @@ struct LogPlaceSheet: View {
             var logRequest = try await services.makeLogRequest(experienceID: summary.id)
             logRequest.startsWithDetails = true
             request = logRequest
+        } catch { self.error = error.roamMessage }
+    }
+}
+
+/// Adds a place no provider has: a name, a category and a position on the map.
+struct AddCustomPlaceSheet: View {
+    @State var name: String
+    var onAdded: (ExperienceSummary) -> Void
+
+    @Environment(AppServices.self) private var services
+    @Environment(DestinationStore.self) private var destinations
+    @Environment(\.dismiss) private var dismiss
+    @State private var category: ExperienceCategory?
+    @State private var center: CLLocationCoordinate2D?
+    @State private var camera: MapCameraPosition = .automatic
+    @State private var saving = false
+    @State private var error: String?
+
+    init(initialName: String, onAdded: @escaping (ExperienceSummary) -> Void) {
+        _name = State(initialValue: initialName)
+        self.onAdded = onAdded
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && category != nil && center != nil && !saving
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Place name", text: $name).accessibilityIdentifier("custom-place-name")
+                    Picker("Category", selection: $category) {
+                        Text("Choose").tag(ExperienceCategory?.none)
+                        ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                    }
+                    .accessibilityIdentifier("custom-place-category")
+                }
+                .listRowBackground(Roam.paperRaised)
+                Section("Move the map so the pin is on the place") {
+                    Map(position: $camera)
+                        .onMapCameraChange(frequency: .onEnd) { center = $0.region.center }
+                        .overlay { Image(systemName: "mappin").font(.title).foregroundStyle(Roam.ink).offset(y: -12).allowsHitTesting(false) }
+                        .frame(height: 280)
+                        .listRowInsets(EdgeInsets())
+                        .accessibilityLabel("Map for choosing where this place is")
+                }
+                if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+            }
+            .scrollContentBackground(.hidden)
+            .navigationTitle("Add a place")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { Task { await save() } }.disabled(!canSave).accessibilityIdentifier("custom-place-save")
+                }
+            }
+            .onAppear {
+                let start = destinations.lastSelected?.coordinate ?? CLLocationCoordinate2D(latitude: 43.65, longitude: -79.38)
+                camera = .region(MKCoordinateRegion(center: start, latitudinalMeters: 8_000, longitudinalMeters: 8_000))
+                center = start
+            }
+        }
+    }
+
+    private func save() async {
+        guard let center, let category else { return }
+        saving = true
+        defer { saving = false }
+        do {
+            let area = try? await services.places.destination(for: center)
+            let place = try await services.plans.addCustomPlace(name: name, coordinate: center, category: category, area: area)
+            dismiss()
+            onAdded(place)
         } catch { self.error = error.roamMessage }
     }
 }

@@ -344,8 +344,8 @@ final class ForYouSectionsTests: XCTestCase {
     }
 
     func testFriendEvidenceNamesRealPeople() {
-        XCTAssertEqual(place("A", score: 80, friends: ["Theo Park"]).friendEvidence, "Theo rated this")
-        XCTAssertEqual(place("A", score: 80, friends: ["Sam Rivera", "Theo Park"]).friendEvidence, "Sam and Theo rated this")
+        XCTAssertEqual(place("A", score: 80, friends: ["Theo Park"]).friendEvidence, "Theo has been")
+        XCTAssertEqual(place("A", score: 80, friends: ["Sam Rivera", "Theo Park"]).friendEvidence, "Sam and Theo have been")
         XCTAssertNil(place("A", score: 80).friendEvidence)
     }
 }
@@ -427,5 +427,38 @@ final class TripTitleTests: XCTestCase {
 
     func testUnknownLocationsGiveNoTitle() {
         XCTAssertNil(TripTitle.from([]))
+    }
+}
+
+final class SearchDedupeTests: XCTestCase {
+    func testAPlaceAlreadyOnRoamIsNotListedTwice() {
+        let candidate = PlaceCandidate(provider: .mapkit, providerPlaceID: "x", name: "Casa Loma", address: nil, locality: nil, region: nil, countryCode: nil, countryName: nil,
+                                       latitude: 0, longitude: 0, phone: nil, website: nil, providerCategory: nil, timeZoneIdentifier: nil, isLocality: false, suggestedCategory: nil)
+        let known = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Casa Loma", latitude: 0, longitude: 0, followingCount: 1,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        let results = DiscoverResults(candidates: [candidate], onRoam: [known])
+        XCTAssertEqual(results.onRoam.count, 1)
+        XCTAssertTrue(results.places.isEmpty)
+    }
+}
+
+final class TripTopPicksTests: XCTestCase {
+    private let place = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 0,
+                                          viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+
+    private func entry(_ score: Int?, place: ExperienceSummary? = nil) -> TripFeedEntry {
+        var value = place ?? self.place
+        if place == nil { value = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Place", latitude: 0, longitude: 0, followingCount: 0, viewer: self.place.viewer) }
+        return TripFeedEntry(id: UUID(), experience: value, publicNote: "", visitDate: VisitDate(date: nil, timeZoneIdentifier: nil), media: [],
+                             createdAt: Date(), score: score.map(Score.init(tenths:)), activityID: nil)
+    }
+
+    func testBestRankedVisitsComeFirstAndUnrankedOnesAreLeftOut() {
+        let picks = TripText.topPicks([entry(60), entry(nil), entry(90)])
+        XCTAssertEqual(picks.map(\.score?.tenths), [90, 60])
+    }
+
+    func testARepeatVisitCountsOnce() {
+        XCTAssertEqual(TripText.topPicks([entry(80, place: place), entry(70, place: place)]).count, 1)
     }
 }

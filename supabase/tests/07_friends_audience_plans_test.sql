@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(59);
+select plan(68);
 
 do $$
 declare u record;
@@ -101,6 +101,20 @@ select lives_ok(format($$select public.set_list_item(%L,%L,'note',true)$$,(selec
 select pg_temp.as_user('b1000000-0000-4000-8000-000000000002');
 select throws_ok(format($$select public.trip_detail(%L)$$,(select (value->>'id')::uuid from v7 where label='trip')),'P0002',null,'an unshared trip is hidden, even from a friend');
 select throws_ok(format($$select public.list_detail(%L)$$,(select (value->>'id')::uuid from v7 where label='list')),'P0002',null,'an unshared list is hidden');
+
+-- Search, added places and changing an audience -------------------------------------------------------
+select pg_temp.as_user('a1000000-0000-4000-8000-000000000001');
+select is(public.search_roam_places('seven cafe')->0->>'name','Seven Cafe','search finds a place already on Roam');
+select is(jsonb_array_length(public.search_roam_places('%')),0,'search treats wildcards literally');
+insert into v7 select 'custom',public.add_custom_place('Secret Viewpoint',12,12,'outdoors');
+select is((select value->>'name' from v7 where label='custom'),'Secret Viewpoint','a member can add a missing place');
+select is(public.add_custom_place('secret viewpoint',12,12,'outdoors')->>'id',(select value->>'id' from v7 where label='custom'),'adding it again reuses it');
+select throws_ok($$select public.add_custom_place('',12,12,'outdoors')$$,'22023',null,'a place needs a name');
+select throws_ok($$select public.add_custom_place('Nowhere',120,12,'outdoors')$$,'22023',null,'a place needs a real position');
+select is(public.set_visit_audience((select (value->>'visitID')::uuid from v7 where label='private'),'friends'),'friends','an owner can change who sees a visit');
+select is(public.set_visit_audience((select (value->>'visitID')::uuid from v7 where label='private'),'only_me'),'only_me','and change it back');
+select pg_temp.as_user('b1000000-0000-4000-8000-000000000002');
+select throws_ok(format($$select public.set_visit_audience(%L,'public')$$,(select (value->>'visitID')::uuid from v7 where label='private')),'P0002',null,'nobody else can change it');
 
 -- Sharing -----------------------------------------------------------------------------------
 select pg_temp.as_user('a1000000-0000-4000-8000-000000000001');

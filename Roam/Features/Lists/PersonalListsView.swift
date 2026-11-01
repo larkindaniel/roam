@@ -347,7 +347,7 @@ private struct ListsContent: View {
             onLog: { Task {
                 do { router.sheet = .log(try await services.makeLogRequest(experienceID: experience.id)) }
                 catch { actionError = error.roamMessage }
-            } })
+            } }, thumbnailURL: experience.photoURL)
     }
 
     private func status(_ entry: ListEntry) -> String {

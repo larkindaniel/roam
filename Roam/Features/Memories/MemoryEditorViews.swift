@@ -12,6 +12,8 @@ struct VisitMemoryEditor: View {
     @State private var showsPhotos = false
     @State private var showsPendingClose = false
     @State private var photoError: String?
+    @State private var audience: Audience?
+    @State private var audienceError: String?
 
     var body: some View {
         NavigationStack {
@@ -62,7 +64,21 @@ struct VisitMemoryEditor: View {
                 Text("\(Validation.characterCount(model.note)) / 5,000 characters")
                     .foregroundStyle(Validation.characterCount(model.note) > 5_000 ? Theme.disliked : .secondary)
             } header: { Text("Public note") }
-            footer: { Text("This note is visible to other signed-in members. Editing it does not publish a new activity.") }
+            footer: { Text("Only the people you choose below can see this note. Editing it does not publish a new activity.") }
+            Section("Who can see this") {
+                Picker("Who can see this", selection: Binding(get: { audience ?? visit.audience }, set: { value in
+                    audience = value
+                    Task {
+                        do { try await services.plans.setVisitAudience(visitID: visit.id, audience: value); audienceError = nil }
+                        catch { audience = visit.audience; audienceError = error.roamMessage }
+                    }
+                })) {
+                    ForEach(Audience.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("memory-audience")
+                if let audienceError { Text(audienceError).foregroundStyle(Roam.signal) }
+            }
             Section("Visit date") {
                 Toggle("Date unknown", isOn: Binding(get: { model.date.date == nil }, set: { unknown in
                     model.date = VisitDate(date: unknown ? nil : model.today, timeZoneIdentifier: model.zone.identifier)

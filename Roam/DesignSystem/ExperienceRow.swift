@@ -26,6 +26,7 @@ struct ExperienceRow: View {
     var onOpen: (() -> Void)?
     var onSave: (() -> Void)?
     var onLog: (() -> Void)?
+    var thumbnailURL: URL? = nil
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -36,6 +37,12 @@ struct ExperienceRow: View {
                 badges
             } else {
                 HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                    if let thumbnailURL {
+                        AsyncImage(url: thumbnailURL) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .accessibilityHidden(true)
+                    }
                     info.frame(maxWidth: .infinity, alignment: .leading)
                     badges
                 }
@@ -207,9 +214,12 @@ struct FollowButton: View {
     let state: FollowButtonState
     let name: String
     let action: () -> Void
+    @State private var confirmingRemoval = false
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            if state == .friends { confirmingRemoval = true } else { action() }
+        } label: {
             switch state {
             case .pending:
                 ProgressView().controlSize(.small).frame(minWidth: 70)
@@ -228,6 +238,11 @@ struct FollowButton: View {
         .roamHaptic(.impact(weight: .light), trigger: state == .friends)
         .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier("follow-button")
+        .confirmationDialog("Remove \(name) as a friend?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+            Button("Remove friend", role: .destructive, action: action)
+        } message: {
+            Text("You'll stop seeing each other's friends-only places.")
+        }
     }
 
     private var accessibilityText: String {
