@@ -52,9 +52,9 @@ struct ComponentCatalogView: View {
                 }
                 Section("Members") {
                     MemberRowView(member: MemberSummary(id: UUID(), handle: "mayaroams", displayName: "Maya Chen", avatarPath: nil),
-                                  followState: .following)
+                                  followState: .friends)
                     MemberRowView(member: MemberSummary(id: UUID(), handle: "theowanders", displayName: "Theo Park", avatarPath: nil),
-                                  followState: .followBack)
+                                  followState: .accept)
                     MemberRowView(member: MemberSummary(id: UUID(), handle: "priyaplans", displayName: "Priya Nair", avatarPath: nil),
                                   followState: .pending)
                 }

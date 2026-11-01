@@ -17,6 +17,13 @@ struct FeedRootView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
+                } label: { Image(systemName: "person.badge.plus") }
+                .accessibilityLabel("Friends and requests")
+                .accessibilityIdentifier("open-friends")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button { router.push(.notifications) } label: {
                     Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
                         .symbolRenderingMode(.hierarchical)

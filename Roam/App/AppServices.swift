@@ -23,6 +23,7 @@ final class AppServices {
     let settings: any SettingsService
     let travel: any TravelService
     let account: any AccountService
+    let plans: any PlanService
     let storage: AccountStorage
     let location: LocationService
     let images: ImageStore
@@ -31,7 +32,7 @@ final class AppServices {
     init<Backend>(options: LaunchOptions, isFixture: Bool, isConfigured: Bool, backend: Backend, places: any PlaceSearchProviding,
                   storage: AccountStorage, healthCheck: (@Sendable () async -> Bool)?)
     where Backend: AuthService & ProfileService & ExperienceService & ListService & RankingService & MemoryService & MediaService
-        & SocialService & FeedService & NotificationService & SettingsService & TravelService & AccountService {
+        & SocialService & FeedService & NotificationService & SettingsService & TravelService & AccountService & PlanService {
         self.options = options
         self.isFixture = isFixture
         self.isConfigured = isConfigured
@@ -49,6 +50,7 @@ final class AppServices {
         self.settings = backend
         self.travel = backend
         self.account = backend
+        self.plans = backend
         self.storage = storage
         self.location = LocationService(simulated: options.simulateLocation)
         self.images = ImageStore(media: backend)

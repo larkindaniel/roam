@@ -22,11 +22,21 @@ struct ForYouSections: Equatable {
 @Observable
 final class ForYouModel {
     private(set) var phase: LoadPhase<ForYouSections> = .idle
+    private(set) var picks: [DirectShare] = []
+    private(set) var needsTaste = false
     private let experiences: any ExperienceService
+    private let plans: any PlanService
     private var generation = 0
 
-    init(experiences: any ExperienceService) {
+    init(experiences: any ExperienceService, plans: any PlanService) {
         self.experiences = experiences
+        self.plans = plans
+    }
+
+    /// Picks aren't tied to a destination, so they show even before one is chosen.
+    func loadPicks() async {
+        if let shares = try? await plans.sharedWithMe() { picks = shares }
+        if let taste = try? await plans.taste() { needsTaste = taste == .empty }
     }
 
     func load(_ destination: Destination) async {
@@ -53,10 +63,19 @@ struct ForYouRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
     @State private var model: ForYouModel?
+    @Environment(LibraryStore.self) private var library
 
     var body: some View {
         List {
             destinationRow
+            if let model, !model.picks.isEmpty { picksSection(model.picks) }
+            if model?.needsTaste == true {
+                Section {
+                    Button("Tell Roam what you like") { router.push(.taste) }
+                        .accessibilityIdentifier("foryou-set-taste")
+                }
+                .listRowBackground(Roam.paperRaised)
+            }
             if let destination = destinations.search, let model {
                 switch model.phase {
                 case .idle, .loading:
@@ -89,7 +108,8 @@ struct ForYouRootView: View {
             LogPlaceToolbarFallback()
         }
         .task(id: destinations.search?.id) {
-            if model == nil { model = ForYouModel(experiences: services.experiences) }
+            if model == nil { model = ForYouModel(experiences: services.experiences, plans: services.plans) }
+            await model?.loadPicks()
             if let destination = destinations.search { await model?.load(destination) }
         }
         .screenIdentifier("foryou-root")
@@ -110,6 +130,44 @@ struct ForYouRootView: View {
             .accessibilityIdentifier("foryou-destination")
             .listRowBackground(Roam.paperRaised)
         }
+    }
+
+    private func picksSection(_ picks: [DirectShare]) -> some View {
+        Section {
+            ForEach(picks) { pick in
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    Text(pick.title).font(.roamTitle()).foregroundStyle(Roam.ink)
+                    Text(pickLine(pick)).font(.footnote).foregroundStyle(Roam.inkMuted)
+                    if !pick.message.isEmpty { Text("\u{201C}\(pick.message)\u{201D}") }
+                    HStack(spacing: Theme.Spacing.s) {
+                        Button(pick.experience != nil ? "Open place" : (pick.list != nil ? "Open list" : "Open trip")) { open(pick) }
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
+                            .accessibilityIdentifier("foryou-pick-open-\(pick.title)")
+                        if let place = pick.experience, !place.viewer.isBookmarked {
+                            Button("Save") { Task { await library.setBookmark(place.id, saved: true) } }
+                                .buttonStyle(.bordered)
+                                .buttonBorderShape(.capsule)
+                                .accessibilityIdentifier("foryou-pick-save-\(pick.title)")
+                        }
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+        } header: { SourceLabel(source: .picked).textCase(nil) }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func pickLine(_ pick: DirectShare) -> String {
+        if let list = pick.list { return "A list from \(pick.sender.displayName) · \(list.itemCount) \(list.itemCount == 1 ? "place" : "places")" }
+        if pick.trip != nil { return "A trip from \(pick.sender.displayName)" }
+        return "From \(pick.sender.displayName)"
+    }
+
+    private func open(_ pick: DirectShare) {
+        if let place = pick.experience { router.push(.experience(place.id)) }
+        else if let list = pick.list { router.push(.list(list.id)) }
+        else if let trip = pick.trip { router.push(.trip(trip.id)) }
     }
 
     private func friendsSection(_ places: [ExperienceSummary], destination: Destination) -> some View {
@@ -146,6 +204,10 @@ struct ForYouRootView: View {
                 SourceLabel(source: .research)
                 Text("Not enough here yet? Take a brief to ChatGPT or Claude.")
                     .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                Button("Copy research brief") { router.sheet = .researchBrief(destination) }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .accessibilityIdentifier("foryou-research-open")
             }
             .padding(.vertical, Theme.Spacing.xs)
             .accessibilityIdentifier("foryou-research")

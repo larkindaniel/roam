@@ -162,6 +162,12 @@ struct RatingFlowView: View {
                 .disabled(model.category == nil)
                 .accessibilityIdentifier("rating-sentiment-\(sentiment.rawValue)")
             }
+            if request.mode == .firstLog {
+                Button("Log without ranking") { model.logWithoutRanking() }
+                    .frame(minHeight: Theme.minimumHitTarget)
+                    .disabled(model.category == nil)
+                    .accessibilityIdentifier("rating-skip-ranking")
+            }
         }
     }
 
@@ -189,11 +195,21 @@ struct RatingFlowView: View {
                 if !photos.canCommit { Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked).accessibilityIdentifier("rating-photo-error") }
             }
             if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(Theme.secondaryText) }
-            Text("Your rating, public note and photos will appear on your profile and in your friends' feeds.")
-                .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-publication-disclosure")
-            Button("Okay") { Task { await model.okay() } }
+            if request.mode != .rerank {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Who can see this").font(.footnote.weight(.semibold))
+                    Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .friends }, set: { model.setAudience($0) })) {
+                        ForEach(Audience.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("rating-audience")
+                    Text("This covers the whole entry, including its note and photos.")
+                        .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-publication-disclosure")
+                }
+            }
+            Button(model.skipsRanking ? "Save" : "Okay") { Task { await model.okay() } }
                 .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false).accessibilityIdentifier("rating-okay")
-            if request.mode != .addVisit {
+            if request.mode != .addVisit && !model.skipsRanking {
                 Button("Change how you felt") { model.backToSentiment() }
                     .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-change-sentiment")
             }
@@ -251,9 +267,9 @@ struct RatingFlowView: View {
                     Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(Theme.secondaryText)
                 case .visit:
                     Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
-                    Text("Your existing ranking stays the same.").foregroundStyle(Theme.secondaryText)
+                    Text(request.mode == .addVisit ? "Your existing ranking stays the same." : "You can rank this place whenever you like.").foregroundStyle(Theme.secondaryText)
                 }
-                Text("Your rating, public note and photos will appear on your profile and in your friends' feeds.").font(.footnote)
+                Text("People you chose can see this entry on your profile and in their Friends tab.").font(.footnote)
                 Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
             }.screenIdentifier("rating-result")
         }

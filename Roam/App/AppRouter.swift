@@ -45,6 +45,10 @@ enum AppRoute: Hashable, Sendable {
     case search
     case explore
     case ownProfile
+    case trip(UUID)
+    case lists
+    case list(UUID)
+    case taste
     case member(UUID)
     case activity(UUID)
     case notifications
@@ -82,11 +86,19 @@ enum HelpTopic: String, Hashable, Sendable, CaseIterable, Identifiable {
 enum SheetRoute: Identifiable, Hashable {
     case log(LogRequest)
     case destinationPicker(DestinationPickerPurpose)
+    case addToTrip(experienceID: UUID, name: String)
+    case addToList(experienceID: UUID, name: String)
+    case share(ShareTarget, title: String)
+    case researchBrief(Destination)
 
     var id: String {
         switch self {
         case .log(let request): return "log-\(request.id)"
         case .destinationPicker(let purpose): return "destination-\(purpose.rawValue)"
+        case .addToTrip(let id, _): return "trip-\(id)"
+        case .addToList(let id, _): return "list-\(id)"
+        case .share(let target, _): return "share-\(target)"
+        case .researchBrief(let destination): return "research-\(destination.id)"
         }
     }
 }

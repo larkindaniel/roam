@@ -150,6 +150,9 @@ struct VisitPayload: Codable, Hashable, Sendable {
     var timeZoneIdentifier: String?
     var publicNote: String
     var mediaIDs: [UUID]
+    /// Nil keeps a visit's current audience; a new visit then defaults to friends on the server.
+    var audience: Audience? = nil
+    var tripID: UUID? = nil
 }
 
 struct RatingCommitRequest: Codable, Hashable, Sendable {
@@ -180,6 +183,8 @@ struct AddVisitRequest: Codable, Hashable, Sendable {
     let operationID: UUID
     let experienceID: UUID
     let visit: VisitPayload
+    /// Required only when the member logs a place they haven't ranked.
+    var category: ExperienceCategory? = nil
 }
 
 struct AddVisitResult: Codable, Hashable, Sendable {
@@ -286,6 +291,25 @@ protocol NotificationService: AnyObject, Sendable {
     func unreadCount() async throws -> Int
     func markRead(id: UUID) async throws
     func markAllRead() async throws
+}
+
+// MARK: Trips, lists, direct shares and taste
+
+protocol PlanService: AnyObject, Sendable {
+    func myTrips() async throws -> [TripSummary]
+    func trip(id: UUID) async throws -> TripDetail
+    func saveTrip(_ draft: TripDraft) async throws -> TripSummary
+    func deleteTrip(id: UUID) async throws
+    func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws
+    func myLists() async throws -> [PlaceList]
+    func list(id: UUID) async throws -> PlaceListDetail
+    func saveList(id: UUID?, title: String, description: String) async throws -> PlaceList
+    func deleteList(id: UUID) async throws
+    func setListItem(listID: UUID, experienceID: UUID, note: String, present: Bool) async throws
+    func share(_ target: ShareTarget, with recipient: UUID, message: String, operationID: UUID) async throws
+    func sharedWithMe() async throws -> [DirectShare]
+    func taste() async throws -> TasteProfile
+    func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile
 }
 
 // MARK: Settings, travel and account

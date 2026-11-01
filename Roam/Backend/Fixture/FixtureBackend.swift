@@ -48,6 +48,9 @@ actor FixtureBackend {
         var mediaIDs: [UUID]
         var createdAt: Date
         var updatedAt: Date
+        /// Seeded entries were published to all members; new entries come from the log sheet.
+        var audience: Audience = .public
+        var tripID: UUID? = nil
     }
 
     struct RatingRow {
@@ -127,6 +130,10 @@ actor FixtureBackend {
     var privateNotes: [Pair: PrivateNote] = [:]
     var media: [UUID: MediaRow] = [:]
     var activities: [UUID: ActivityRow] = [:]
+    var trips: [UUID: TripRow] = [:]
+    var placeLists: [UUID: ListRow] = [:]
+    var shares: [UUID: ShareRow] = [:]
+    var tastes: [UUID: TasteProfile] = [:]
     var follows: [Pair: Date] = [:]
     /// Pending requests: a asked b.
     var friendRequests: [Pair: Date] = [:]
@@ -275,6 +282,17 @@ actor FixtureBackend {
         return ranking(owner: owner, category: rating.category).placement(forExperience: experience)
     }
 
+    func audienceAllows(owner: UUID, audience: Audience, viewer: UUID) -> Bool {
+        if owner == viewer { return true }
+        guard audience != .onlyMe, isVisibleMember(owner, to: viewer) else { return false }
+        return audience == .public || follows[Pair(a: viewer, b: owner)] != nil
+    }
+
+    func activityAllowed(_ row: ActivityRow, viewer: UUID) -> Bool {
+        guard let visitID = row.visit, let visit = visits[visitID] else { return audienceAllows(owner: row.author, audience: .public, viewer: viewer) }
+        return audienceAllows(owner: visit.owner, audience: visit.audience, viewer: viewer)
+    }
+
     func followingScore(for experienceID: UUID, viewer: UUID) -> (Score?, Int) {
         let followed = follows.keys.filter { $0.a == viewer }.map(\.b)
         let scores = followed.filter { $0 != viewer && !isBlockedEitherWay($0, viewer) && members[$0]?.deleted == false }
@@ -307,7 +325,7 @@ actor FixtureBackend {
             .map { MediaRef(id: $0.id, path: $0.path, width: $0.width, height: $0.height, position: $0.position) }
         return Visit(id: row.id, experienceID: row.experience, ownerID: row.owner,
                      visitDate: VisitDate(date: row.date, timeZoneIdentifier: row.timeZone), publicNote: row.note,
-                     media: mediaRefs, createdAt: row.createdAt, updatedAt: row.updatedAt)
+                     media: mediaRefs, createdAt: row.createdAt, updatedAt: row.updatedAt, audience: row.audience, tripID: row.tripID)
     }
 
     func activityItem(_ row: ActivityRow, viewer: UUID) -> ActivityItem? {
@@ -324,7 +342,7 @@ actor FixtureBackend {
     }
 
     func canSeeActivity(_ row: ActivityRow, viewer: UUID) -> Bool {
-        isVisibleMember(row.author, to: viewer) || row.author == viewer
+        (isVisibleMember(row.author, to: viewer) || row.author == viewer) && activityAllowed(row, viewer: viewer)
     }
 
     static func cursor(date: Date, id: UUID) -> String { "\(date.timeIntervalSince1970)|\(id.uuidString)" }

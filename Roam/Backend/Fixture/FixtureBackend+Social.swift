@@ -128,7 +128,7 @@ extension FixtureBackend: FeedService {
         let me = try await authenticatedActor()
         let followed = Set(follows.keys.filter { $0.a == me }.map(\.b))
         let rows = activities.values.filter { row in
-            row.author == me || (followed.contains(row.author) && !mutes.contains(Pair(a: me, b: row.author)) && isVisibleMember(row.author, to: me))
+            row.author == me || (followed.contains(row.author) && !mutes.contains(Pair(a: me, b: row.author)) && isVisibleMember(row.author, to: me) && activityAllowed(row, viewer: me))
         }
         return page(of: rows, cursor: cursor, viewer: me)
     }
@@ -136,7 +136,7 @@ extension FixtureBackend: FeedService {
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem> {
         let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
-        return page(of: activities.values.filter { $0.author == userID }, cursor: cursor, viewer: me)
+        return page(of: activities.values.filter { $0.author == userID && activityAllowed($0, viewer: me) }, cursor: cursor, viewer: me)
     }
 
     func activity(id: UUID) async throws -> ActivityItem {

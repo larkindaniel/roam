@@ -16,6 +16,10 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            Section("Your tastes") {
+                Button("Edit Your Tastes") { router.push(.taste) }
+                    .accessibilityIdentifier("open-taste")
+            }
             Section("Profile") {
                 Button { router.push(.editProfile) } label: {
                     HStack(spacing: Theme.Spacing.m) {

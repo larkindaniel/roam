@@ -62,6 +62,14 @@ struct RouteDestinationView: View {
             ExploreRootView()
         case .ownProfile:
             ProfileRootView()
+        case .trip(let id):
+            TripDetailView(tripID: id)
+        case .lists:
+            PlaceListsView()
+        case .list(let id):
+            PlaceListDetailView(listID: id)
+        case .taste:
+            TasteEditorView()
         case .globe(let userID):
             ExpandedGlobeView(userID: userID)
         case .travelFilter(let userID, let filter):
@@ -108,6 +116,14 @@ struct SheetContent: View {
         switch route {
         case .destinationPicker(let purpose):
             DestinationPickerSheet(purpose: purpose)
+        case .addToTrip(let id, let name):
+            AddToTripSheet(experienceID: id, placeName: name)
+        case .addToList(let id, let name):
+            AddToListSheet(experienceID: id, placeName: name)
+        case .share(let target, let title):
+            ShareSheet(target: target, title: title)
+        case .researchBrief(let destination):
+            ResearchBriefSheet(destination: destination)
         case .log(let request):
             RatingFlowView(request: request) { completion in
                 switch completion {

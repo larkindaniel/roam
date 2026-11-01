@@ -39,6 +39,7 @@ final class RatingFlowModel {
     private(set) var category: ExperienceCategory?
     private(set) var sentiment: Sentiment?
     private(set) var visit: VisitPayload
+    private(set) var skipsRanking = false
     private(set) var operationID: UUID
     private(set) var session: InsertionSession?
     private(set) var completion: RatingFlowCompletion?
@@ -88,7 +89,7 @@ final class RatingFlowModel {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id))
         } else {
-            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [])
+            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .friends)
         }
         let name = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)"
         storage.purgeExpired(userID: accountID, prefix: "rating-draft-", lifetime: 30 * 86_400, now: now())
@@ -143,6 +144,20 @@ final class RatingFlowModel {
         }
     }
 
+    /// Logging never requires ranking: the visit saves now and can be ranked later.
+    func logWithoutRanking() {
+        guard canEdit, category != nil, request.mode == .firstLog else { return }
+        skipsRanking = true
+        step = .details
+        persist()
+    }
+
+    func setAudience(_ audience: Audience) {
+        guard canEdit else { return }
+        visit.audience = audience
+        persist()
+    }
+
     func selectCategory(_ value: ExperienceCategory) {
         guard canEdit, !categoryLocked else { return }
         category = value
@@ -179,6 +194,7 @@ final class RatingFlowModel {
 
     func backToSentiment() {
         guard canEdit, request.mode != .addVisit else { return }
+        skipsRanking = false
         step = .sentiment
         session = nil
         ranking = nil
@@ -195,8 +211,9 @@ final class RatingFlowModel {
             message = "Check the note length and choose today or an earlier visit date."
             return
         }
-        if request.mode == .addVisit {
-            pendingVisit = AddVisitRequest(operationID: operationID, experienceID: request.experience.id, visit: visit)
+        if request.mode == .addVisit || skipsRanking {
+            pendingVisit = AddVisitRequest(operationID: operationID, experienceID: request.experience.id, visit: visit,
+                                           category: skipsRanking ? category : nil)
             await submitPending()
         } else {
             await refreshComparisons()

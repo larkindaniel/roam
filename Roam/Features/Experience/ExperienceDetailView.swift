@@ -368,6 +368,15 @@ struct ExperienceDetailView: View {
     }
 
     @ViewBuilder private func utilityPills(_ detail: ExperienceDetail) -> some View {
+        Button { router.sheet = .addToTrip(experienceID: detail.summary.id, name: detail.summary.name) } label: { PillLabel(title: "Add to trip", systemImage: "suitcase") }
+            .buttonStyle(PillButtonStyle())
+            .accessibilityIdentifier("detail-add-to-trip")
+        Button { router.sheet = .addToList(experienceID: detail.summary.id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
+            .buttonStyle(PillButtonStyle())
+            .accessibilityIdentifier("detail-add-to-list")
+        Button { router.sheet = .share(.place(detail.summary.id), title: detail.summary.name) } label: { PillLabel(title: "Recommend", systemImage: "square.and.arrow.up") }
+            .buttonStyle(PillButtonStyle())
+            .accessibilityIdentifier("detail-recommend")
         Button { openInMaps(detail) } label: { PillLabel(title: "Directions", systemImage: "arrow.triangle.turn.up.right.diamond") }
             .buttonStyle(PillButtonStyle())
             .accessibilityIdentifier("detail-directions")

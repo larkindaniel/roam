@@ -97,6 +97,8 @@ struct PersonalListsView: View {
     let ownerID: UUID
     var initialKind: ListKind = .been
     var isRoot = false
+    /// Set by My Places, whose own control chooses the list.
+    var externalKind: ListKind?
 
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
@@ -113,12 +115,13 @@ struct PersonalListsView: View {
     var body: some View {
         Group {
             if let model {
-                ListsContent(model: model, isOwn: isOwn, ownerName: ownerName, showsFilters: $showsFilters, selectedPin: $selectedPin)
+                ListsContent(model: model, isOwn: isOwn, ownerName: ownerName, showsKindPicker: externalKind == nil, showsFilters: $showsFilters, selectedPin: $selectedPin)
             } else {
                 SkeletonList(rows: 5).padding()
             }
         }
         .background(Theme.groupedCanvas)
+        .onChange(of: externalKind) { _, kind in if let kind { model?.kind = kind } }
         .navigationTitle(isOwn ? (isRoot ? "My Places" : "Your Lists") : "\(ownerName ?? "Member")'s lists")
         .navigationBarTitleDisplayMode(isRoot ? .large : .inline)
         .task {
@@ -140,6 +143,7 @@ private struct ListsContent: View {
     @Bindable var model: PersonalListsModel
     let isOwn: Bool
     let ownerName: String?
+    var showsKindPicker = true
     @Binding var showsFilters: Bool
     @Binding var selectedPin: String?
 
@@ -171,11 +175,13 @@ private struct ListsContent: View {
 
     private var controls: some View {
         VStack(spacing: Theme.Spacing.s) {
-            Picker("List", selection: $model.kind) {
-                ForEach(ListKind.allCases) { Text($0.title).tag($0) }
+            if showsKindPicker {
+                Picker("List", selection: $model.kind) {
+                    ForEach(ListKind.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("list-kind")
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("list-kind")
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     facetControls

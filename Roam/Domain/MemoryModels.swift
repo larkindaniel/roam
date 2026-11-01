@@ -40,6 +40,8 @@ struct Visit: Codable, Hashable, Identifiable, Sendable {
     var media: [MediaRef]
     var createdAt: Date
     var updatedAt: Date
+    var audience: Audience = .friends
+    var tripID: UUID? = nil
 
     /// Newest by visit date, unknown dates last, stable ID tie-break.
     static func historyOrder(_ lhs: Visit, _ rhs: Visit) -> Bool {
