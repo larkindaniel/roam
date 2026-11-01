@@ -114,6 +114,14 @@ struct SheetContent: View {
     let route: SheetRoute
     @Environment(LibraryStore.self) private var library
 
+    private func saved(_ request: LogRequest, _ completion: RatingFlowCompletion) {
+        switch completion {
+        case .rating(let result): library.applyRated(request.experience.id, category: result.category)
+        case .visit: library.noteChanged()
+        }
+        Task { await library.refresh() }
+    }
+
     var body: some View {
         switch route {
         case .destinationPicker(let purpose):
@@ -127,13 +135,9 @@ struct SheetContent: View {
         case .researchBrief(let destination):
             ResearchBriefSheet(destination: destination)
         case .log(let request):
-            RatingFlowView(request: request) { completion in
-                switch completion {
-                case .rating(let result): library.applyRated(request.experience.id, category: result.category)
-                case .visit: library.noteChanged()
-                }
-                Task { await library.refresh() }
-            }
+            RatingFlowView(request: request) { completion in saved(request, completion) }
+        case .logPlace:
+            LogPlaceSheet { request, completion in saved(request, completion) }
         }
     }
 }

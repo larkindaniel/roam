@@ -68,7 +68,7 @@ struct RatingFlowView: View {
 
     private var title: String {
         switch request.mode {
-        case .firstLog: return "Log an experience"
+        case .firstLog: return "Log a place"
         case .rerank: return "Rank again"
         case .addVisit: return "Add a visit"
         }
@@ -175,6 +175,15 @@ struct RatingFlowView: View {
     private func details(_ model: RatingFlowModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
             Text("Add details if you'd like").font(.title2.weight(.semibold))
+            if model.skipsRanking && !model.categoryLocked {
+                Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
+                    Text("Choose a category").tag(ExperienceCategory?.none)
+                    ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
+                }
+                .pickerStyle(.menu)
+                .frame(minHeight: Theme.minimumHitTarget)
+                .accessibilityIdentifier("rating-details-category")
+            }
             Button { showsNote = true } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Public note", systemImage: "text.alignleft")
@@ -218,7 +227,11 @@ struct RatingFlowView: View {
                 }
             }
             Button(model.skipsRanking ? "Save" : "Okay") { Task { await model.okay() } }
-                .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false).accessibilityIdentifier("rating-okay")
+                .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false || (model.skipsRanking && model.category == nil)).accessibilityIdentifier("rating-okay")
+            if model.skipsRanking {
+                Button("Rank this place") { model.backToSentiment() }
+                    .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-start-ranking")
+            }
             if request.mode != .addVisit && !model.skipsRanking {
                 Button("Change how you felt") { model.backToSentiment() }
                     .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-change-sentiment")

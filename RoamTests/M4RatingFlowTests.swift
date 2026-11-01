@@ -476,4 +476,52 @@ final class M4RatingFlowTests: XCTestCase {
         XCTAssertEqual(expired.step, .sentiment)
         XCTAssertNotEqual(expired.operationID, model.operationID)
     }
+
+    private func quickRequest(category: ExperienceCategory? = .foodDrink) -> LogRequest {
+        var value = request(category: category)
+        value.startsWithDetails = true
+        return value
+    }
+
+    func testLogAPlaceSavesAVisitInOneStepWithoutARating() async throws {
+        let service = RatingFlowTestService(visitResponses: [.success(AddVisitResult(visitID: UUID(), activityID: UUID()))])
+        let model = RatingFlowModel(request: quickRequest(), accountID: UUID(), ranking: service, storage: try storage())
+        XCTAssertEqual(model.step, .details, "No feeling or comparison is asked for first")
+        XCTAssertTrue(model.skipsRanking)
+        model.setAudience(.onlyMe)
+        await model.okay()
+        let saved = await service.visits
+        let rated = await service.commits
+        XCTAssertEqual(saved.first?.category, .foodDrink)
+        XCTAssertEqual(saved.first?.visit.audience, .onlyMe)
+        XCTAssertTrue(rated.isEmpty, "Logging never creates a rating by itself")
+    }
+
+    func testAPlaceWithNoKnownCategoryAsksBeforeSaving() throws {
+        let model = RatingFlowModel(request: quickRequest(category: nil), accountID: UUID(), ranking: RatingFlowTestService(), storage: try storage())
+        XCTAssertEqual(model.step, .details)
+        XCTAssertNil(model.category)
+        model.selectCategory(.culture)
+        XCTAssertEqual(model.category, .culture)
+    }
+
+    func testRankingStaysAvailableFromLogAPlace() throws {
+        let model = RatingFlowModel(request: quickRequest(), accountID: UUID(), ranking: RatingFlowTestService(), storage: try storage())
+        model.backToSentiment()
+        XCTAssertEqual(model.step, .sentiment)
+        XCTAssertFalse(model.skipsRanking)
+        model.selectSentiment(.liked)
+        XCTAssertFalse(model.skipsRanking, "Choosing a feeling continues to comparisons")
+    }
+
+    func testAReopenedUnrankedDraftStaysUnranked() throws {
+        let store = try storage()
+        let log = quickRequest()
+        let first = RatingFlowModel(request: log, accountID: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!, ranking: RatingFlowTestService(), storage: store)
+        first.setAudience(.public)
+        first.keepDraft()
+        let reopened = RatingFlowModel(request: log, accountID: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!, ranking: RatingFlowTestService(), storage: store)
+        XCTAssertTrue(reopened.skipsRanking)
+        XCTAssertEqual(reopened.visit.audience, .public)
+    }
 }

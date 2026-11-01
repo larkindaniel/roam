@@ -103,7 +103,7 @@ struct LogPlaceAccessory: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        Button { router.openSearch() } label: {
+        Button { router.sheet = .logPlace } label: {
             Label("Log a place", systemImage: "plus")
                 .font(.headline)
                 .foregroundStyle(Roam.ink)
@@ -122,7 +122,7 @@ struct LogPlaceToolbarFallback: ToolbarContent {
     var body: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             if #unavailable(iOS 26.0) {
-                Button { router.openSearch() } label: { Image(systemName: "plus") }
+                Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
                     .accessibilityLabel("Log a place")
                     .accessibilityIdentifier("log-place")
             }

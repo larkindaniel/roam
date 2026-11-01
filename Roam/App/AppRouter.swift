@@ -86,6 +86,7 @@ enum HelpTopic: String, Hashable, Sendable, CaseIterable, Identifiable {
 /// Modal presentations; dismissing returns to the invoker.
 enum SheetRoute: Identifiable, Hashable {
     case log(LogRequest)
+    case logPlace
     case destinationPicker(DestinationPickerPurpose)
     case addToTrip(experienceID: UUID, name: String)
     case addToList(experienceID: UUID, name: String)
@@ -95,6 +96,7 @@ enum SheetRoute: Identifiable, Hashable {
     var id: String {
         switch self {
         case .log(let request): return "log-\(request.id)"
+        case .logPlace: return "log-place"
         case .destinationPicker(let purpose): return "destination-\(purpose.rawValue)"
         case .addToTrip(let id, _): return "trip-\(id)"
         case .addToList(let id, _): return "list-\(id)"
@@ -125,6 +127,8 @@ struct LogRequest: Hashable, Identifiable, Sendable {
     var destinationTimeZone: String?
     var categoryLocked = false
     var existingVisit: Visit? = nil
+    /// Opens on the visit details, with ranking offered rather than required.
+    var startsWithDetails = false
 }
 
 @MainActor

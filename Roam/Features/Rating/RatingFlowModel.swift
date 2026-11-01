@@ -142,6 +142,9 @@ final class RatingFlowModel {
             initialVisit = initial
             step = request.mode == .addVisit ? .details : .sentiment
         }
+        if request.startsWithDetails, request.mode == .firstLog, step == .sentiment { step = .details }
+        // A visit with no feeling chosen is an unranked log, including one restored from a draft.
+        skipsRanking = request.mode == .firstLog && step == .details && sentiment == nil
     }
 
     /// Logging never requires ranking: the visit saves now and can be ranked later.
