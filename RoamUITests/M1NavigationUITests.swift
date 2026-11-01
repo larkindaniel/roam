@@ -12,16 +12,16 @@ final class M1NavigationUITests: RoamUITestCase {
         capture("m1-06-globe-expanded", settle: 5)
 
         // Switching tabs keeps the Profile stack where it was.
-        tab("Feed").tap()
+        tab("Friends").tap()
         waitFor(element("feed-root"))
         capture("m1-01-feed-root")
-        tab("Your Lists").tap()
+        tab("My Places").tap()
         waitFor(element("lists-root"))
         capture("m1-02-lists-root")
-        tab("Search").tap()
+        openFromForYou("open-search")
         waitFor(element("search-root"))
         capture("m1-03-search-root")
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         XCTAssertTrue(element("expanded-globe").waitForExistence(timeout: 5), "Profile stack should be restored on return")
 
         // Back returns to the profile root.

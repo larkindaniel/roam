@@ -13,7 +13,7 @@ final class M8LayoutStressUITests: RoamUITestCase {
     }
 
     func testLongNamesWrapAndActionsStayReachable() {
-        launch(scenario: "stress", tab: "feed")
+        launch(scenario: "stress", tab: "friends")
         let post = waitFor(card(containing: "Harbourside Tea Room"), timeout: 10)
         XCTAssertTrue(post.buttons["like-button"].firstMatch.isHittable, "Like stays reachable beside a long place name")
         XCTAssertTrue(post.frame.width <= app.windows.firstMatch.frame.width, "The card stays within the screen")
@@ -22,7 +22,7 @@ final class M8LayoutStressUITests: RoamUITestCase {
         waitFor(element("activity-detail"))
         XCTAssertTrue(waitFor(element("comment-field")).isHittable)
         capture("m8-12-long-names-post")
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         XCTAssertTrue(app.staticTexts[longName].firstMatch.exists, "The full display name is shown")
         XCTAssertTrue(element("profile-edit").isHittable)
@@ -30,7 +30,7 @@ final class M8LayoutStressUITests: RoamUITestCase {
     }
 
     func testLargeTieGroupSharesOneScoreAndRank() {
-        launch(scenario: "stress", tab: "lists")
+        launch(scenario: "stress", tab: "myplaces")
         waitFor(element("lists-root"), timeout: 10)
         waitFor(element("category-scope")).tap()
         waitFor(app.buttons["Food & Drink"]).tap()

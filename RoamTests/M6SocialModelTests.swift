@@ -69,7 +69,8 @@ private actor SocialTestService: FeedService, NotificationService, SocialService
     func markRead(id: UUID) async throws { readIDs.append(id) }
     func markAllRead() async throws { try next(&notificationOutcomes); markAllCount += 1 }
 
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool { try next(&followOutcomes); return following }
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState { try next(&followOutcomes); return FriendState.none.applying(action) == .none ? FriendState.received.applying(action) : FriendState.none.applying(action) }
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow> { memberPages["|"] ?? .empty }
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> {
         memberRequests.append((query, cursor)); return memberPages[query + "|" + (cursor ?? "")] ?? .empty
     }
@@ -251,19 +252,95 @@ final class M6SocialModelTests: XCTestCase {
 
     func testFollowListLatestQueryWinsAndFollowRollsBack() async throws {
         let service = SocialTestService()
-        let lena = MemberRow(member: member("lena"), isFollowing: false, followsViewer: true, isSelf: false)
-        let sam = MemberRow(member: member("sam"), isFollowing: false, followsViewer: true, isSelf: false)
+        let lena = MemberRow(member: member("lena"), friendState: .received, isSelf: false)
+        let sam = MemberRow(member: member("sam"), friendState: .received, isSelf: false)
         await service.setMembers(Page(items: [lena, sam], nextCursor: nil), query: "|")
         await service.setMembers(Page(items: [sam], nextCursor: nil), query: "sa|")
-        let model = FollowListModel(userID: UUID(), segment: .followers, service: service)
+        let model = FollowListModel(userID: UUID(), segment: .friends, service: service)
         await model.load(query: "")
         XCTAssertEqual(model.rows.count, 2)
         await model.load(query: " sa ")
         XCTAssertEqual(model.rows.map(\.id), [sam.id], "The trimmed latest query defines the rows")
         await service.script(follows: [.offline])
-        await model.setFollow(sam, following: true)
-        XCTAssertEqual(model.rows.first?.isFollowing, false, "A failed follow rolls back")
-        await model.setFollow(sam, following: true)
-        XCTAssertEqual(model.rows.first?.isFollowing, true)
+        await model.apply(.accept, to: sam)
+        XCTAssertEqual(model.rows.first?.friendState, .received, "A failed accept rolls back")
+        await model.apply(.accept, to: sam)
+        XCTAssertEqual(model.rows.first?.friendState, .friends)
+    }
+}
+
+final class FriendStateTests: XCTestCase {
+    func testTappingTheFriendButtonFollowsTheRequestFlow() {
+        XCTAssertEqual(FriendState.none.primaryAction, .request)
+        XCTAssertEqual(FriendState.sent.primaryAction, .cancel)
+        XCTAssertEqual(FriendState.received.primaryAction, .accept)
+        XCTAssertEqual(FriendState.friends.primaryAction, .remove)
+    }
+
+    func testARequestToSomeoneWhoAlreadyAskedBecomesAFriendship() {
+        XCTAssertEqual(FriendState.received.applying(.request), .friends)
+        XCTAssertEqual(FriendState.none.applying(.request), .sent)
+    }
+
+    func testActionsThatDoNotFitTheStateChangeNothing() {
+        XCTAssertEqual(FriendState.none.applying(.accept), .none)
+        XCTAssertEqual(FriendState.sent.applying(.remove), .sent)
+        XCTAssertEqual(FriendState.friends.applying(.decline), .friends)
+    }
+}
+
+final class TripRulesTests: XCTestCase {
+    func testATripNeedsAName() {
+        XCTAssertNotNil(TripDraft(name: "   ").validationMessage)
+        XCTAssertNil(TripDraft(name: "Portugal").validationMessage)
+    }
+
+    func testDatesAreOptionalButMustBeInOrder() {
+        let early = LocalDate(year: 2026, month: 1, day: 1)
+        let late = LocalDate(year: 2026, month: 2, day: 1)
+        XCTAssertNil(TripDraft(name: "Open", startDate: nil, endDate: late).validationMessage)
+        XCTAssertNil(TripDraft(name: "Ordered", startDate: early, endDate: late).validationMessage)
+        XCTAssertNotNil(TripDraft(name: "Backwards", startDate: late, endDate: early).validationMessage)
+    }
+
+    func testAPlannedPlaceReadsAsPlannedUntilAVisitExists() {
+        let place = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 0,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: false).state, .planned)
+        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: true).state, .visited)
+    }
+}
+
+final class ForYouSectionsTests: XCTestCase {
+    private func place(_ name: String, friends: Int, score: Int? = nil, mine: Int? = nil) -> ExperienceSummary {
+        ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: 0, longitude: 0, followingScore: score.map(Score.init(tenths:)), followingCount: friends,
+                          viewer: ViewerExperienceState(isBookmarked: false, myScore: mine.map(Score.init(tenths:)), hasVisits: mine != nil))
+    }
+
+    func testAPlaceNoFriendRatedIsNeverPresentedAsAFriendsFind() {
+        let sections = ForYouSections(experiences: [place("Friend pick", friends: 1, score: 80), place("Stranger", friends: 0)])
+        XCTAssertEqual(sections.friends.map(\.name), ["Friend pick"])
+        XCTAssertEqual(sections.community.map(\.name), ["Stranger"])
+    }
+
+    func testPlacesYouAlreadyRatedAreNotRecommended() {
+        let sections = ForYouSections(experiences: [place("Been", friends: 2, score: 90, mine: 70)])
+        XCTAssertTrue(sections.friends.isEmpty && sections.community.isEmpty)
+    }
+
+    func testFriendsPlacesSortByTheirScore() {
+        let sections = ForYouSections(experiences: [place("Lower", friends: 1, score: 60), place("Higher", friends: 1, score: 90)])
+        XCTAssertEqual(sections.friends.map(\.name), ["Higher", "Lower"])
+    }
+}
+
+final class ResearchBriefTests: XCTestCase {
+    private let lisbon = Destination(name: "Lisbon", region: nil, countryCode: "PT", countryName: "Portugal", latitude: 0, longitude: 0, radiusMeters: 1)
+
+    func testOnlyAnsweredTastesAreIncluded() {
+        let text = ResearchBrief.text(destination: lisbon, taste: TasteProfile(atmosphere: "Quiet"), liked: [])
+        XCTAssertTrue(text.contains("Atmosphere: Quiet"))
+        XCTAssertFalse(text.contains("Budget"))
+        XCTAssertFalse(text.contains("Places I've enjoyed"))
     }
 }

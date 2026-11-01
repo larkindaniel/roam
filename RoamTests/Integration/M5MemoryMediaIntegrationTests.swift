@@ -34,7 +34,7 @@ final class M5MemoryMediaIntegrationTests: BackendTestCase {
         let ranking = try await backend.categoryRanking(.culture)
         return try await backend.commitRating(RatingCommitRequest(operationID: UUID(), intent: .firstLog, experienceID: experience.id,
             category: .culture, sentiment: .liked, baseRevision: ranking.revision, answers: [],
-            visit: VisitPayload(date: LocalDate(isoString: "2026-03-04"), timeZoneIdentifier: "Europe/Lisbon", publicNote: note, mediaIDs: mediaIDs)))
+            visit: VisitPayload(date: LocalDate(isoString: "2026-03-04"), timeZoneIdentifier: "Europe/Lisbon", publicNote: note, mediaIDs: mediaIDs, audience: .public)))
     }
 
     private func expectFailure(_ description: String, _ predicate: (RoamError) -> Bool, _ operation: () async throws -> Void) async {
@@ -219,7 +219,7 @@ final class M5MemoryMediaIntegrationTests: BackendTestCase {
         XCTAssertEqual(detail.myRating?.ratingID, logged.ratingID)
         XCTAssertEqual(detail.myVisits.map(\.id), [try XCTUnwrap(logged.visitID)])
         let revisit = try await owner.addVisit(AddVisitRequest(operationID: UUID(), experienceID: experience.id,
-            visit: VisitPayload(date: nil, timeZoneIdentifier: nil, publicNote: "Again", mediaIDs: [])))
+            visit: VisitPayload(date: nil, timeZoneIdentifier: nil, publicNote: "Again", mediaIDs: [], audience: .public)))
         let republished = try await viewer.detail(experienceID: experience.id)
         XCTAssertEqual(republished.publicActivity.map(\.id), [revisit.activityID], "A later completion still publishes automatically")
     }

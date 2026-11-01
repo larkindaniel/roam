@@ -97,7 +97,7 @@ final class M8AccessibilityAuditTests: RoamUITestCase {
     }
 
     func testFeedPostAndNotifications() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         audit("feed")
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'feed-comments-'")).firstMatch.tap()
@@ -110,12 +110,12 @@ final class M8AccessibilityAuditTests: RoamUITestCase {
     }
 
     func testListsSearchAndDetail() {
-        launch(tab: "lists")
+        launch(tab: "myplaces")
         waitFor(element("lists-root"), timeout: 10)
         audit("lists-been")
         waitFor(element("list-kind")).buttons["Want to Go"].tap()
         audit("lists-want")
-        tab("Search").tap()
+        openFromForYou("open-search")
         type("harbor", into: "experience-search-field")
         waitFor(element("experience-row-Harbor Lantern Café"), timeout: 10)
         audit("search-results")

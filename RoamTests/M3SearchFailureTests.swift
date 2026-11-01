@@ -53,7 +53,7 @@ final class M3SearchFailureTests: XCTestCase {
 
     private func member(_ handle: String) -> MemberRow {
         MemberRow(member: MemberSummary(id: UUID(), handle: handle, displayName: handle, avatarPath: nil),
-                  isFollowing: false, followsViewer: false, isSelf: false)
+                  friendState: .none, isSelf: false)
     }
 
     private func experienceModel(search: @escaping (String, Destination?) async throws -> [PlaceCandidate],
@@ -62,7 +62,7 @@ final class M3SearchFailureTests: XCTestCase {
     }
 
     private func memberModel(search: @escaping (String, String?) async throws -> Page<MemberRow>) -> MemberSearchModel {
-        MemberSearchModel(searchMembers: search, setFollow: { _, desired in desired })
+        MemberSearchModel(searchMembers: search, friendAction: { _, action in FriendState.none.applying(action) })
     }
 
     func testInitialEnrichmentFailureIsAnErrorRatherThanUnratedResults() async {
@@ -279,10 +279,10 @@ final class M3SearchFailureTests: XCTestCase {
     func testFailedFollowRollsBackWithoutCreatingPaginationFailure() async {
         let first = member("first")
         let model = MemberSearchModel(searchMembers: { _, _ in Page(items: [first], nextCursor: nil) },
-                                      setFollow: { _, _ in throw RoamError.offline })
+                                      friendAction: { _, _ in throw RoamError.offline })
         await model.search("first")
         await model.toggleFollow(first)
-        XCTAssertEqual(model.rows.first?.isFollowing, false)
+        XCTAssertEqual(model.rows.first?.friendState, FriendState.none)
         XCTAssertTrue(model.pendingFollows.isEmpty)
         XCTAssertEqual(model.followError, RoamError.offline.roamMessage)
         XCTAssertNil(model.pageError, "A follow failure must not offer a nonfunctional Load more retry")

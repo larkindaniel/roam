@@ -48,7 +48,7 @@ final class M8JourneyUITests: RoamUITestCase {
 
     /// Returns the Search tab to its root (an earlier member search may have pushed a profile).
     private func searchRoot() {
-        tab("Search").tap()
+        openFromForYou("open-search")
         for _ in 0..<4 where !app.buttons["Experiences"].exists {
             let back = app.navigationBars.buttons["BackButton"].firstMatch
             guard back.exists else { break }
@@ -114,7 +114,7 @@ final class M8JourneyUITests: RoamUITestCase {
     }
 
     private func signOut() {
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         waitFor(element("open-settings")).tap()
         waitFor(element("settings"))
         reveal(element("settings-sign-out")).tap()
@@ -135,7 +135,7 @@ final class M8JourneyUITests: RoamUITestCase {
 
     func testTwoMembersFromEmptyListsThroughFeedCommentRevisitTravelSharedWantsAndRetainedMemory() {
         // Maya: no follows, nothing saved.
-        launch(scenario: "empty", tab: "feed")
+        launch(scenario: "empty", tab: "friends")
         waitFor(element("feed-empty"), timeout: 10)
         capture("m8-01-empty-feed-no-follows")
 
@@ -162,14 +162,14 @@ final class M8JourneyUITests: RoamUITestCase {
 
         // Theo: follows Maya, sees her history in the feed, comments and shares a Want.
         signIn("theo@roam.test")
-        tab("Feed").tap()
+        tab("Friends").tap()
         waitFor(element("feed-empty"), timeout: 10)
         openMember("mayaroams")
         waitFor(element("profile-root")).buttons["follow-button"].firstMatch.tap()
         let following = NSPredicate(format: "label BEGINSWITH 'Following'")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: following, object: app.buttons["follow-button"].firstMatch)],
                                       timeout: 8), .completed)
-        tab("Feed").tap()
+        tab("Friends").tap()
         let post = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'feed-card-'"))
             .containing(NSPredicate(format: "label CONTAINS %@", "Sunset tarts")).firstMatch
         waitFor(post, timeout: 10)
@@ -195,7 +195,7 @@ final class M8JourneyUITests: RoamUITestCase {
 
         // Maya: notifications, a repeat visit and a rerank, travel counts, then ranking removal.
         signIn("maya@roam.test")
-        tab("Feed").tap()
+        tab("Friends").tap()
         let bell = waitFor(element("open-notifications"), timeout: 10)
         XCTAssertTrue(bell.label.contains("2 unread"), "A follow and a comment: \(bell.label)")
         bell.tap()
@@ -218,7 +218,7 @@ final class M8JourneyUITests: RoamUITestCase {
         XCTAssertTrue(reranked.contains("5.0"), "Alone among fine places it scores 5.0: \(reranked)")
         finishRating()
 
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         XCTAssertTrue(waitFor(element("mini-globe")).label.contains("1 country, 1 city"), "One country and one city: \(element("mini-globe").label)")
         reveal(app.segmentedControls["profile-tabs"].buttons["Travel Profile"], in: "profile-root").tap()
@@ -241,7 +241,7 @@ final class M8JourneyUITests: RoamUITestCase {
         for _ in 0..<6 where !memory.isHittable { app.swipeUp() }
         XCTAssertTrue(memory.exists, "Removing the ranking keeps the visit memory")
         capture("m8-08-ranking-removed-memory-kept")
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         let travel = waitFor(element("mini-globe"), timeout: 10)
         XCTAssertTrue(travel.label.contains("1 country, 1 city"), "Travel counts keep retained visits: \(travel.label)")
     }
@@ -262,7 +262,7 @@ final class M8JourneyUITests: RoamUITestCase {
             XCTAssertTrue(element("rating-result-position").label.contains(place.category))
             finishRating()
         }
-        tab("Your Lists").tap()
+        tab("My Places").tap()
         waitFor(element("lists-root"), timeout: 10)
         capture("m8-09-seven-categories-been")
         // Each place is in Been: the list's own search finds it (no scrolling through recycled rows).
@@ -272,7 +272,7 @@ final class M8JourneyUITests: RoamUITestCase {
             element("list-search-field-clear").tap()
         }
         element("list-search-field").typeText("\n")   // the keyboard would cover the tab bar
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         reveal(app.segmentedControls["profile-tabs"].buttons["Travel Profile"], in: "profile-root").tap()
         for place in places {

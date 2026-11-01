@@ -28,7 +28,7 @@ final class M5FixtureParityTests: XCTestCase {
         return try await backend.commitRating(RatingCommitRequest(operationID: UUID(), intent: .firstLog, experienceID: experience.id, category: .culture,
                                                                   sentiment: .liked, baseRevision: ranking.revision, answers: [],
                                                                   visit: VisitPayload(date: LocalDate(isoString: "2026-02-01"), timeZoneIdentifier: "Europe/Lisbon",
-                                                                                      publicNote: note, mediaIDs: mediaIDs)))
+                                                                                      publicNote: note, mediaIDs: mediaIDs, audience: .public)))
     }
 
     func testStagedUploadIsPrivateUntilAttachedThenReadableByOtherMembers() async throws {

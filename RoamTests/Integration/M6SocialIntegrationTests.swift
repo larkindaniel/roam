@@ -48,19 +48,24 @@ final class M6SocialIntegrationTests: BackendTestCase {
         _ = try await log(stranger, try await place(stranger, name: "Stranger"))
         let empty = try await follower.feed(cursor: nil)
         XCTAssertTrue(empty.items.isEmpty, "No default follows; nothing until following")
-        let followed = try await follower.setFollow(userID: ownerID, following: true)
-        XCTAssertTrue(followed)
+        let requested = try await follower.friendAction(userID: ownerID, action: .request)
+        XCTAssertEqual(requested, .sent)
+        let pending = try await follower.feed(cursor: nil)
+        XCTAssertTrue(pending.items.isEmpty, "A pending request shows nothing")
+        let followerID = try await id(follower)
+        let accepted = try await owner.friendAction(userID: followerID, action: .accept)
+        XCTAssertEqual(accepted, .friends)
         let history = try await follower.feed(cursor: nil)
         XCTAssertEqual(history.items.map(\.id), [earlier.activityID], "Following exposes earlier eligible posts, never strangers'")
         let newer = try await log(owner, try await place(owner, name: "Newer"))
         let updated = try await follower.feed(cursor: nil)
         XCTAssertEqual(updated.items.map(\.id), [newer.activityID, earlier.activityID], "Newest publication first")
-        let stillFollowing = try await follower.setFollow(userID: ownerID, following: false)
-        XCTAssertFalse(stillFollowing)
+        let removed = try await follower.friendAction(userID: ownerID, action: .remove)
+        XCTAssertEqual(removed, .none)
         let afterUnfollow = try await follower.feed(cursor: nil)
         XCTAssertTrue(afterUnfollow.items.isEmpty)
         let profile = try await follower.publicProfile(userID: ownerID)
-        XCTAssertEqual(profile.followerCount, 0)
+        XCTAssertEqual(profile.followingCount, 0)
     }
 
     func testLikesCommentsAndNotificationsAreIdempotent() async throws {
@@ -68,7 +73,7 @@ final class M6SocialIntegrationTests: BackendTestCase {
         let (fan, _) = try await newMember(handlePrefix: "lf")
         let ownerID = try await id(owner)
         let posted = try await log(owner, try await place(owner))
-        _ = try await fan.setFollow(userID: ownerID, following: true)
+        try await befriend(fan, owner)
         let likedOnce = try await fan.setLike(activityID: posted.activityID, liked: true)
         let likedTwice = try await fan.setLike(activityID: posted.activityID, liked: true)
         XCTAssertTrue(likedOnce && likedTwice)
@@ -82,12 +87,12 @@ final class M6SocialIntegrationTests: BackendTestCase {
             _ = try await fan.postComment(activityID: posted.activityID, body: "Changed", operationID: operation)
         }
         let notes = try await owner.notifications(cursor: nil)
-        XCTAssertEqual(Set(notes.items.map(\.type)), [.follow, .like, .comment])
+        XCTAssertEqual(Set(notes.items.map(\.type)), [.like, .comment], "Accepting a request clears its notification")
         let unreadAtStart = try await owner.unreadCount()
-        XCTAssertEqual(unreadAtStart, 3)
+        XCTAssertEqual(unreadAtStart, 2)
         try await owner.markRead(id: try XCTUnwrap(notes.items.first).id)
         let unreadAfterOne = try await owner.unreadCount()
-        XCTAssertEqual(unreadAfterOne, 2)
+        XCTAssertEqual(unreadAfterOne, 1)
         try await owner.markAllRead()
         let unreadAfterAll = try await owner.unreadCount()
         XCTAssertEqual(unreadAfterAll, 0)
@@ -107,8 +112,7 @@ final class M6SocialIntegrationTests: BackendTestCase {
         let experience = try await place(owner)
         let posted = try await log(owner, experience)
         _ = try await owner.setBookmark(experienceID: try await place(owner, name: "Want").id, saved: true)
-        _ = try await blocked.setFollow(userID: ownerID, following: true)
-        _ = try await owner.setFollow(userID: blockedID, following: true)
+        try await befriend(blocked, owner)
         try await owner.setBlock(userID: blockedID, blocked: true)
         await expectFailure("profile", { $0 == .notFound }) { _ = try await blocked.publicProfile(userID: ownerID) }
         await expectFailure("post", { $0 == .unavailable }) { _ = try await blocked.activity(id: posted.activityID) }
@@ -118,7 +122,7 @@ final class M6SocialIntegrationTests: BackendTestCase {
         }
         await expectFailure("lists", { $0 == .notFound }) { _ = try await blocked.want(ownerID: ownerID) }
         await expectFailure("shared wants", { $0 == .notFound }) { _ = try await blocked.sharedWants(with: ownerID) }
-        await expectFailure("follow again", { $0 == .notFound }) { _ = try await blocked.setFollow(userID: ownerID, following: true) }
+        await expectFailure("friend request", { $0 == .notFound }) { _ = try await blocked.friendAction(userID: ownerID, action: .request) }
         let memories = try await blocked.publicMemories(experienceID: experience.id, cursor: nil)
         XCTAssertTrue(memories.items.isEmpty, "Public memories exclude the blocker")
         let search = try await blocked.searchMembers(query: try await handle(owner), cursor: nil)
@@ -127,8 +131,8 @@ final class M6SocialIntegrationTests: BackendTestCase {
         XCTAssertEqual(blockedList.map(\.id), [blockedID])
         try await owner.setBlock(userID: blockedID, blocked: false)
         let restored = try await blocked.publicProfile(userID: ownerID)
-        XCTAssertFalse(restored.relationship.isFollowing, "Unblocking never restores follows")
-        XCTAssertEqual(restored.followerCount, 0)
+        XCTAssertEqual(restored.relationship.friendState, .none, "Unblocking never restores a friendship")
+        XCTAssertEqual(restored.followingCount, 0)
     }
 
     func testMuteAffectsOnlyTheFeed() async throws {
@@ -136,7 +140,7 @@ final class M6SocialIntegrationTests: BackendTestCase {
         let (muter, _) = try await newMember(handlePrefix: "mm")
         let authorID = try await id(author)
         let posted = try await log(author, try await place(author))
-        _ = try await muter.setFollow(userID: authorID, following: true)
+        try await befriend(muter, author)
         try await muter.setMute(userID: authorID, muted: true)
         let mutedFeed = try await muter.feed(cursor: nil)
         XCTAssertTrue(mutedFeed.items.isEmpty)
@@ -172,7 +176,7 @@ final class M6SocialIntegrationTests: BackendTestCase {
         let ownerID = try await id(owner)
         for _ in 0..<31 {
             let (follower, _) = try await newMember(handlePrefix: "pq")
-            _ = try await follower.setFollow(userID: ownerID, following: true)
+            try await befriend(follower, owner)
         }
         let page1 = try await owner.followers(of: ownerID, query: "", cursor: nil)
         XCTAssertEqual(page1.items.count, 30)

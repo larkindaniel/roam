@@ -24,7 +24,7 @@ final class M7AccountIntegrationTests: BackendTestCase {
         while !insertion.isComplete { insertion.choose(.preferExisting) }
         return try await backend.commitRating(RatingCommitRequest(operationID: UUID(), intent: .firstLog, experienceID: experience.id,
             category: .culture, sentiment: .liked, baseRevision: ranking.revision, answers: insertion.answers,
-            visit: VisitPayload(date: date.flatMap(LocalDate.init(isoString:)), timeZoneIdentifier: nil, publicNote: "", mediaIDs: [])))
+            visit: VisitPayload(date: date.flatMap(LocalDate.init(isoString:)), timeZoneIdentifier: nil, publicNote: "", mediaIDs: [], audience: .public)))
     }
 
     private func expectFailure(_ description: String, _ predicate: (RoamError) -> Bool, _ operation: () async throws -> Void) async {
@@ -49,7 +49,7 @@ final class M7AccountIntegrationTests: BackendTestCase {
         let oregonLog = try await log(traveller, oregon, date: lastYear)
         let glacierLog = try await log(traveller, glacier, date: nil)
         _ = try await traveller.addVisit(AddVisitRequest(operationID: UUID(), experienceID: oregon.id,
-            visit: VisitPayload(date: LocalDate(isoString: thisYear), timeZoneIdentifier: nil, publicNote: "", mediaIDs: [])))
+            visit: VisitPayload(date: LocalDate(isoString: thisYear), timeZoneIdentifier: nil, publicNote: "", mediaIDs: [], audience: .public)))
         let saved = try await place(traveller, name: "Someday Lake", locality: "Queenstown", region: "Otago", country: "NZ",
                                     countryName: "New Zealand", latitude: -45.03, longitude: 168.66)
         _ = try await traveller.setBookmark(experienceID: saved.id, saved: true)
@@ -122,7 +122,7 @@ final class M7AccountIntegrationTests: BackendTestCase {
         let experience = try await place(leaver, name: "Farewell Hall", locality: "Lisbon", region: "Lisboa", country: "PT",
                                          countryName: "Portugal", latitude: 38.71, longitude: -9.14)
         try await log(leaver, experience, date: "2026-03-03")
-        _ = try await follower.setFollow(userID: leaverID, following: true)
+        try await befriend(follower, leaver)
         let before = try await follower.feed(cursor: nil)
         XCTAssertEqual(before.items.count, 1)
 

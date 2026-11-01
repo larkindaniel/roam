@@ -71,6 +71,12 @@ struct RootView: View {
                         if services.options.initialRoute == "globe", let userID = session.userID {
                             router.push(.globe(userID))
                         }
+                        switch services.options.initialRoute {
+                        case "search": router.openSearch()
+                        case "explore": router.openExplore()
+                        case "profile": router.push(.ownProfile)
+                        default: break
+                        }
                         #endif
                     }
             }

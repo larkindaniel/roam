@@ -76,7 +76,7 @@ final class M2AuthUITests: RoamUITestCase {
 
         // First completed setup lands in Your Lists with one-time Been education.
         waitFor(element("been-intro"))
-        XCTAssertTrue(tab("Your Lists").isSelected)
+        XCTAssertTrue(tab("My Places").isSelected)
         capture("m2-11-been-intro")
         element("been-intro-continue").tap()
         waitFor(element("log-coachmark"))

@@ -44,7 +44,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
     }
 
     private func openProfile(handle: String) {
-        tab("Search").tap()
+        openFromForYou("open-search")
         waitFor(app.buttons["Members"]).tap()
         let field = waitFor(element("member-search-field"))
         field.tap()
@@ -125,21 +125,21 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
     }
 
     func testAnotherMembersTravelAndSharingWritesNothing() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         openProfile(handle: "theowanders")
         openTravelProfile()
         reveal(element("new-this-year"), in: "profile-root")
         reveal(element("travel-row-category-food_drink"), in: "profile-root")
         capture("m7-09-other-travel-profile")
-        let followers = element("profile-followers").label
+        let followers = element("profile-friends").label
         waitFor(element("share-profile")).tap()
         XCTAssertTrue(app.otherElements["ActivityListView"].firstMatch.waitForExistence(timeout: 8)
                       || app.navigationBars["UIActivityContentView"].firstMatch.waitForExistence(timeout: 2), "The system share sheet opened")
         capture("m7-10-share-profile", settle: 1.2)
         dismissShareSheet()
         waitFor(element("profile-root"))
-        XCTAssertEqual(element("profile-followers").label, followers, "Cancelling a share changed nothing")
-        tab("Search").tap()
+        XCTAssertEqual(element("profile-friends").label, followers, "Cancelling a share changed nothing")
+        openFromForYou("open-search")
         waitFor(app.buttons["Experiences"]).tap()
         let search = waitFor(element("experience-search-field"))
         search.tap()
@@ -173,7 +173,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         let miles = NSPredicate(format: "label CONTAINS 'Miles' OR value CONTAINS 'Miles'")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: miles, object: element("settings-distance-unit"))], timeout: 8), .completed)
         capture("m7-14-settings-saved")
-        tab("Your Lists").tap()
+        tab("My Places").tap()
         waitFor(element("sort-menu"), timeout: 10).tap()
         waitFor(app.buttons["Distance"].firstMatch).tap()
         waitFor(text(containing: " mi"), timeout: 10)
@@ -218,7 +218,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
     }
 
     func testMutedAndBlockedListsUnmuteAndUnblock() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         openProfile(handle: "jonashikes")
         waitFor(element("profile-overflow")).tap()
         waitFor(element("profile-mute")).tap()
@@ -228,7 +228,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         waitFor(element("profile-overflow")).tap()
         waitFor(element("profile-block")).tap()
         waitFor(element("confirm-block")).tap()
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         openSettings()
         reveal(element("settings-muted")).tap()
         waitFor(element("safety-remove-jonashikes"), timeout: 10)
@@ -250,7 +250,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
     }
 
     func testReportHistoryShowsStoredReportsHonestly() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         openProfile(handle: "samexplores")
         waitFor(element("profile-overflow")).tap()
         waitFor(element("profile-report")).tap()
@@ -258,7 +258,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         element("report-send").tap()
         waitFor(element("report-received"), timeout: 10)
         app.buttons["Done"].firstMatch.tap()
-        tab("Profile").tap()
+        openFromForYou("open-profile")
         openSettings()
         reveal(element("settings-reports")).tap()
         let row = waitFor(element("report-row"), timeout: 10)

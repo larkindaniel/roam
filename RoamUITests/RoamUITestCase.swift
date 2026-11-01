@@ -37,6 +37,12 @@ class RoamUITestCase: XCTestCase {
         app.tabBars.buttons[title].firstMatch
     }
 
+    /// Search, Explore and Profile open from For You's navigation bar.
+    func openFromForYou(_ identifier: String) {
+        tab("For You").tap()
+        element(identifier).tap()
+    }
+
     func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier].firstMatch
     }

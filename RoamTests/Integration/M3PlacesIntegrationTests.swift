@@ -100,7 +100,7 @@ final class M3PlacesIntegrationTests: BackendTestCase {
         let maya = try await signedIn("maya@roam.test")
         let page = try await maya.searchMembers(query: "THEO", cursor: nil)
         XCTAssertEqual(page.items.first?.member.handle, "theowanders")
-        XCTAssertEqual(page.items.first?.isFollowing, true)
+        XCTAssertEqual(page.items.first?.friendState, .friends)
         let empty = try await maya.searchMembers(query: "zz-nobody-zz", cursor: nil)
         XCTAssertTrue(empty.items.isEmpty)
         XCTAssertNil(empty.nextCursor)
@@ -164,9 +164,8 @@ final class M3PlacesIntegrationTests: BackendTestCase {
             members.append(try XCTUnwrap(memberOwn))
         }
         let followed = try XCTUnwrap(members.first)
-        _ = try await viewer.setFollow(userID: followed.id, following: true)
         let followingMember = try XCTUnwrap(firstMember)
-        _ = try await followingMember.setFollow(userID: viewerProfile.id, following: true)
+        try await befriend(followingMember, viewer)
 
         let expected = members.sorted { $0.handle < $1.handle }
         let first = try await viewer.searchMembers(query: query.uppercased(), cursor: nil)
@@ -183,8 +182,7 @@ final class M3PlacesIntegrationTests: BackendTestCase {
         XCTAssertEqual(Set(combined.map(\.id)).count, 35, "No duplicate or missing members across the page boundary")
         XCTAssertTrue(combined.allSatisfy { !$0.isSelf && $0.id != viewerProfile.id }, "Self is excluded before page slicing")
         let relationship = try XCTUnwrap(combined.first { $0.id == followed.id })
-        XCTAssertTrue(relationship.isFollowing)
-        XCTAssertTrue(relationship.followsViewer)
+        XCTAssertEqual(relationship.friendState, .friends)
 
         // A fresh client and repeated requests exercise the persisted cursor contract, including refresh.
         let relaunched = try await signedIn(email, password: "integration-pass-123")
