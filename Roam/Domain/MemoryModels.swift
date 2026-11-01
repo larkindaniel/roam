@@ -108,7 +108,7 @@ struct ExperienceDetail: Codable, Hashable, Sendable {
     var publicActivity: [ActivityItem]
 }
 
-/// A row in Been / Want to Go / Shared Want to Go.
+/// A row in Been / Wishlist / Shared Wishlist.
 struct ListEntry: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary
     /// Owner's category score and rank (owner may be another member on public lists).
@@ -175,8 +175,7 @@ struct Comment: Codable, Hashable, Identifiable, Sendable {
 
 struct MemberRow: Codable, Hashable, Identifiable, Sendable {
     var member: MemberSummary
-    var isFollowing: Bool
-    var followsViewer: Bool
+    var friendState: FriendState
     var isSelf: Bool
 
     var id: UUID { member.id }
@@ -191,6 +190,8 @@ struct Page<Item: Hashable & Sendable>: Hashable, Sendable {
 
 enum NotificationType: String, Codable, Hashable, Sendable {
     case follow
+    case friendRequest = "friend_request"
+    case friendAccept = "friend_accept"
     case like
     case comment
 }

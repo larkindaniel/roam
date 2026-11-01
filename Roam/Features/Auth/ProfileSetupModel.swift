@@ -168,15 +168,15 @@ final class ProfileSetupModel {
         }
     }
 
-    /// Explicit, member-initiated follows only — nothing is preselected.
+    /// Explicit, member-initiated requests only — nothing is preselected.
     func toggleFollow(_ member: MemberSummary) async {
         guard !pendingFollows.contains(member.id) else { return }
-        let target = !following.contains(member.id)
+        let action: FriendAction = following.contains(member.id) ? .cancel : .request
         pendingFollows.insert(member.id)
         defer { pendingFollows.remove(member.id) }
         do {
-            let persisted = try await services.social.setFollow(userID: member.id, following: target)
-            if persisted { following.insert(member.id) } else { following.remove(member.id) }
+            let persisted = try await services.social.friendAction(userID: member.id, action: action)
+            if persisted == .none { following.remove(member.id) } else { following.insert(member.id) }
         } catch {
             self.error = error.roamMessage
         }

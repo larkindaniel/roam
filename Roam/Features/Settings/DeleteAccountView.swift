@@ -106,7 +106,7 @@ final class DeleteAccountModel {
             lines.append("Your account and its data have been deleted.")
         } else {
             lines.append("Your profile is hidden from everyone and you've been signed out on every device.")
-            lines.append("Roam is deleting your rankings, visits, notes, photos, follows and posts. This is still in progress.")
+            lines.append("Roam is deleting your rankings, visits, notes, photos, friends and posts. This is still in progress.")
         }
         switch status.appleRevocation {
         case "pending": lines.append("Roam will also revoke its Sign in with Apple access when deletion finishes.")
@@ -211,8 +211,8 @@ struct DeleteAccountView: View {
     private var explanation: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             Text("Deleting your account permanently removes:").font(.headline)
-            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your Want to Go list",
-                     "Your follows and followers", "Your posts, likes and comments"], id: \.self) { item in
+            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your Wishlist list",
+                     "Your friends and friend requests", "Your posts, likes and comments"], id: \.self) { item in
                 Label(item, systemImage: "minus.circle").foregroundStyle(.primary)
             }
             Text("Your profile disappears for everyone straight away and you're signed out on every device. Text you've already shared outside Roam can't be recalled. Reports you've filed stay with Roam's operators without your name.")

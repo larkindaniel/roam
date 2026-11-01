@@ -269,9 +269,8 @@ struct MemberSearchView: View {
                         HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(Theme.secondaryText) }
                     }
                     ForEach(model.rows) { row in
-                        MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,
-                                      followState: model.pendingFollows.contains(row.id) ? .pending
-                                          : (row.isFollowing ? .following : (row.followsViewer ? .followBack : .follow)),
+                        MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
+                                      followState: FollowButtonState(row.friendState, pending: model.pendingFollows.contains(row.id)),
                                       onOpen: { router.push(.member(row.id)) },
                                       onToggleFollow: { Task { await model.toggleFollow(row) } })
                     }

@@ -58,7 +58,7 @@ struct HelpView: View {
                     "Skip stops comparing and places it approximately, without making it a tie. You can rank again any time. Undo steps back through choices before you save.",
                 ]),
                 HelpSection(title: "What gets posted", paragraphs: [
-                    "Finishing a ranking, a new visit or Rank again posts automatically to your profile and your followers' feeds. Posts show the score at the time you posted, labelled \"Score when posted\".",
+                    "Finishing a ranking, a new visit or Rank again posts automatically to your profile and your friends' feeds. Posts show the score at the time you posted, labelled \"Score when posted\".",
                     "Editing a note, photos or date later updates that post without re-posting it. Removing a post keeps your ranking and visit; removing a ranking keeps your visits, notes and photos.",
                 ]),
                 HelpSection(title: "Travel counts", paragraphs: [
@@ -69,7 +69,7 @@ struct HelpView: View {
         case .privacy:
             return [
                 HelpSection(title: "What other members see", paragraphs: [
-                    "Signed-in members can see your profile, rankings and scores, Want to Go list, posts, public notes, visit photos, travel counts and who you follow. Blocked members see none of it.",
+                    "Signed-in members can see your profile, rankings and scores, Wishlist list, posts, public notes, visit photos, travel counts and who you follow. Blocked members see none of it.",
                 ]),
                 HelpSection(title: "What stays private", paragraphs: [
                     "Private notes, your email address and sign-in details, your settings, your reports, who you've blocked or muted, and unsaved drafts are only visible to you. Drafts and caches stay on this device until you save, discard or sign out.",

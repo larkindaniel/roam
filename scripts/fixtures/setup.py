@@ -3,7 +3,7 @@
 
 - Creates fictional accounts through the local Auth admin API (service-role key read from the
   git-ignored scripts/.fixture-env; never printed, never shipped in the app or seed).
-- Builds profiles, settings and follows through the same RPCs the app uses, signed in as each user.
+- Builds profiles, settings and friendships through the same RPCs the app uses, signed in as each user.
 - Loads fictional places, public memories and private notes with SQL as the local `postgres` role.
 
 Refuses to run against anything but a loopback API URL. Usage: scripts/fixtures/setup.py
@@ -30,7 +30,8 @@ USERS = [
     ("00000010-0000-4000-8000-000000000006", "sam@roam.test", "samexplores", "Sam Rivera", "Weekend explorer.", None),
 ]
 
-FOLLOWS = [("maya", "theo"), ("theo", "maya"), ("maya", "jonas"), ("lena", "maya"), ("sam", "maya")]
+# (first, second, accepted): the first asks, and the second accepts when accepted is True.
+FRIENDS = [("maya", "theo", True), ("maya", "jonas", False), ("lena", "maya", False), ("sam", "maya", True)]
 
 
 def load_env():
@@ -122,11 +123,13 @@ def main():
         rpc(env, token, "set_setup_checkpoint", {"p_checkpoint": "complete"})
         rpc(env, token, "mark_been_intro_seen", {})
         print(f"  {email:<18} {state}")
-    for follower, followee in FOLLOWS:
-        followee_id = next(u[0] for u in USERS if u[1].startswith(followee))
-        rpc(env, tokens[follower], "set_follow", {"p_user_id": followee_id, "p_following": True})
+    ids = {u[1].split("@")[0]: u[0] for u in USERS}
+    for first, second, accepted in FRIENDS:
+        rpc(env, tokens[first], "friend_action", {"p_user_id": ids[second], "p_action": "request"})
+        if accepted:
+            rpc(env, tokens[second], "friend_action", {"p_user_id": ids[first], "p_action": "accept"})
     run_sql(os.path.join(ROOT, "supabase", "fixtures", "fixture-data.sql"))
-    print(f"Fixture accounts ready (password in scripts/fixtures/setup.py), {len(FOLLOWS)} follows, places and memories loaded.")
+    print(f"Fixture accounts ready (password in scripts/fixtures/setup.py), {len(FRIENDS)} friend links, places and memories loaded.")
 
 
 if __name__ == "__main__":

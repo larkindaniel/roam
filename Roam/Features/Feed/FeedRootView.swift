@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// S02: own and followed members' posts, newest publication first.
+/// The Friends tab: your own and your friends' posts, newest publication first.
 struct FeedRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
@@ -56,8 +56,8 @@ struct FeedRootView: View {
             ScrollView {
                 if let error = model.error { InlineRetryView(message: error) { Task { await model.refresh() } }.padding() }
                 VStack {
-                    EmptyStateView(systemImage: "person.2.wave.2", title: "Your feed is quiet",
-                                   message: "Follow travellers to see their rankings here, newest first. Your own ratings appear here too.",
+                    EmptyStateView(systemImage: "person.2.wave.2", title: "Nothing from friends yet",
+                                   message: "Add friends to see their places here, newest first. Your own appear here too.",
                                    primaryTitle: "Find people", primaryAction: { router.showFindPeople() },
                                    secondaryTitle: "Search experiences", secondaryAction: { router.openSearch() })
                 }
@@ -151,12 +151,12 @@ struct FeedCard: View {
         case .saved:
             Button { Task { await library.setBookmark(id, saved: false) } } label: { PillLabel(title: "Saved", systemImage: "bookmark.fill") }
                 .buttonStyle(PillButtonStyle(isSelected: true))
-                .accessibilityLabel("Saved to Want to Go. Remove")
+                .accessibilityLabel("Saved to Wishlist. Remove")
                 .accessibilityIdentifier("feed-save-\(item.id.uuidString)")
         case .notSaved:
             Button { Task { await library.setBookmark(id, saved: true) } } label: { PillLabel(title: "Save", systemImage: "bookmark") }
                 .buttonStyle(PillButtonStyle())
-                .accessibilityLabel("Save \(item.experience.name) to Want to Go")
+                .accessibilityLabel("Save \(item.experience.name) to Wishlist")
                 .accessibilityIdentifier("feed-save-\(item.id.uuidString)")
         }
     }

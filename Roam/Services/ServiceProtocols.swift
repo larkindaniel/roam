@@ -256,7 +256,9 @@ extension MediaService {
 // MARK: People, feed and notifications
 
 protocol SocialService: AnyObject, Sendable {
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool
+    /// Desired-state friend change; safe to retry. Returns the resulting state.
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow>
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow>
     func following(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow>
     func searchMembers(query: String, cursor: String?) async throws -> Page<MemberRow>

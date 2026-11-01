@@ -92,7 +92,7 @@ final class PersonalListsModel {
     }
 }
 
-/// S12: Been / Want to Go for the signed-in member or another member (read-only, viewer Save/Log).
+/// S12: Been / Wishlist for the signed-in member or another member (read-only, viewer Save/Log).
 struct PersonalListsView: View {
     let ownerID: UUID
     var initialKind: ListKind = .been

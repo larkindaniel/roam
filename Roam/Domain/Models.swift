@@ -110,15 +110,54 @@ struct OwnProfile: Codable, Hashable, Identifiable, Sendable {
     var summary: MemberSummary { MemberSummary(id: id, handle: handle, displayName: displayName, avatarPath: avatarPath) }
 }
 
+/// Where the viewer stands with another member. Friendship is two-way: a request stays
+/// pending until the other member accepts.
+enum FriendState: String, Codable, Hashable, Sendable {
+    case none
+    case sent
+    case received
+    case friends
+}
+
+enum FriendAction: String, Codable, Hashable, Sendable {
+    case request
+    case accept
+    case decline
+    case cancel
+    case remove
+}
+
+extension FriendState {
+    /// What tapping the friend button does in this state.
+    var primaryAction: FriendAction {
+        switch self {
+        case .none: return .request
+        case .sent: return .cancel
+        case .received: return .accept
+        case .friends: return .remove
+        }
+    }
+
+    /// The state to show while `action` is in flight.
+    func applying(_ action: FriendAction) -> FriendState {
+        switch action {
+        case .request: return self == .received ? .friends : (self == .none ? .sent : self)
+        case .accept: return self == .received ? .friends : self
+        case .decline: return self == .received ? .none : self
+        case .cancel: return self == .sent ? .none : self
+        case .remove: return self == .friends ? .none : self
+        }
+    }
+}
+
 struct Relationship: Codable, Hashable, Sendable {
     var isSelf: Bool
-    var isFollowing: Bool
-    var followsViewer: Bool
+    var friendState: FriendState
     var isMuted: Bool
     var isBlocked: Bool
 
-    static let selfRelationship = Relationship(isSelf: true, isFollowing: false, followsViewer: false, isMuted: false, isBlocked: false)
-    static let none = Relationship(isSelf: false, isFollowing: false, followsViewer: false, isMuted: false, isBlocked: false)
+    static let selfRelationship = Relationship(isSelf: true, friendState: .none, isMuted: false, isBlocked: false)
+    static let none = Relationship(isSelf: false, friendState: .none, isMuted: false, isBlocked: false)
 }
 
 /// Public profile header data; every count is a server-derived all-time total.

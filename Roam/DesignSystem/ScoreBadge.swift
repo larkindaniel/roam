@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Whose score a badge shows. Missing scores read "Not rated"/"No following ratings", never 0.
+/// Whose score a badge shows. Missing scores read "Not rated"/"No friend ratings", never 0.
 enum ScoreSource: Hashable {
     case you
     case following(count: Int)
@@ -10,7 +10,7 @@ enum ScoreSource: Hashable {
     var label: String {
         switch self {
         case .you: return "You"
-        case .following: return "Following"
+        case .following: return "Friends"
         case .owner(let name): return name
         case .snapshot: return "Score when posted"
         }
@@ -61,12 +61,12 @@ struct ScoreBadge: View {
     private var caption: String {
         if score == nil {
             switch source {
-            case .following: return "No following"
+            case .following: return "No friends"
             case .you: return "Not rated"
             default: return source.label
             }
         }
-        if case .following(let count) = source { return "Following · \(count)" }
+        if case .following(let count) = source { return "Friends · \(count)" }
         return source.label
     }
 
@@ -74,8 +74,8 @@ struct ScoreBadge: View {
         switch (source, score) {
         case (.you, let score?): return "Your score \(score.formatted) out of 10"
         case (.you, nil): return "Not rated"
-        case (.following(let count), let score?): return "Following score \(score.formatted) out of 10 from \(count) \(count == 1 ? "person" : "people")"
-        case (.following, nil): return "No following ratings"
+        case (.following(let count), let score?): return "Friends score \(score.formatted) out of 10 from \(count) \(count == 1 ? "person" : "people")"
+        case (.following, nil): return "No friend ratings"
         case (.owner(let name), let score?): return "\(name)'s score \(score.formatted) out of 10"
         case (.owner(let name), nil): return "\(name) has not rated this"
         case (.snapshot, let score?): return "Score when posted \(score.formatted) out of 10"

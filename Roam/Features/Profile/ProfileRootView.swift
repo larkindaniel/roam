@@ -115,7 +115,7 @@ struct ProfileView: View {
                 .accessibilityIdentifier("confirm-block")
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("You'll both stop following each other and won't see each other's profiles, posts, lists, photos or comments. Unblocking later doesn't restore follows.")
+            Text("You'll stop being friends and won't see each other's profiles, posts, lists, photos or comments. Unblocking later doesn't restore follows.")
         }
         .sheet(item: $reportTarget) { target in ReportSheet(target: target, title: "Report member") }
         .task { if profile.value == nil { await load() } }
@@ -182,16 +182,13 @@ struct ProfileView: View {
     }
 
     @ViewBuilder private func stats(_ value: PublicProfile) -> some View {
-        Button { router.push(.followGraph(userID, .followers)) } label: { stat(value.followerCount, "Followers") }
+        Button { router.push(.followGraph(userID, .friends)) } label: { stat(value.followingCount, "Friends") }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("profile-followers")
-        Button { router.push(.followGraph(userID, .following)) } label: { stat(value.followingCount, "Following") }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("profile-following")
+            .accessibilityIdentifier("profile-friends")
         Button { router.push(.memberList(userID, .been)) } label: { stat(value.rankedCount, "Ranked") }
             .buttonStyle(.plain)
             .accessibilityIdentifier("profile-been-count")
-        Button { router.push(.memberList(userID, .want)) } label: { stat(value.wantCount, "Want to Go") }
+        Button { router.push(.memberList(userID, .want)) } label: { stat(value.wantCount, "Wishlist") }
             .buttonStyle(.plain)
             .accessibilityIdentifier("profile-want-count")
     }
@@ -207,7 +204,7 @@ struct ProfileView: View {
 
     private func relationshipActions(_ value: PublicProfile) -> some View {
         let relationship = value.relationship
-        let state: FollowButtonState = followPending ? .pending : relationship.isFollowing ? .following : relationship.followsViewer ? .followBack : .follow
+        let state = FollowButtonState(relationship.friendState, pending: followPending)
         return VStack(spacing: Theme.Spacing.s) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
@@ -223,7 +220,7 @@ struct ProfileView: View {
 
     @ViewBuilder private func followAndShared(_ value: PublicProfile, state: FollowButtonState) -> some View {
         FollowButton(state: state, name: value.member.displayName) { Task { await toggleFollow(value) } }
-        Button { router.push(.sharedWants(userID)) } label: { PillLabel(title: "Shared Want to Go", systemImage: "bookmark.circle") }
+        Button { router.push(.sharedWants(userID)) } label: { PillLabel(title: "Shared Wishlist", systemImage: "bookmark.circle") }
             .buttonStyle(PillButtonStyle())
             .accessibilityIdentifier("profile-shared-wants")
     }
@@ -247,16 +244,23 @@ struct ProfileView: View {
 
     private func toggleFollow(_ value: PublicProfile) async {
         guard !followPending, case .loaded(var current) = profile else { return }
-        let target = !current.relationship.isFollowing
+        let action = current.relationship.friendState.primaryAction
         let before = current
         followPending = true
         defer { followPending = false }
-        current.relationship.isFollowing = target
-        current.followerCount = max(0, current.followerCount + (target ? 1 : -1))
+        current.relationship.friendState = current.relationship.friendState.applying(action)
         profile = .loaded(current)
         do {
-            let persisted = try await services.social.setFollow(userID: userID, following: target)
-            if persisted != target { profile = .loaded(before) }
+            let persisted = try await services.social.friendAction(userID: userID, action: action)
+            current.relationship.friendState = persisted
+            if persisted == .friends && before.relationship.friendState != .friends {
+                current.followingCount += 1
+                current.followerCount += 1
+            } else if persisted != .friends && before.relationship.friendState == .friends {
+                current.followingCount = max(0, current.followingCount - 1)
+                current.followerCount = max(0, current.followerCount - 1)
+            }
+            profile = .loaded(current)
             changes.markFeedStale()
             actionError = nil
         } catch {

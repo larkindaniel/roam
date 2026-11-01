@@ -174,16 +174,16 @@ final class MemberSearchModel {
     private(set) var pendingFollows: Set<UUID> = []
     private var generation = 0
     private let searchMembers: (String, String?) async throws -> Page<MemberRow>
-    private let setFollow: (UUID, Bool) async throws -> Bool
+    private let friendAction: (UUID, FriendAction) async throws -> FriendState
 
     convenience init(services: AppServices) {
-        self.init(searchMembers: services.social.searchMembers, setFollow: services.social.setFollow)
+        self.init(searchMembers: services.social.searchMembers, friendAction: services.social.friendAction)
     }
 
     init(searchMembers: @escaping (String, String?) async throws -> Page<MemberRow>,
-         setFollow: @escaping (UUID, Bool) async throws -> Bool) {
+         friendAction: @escaping (UUID, FriendAction) async throws -> FriendState) {
         self.searchMembers = searchMembers
-        self.setFollow = setFollow
+        self.friendAction = friendAction
     }
 
     func search(_ text: String) async {
@@ -249,16 +249,17 @@ final class MemberSearchModel {
     /// Optimistic follow with rollback; duplicate taps are ignored while in flight.
     func toggleFollow(_ row: MemberRow) async {
         guard !pendingFollows.contains(row.id), let index = rows.firstIndex(where: { $0.id == row.id }) else { return }
-        let target = !rows[index].isFollowing
+        let before = rows[index].friendState
+        let action = before.primaryAction
         pendingFollows.insert(row.id)
         followError = nil
-        rows[index].isFollowing = target
+        rows[index].friendState = before.applying(action)
         defer { pendingFollows.remove(row.id) }
         do {
-            let persisted = try await setFollow(row.id, target)
-            if let i = rows.firstIndex(where: { $0.id == row.id }) { rows[i].isFollowing = persisted }
+            let persisted = try await friendAction(row.id, action)
+            if let i = rows.firstIndex(where: { $0.id == row.id }) { rows[i].friendState = persisted }
         } catch {
-            if let i = rows.firstIndex(where: { $0.id == row.id }) { rows[i].isFollowing = !target }
+            if let i = rows.firstIndex(where: { $0.id == row.id }) { rows[i].friendState = before }
             followError = error.roamMessage
         }
     }

@@ -218,11 +218,11 @@ struct ExperienceDetailView: View {
                         .buttonStyle(PillButtonStyle(isSelected: target))
                         .disabled(true)
                 case .saved:
-                    Button { Task { await library.setBookmark(id, saved: false) } } label: { PillLabel(title: "Saved to Want to Go", systemImage: "bookmark.fill") }
+                    Button { Task { await library.setBookmark(id, saved: false) } } label: { PillLabel(title: "Saved to Wishlist", systemImage: "bookmark.fill") }
                         .buttonStyle(PillButtonStyle(isSelected: true))
                         .accessibilityIdentifier("detail-save")
                 default:
-                    Button { Task { await library.setBookmark(id, saved: true) } } label: { PillLabel(title: "Want to Go", systemImage: "bookmark") }
+                    Button { Task { await library.setBookmark(id, saved: true) } } label: { PillLabel(title: "Wishlist", systemImage: "bookmark") }
                         .buttonStyle(PillButtonStyle(isSelected: false))
                         .accessibilityIdentifier("detail-save")
                 }
@@ -261,10 +261,10 @@ struct ExperienceDetailView: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("detail-your-score")
             VStack(alignment: .leading, spacing: 6) {
-                Text("Following").font(.headline)
+                Text("Friends").font(.headline)
                 HStack(spacing: Theme.Spacing.m) {
                     ScoreBadge(score: detail.summary.followingScore, source: .following(count: detail.summary.followingCount), size: 52, showsLabel: false)
-                    Text(detail.summary.followingCount == 0 ? "No following ratings"
+                    Text(detail.summary.followingCount == 0 ? "No friend ratings"
                          : "\(detail.summary.followingCount) \(detail.summary.followingCount == 1 ? "person" : "people") you follow")
                         .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }

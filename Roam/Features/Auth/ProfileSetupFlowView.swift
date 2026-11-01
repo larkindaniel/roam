@@ -151,7 +151,7 @@ private struct SetupSteps: View {
             .disabled(model.busy)
             .accessibilityIdentifier("setup-continue")
         case .people:
-            question("Find travellers to follow", "Optional. Following someone puts their ratings in your feed. Nobody is followed unless you choose.")
+            question("Find friends", "Optional. Friends see each other's places once both of you agree. Nobody is added unless you choose.")
             peopleList
             Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .visibility }
                 .buttonStyle(PrimaryButtonStyle())
@@ -205,9 +205,9 @@ private struct SetupSteps: View {
         case .loaded(let rows):
             VStack(spacing: 0) {
                 ForEach(rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,
+                    MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
                                   followState: model.pendingFollows.contains(row.member.id) ? .pending
-                                      : (model.following.contains(row.member.id) ? .following : (row.followsViewer ? .followBack : .follow)),
+                                      : (model.following.contains(row.member.id) ? .requested : FollowButtonState(row.friendState)),
                                   onToggleFollow: { Task { await model.toggleFollow(row.member) } })
                     Divider()
                 }
@@ -220,8 +220,8 @@ private struct SetupSteps: View {
 struct VisibilityExplainer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            row("person.crop.circle", "Visible to members", "Your name, handle, photo, bio, home city, rankings and scores, Want to Go list, travel globe, and the public notes and photos on your visits.")
-            row("dot.radiowaves.left.and.right", "Shared automatically", "When you finish ranking or add a visit, it appears on your profile and in your followers' feeds.")
+            row("person.crop.circle", "Visible to members", "Your name, handle, photo, bio, home city, rankings and scores, Wishlist list, travel globe, and the public notes and photos on your visits.")
+            row("dot.radiowaves.left.and.right", "Shared automatically", "When you finish ranking or add a visit, it appears on your profile and in your friends' feeds.")
             row("lock.fill", "Only you", "Private notes, your email, your settings and who you've blocked or muted.")
         }
         .roamCard()

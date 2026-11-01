@@ -133,7 +133,7 @@ struct GlobeMapView: UIViewRepresentable {
 
     static let startCenter = CLLocationCoordinate2D(latitude: 25, longitude: 10)
 
-    /// A region that frames the pins (used by list and Shared Want to Go maps). A phone-sized flat map
+    /// A region that frames the pins (used by list and Shared Wishlist maps). A phone-sized flat map
     /// cannot zoom out far enough for places on opposite sides of the world, so a spread-out set
     /// frames its densest group instead of opening on empty ocean; the others are a pan away and
     /// the list view always shows every place.

@@ -189,7 +189,7 @@ struct RatingFlowView: View {
                 if !photos.canCommit { Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked).accessibilityIdentifier("rating-photo-error") }
             }
             if request.mode == .rerank { Text("This updates your ranking and existing memory without adding another visit.").font(.footnote).foregroundStyle(Theme.secondaryText) }
-            Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.")
+            Text("Your rating, public note and photos will appear on your profile and in your friends' feeds.")
                 .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-publication-disclosure")
             Button("Okay") { Task { await model.okay() } }
                 .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false).accessibilityIdentifier("rating-okay")
@@ -253,7 +253,7 @@ struct RatingFlowView: View {
                     Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
                     Text("Your existing ranking stays the same.").foregroundStyle(Theme.secondaryText)
                 }
-                Text("Your rating, public note and photos will appear on your profile and in your followers' feeds.").font(.footnote)
+                Text("Your rating, public note and photos will appear on your profile and in your friends' feeds.").font(.footnote)
                 Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
             }.screenIdentifier("rating-result")
         }

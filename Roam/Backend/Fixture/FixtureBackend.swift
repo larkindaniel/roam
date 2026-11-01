@@ -128,6 +128,8 @@ actor FixtureBackend {
     var media: [UUID: MediaRow] = [:]
     var activities: [UUID: ActivityRow] = [:]
     var follows: [Pair: Date] = [:]
+    /// Pending requests: a asked b.
+    var friendRequests: [Pair: Date] = [:]
     var likes: [Pair: Date] = [:]
     var comments: [UUID: CommentRow] = [:]
     var notifications: [UUID: NotificationRow] = [:]
@@ -167,6 +169,7 @@ actor FixtureBackend {
         media = seeded.media
         activities = seeded.activities
         follows = seeded.follows
+        friendRequests = seeded.friendRequests
         likes = seeded.likes
         comments = seeded.comments
         notifications = seeded.notifications
@@ -349,7 +352,7 @@ actor FixtureBackend {
         guard recipient != actor, !isBlockedEitherWay(recipient, actor) else { return }
         let prefs = settingsByUser[recipient] ?? .defaults
         switch type {
-        case .follow where !prefs.notifyFollows: return
+        case .follow where !prefs.notifyFollows, .friendRequest where !prefs.notifyFollows, .friendAccept where !prefs.notifyFollows: return
         case .like where !prefs.notifyLikes: return
         case .comment where !prefs.notifyComments: return
         default: break

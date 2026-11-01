@@ -142,7 +142,7 @@ struct SettingsView: View {
 
     private var notificationsSection: some View {
         Section {
-            Toggle("New followers", isOn: Binding(get: { settings.displayed.notifyFollows },
+            Toggle("Friend requests", isOn: Binding(get: { settings.displayed.notifyFollows },
                                                   set: { value in Task { await settings.update { $0.notifyFollows = value } } }))
                 .accessibilityIdentifier("settings-notify-follows")
             Toggle("Likes on your posts", isOn: Binding(get: { settings.displayed.notifyLikes },
@@ -165,7 +165,7 @@ struct SettingsView: View {
         } else if let error = settings.loadError, !settings.hasLoaded {
             Text("Showing your last saved settings. \(error)")
         } else {
-            Text("Distances in lists use this unit. Haptics are the small taps when you like, follow, save or compare.")
+            Text("Distances in lists use this unit. Haptics are the small taps when you like, add a friend, save or compare.")
         }
     }
 

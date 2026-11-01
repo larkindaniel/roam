@@ -200,7 +200,7 @@ extension FixtureBackend: ProfileService {
         let countryCount = Set(geography.compactMap(\.countryCode)).count
         let cityCount = Set(geography.compactMap { GeographyKey.cityKey(countryCode: $0.countryCode, region: $0.region, locality: $0.locality) }).count
         let relationship = me == userID ? Relationship.selfRelationship : Relationship(
-            isSelf: false, isFollowing: follows[Pair(a: me, b: userID)] != nil, followsViewer: follows[Pair(a: userID, b: me)] != nil,
+            isSelf: false, friendState: friendState(viewer: me, member: userID),
             isMuted: mutes.contains(Pair(a: me, b: userID)), isBlocked: blocks.contains(Pair(a: me, b: userID)))
         return PublicProfile(
             member: MemberSummary(id: userID, handle: handle, displayName: member.displayName ?? handle, avatarPath: member.avatarPath),
@@ -224,7 +224,7 @@ extension FixtureBackend: ProfileService {
             return l != r ? l > r : (lhs.handle ?? "") < (rhs.handle ?? "")
         }
         return ranked.prefix(limit).map { member in
-            MemberRow(member: memberSummary(member.id), isFollowing: false, followsViewer: follows[Pair(a: member.id, b: me)] != nil, isSelf: false)
+            MemberRow(member: memberSummary(member.id), friendState: friendState(viewer: me, member: member.id), isSelf: false)
         }
     }
 }

@@ -32,11 +32,11 @@ enum ListKind: String, Hashable, Sendable, CaseIterable, Identifiable {
 }
 
 enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
-    case followers
-    case following
+    case friends
+    case requests
 
     var id: String { rawValue }
-    var title: String { self == .followers ? "Followers" : "Following" }
+    var title: String { self == .friends ? "Friends" : "Requests" }
 }
 
 /// Stable-ID routes pushed onto a tab's navigation stack. Deferred features have no case here.
