@@ -58,7 +58,7 @@ struct LaunchOptions: Equatable, Sendable {
         options.initialTab = startingPoint.flatMap(AppTab.init(rawValue:))
         options.simulateLocation = value(after: "-roam-location")
         options.initialRoute = value(after: "-roam-initial-route")
-        // Search, Explore and Profile are screens within For You, so a test can start on one directly.
+        // Search, Explore and Profile are screens within Discover, so a test can start on one directly.
         if let startingPoint, ["search", "explore", "profile"].contains(startingPoint) { options.initialRoute = startingPoint }
         #endif
         return options

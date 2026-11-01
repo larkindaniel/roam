@@ -25,7 +25,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     private func openProfile(handle: String) {
-        openFromForYou("open-search")
+        element("log-place").tap()
         waitFor(app.buttons["Members"]).tap()
         let field = waitFor(element("member-search-field"))
         field.tap()
@@ -189,7 +189,7 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("confirm-remove-post")).tap()
         waitForDisappearance(element("activity-detail"), timeout: 10)
         XCTAssertFalse(card(containing: "Back again").waitForExistence(timeout: 3))
-        openFromForYou("open-search")
+        element("log-place").tap()
         let search = waitFor(element("experience-search-field"))
         search.tap()
         search.typeText("harbor")

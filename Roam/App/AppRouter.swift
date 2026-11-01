@@ -8,7 +8,7 @@ enum AppTab: String, CaseIterable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .forYou: return "For You"
+        case .forYou: return "Discover"
         case .friends: return "Friends"
         case .myPlaces: return "My Places"
         }

@@ -48,7 +48,7 @@ final class M8JourneyUITests: RoamUITestCase {
 
     /// Returns the Search tab to its root (an earlier member search may have pushed a profile).
     private func searchRoot() {
-        openFromForYou("open-search")
+        element("log-place").tap()
         for _ in 0..<4 where !app.buttons["Experiences"].exists {
             let back = app.navigationBars.buttons["BackButton"].firstMatch
             guard back.exists else { break }
@@ -114,7 +114,7 @@ final class M8JourneyUITests: RoamUITestCase {
     }
 
     private func signOut() {
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         waitFor(element("open-settings")).tap()
         waitFor(element("settings"))
         reveal(element("settings-sign-out")).tap()
@@ -218,7 +218,7 @@ final class M8JourneyUITests: RoamUITestCase {
         XCTAssertTrue(reranked.contains("5.0"), "Alone among fine places it scores 5.0: \(reranked)")
         finishRating()
 
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         XCTAssertTrue(waitFor(element("mini-globe")).label.contains("1 country, 1 city"), "One country and one city: \(element("mini-globe").label)")
         reveal(app.segmentedControls["profile-tabs"].buttons["Travel Profile"], in: "profile-root").tap()
@@ -241,7 +241,7 @@ final class M8JourneyUITests: RoamUITestCase {
         for _ in 0..<6 where !memory.isHittable { app.swipeUp() }
         XCTAssertTrue(memory.exists, "Removing the ranking keeps the visit memory")
         capture("m8-08-ranking-removed-memory-kept")
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         let travel = waitFor(element("mini-globe"), timeout: 10)
         XCTAssertTrue(travel.label.contains("1 country, 1 city"), "Travel counts keep retained visits: \(travel.label)")
     }
@@ -272,7 +272,7 @@ final class M8JourneyUITests: RoamUITestCase {
             element("list-search-field-clear").tap()
         }
         element("list-search-field").typeText("\n")   // the keyboard would cover the tab bar
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         reveal(app.segmentedControls["profile-tabs"].buttons["Travel Profile"], in: "profile-root").tap()
         for place in places {

@@ -18,10 +18,10 @@ final class M1NavigationUITests: RoamUITestCase {
         tab("My Places").tap()
         waitFor(element("lists-root"))
         capture("m1-02-lists-root")
-        openFromForYou("open-search")
+        element("log-place").tap()
         waitFor(element("search-root"))
         capture("m1-03-search-root")
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         XCTAssertTrue(element("expanded-globe").waitForExistence(timeout: 5), "Profile stack should be restored on return")
 
         // Back returns to the profile root.

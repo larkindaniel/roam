@@ -44,7 +44,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
     }
 
     private func openProfile(handle: String) {
-        openFromForYou("open-search")
+        element("log-place").tap()
         waitFor(app.buttons["Members"]).tap()
         let field = waitFor(element("member-search-field"))
         field.tap()
@@ -139,7 +139,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         dismissShareSheet()
         waitFor(element("profile-root"))
         XCTAssertEqual(element("profile-friends").label, followers, "Cancelling a share changed nothing")
-        openFromForYou("open-search")
+        element("log-place").tap()
         waitFor(app.buttons["Experiences"]).tap()
         let search = waitFor(element("experience-search-field"))
         search.tap()
@@ -228,7 +228,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         waitFor(element("profile-overflow")).tap()
         waitFor(element("profile-block")).tap()
         waitFor(element("confirm-block")).tap()
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         openSettings()
         reveal(element("settings-muted")).tap()
         waitFor(element("safety-remove-jonashikes"), timeout: 10)
@@ -258,7 +258,7 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         element("report-send").tap()
         waitFor(element("report-received"), timeout: 10)
         app.buttons["Done"].firstMatch.tap()
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         openSettings()
         reveal(element("settings-reports")).tap()
         let row = waitFor(element("report-row"), timeout: 10)

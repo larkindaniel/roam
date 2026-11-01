@@ -22,7 +22,7 @@ final class M8LayoutStressUITests: RoamUITestCase {
         waitFor(element("activity-detail"))
         XCTAssertTrue(waitFor(element("comment-field")).isHittable)
         capture("m8-12-long-names-post")
-        openFromForYou("open-profile")
+        openFromDiscover("open-profile")
         waitFor(element("profile-root"), timeout: 10)
         XCTAssertTrue(app.staticTexts[longName].firstMatch.exists, "The full display name is shown")
         XCTAssertTrue(element("profile-edit").isHittable)

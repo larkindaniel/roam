@@ -57,42 +57,63 @@ final class ForYouModel {
     }
 }
 
-/// For You: where should I go? Sources stay separate and in a fixed order.
+/// Discover: search for somewhere, then see what your friends and the community found there.
+/// Sources stay separate and in a fixed order.
 struct ForYouRootView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(DestinationStore.self) private var destinations
-    @State private var model: ForYouModel?
     @Environment(LibraryStore.self) private var library
+    @State private var model: ForYouModel?
+    @State private var query = ""
+    @State private var isSearching = false
+    @State private var results: LoadPhase<[Destination]> = .idle
+    @State private var selected: Destination?
+
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         List {
-            destinationRow
-            if let model, !model.picks.isEmpty { picksSection(model.picks) }
-            if model?.needsTaste == true {
-                Section {
-                    Button("Tell Roam what you like") { router.push(.taste) }
-                        .accessibilityIdentifier("foryou-set-taste")
-                }
-                .listRowBackground(Roam.paperRaised)
-            }
-            if let destination = destinations.search, let model {
-                switch model.phase {
-                case .idle, .loading:
-                    Section { SkeletonList(rows: 3) }
-                case .failed(let message):
+            if hasQuery {
+                searchResults
+            } else {
+                if let selected {
+                    selectedRow(selected)
+                } else {
                     Section {
-                        InlineRetryView(message: message) { Task { await model.load(destination) } }
+                        Text("Search for a city or town to see what your friends found there.")
+                            .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                            .accessibilityIdentifier("discover-start")
                     }
-                case .loaded(let sections):
-                    friendsSection(sections.friends, destination: destination)
-                    communitySection(sections.community, destination: destination)
+                    .listRowBackground(Roam.paperRaised)
                 }
-                researchSection(destination)
+                if let model, !model.picks.isEmpty { picksSection(model.picks) }
+                if model?.needsTaste == true {
+                    Section {
+                        Button("Tell Roam what you like") { router.push(.taste) }
+                            .accessibilityIdentifier("foryou-set-taste")
+                    }
+                    .listRowBackground(Roam.paperRaised)
+                }
+                if let destination = selected, let model {
+                    switch model.phase {
+                    case .idle, .loading:
+                        Section { SkeletonList(rows: 3) }
+                    case .failed(let message):
+                        Section {
+                            InlineRetryView(message: message) { Task { await model.load(destination) } }
+                        }
+                    case .loaded(let sections):
+                        friendsSection(sections.friends, destination: destination)
+                        communitySection(sections.community, destination: destination)
+                    }
+                    researchSection(destination)
+                }
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("For You")
+        .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search for a place")
+        .navigationTitle("Discover")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
@@ -100,35 +121,83 @@ struct ForYouRootView: View {
                     .accessibilityLabel("Explore the map")
                     .accessibilityIdentifier("open-explore")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { router.openSearch() } label: { Image(systemName: "magnifyingglass") }
-                    .accessibilityLabel("Search")
-                    .accessibilityIdentifier("open-search")
-            }
             LogPlaceToolbarFallback()
         }
-        .task(id: destinations.search?.id) {
+        .task(id: query) {
+            guard hasQuery else { results = .idle; return }
+            try? await Task.sleep(for: Limits.searchDebounce)
+            guard !Task.isCancelled else { return }
+            await search(query)
+        }
+        .task(id: selected?.id) {
             if model == nil { model = ForYouModel(experiences: services.experiences, plans: services.plans) }
             await model?.loadPicks()
-            if let destination = destinations.search { await model?.load(destination) }
+            if let selected { await model?.load(selected) }
         }
         .screenIdentifier("foryou-root")
     }
 
-    private var destinationRow: some View {
+    @ViewBuilder private var searchResults: some View {
         Section {
-            Button { router.sheet = .destinationPicker(.search) } label: {
-                HStack {
-                    Text(destinations.search?.displayName ?? "Choose a destination").font(.headline)
-                    Spacer(minLength: Theme.Spacing.s)
-                    Image(systemName: "chevron.down").font(.footnote.weight(.semibold))
+            switch results {
+            case .idle, .loading:
+                HStack { ProgressView(); Text("Searching…").foregroundStyle(Roam.inkMuted) }
+            case .failed(let message):
+                InlineRetryView(message: message) { Task { await search(query) } }
+            case .loaded(let found) where found.isEmpty:
+                Text("No places match \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
+                    .accessibilityIdentifier("discover-no-results")
+            case .loaded(let found):
+                ForEach(found) { destination in
+                    Button { choose(destination) } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(destination.name).font(.headline).foregroundStyle(Roam.ink)
+                            if !destination.subtitle.isEmpty {
+                                Text(destination.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+                    }
+                    .accessibilityIdentifier("discover-result-\(destination.name)")
                 }
-                .foregroundStyle(Roam.ink)
-                .frame(minHeight: Theme.minimumHitTarget)
             }
-            .accessibilityLabel(destinations.search.map { "Destination \($0.displayName). Change destination" } ?? "Choose a destination")
-            .accessibilityIdentifier("foryou-destination")
-            .listRowBackground(Roam.paperRaised)
+        }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func selectedRow(_ destination: Destination) -> some View {
+        Section {
+            HStack {
+                Text(destination.displayName).font(.headline).foregroundStyle(Roam.ink)
+                Spacer(minLength: Theme.Spacing.s)
+                Button { selected = nil } label: { Image(systemName: "xmark").font(.footnote.weight(.semibold)) }
+                    .buttonStyle(.borderless)
+                    .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+                    .accessibilityLabel("Clear \(destination.name)")
+                    .accessibilityIdentifier("discover-clear")
+            }
+            .accessibilityIdentifier("discover-selected")
+        }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func choose(_ destination: Destination) {
+        selected = destination
+        destinations.select(destination, for: .search)
+        query = ""
+        isSearching = false
+    }
+
+    private func search(_ text: String) async {
+        results = .loading
+        do {
+            let found = try await services.places.searchDestinations(query: text)
+            guard !Task.isCancelled, text == query else { return }
+            results = .loaded(found)
+        } catch is CancellationError {
+        } catch {
+            guard text == query else { return }
+            results = .failed(error.roamMessage)
         }
     }
 
