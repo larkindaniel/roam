@@ -66,7 +66,7 @@ struct WelcomeView: View {
                     .accessibilityHidden(true)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("Roam")
-                        .font(.system(size: wordmarkSize, weight: .bold, design: .serif))
+                        .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.accent)
                         .accessibilityAddTraits(.isHeader)
                     Text("Rank the places that made your trips.")
@@ -201,7 +201,7 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
                 Text(message).font(.body).foregroundStyle(Theme.secondaryText)
                 fields
                 Button(action: action) {
-                    if busy { ProgressView().tint(.white) } else { Text(actionTitle) }
+                    if busy { ProgressView().tint(Roam.onInk) } else { Text(actionTitle) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!actionEnabled || busy)

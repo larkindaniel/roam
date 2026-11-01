@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Your Lists tab: the signed-in member's Been and Want to Go.
-struct ListsRootView: View {
+/// My Places tab: Wishlist, Been there and Trips under one segmented control.
+struct MyPlacesRootView: View {
     @Environment(SessionStore.self) private var session
     @State private var showsCoachmark = false
 
     var body: some View {
         Group {
             if let userID = session.userID {
-                PersonalListsView(ownerID: userID, initialKind: .been, isRoot: true)
+                PersonalListsView(ownerID: userID, initialKind: .want, isRoot: true)
             } else {
                 ProgressView()
             }

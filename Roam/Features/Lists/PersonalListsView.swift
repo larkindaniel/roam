@@ -119,7 +119,7 @@ struct PersonalListsView: View {
             }
         }
         .background(Theme.groupedCanvas)
-        .navigationTitle(isOwn ? "Your Lists" : "\(ownerName ?? "Member")'s lists")
+        .navigationTitle(isOwn ? (isRoot ? "My Places" : "Your Lists") : "\(ownerName ?? "Member")'s lists")
         .navigationBarTitleDisplayMode(isRoot ? .large : .inline)
         .task {
             if model == nil { model = PersonalListsModel(ownerID: ownerID, kind: initialKind, services: services) }
@@ -309,11 +309,11 @@ private struct ListsContent: View {
             if model.kind == .been {
                 EmptyStateView(systemImage: "checkmark.seal", title: "Nothing ranked yet",
                                message: "Log a place you've been and Roam ranks it within its category.",
-                               primaryTitle: "Search experiences", primaryAction: { router.selectedTab = .search })
+                               primaryTitle: "Search experiences", primaryAction: { router.openSearch() })
             } else {
                 EmptyStateView(systemImage: "bookmark", title: "No saved experiences",
                                message: "Save places you want to go. They'll wait here until you've been.",
-                               primaryTitle: "Explore places", primaryAction: { router.selectedTab = .explore })
+                               primaryTitle: "Explore places", primaryAction: { router.openExplore() })
             }
         } else {
             EmptyStateView(systemImage: model.kind == .been ? "checkmark.seal" : "bookmark",

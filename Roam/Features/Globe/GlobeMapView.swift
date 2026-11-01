@@ -285,7 +285,7 @@ struct GlobeMapView: UIViewRepresentable {
                 let renderer = MKPolygonRenderer(polygon: polygon)
                 let teal = UIColor(named: "AccentColor") ?? .systemTeal
                 // Bright fill + white outline stays legible on daylit and night-side imagery.
-                renderer.fillColor = UIColor(red: 0.20, green: 0.85, blue: 0.78, alpha: 0.55)
+                renderer.fillColor = UIColor(red: 0.93, green: 0.925, blue: 0.898, alpha: 0.55)
                 renderer.strokeColor = UIColor.white.withAlphaComponent(0.95)
                 renderer.lineWidth = 1.2
                 _ = teal

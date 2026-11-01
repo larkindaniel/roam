@@ -182,7 +182,7 @@ struct DeleteAccountView: View {
             .roamCard()
             errorText(model)
             Button("Delete my account", role: .destructive) { showsFinalConfirmation = true }
-                .buttonStyle(PrimaryButtonStyle(fill: Theme.disliked))
+                .buttonStyle(PrimaryButtonStyle(fill: Theme.destructive))
                 .accessibilityIdentifier("delete-account-confirm")
         case .deleting:
             ProgressView("Deleting your account…")
@@ -242,7 +242,7 @@ struct DeleteAccountView: View {
                 Button {
                     Task { await model.confirmPassword() }
                 } label: {
-                    if model.busy { ProgressView().tint(.white) } else { Text("Confirm password") }
+                    if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Confirm password") }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.password.isEmpty || model.busy)
@@ -269,7 +269,7 @@ struct DeleteAccountView: View {
         if let error = model.error {
             Text(error)
                 .font(.subheadline)
-                .foregroundStyle(Theme.disliked)
+                .foregroundStyle(Theme.destructive)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("delete-account-error")
         }
@@ -284,7 +284,7 @@ struct DeleteAccountView: View {
         destinations.reset()
         activityChanges.reset()
         settings.reset()
-        router.reset(initialTab: .feed)
+        router.reset(initialTab: .forYou)
         await session.accountDeleted(notice: notice)
     }
 }

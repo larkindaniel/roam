@@ -1,53 +1,54 @@
 import SwiftUI
 import UIKit
 
-/// Roam visual tokens: system typography, an accessible teal accent and sentiment colours
-/// that are always paired with icons or text.
+/// Roam design tokens: ink on eggshell paper with no highlight colour. Photos are the only colour.
+enum Roam {
+    static let paper = dynamic(light: 0xF4F2EC, dark: 0x121211)
+    static let paperRaised = dynamic(light: 0xFBFAF7, dark: 0x1C1C1A)
+    static let ink = dynamic(light: 0x121211, dark: 0xEEECE5)
+    static let inkMuted = dynamic(light: 0x5C5A54, dark: 0xA4A29B)
+    static let inkFaint = dynamic(light: 0x8E8B83, dark: 0x6F6D67)
+    static let rule = dynamic(light: 0xDCD9D0, dark: 0x2E2D2A)
+    static let fill = dynamic(light: 0xE9E6DD, dark: 0x2A2926)
+    static let onInk = dynamic(light: 0xF4F2EC, dark: 0x121211)
+    static let signal = dynamic(light: 0xB3261E, dark: 0xFF8A80)
+
+    private static func dynamic(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? uiColor(dark) : uiColor(light) })
+    }
+
+    private static func uiColor(_ hex: UInt32) -> UIColor {
+        UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+/// App-facing names for the Roam tokens. Sentiment is carried by icons and words, never colour.
 enum Theme {
-    static let accent = Color.accentColor
+    static let accent = Roam.ink
+    static let liked = Roam.ink
+    static let fine = Roam.ink
+    /// Errors and destructive actions; sentiment itself is drawn in ink.
+    static let disliked = Roam.signal
+    static let destructive = Roam.signal
 
-    // Light-mode sentiment text reaches at least 5.4:1 on its own fill and on white (M8 audit).
-    static let liked = dynamic(light: UIColor(red: 0.08, green: 0.42, blue: 0.23, alpha: 1), dark: UIColor(red: 0.42, green: 0.82, blue: 0.56, alpha: 1))
-    static let fine = dynamic(light: UIColor(red: 0.52, green: 0.33, blue: 0.00, alpha: 1), dark: UIColor(red: 0.96, green: 0.76, blue: 0.33, alpha: 1))
-    static let disliked = dynamic(light: UIColor(red: 0.66, green: 0.15, blue: 0.13, alpha: 1), dark: UIColor(red: 0.98, green: 0.52, blue: 0.47, alpha: 1))
+    static let likedFill = Roam.fill
+    static let fineFill = Roam.fill
+    static let dislikedFill = Roam.fill
 
-    static let likedFill = dynamic(light: UIColor(red: 0.85, green: 0.94, blue: 0.88, alpha: 1), dark: UIColor(red: 0.13, green: 0.27, blue: 0.18, alpha: 1))
-    static let fineFill = dynamic(light: UIColor(red: 0.99, green: 0.93, blue: 0.78, alpha: 1), dark: UIColor(red: 0.30, green: 0.24, blue: 0.10, alpha: 1))
-    static let dislikedFill = dynamic(light: UIColor(red: 0.98, green: 0.87, blue: 0.85, alpha: 1), dark: UIColor(red: 0.33, green: 0.14, blue: 0.13, alpha: 1))
+    static let secondaryText = Roam.inkMuted
 
-    /// Secondary text. The system secondary label gray is about 3.5:1 on white, below the 4.5:1
-    /// that small text needs (M8 audit); this reaches about 6.3:1 on white and 5.7:1 on grouped canvas.
-    static let secondaryText = dynamic(light: UIColor(red: 0.37, green: 0.37, blue: 0.39, alpha: 1),
-                                       dark: UIColor(red: 0.70, green: 0.70, blue: 0.73, alpha: 1))
+    static let canvas = Roam.paper
+    static let groupedCanvas = Roam.paper
+    static let card = Roam.paperRaised
+    static let raisedCard = Roam.paperRaised
+    static let hairline = Roam.rule
+    static let subtleFill = Roam.fill
+    static let accentFill = Roam.fill
+    static let wantAccent = Roam.ink
 
-    static let canvas = Color(uiColor: .systemBackground)
-    static let groupedCanvas = Color(uiColor: .systemGroupedBackground)
-    static let card = Color(uiColor: .secondarySystemGroupedBackground)
-    static let raisedCard = Color(uiColor: .systemBackground)
-    static let hairline = Color(uiColor: .separator)
-    static let subtleFill = Color(uiColor: .tertiarySystemFill)
-    static let accentFill = dynamic(light: UIColor(red: 0.88, green: 0.95, blue: 0.94, alpha: 1), dark: UIColor(red: 0.08, green: 0.24, blue: 0.23, alpha: 1))
-    static let wantAccent = dynamic(light: UIColor(red: 0.23, green: 0.33, blue: 0.62, alpha: 1), dark: UIColor(red: 0.62, green: 0.71, blue: 0.98, alpha: 1))
+    static func color(for sentiment: Sentiment) -> Color { Roam.ink }
 
-    static func color(for sentiment: Sentiment) -> Color {
-        switch sentiment {
-        case .liked: return liked
-        case .fine: return fine
-        case .disliked: return disliked
-        }
-    }
-
-    static func fill(for sentiment: Sentiment) -> Color {
-        switch sentiment {
-        case .liked: return likedFill
-        case .fine: return fineFill
-        case .disliked: return dislikedFill
-        }
-    }
-
-    private static func dynamic(light: UIColor, dark: UIColor) -> Color {
-        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
-    }
+    static func fill(for sentiment: Sentiment) -> Color { Roam.fill }
 
     enum Spacing {
         static let xs: CGFloat = 4
@@ -58,34 +59,34 @@ enum Theme {
         static let xxl: CGFloat = 32
     }
 
-    static let cornerRadius: CGFloat = 14
+    static let cornerRadius: CGFloat = 16
     static let minimumHitTarget: CGFloat = 44
 }
 
 extension Font {
-    /// Large serif heading used for place names and modal titles (system New York).
+    /// Rounded display face used for place names and modal titles.
     static func roamDisplay(_ style: Font.TextStyle = .largeTitle) -> Font {
-        .system(style, design: .serif).weight(.bold)
+        .system(style, design: .rounded).weight(.bold)
     }
 
     static func roamTitle(_ style: Font.TextStyle = .title2) -> Font {
-        .system(style, design: .serif).weight(.semibold)
+        .system(style, design: .rounded).weight(.bold)
     }
 }
 
 /// Primary filled call to action.
 struct PrimaryButtonStyle: ButtonStyle {
-    /// Destructive final actions pass `Theme.disliked`.
-    var fill: Color = Theme.accent
+    /// Destructive final actions pass `Theme.destructive`.
+    var fill: Color = Roam.ink
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .padding(.horizontal, Theme.Spacing.l)
-            .foregroundStyle(.white)
-            .background(Capsule().fill(isEnabled ? fill : Color.gray.opacity(0.45)))
+            .frame(minHeight: 44)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .foregroundStyle(isEnabled ? Roam.onInk : Roam.inkMuted)
+            .background(Capsule().fill(isEnabled ? fill : Roam.fill))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .contentShape(Capsule())
     }
@@ -98,10 +99,10 @@ struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .padding(.horizontal, Theme.Spacing.l)
-            .foregroundStyle(isEnabled ? Theme.accent : .secondary)
-            .background(Capsule().strokeBorder(isEnabled ? Theme.accent : Color.gray.opacity(0.4), lineWidth: 1.5))
+            .frame(minHeight: 44)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .foregroundStyle(isEnabled ? Roam.ink : Roam.inkFaint)
+            .background(Capsule().fill(Roam.fill))
             .opacity(configuration.isPressed ? 0.7 : 1)
             .contentShape(Capsule())
     }
@@ -119,9 +120,8 @@ struct PillButtonStyle: ButtonStyle {
             .fixedSize()
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .foregroundStyle(isSelected ? Color.white : Theme.accent)
-            .background(Capsule().fill(isSelected ? Theme.accent : Theme.accentFill))
-            .overlay(Capsule().strokeBorder(Theme.accent.opacity(isSelected ? 0 : 0.25)))
+            .foregroundStyle(isSelected ? Roam.onInk : Roam.ink)
+            .background(Capsule().fill(isSelected ? Roam.ink : Roam.fill))
             .opacity(configuration.isPressed ? 0.75 : 1)
             .frame(minHeight: Theme.minimumHitTarget)
             .contentShape(Rectangle())
@@ -146,7 +146,7 @@ extension View {
     func roamCard(padding: CGFloat = Theme.Spacing.l) -> some View {
         self.padding(padding)
             .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline.opacity(0.5)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline))
     }
 }
 

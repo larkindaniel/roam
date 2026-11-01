@@ -2,29 +2,23 @@ import Observation
 import SwiftUI
 
 enum AppTab: String, CaseIterable, Hashable, Sendable {
-    case feed
-    case lists
-    case search
-    case explore
-    case profile
+    case forYou = "foryou"
+    case friends
+    case myPlaces = "myplaces"
 
     var title: String {
         switch self {
-        case .feed: return "Feed"
-        case .lists: return "Your Lists"
-        case .search: return "Search"
-        case .explore: return "Explore"
-        case .profile: return "Profile"
+        case .forYou: return "For You"
+        case .friends: return "Friends"
+        case .myPlaces: return "My Places"
         }
     }
 
     var symbolName: String {
         switch self {
-        case .feed: return "house"
-        case .lists: return "list.bullet"
-        case .search: return "magnifyingglass"
-        case .explore: return "map"
-        case .profile: return "person.crop.circle"
+        case .forYou: return "safari"
+        case .friends: return "person.2"
+        case .myPlaces: return "mappin.and.ellipse"
         }
     }
 }
@@ -34,7 +28,7 @@ enum ListKind: String, Hashable, Sendable, CaseIterable, Identifiable {
     case want
 
     var id: String { rawValue }
-    var title: String { self == .been ? "Been" : "Want to Go" }
+    var title: String { self == .been ? "Been there" : "Wishlist" }
 }
 
 enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
@@ -48,6 +42,9 @@ enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
 /// Stable-ID routes pushed onto a tab's navigation stack. Deferred features have no case here.
 enum AppRoute: Hashable, Sendable {
     case experience(UUID)
+    case search
+    case explore
+    case ownProfile
     case member(UUID)
     case activity(UUID)
     case notifications
@@ -126,7 +123,7 @@ final class AppRouter {
     /// Requests the Search tab to show a segment (e.g. Find people → Members).
     var searchSegmentRequest: SearchSegment?
 
-    init(initialTab: AppTab = .feed) {
+    init(initialTab: AppTab = .forYou) {
         self.selectedTab = initialTab
     }
 
@@ -147,8 +144,13 @@ final class AppRouter {
 
     func showFindPeople() {
         searchSegmentRequest = .members
-        selectedTab = .search
+        openSearch()
     }
+
+    /// Search and Explore are screens within a tab, not tabs of their own.
+    func openSearch() { push(.search) }
+
+    func openExplore() { push(.explore) }
 
     func reset(initialTab: AppTab) {
         paths = [:]

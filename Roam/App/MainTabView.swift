@@ -1,42 +1,48 @@
 import SwiftUI
 
-/// Five tabs, each with its own navigation stack. Tab views stay alive, so query, filter and
-/// scroll state persist for the session.
+/// Three tabs, each with its own navigation stack, plus the Log a place action. Tab views stay
+/// alive, so query, filter and scroll state persist for the session.
 struct MainTabView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
         @Bindable var router = router
-        TabView(selection: $router.selectedTab) {
-            Tab(AppTab.feed.title, systemImage: AppTab.feed.symbolName, value: AppTab.feed) {
-                stack(.feed) { FeedRootView() }
+        tabs(selection: $router.selectedTab)
+            .sheet(item: $router.sheet) { sheet in
+                SheetContent(route: sheet)
+                    .presentationBackground(Roam.paper)
             }
-            .accessibilityIdentifier("tab-feed")
-            Tab(AppTab.lists.title, systemImage: AppTab.lists.symbolName, value: AppTab.lists) {
-                stack(.lists) { ListsRootView() }
+    }
+
+    private func tabs(selection: Binding<AppTab>) -> some View {
+        let view = TabView(selection: selection) {
+            Tab(AppTab.forYou.title, systemImage: AppTab.forYou.symbolName, value: AppTab.forYou) {
+                stack(.forYou) { ForYouRootView() }
             }
-            .accessibilityIdentifier("tab-lists")
-            Tab(AppTab.search.title, systemImage: AppTab.search.symbolName, value: AppTab.search) {
-                stack(.search) { SearchRootView() }
+            .accessibilityIdentifier("tab-foryou")
+            Tab(AppTab.friends.title, systemImage: AppTab.friends.symbolName, value: AppTab.friends) {
+                stack(.friends) { FeedRootView() }
             }
-            .accessibilityIdentifier("tab-search")
-            Tab(AppTab.explore.title, systemImage: AppTab.explore.symbolName, value: AppTab.explore) {
-                stack(.explore) { ExploreRootView() }
+            .accessibilityIdentifier("tab-friends")
+            Tab(AppTab.myPlaces.title, systemImage: AppTab.myPlaces.symbolName, value: AppTab.myPlaces) {
+                stack(.myPlaces) { MyPlacesRootView() }
             }
-            .accessibilityIdentifier("tab-explore")
-            Tab(AppTab.profile.title, systemImage: AppTab.profile.symbolName, value: AppTab.profile) {
-                stack(.profile) { ProfileRootView() }
-            }
-            .accessibilityIdentifier("tab-profile")
+            .accessibilityIdentifier("tab-myplaces")
         }
-        .sheet(item: $router.sheet) { sheet in
-            SheetContent(route: sheet)
+        return Group {
+            if #available(iOS 26.0, *) {
+                view.tabViewBottomAccessory { LogPlaceAccessory() }
+            } else {
+                view
+            }
         }
     }
 
     private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
         NavigationStack(path: router.binding(for: tab)) {
             root()
+                .scrollContentBackground(.hidden)
+                .background(Roam.paper)
                 .navigationDestination(for: AppRoute.self) { route in
                     RouteDestinationView(route: route)
                 }
@@ -50,6 +56,12 @@ struct RouteDestinationView: View {
 
     var body: some View {
         switch route {
+        case .search:
+            SearchRootView()
+        case .explore:
+            ExploreRootView()
+        case .ownProfile:
+            ProfileRootView()
         case .globe(let userID):
             ExpandedGlobeView(userID: userID)
         case .travelFilter(let userID, let filter):

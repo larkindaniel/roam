@@ -40,14 +40,14 @@ struct LogCoachmark: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(.white).accessibilityHidden(true)
+            Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Roam.onInk).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Log your first place").font(.headline).foregroundStyle(.white)
+                Text("Log your first place").font(.headline).foregroundStyle(Roam.onInk)
                 Text("Open Search, find somewhere you've been and tap Log.").font(.subheadline).foregroundStyle(.white.opacity(0.9))
             }
             Spacer(minLength: 0)
             Button(action: onDismiss) {
-                Image(systemName: "xmark").font(.footnote.bold()).foregroundStyle(.white).frame(width: 44, height: 44)
+                Image(systemName: "xmark").font(.footnote.bold()).foregroundStyle(Roam.onInk).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Dismiss tip")
         }

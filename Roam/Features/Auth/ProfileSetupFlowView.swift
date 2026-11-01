@@ -96,7 +96,7 @@ private struct SetupSteps: View {
             Button {
                 Task { await model.createProfile() }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text("Continue") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Continue") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(Validation.handle(model.handle) != nil || model.busy || model.handleState == .checking)
@@ -145,7 +145,7 @@ private struct SetupSteps: View {
             Button {
                 Task { await model.saveHomeAndContinue() }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text(model.homeCity == nil ? "Skip" : "Continue") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text(model.homeCity == nil ? "Skip" : "Continue") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.busy)
@@ -164,7 +164,7 @@ private struct SetupSteps: View {
                     if let profile = await model.finish() { session.completeSetup(profile) }
                 }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text("Start using Roam") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Start using Roam") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.busy)

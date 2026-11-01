@@ -13,14 +13,9 @@ struct FeedRootView: View {
             if let model { content(model) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background(Theme.groupedCanvas)
-        .navigationTitle("Feed")
+        .navigationTitle("Friends")
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("Roam").font(.system(.title2, design: .serif).weight(.bold)).foregroundStyle(Theme.accent)
-                    .fixedSize()
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityLabel("Roam feed")
-            }
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { router.push(.notifications) } label: {
                     Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
@@ -30,7 +25,7 @@ struct FeedRootView: View {
                 .accessibilityIdentifier("open-notifications")
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .task {
             if model == nil { model = FeedModel(service: services.feed, notifications: services.notifications) }
             if model?.hasLoaded != true || changes.consumeFeedStale() { await model?.refresh() }
@@ -64,7 +59,7 @@ struct FeedRootView: View {
                     EmptyStateView(systemImage: "person.2.wave.2", title: "Your feed is quiet",
                                    message: "Follow travellers to see their rankings here, newest first. Your own ratings appear here too.",
                                    primaryTitle: "Find people", primaryAction: { router.showFindPeople() },
-                                   secondaryTitle: "Search experiences", secondaryAction: { router.selectedTab = .search })
+                                   secondaryTitle: "Search experiences", secondaryAction: { router.openSearch() })
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("feed-empty")
@@ -184,7 +179,7 @@ struct LikeButton: View {
         Button(action: action) {
             Label("\(count)", systemImage: liked ? "heart.fill" : "heart")
                 .monospacedDigit()
-                .foregroundStyle(liked ? Theme.disliked : Theme.accent)
+                .foregroundStyle(Roam.ink)
                 .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
         }
         .disabled(pending)

@@ -27,26 +27,21 @@ struct ScoreBadge: View {
 
     var body: some View {
         VStack(spacing: 3) {
-            ZStack {
-                Circle()
-                    .fill(score.map { Theme.fill(for: $0.band) } ?? Theme.subtleFill)
-                Circle()
-                    .strokeBorder(score.map { Theme.color(for: $0.band) } ?? Color.secondary.opacity(0.35), lineWidth: 2)
+            Group {
                 if let score {
                     Text(score.formatted)
-                        .font(.system(size: size * 0.36 * min(scale, 1.6), weight: .bold, design: .rounded))
+                        .font(.system(size: size * 0.42 * min(scale, 1.6), weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.color(for: score.band))
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                        .padding(4)
+                        .foregroundStyle(Roam.ink)
                 } else {
                     Image(systemName: "minus")
                         .font(.system(size: size * 0.3, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
                 }
             }
-            .frame(width: size * min(scale, 1.6), height: size * min(scale, 1.6))
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
+            .frame(minWidth: size * min(scale, 1.6) * 0.8)
             if showsLabel {
                 Text(caption)
                     .font(.caption2.weight(.medium))

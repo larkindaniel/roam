@@ -89,7 +89,7 @@ struct SettingsView: View {
                     destinations.reset()
                     activityChanges.reset()
                     settings.reset()
-                    router.reset(initialTab: .feed)
+                    router.reset(initialTab: .forYou)
                 }
             }
         } message: {

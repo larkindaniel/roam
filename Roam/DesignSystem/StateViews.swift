@@ -173,9 +173,9 @@ struct MapListToggle: View {
                 .fixedSize()
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .foregroundStyle(.white)
-                .background(Capsule().fill(Theme.accent))
-                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+                .foregroundStyle(Roam.ink)
+                .background(Capsule().fill(Roam.paperRaised))
+                .shadow(color: .black.opacity(0.10), radius: 9, y: 6)
         }
         .frame(minHeight: Theme.minimumHitTarget)
         .accessibilityIdentifier("map-list-toggle")
