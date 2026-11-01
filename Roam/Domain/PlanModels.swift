@@ -205,6 +205,37 @@ struct TripFeedEntry: Codable, Hashable, Identifiable, Sendable {
     var activityID: UUID?
 }
 
+/// Where one visit on a trip was.
+struct TripLocation: Codable, Hashable, Sendable {
+    var city: String?
+    var countryCode: String?
+    var country: String?
+}
+
+enum TripTitle {
+    static func flag(_ countryCode: String?) -> String? {
+        guard let code = countryCode?.uppercased(), code.count == 2 else { return nil }
+        let scalars = code.unicodeScalars.compactMap { UnicodeScalar(127_397 + $0.value) }
+        guard scalars.count == 2, code.allSatisfy({ $0.isASCII && $0.isLetter }) else { return nil }
+        return String(String.UnicodeScalarView(scalars))
+    }
+
+    /// One city reads "Tokyo 🇯🇵", several cities in a country read "Japan 🇯🇵", and several countries list each.
+    /// Nil when the visits don't say where they were.
+    static func from(_ locations: [TripLocation]) -> String? {
+        let cities = Set(locations.compactMap(\.city))
+        var seen = Set<String>()
+        let countries = locations.filter { $0.country != nil && seen.insert($0.country ?? "").inserted }
+            .sorted { ($0.country ?? "") < ($1.country ?? "") }
+        func labelled(_ name: String, _ code: String?) -> String { [name, flag(code)].compactMap { $0 }.joined(separator: " ") }
+        if cities.count == 1, countries.count <= 1, let city = cities.first {
+            return labelled(city, countries.first?.countryCode)
+        }
+        guard !countries.isEmpty else { return nil }
+        return countries.map { labelled($0.country ?? "", $0.countryCode) }.joined(separator: " · ")
+    }
+}
+
 /// One person's trip on the Friends tab. A nil trip is Home: everything not attributed to a trip.
 struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
     var author: MemberSummary
@@ -214,9 +245,13 @@ struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
     var latestAt: Date
     var isOwn: Bool
     var entries: [TripFeedEntry]
+    var locations: [TripLocation] = []
 
     var id: String { "\(author.id.uuidString)-\(tripID?.uuidString ?? "home")" }
-    var title: String { tripName ?? "Home" }
+    var title: String {
+        guard tripID != nil else { return "Home" }
+        return TripTitle.from(locations) ?? tripName ?? "Trip"
+    }
 }
 
 enum ShareTarget: Hashable, Sendable {

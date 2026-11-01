@@ -66,7 +66,7 @@ values ({q(place)}, 'fixture', {q('demo-' + spot['id'])}, {q(spot['name'])}, app
             trip = None
             if city["name"] not in HOME_CITIES:
                 trip = uid("00000051", owner, city["slug"])
-                trips[trip] = (owner, f"{city['name']} trip")
+                trips[trip] = (owner, city["name"])
             entries.append(dict(owner=owner, spot=spot, experience=experience, kind=kind, trip=trip, order=city_index * 40 + spot_index))
     for trip, (owner, name) in trips.items():
         rows.append(f"insert into public.trips (id, owner_id, name, status) values ({q(trip)}, {q(owner)}, {q(name)}, 'past');")

@@ -193,7 +193,8 @@ extension FixtureBackend: PlanService {
             let sorted = rows.sorted { $0.createdAt > $1.createdAt }
             guard let latest = sorted.first else { return nil }
             return TripFeedCard(author: memberSummary(key.owner), tripID: key.trip, tripName: key.trip.flatMap { trips[$0]?.draft.name }, visitCount: rows.count,
-                                latestAt: latest.createdAt, isOwn: key.owner == me, entries: sorted.prefix(5).compactMap { tripFeedEntry($0, viewer: me) })
+                                latestAt: latest.createdAt, isOwn: key.owner == me, entries: sorted.prefix(5).compactMap { tripFeedEntry($0, viewer: me) },
+                                locations: Array(Set(rows.compactMap { summary($0.experience, viewer: me) }.map { TripLocation(city: $0.locality, countryCode: $0.countryCode, country: $0.countryName) })))
         }.sorted { $0.latestAt > $1.latestAt }
     }
 

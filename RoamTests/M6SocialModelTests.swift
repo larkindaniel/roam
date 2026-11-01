@@ -407,3 +407,25 @@ final class DiscoverCityTests: XCTestCase {
         XCTAssertTrue(DiscoverCity.cities(from: [place(nil, score: 90)]).isEmpty)
     }
 }
+
+final class TripTitleTests: XCTestCase {
+    private let tokyo = TripLocation(city: "Tokyo", countryCode: "JP", country: "Japan")
+    private let kyoto = TripLocation(city: "Kyoto", countryCode: "JP", country: "Japan")
+    private let porto = TripLocation(city: "Porto", countryCode: "PT", country: "Portugal")
+
+    func testOneCityShowsTheCityAndFlag() {
+        XCTAssertEqual(TripTitle.from([tokyo]), "Tokyo 🇯🇵")
+    }
+
+    func testSeveralCitiesInACountryShowTheCountry() {
+        XCTAssertEqual(TripTitle.from([tokyo, kyoto]), "Japan 🇯🇵")
+    }
+
+    func testSeveralCountriesListEach() {
+        XCTAssertEqual(TripTitle.from([tokyo, porto]), "Japan 🇯🇵 · Portugal 🇵🇹")
+    }
+
+    func testUnknownLocationsGiveNoTitle() {
+        XCTAssertNil(TripTitle.from([]))
+    }
+}
