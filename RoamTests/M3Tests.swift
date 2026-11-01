@@ -56,10 +56,10 @@ final class ListEngineTests: XCTestCase {
         XCTAssertEqual(result.map(\.experience.name), ["First tie", "Second tie", "Third"])
     }
 
-    func testUnrankedMemoriesOnlyThroughTheirFilter() {
+    func testBeenThereShowsUnrankedPlacesAndTheFilterIsolatesThem() {
         let entries = [entry("Ranked", category: .foodDrink, city: nil, country: nil, ranked: true, rank: 1),
                        entry("Memory", category: .foodDrink, city: nil, country: nil, ranked: false)]
-        XCTAssertEqual(ListEngine.apply(entries, kind: .been, scope: .all, filter: ListFilter(), query: "", sort: .name, reference: nil).map(\.experience.name), ["Ranked"])
+        XCTAssertEqual(Set(ListEngine.apply(entries, kind: .been, scope: .all, filter: ListFilter(), query: "", sort: .name, reference: nil).map(\.experience.name)), ["Ranked", "Memory"])
         var filter = ListFilter()
         filter.unrankedMemories = true
         XCTAssertEqual(ListEngine.apply(entries, kind: .been, scope: .all, filter: filter, query: "", sort: .name, reference: nil).map(\.experience.name), ["Memory"])
