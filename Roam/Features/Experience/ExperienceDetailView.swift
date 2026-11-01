@@ -140,8 +140,9 @@ struct ExperienceDetailView: View {
                 if summary.photoURL != nil {
                     PlacePhotoView(url: summary.photoURL, credit: summary.photoCredit, label: "Photo of \(summary.name)", height: 220)
                         .padding(.top, Theme.Spacing.s)
+                } else {
+                    hero(detail)
                 }
-                hero(detail)
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }
                 }
@@ -162,12 +163,13 @@ struct ExperienceDetailView: View {
                     }
                 }
                 actionRow(detail)
-                scores(detail)
-                memories(detail)
-                privateNote(detail)
                 FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
+                scores(detail)
+                if summary.photoURL != nil { hero(detail) }
+                memories(detail)
+                privateNote(detail)
                 about(detail)
                 if let memoriesModel {
                     PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
@@ -218,8 +220,7 @@ struct ExperienceDetailView: View {
         let visited = rated || detail.summary.viewer.hasVisits
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.s) {
-                StatusMark(state: visited ? .visited : .wishlist)
-                    .opacity(visited || library.isBookmarked(id) ? 1 : 0)
+                if visited || library.isBookmarked(id) { StatusMark(state: visited ? .visited : .wishlist) }
                 Text(visited ? "You've been here" : (library.isBookmarked(id) ? "On your wishlist" : "Not on your lists yet"))
                     .font(.footnote).foregroundStyle(Roam.inkMuted)
                     .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
