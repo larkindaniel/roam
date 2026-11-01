@@ -168,7 +168,6 @@ struct PlaceMapLegend: View {
         HStack(spacing: Theme.Spacing.l) {
             ForEach([PlaceState.visited, .planned, .wishlist], id: \.self) { state in
                 HStack(spacing: Theme.Spacing.xs) {
-                    Circle().fill(state.markerColor).frame(width: 10, height: 10)
                     Image(systemName: state.markerSymbol).font(.caption2.weight(.bold)).foregroundStyle(state.markerColor)
                     Text(state.markerTitle).font(.caption).foregroundStyle(Roam.inkMuted)
                 }
