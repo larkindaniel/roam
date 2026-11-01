@@ -242,9 +242,8 @@ struct ForYouRootView: View {
 
     private func cityCard(_ city: DiscoverCity) -> some View {
         Button { choose(city.destination) } label: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                PlacePhotoView(path: city.coverPath, url: city.coverURL, credit: city.coverCredit,
-                               label: "Photo from \(city.destination.name)", height: 190)
+            PhotoCard(path: city.coverPath, url: city.coverURL, credit: city.coverCredit,
+                      label: "Photo from \(city.destination.name)", height: 180) {
                 Text(city.destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
                 Text(cityLine(city)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
             }
@@ -339,9 +338,8 @@ struct ForYouRootView: View {
 
     private func placeCard(_ place: DiscoverPlace, evidence: String?, photoHeight: CGFloat) -> some View {
         Button { router.push(.experience(place.id)) } label: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                PlacePhotoView(path: place.coverPath, url: place.experience.photoURL, credit: place.experience.photoCredit,
-                               label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin", height: photoHeight)
+            PhotoCard(path: place.coverPath, url: place.experience.photoURL, credit: place.experience.photoCredit,
+                      label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin", height: photoHeight) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)

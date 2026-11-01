@@ -157,11 +157,8 @@ struct TripUpdatesView: View {
 
     private func entry(_ entry: TripFeedEntry) -> some View {
         Button { router.push(.experience(entry.experience.id)) } label: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                if !entry.media.isEmpty || entry.experience.photoURL != nil {
-                    PlacePhotoView(path: entry.media.first?.path, url: entry.experience.photoURL, credit: entry.experience.photoCredit,
-                                   label: "Photo of \(entry.experience.name)", height: 200)
-                }
+            PhotoCard(path: entry.media.first?.path, url: entry.experience.photoURL, credit: entry.experience.photoCredit,
+                      label: "Photo of \(entry.experience.name)", placeholderSymbol: entry.experience.category?.symbolName ?? "mappin", height: 200) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(entry.experience.name).font(.headline).multilineTextAlignment(.leading)
                     Spacer(minLength: Theme.Spacing.s)
@@ -176,7 +173,7 @@ struct TripUpdatesView: View {
                 }
             }
             .foregroundStyle(Roam.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("trip-entry-\(entry.experience.name)")

@@ -138,6 +138,8 @@ struct PlacePhotoView: View {
     var label: String
     var placeholderSymbol = "mappin"
     var height: CGFloat
+    var showsCredit = true
+    var cornerRadius: CGFloat = Theme.cornerRadius
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -161,10 +163,39 @@ struct PlacePhotoView: View {
                         Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-            if path == nil, url != nil, let credit {
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            if showsCredit, path == nil, url != nil, let credit {
                 Text("Photo: \(credit)").font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1)
             }
         }
+    }
+}
+
+/// A photo and its text enclosed in one raised card.
+struct PhotoCard<Content: View>: View {
+    var path: String?
+    var url: URL?
+    var credit: String?
+    var label: String
+    var placeholderSymbol = "mappin"
+    var height: CGFloat
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PlacePhotoView(path: path, url: url, credit: nil, label: label, placeholderSymbol: placeholderSymbol, height: height,
+                           showsCredit: false, cornerRadius: 0)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                content()
+                if path == nil, url != nil, let credit {
+                    Text("Photo: \(credit)").font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.m)
+        }
+        .background(Roam.paperRaised)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Roam.rule))
     }
 }
