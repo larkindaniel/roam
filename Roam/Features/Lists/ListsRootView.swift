@@ -2,21 +2,21 @@ import SwiftUI
 
 enum MyPlacesSection: String, CaseIterable, Identifiable, Hashable {
     case wishlist
-    case been
-    case trips
+    case upcoming
+    case past
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .wishlist: return "Wishlist"
-        case .been: return "Been there"
-        case .trips: return "Trips"
+        case .upcoming: return "Upcoming trips"
+        case .past: return "Past trips"
         }
     }
 }
 
-/// My Places tab: Wishlist, Been there and Trips under one segmented control.
+/// My Places tab: Wishlist, Upcoming trips and Past trips under one segmented control.
 struct MyPlacesRootView: View {
     @Environment(SessionStore.self) private var session
     @State private var section: MyPlacesSection = .wishlist
@@ -32,11 +32,12 @@ struct MyPlacesRootView: View {
             .padding(.vertical, Theme.Spacing.s)
             .accessibilityIdentifier("myplaces-section")
             Group {
-                if section == .trips {
-                    TripsListView()
+                if section == .upcoming {
+                    TripsListView(timing: .upcoming)
+                } else if section == .past {
+                    TripsListView(timing: .past)
                 } else if let userID = session.userID {
-                    PersonalListsView(ownerID: userID, initialKind: section == .been ? .been : .want, isRoot: true,
-                                      externalKind: section == .been ? .been : .want)
+                    PersonalListsView(ownerID: userID, initialKind: .want, isRoot: true, externalKind: .want)
                 } else {
                     ProgressView()
                 }

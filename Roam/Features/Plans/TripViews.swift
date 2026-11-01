@@ -1,10 +1,21 @@
 import MapKit
 import SwiftUI
 
-/// The Trips section of My Places: planning, then ongoing, then past.
+enum TripTiming: Hashable {
+    /// Planning, upcoming and ongoing trips.
+    case upcoming
+    case past
+
+    func includes(_ status: TripStatus) -> Bool { (status == .past) == (self == .past) }
+}
+
+/// One trips section of My Places.
 struct TripsListView: View {
+    let timing: TripTiming
+
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
     @State private var trips: LoadPhase<[TripSummary]> = .idle
     @State private var lists: [PlaceList] = []
     @State private var editing: TripDraft?
@@ -16,10 +27,11 @@ struct TripsListView: View {
                 Section { SkeletonList(rows: 3) }
             case .failed(let message):
                 Section { InlineRetryView(message: message) { Task { await load() } } }
-            case .loaded(let value):
+            case .loaded(let all):
+                let value = all.filter { timing.includes($0.status) }
                 if value.isEmpty {
                     Section {
-                        Text("No trips yet. Create one to collect places you're considering.")
+                        Text(timing == .past ? "Trips you've finished appear here." : "No upcoming trips. Create one to collect places you're considering.")
                             .font(.subheadline).foregroundStyle(Roam.inkMuted)
                             .accessibilityIdentifier("trips-empty")
                     }
@@ -36,10 +48,15 @@ struct TripsListView: View {
                 }
             }
             Section {
-                Button("New trip") { editing = TripDraft() }
-                    .accessibilityIdentifier("trip-new")
-                Button("Custom lists (\(lists.count))") { router.push(.lists) }
-                    .accessibilityIdentifier("open-lists")
+                if timing == .upcoming {
+                    Button("New trip") { editing = TripDraft() }
+                        .accessibilityIdentifier("trip-new")
+                    Button("Custom lists (\(lists.count))") { router.push(.lists) }
+                        .accessibilityIdentifier("open-lists")
+                } else if let me = session.userID {
+                    Button("All places you've been") { router.push(.memberList(me, .been)) }
+                        .accessibilityIdentifier("open-been")
+                }
             }
             .listRowBackground(Roam.paperRaised)
         }
@@ -56,9 +73,9 @@ struct TripsListView: View {
         .screenIdentifier("trips-list")
     }
 
-    /// Planning and upcoming first, then ongoing, then past.
+    /// Ongoing trips first, then upcoming, then those still being planned.
     private func ordered(_ value: [TripSummary]) -> [TripSummary] {
-        let rank: [TripStatus: Int] = [.ongoing: 0, .planning: 1, .upcoming: 1, .past: 2]
+        let rank: [TripStatus: Int] = [.ongoing: 0, .upcoming: 1, .planning: 2, .past: 3]
         return value.enumerated().sorted { (rank[$0.element.status] ?? 3, $0.offset) < (rank[$1.element.status] ?? 3, $1.offset) }.map(\.element)
     }
 
