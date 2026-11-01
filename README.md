@@ -21,6 +21,15 @@ python3 -I scripts/fixtures/setup.py   # fictional fixture accounts (password ro
 
 Only ever target this project's local stack. Never add `--linked`, `--db-url` or `--project-ref`.
 
+To explore the app with real places, load the demo data instead of the test accounts, then sign in as `kieran@roam.test` with the same password:
+
+```sh
+supabase db reset --local
+python3 -I scripts/fixtures/demo.py
+```
+
+Real-backend tests need the test accounts, so run `supabase db reset --local` and `scripts/fixtures/setup.py` before them.
+
 ## Build and run
 
 ```sh

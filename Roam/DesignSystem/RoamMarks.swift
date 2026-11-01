@@ -129,3 +129,42 @@ struct LogPlaceToolbarFallback: ToolbarContent {
         }
     }
 }
+
+/// A place's picture: an uploaded photo when there is one, otherwise its linked photo with credit.
+struct PlacePhotoView: View {
+    var path: String?
+    var url: URL?
+    var credit: String?
+    var label: String
+    var placeholderSymbol = "mappin"
+    var height: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Roam.fill
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .overlay {
+                    if let path {
+                        RemoteImageView(path: path, accessibilityLabel: label)
+                    } else if let url {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image.resizable().scaledToFill().accessibilityLabel(label)
+                            } else if phase.error != nil {
+                                Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
+                            } else {
+                                ProgressView()
+                            }
+                        }
+                    } else {
+                        Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            if path == nil, url != nil, let credit {
+                Text("Photo: \(credit)").font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1)
+            }
+        }
+    }
+}

@@ -137,6 +137,10 @@ struct ExperienceDetailView: View {
         let summary = detail.summary
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                if summary.photoURL != nil {
+                    PlacePhotoView(url: summary.photoURL, credit: summary.photoCredit, label: "Photo of \(summary.name)", height: 220)
+                        .padding(.top, Theme.Spacing.s)
+                }
                 hero(detail)
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }

@@ -78,7 +78,7 @@ struct TripFeedCardView: View {
     let card: TripFeedCard
     let onOpen: () -> Void
 
-    private var photos: [MediaRef] { card.entries.compactMap { $0.media.first } }
+    private var pictured: [TripFeedEntry] { card.entries.filter { !$0.media.isEmpty || $0.experience.photoURL != nil } }
 
     var body: some View {
         Button(action: onOpen) {
@@ -93,7 +93,7 @@ struct TripFeedCardView: View {
                     Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                 }
                 Text(card.title).font(.roamTitle()).multilineTextAlignment(.leading)
-                if !photos.isEmpty { photoStrip }
+                if card.entries.contains(where: { !$0.media.isEmpty || $0.experience.photoURL != nil }) { photoStrip }
                 if let latest = card.entries.first {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(latest.experience.name).font(.headline)
@@ -114,12 +114,9 @@ struct TripFeedCardView: View {
 
     private var photoStrip: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            ForEach(photos.prefix(3), id: \.id) { media in
-                Color.clear
-                    .frame(maxWidth: .infinity)
-                    .frame(height: photos.count == 1 ? 180 : 110)
-                    .overlay { RemoteImageView(path: media.path, accessibilityLabel: "Photo from \(card.title)") }
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            ForEach(pictured.prefix(3)) { entry in
+                PlacePhotoView(path: entry.media.first?.path, url: entry.experience.photoURL, credit: nil,
+                               label: "Photo of \(entry.experience.name)", height: pictured.count == 1 ? 180 : 110)
             }
         }
     }
@@ -161,12 +158,9 @@ struct TripUpdatesView: View {
     private func entry(_ entry: TripFeedEntry) -> some View {
         Button { router.push(.experience(entry.experience.id)) } label: {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                if let photo = entry.media.first {
-                    Color.clear
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .overlay { RemoteImageView(path: photo.path, accessibilityLabel: "Photo of \(entry.experience.name)") }
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                if !entry.media.isEmpty || entry.experience.photoURL != nil {
+                    PlacePhotoView(path: entry.media.first?.path, url: entry.experience.photoURL, credit: entry.experience.photoCredit,
+                                   label: "Photo of \(entry.experience.name)", height: 200)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     Text(entry.experience.name).font(.headline).multilineTextAlignment(.leading)

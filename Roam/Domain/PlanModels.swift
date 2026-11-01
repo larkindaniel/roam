@@ -163,6 +163,8 @@ struct DiscoverCity: Hashable, Identifiable, Sendable {
     var friendNames: [String]
     var bestScore: Score
     var coverPath: String?
+    var coverURL: URL? = nil
+    var coverCredit: String? = nil
 
     var id: String { destination.id }
 
@@ -179,8 +181,10 @@ struct DiscoverCity: Hashable, Identifiable, Sendable {
                                           latitude: group.reduce(0) { $0 + $1.experience.latitude } / count,
                                           longitude: group.reduce(0) { $0 + $1.experience.longitude } / count, radiusMeters: 15_000)
             let cover = best.coverPath ?? group.compactMap(\.coverPath).first
+            let linked = best.experience.photoURL != nil ? best : group.first { $0.experience.photoURL != nil }
             return DiscoverCity(destination: destination, placeCount: group.count,
-                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore, coverPath: cover)
+                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore, coverPath: cover,
+                                coverURL: linked?.experience.photoURL, coverCredit: linked?.experience.photoCredit)
         }.sorted { lhs, rhs in
             if lhs.friendNames.isEmpty != rhs.friendNames.isEmpty { return !lhs.friendNames.isEmpty }
             if lhs.bestScore != rhs.bestScore { return lhs.bestScore > rhs.bestScore }

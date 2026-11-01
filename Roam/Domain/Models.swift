@@ -207,6 +207,9 @@ struct ExperienceSummary: Codable, Hashable, Identifiable, Sendable {
     var followingScore: Score?
     var followingCount: Int
     var viewer: ViewerExperienceState
+    /// A linked photo and its required credit, loaded from its source.
+    var photoURL: URL? = nil
+    var photoCredit: String? = nil
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 
