@@ -1,5 +1,24 @@
 -- M2 authorization tests: owner, follower, unrelated, blocked and anonymous callers.
 begin;
+-- This file covers content published to all members and reads over friend edges. Audience and the
+-- friend request flow have their own coverage in 07_friends_audience_plans_test.sql.
+create function public.test_publish_to_all() returns trigger language plpgsql as $test$ begin new.audience:='public'; return new; end $test$;
+create trigger zz_test_publish_to_all before insert on public.visits for each row execute function public.test_publish_to_all();
+create trigger zz_test_publish_to_all before insert on public.ratings for each row execute function public.test_publish_to_all();
+-- Writes one friend edge directly so these read tests can set up a viewer's graph step by step.
+create function public.set_follow(p_user_id uuid, p_following boolean) returns boolean language plpgsql security definer set search_path='' as $test$
+declare v_me uuid:=app_private.require_member();
+begin
+  if p_following then
+    insert into public.follows(follower_id,followee_id) values(v_me,p_user_id) on conflict do nothing;
+    if found then perform app_private.notify(p_user_id,v_me,'follow',null,null,'follow:'||v_me||':'||p_user_id); end if;
+  else
+    delete from public.follows where follower_id=v_me and followee_id=p_user_id;
+  end if;
+  return exists(select 1 from public.follows where follower_id=v_me and followee_id=p_user_id);
+end $test$;
+grant execute on function public.set_follow(uuid,boolean) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 select plan(41);
 
@@ -88,7 +107,7 @@ set local role authenticated;
 set local request.jwt.claims to '{"sub":"b0000000-0000-4000-8000-000000000002","role":"authenticated"}';
 select is(public.set_follow('a0000000-0000-4000-8000-000000000001', true), true, 'follower follows owner');
 select is(public.set_follow('a0000000-0000-4000-8000-000000000001', true), true, 'repeated follow is a safe no-op');
-select throws_ok($$select public.set_follow('b0000000-0000-4000-8000-000000000002', true)$$, '22023', null, 'self-follow rejected');
+select throws_ok($$select public.friend_action('b0000000-0000-4000-8000-000000000002', 'request')$$, '22023', null, 'a member cannot add themselves');
 reset role;
 set local role authenticated;
 set local request.jwt.claims to '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}';
@@ -101,7 +120,7 @@ set local role authenticated;
 set local request.jwt.claims to '{"sub":"d0000000-0000-4000-8000-000000000004","role":"authenticated"}';
 select is((select count(*)::int from public.profiles where id = 'a0000000-0000-4000-8000-000000000001'), 0, 'blocked member cannot read blocker profile');
 select throws_ok($$select public.public_profile('a0000000-0000-4000-8000-000000000001')$$, 'P0002', 'roam:not_found', 'blocked member gets not found');
-select throws_ok($$select public.set_follow('a0000000-0000-4000-8000-000000000001', true)$$, 'P0002', 'roam:not_found', 'blocked member cannot follow');
+select throws_ok($$select public.friend_action('a0000000-0000-4000-8000-000000000001', 'request')$$, 'P0002', 'roam:not_found', 'blocked member cannot send a request');
 reset role;
 
 -- Storage ownership ---------------------------------------------------------------------------
