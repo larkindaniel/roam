@@ -294,8 +294,16 @@ struct TripCard: View {
 
 /// Your trips: now, coming up, being planned, then everything you've done, newest first.
 struct TripsTimelineSection: View {
+    enum Part {
+        /// Trips happening now, coming up or being planned.
+        case ahead
+        /// Everything you've done, newest first.
+        case past
+    }
+
     let model: MyPlacesModel
-    var onNewTrip: () -> Void
+    var part: Part
+    var onNewTrip: () -> Void = {}
 
     @Environment(AppRouter.self) private var router
 
@@ -306,12 +314,14 @@ struct TripsTimelineSection: View {
         let planning = model.trips.filter { $0.phase(today: today) == .planning }
         let past = model.timeline
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            if !now.isEmpty { tripGroup("On the go", now) }
-            if !upcoming.isEmpty { tripGroup("Upcoming", upcoming) }
-            if !planning.isEmpty { tripGroup("Planning", planning) }
-            Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                .accessibilityIdentifier("new-trip")
+            if part == .ahead {
+                if !now.isEmpty { tripGroup("On the go", now) }
+                if !upcoming.isEmpty { tripGroup("Upcoming", upcoming) }
+                if !planning.isEmpty { tripGroup("Planning", planning) }
+                Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                    .accessibilityIdentifier("new-trip")
+            } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Text("Past").font(.roamTitle()).accessibilityAddTraits(.isHeader)
                 if past.isEmpty {
@@ -321,6 +331,7 @@ struct TripsTimelineSection: View {
                         ForEach(past) { entry in timelineRow(entry, isLast: entry.id == past.last?.id) }
                     }
                 }
+            }
             }
         }
     }
@@ -1083,21 +1094,12 @@ struct CountryFocusSection: View {
     let code: String
     let title: String
 
-    @Environment(AppRouter.self) private var router
-
     var body: some View {
         let items = model.countries.first { $0.code == code }?.items ?? []
         let trips = model.trips.filter { trip in
             trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code }
         }
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            if items.isEmpty && trips.isEmpty {
-                Text("You haven't been to \(Locale.current.localizedString(forRegionCode: code) ?? title) yet.")
-                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
-                Button { router.push(.myCountry(code: code, title: title)) } label: { PillLabel(title: "Explore the map", systemImage: "map") }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("country-focus-explore")
-            }
             if !trips.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     Text("Trips").font(.roamTitle()).accessibilityAddTraits(.isHeader)

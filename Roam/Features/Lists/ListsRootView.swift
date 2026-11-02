@@ -138,16 +138,6 @@ enum HomeCities {
     }
 }
 
-enum MyPlacesTab: String, CaseIterable, Identifiable {
-    case trips
-    case home
-    case passport
-    case saved
-
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
-}
-
 private enum MyPlacesSheet: String, Identifiable {
     case homeCity
     case markCity
@@ -166,7 +156,6 @@ struct MyPlacesRootView: View {
     @State private var showsCoachmark = false
     @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
-    @State private var tab = MyPlacesTab.trips
     @State private var sheet: MyPlacesSheet?
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
@@ -177,7 +166,16 @@ struct MyPlacesRootView: View {
         model?.countries.first { $0.code == code }?.title ?? CountryTitle.text(name: Locale.current.localizedString(forRegionCode: code), code: code)
     }
 
+    /// Countries with something of yours in them: places, or a trip that's still ahead.
+    private func isYours(_ code: String) -> Bool {
+        guard let model else { return false }
+        return model.countries.contains { $0.code == code }
+            || model.trips.contains { trip in trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code } }
+    }
+
     private func zoom(to code: String) {
+        // A country you have nothing in does nothing when tapped.
+        guard isYours(code) else { return }
         // Framed on your places there when you have some, so a big country doesn't open on empty land.
         let mine = model?.countries.first { $0.code == code }?.items.map(\.experience) ?? []
         if let minLat = mine.map(\.latitude).min(), let maxLat = mine.map(\.latitude).max(),
@@ -210,25 +208,13 @@ struct MyPlacesRootView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(countryTitle(focusedCountry)).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
                     Spacer()
-                    Button { showWorld() } label: {
-                        Label("World", systemImage: "globe").font(.subheadline.weight(.semibold))
-                    }
-                    .buttonStyle(PillButtonStyle())
-                    .accessibilityIdentifier("myplaces-show-world")
+                    GlobeSheetChevron(detent: detent)
                 }
             } else {
-                VStack(spacing: Theme.Spacing.s) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-                        Spacer()
-                        GlobeSheetChevron(detent: detent)
-                    }
-                    Picker("Section", selection: $tab) {
-                        ForEach(MyPlacesTab.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("myplaces-tabs")
-                    .onChange(of: tab) { _, _ in if detent == .peek { detent = .half } }
+                HStack(alignment: .firstTextBaseline) {
+                    Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    GlobeSheetChevron(detent: detent)
                 }
             }
         } content: {
@@ -236,12 +222,15 @@ struct MyPlacesRootView: View {
                 if let focusedCountry {
                     CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
                 } else {
-                    switch tab {
-                    case .trips: TripsTimelineSection(model: model) { sheet = .newTrip }
-                    case .home: HomeCitiesSection(model: model) { sheet = .homeCity }
-                    case .passport: PassportSection(ownerID: model.ownerIDValue, countries: model.passport, isSelf: true) { sheet = .markCity }
-                    case .saved: SavedSection(model: model)
+                    // One view: what's ahead, home, saved, every country you've been, then the past.
+                    TripsTimelineSection(model: model, part: .ahead) { sheet = .newTrip }
+                    HomeCitiesSection(model: model) { sheet = .homeCity }
+                    SavedSection(model: model)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                        Text("Passport").font(.roamTitle()).accessibilityAddTraits(.isHeader)
+                        PassportSection(ownerID: model.ownerIDValue, countries: model.passport, isSelf: true) { sheet = .markCity }
                     }
+                    TripsTimelineSection(model: model, part: .past)
                 }
             } else if let error = model?.error {
                 InlineRetryView(message: error) { Task { await model?.load() } }
@@ -323,7 +312,7 @@ struct MyPlacesRootView: View {
                              // view (framed on your places there) falls just over a border.
                              if flyingToCountry { flyingToCountry = false; return }
                              // Close enough to see one country, the card follows whichever is under the middle of the view.
-                             let code = distance < 12_000_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)) : nil
+                             let code = distance < 12_000_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)).flatMap { isYours($0) ? $0 : nil } : nil
                              if code != focusedCountry { focusedCountry = code }
                          })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")

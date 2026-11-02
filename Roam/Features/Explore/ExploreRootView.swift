@@ -183,6 +183,7 @@ struct ExploreRootView: View {
     @Environment(DestinationStore.self) private var destinations
     @Environment(LibraryStore.self) private var library
     @Environment(SessionStore.self) private var session
+    @Environment(\.dismiss) private var dismiss
     @State private var model: ExploreModel?
     @State private var actionError: String?
     @State private var pendingSaves: Set<String> = []
@@ -212,22 +213,7 @@ struct ExploreRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.groupedCanvas)
         .navigationTitle(countryTitle ?? "Explore")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar {
-            // The map speaks for itself; the title stays only for the back button and VoiceOver.
-            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            if let model {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { Task { await useCurrentLocation(model) } } label: {
-                        Image(systemName: services.location.isAuthorized ? "location.fill" : "location")
-                    }
-                    .accessibilityLabel(services.location.isAuthorized ? "Recenter on my location" : "Use current location")
-                    .accessibilityIdentifier("explore-current-location")
-                }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             if model == nil {
                 model = ExploreModel(services: services)
@@ -253,8 +239,8 @@ struct ExploreRootView: View {
         .screenIdentifier("explore-root")
     }
 
-    /// Like Apple Maps: the map fills the screen with a floating search bubble where the tab bar was. Swipe the
-    /// bubble up for your places here and everything the map has found.
+    /// The map fills the screen under the tab bar, with a row of floating bubbles at the top: back, search and
+    /// your location. Searching, or the list button, drops a card down with your places here and what's on the map.
     @ViewBuilder private func content(_ model: ExploreModel) -> some View {
         if destinations.explore == nil && model.loadedRegion == nil {
             ScrollView {
@@ -264,17 +250,30 @@ struct ExploreRootView: View {
             }
         } else {
             mapLayer(model)
-                .ignoresSafeArea(edges: [.top, .bottom])
-                .safeAreaInset(edge: .bottom) {
-                    if !expanded {
-                        searchBar(model)
-                            .padding(.horizontal, Theme.Spacing.l)
-                            .padding(.bottom, Theme.Spacing.xs)
-                            .gesture(DragGesture(minimumDistance: 12).onEnded { if $0.translation.height < -20 { setExpanded(true) } })
+                .overlay(alignment: .top) {
+                    VStack(spacing: Theme.Spacing.s) {
+                        HStack(spacing: Theme.Spacing.s) {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+                            }
+                            .buttonStyle(.plain)
+                            .floatingBubble(Circle())
+                            .accessibilityLabel("Back")
+                            .accessibilityIdentifier("explore-back")
+                            searchBar(model)
+                            Button { Task { await useCurrentLocation(model) } } label: {
+                                Image(systemName: services.location.isAuthorized ? "location.fill" : "location")
+                                    .font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+                            }
+                            .buttonStyle(.plain)
+                            .floatingBubble(Circle())
+                            .accessibilityLabel(services.location.isAuthorized ? "Recenter on my location" : "Use current location")
+                            .accessibilityIdentifier("explore-current-location")
+                        }
+                        if expanded { resultsCard(model).transition(.move(edge: .top).combined(with: .opacity)) }
                     }
-                }
-                .overlay(alignment: .bottom) {
-                    if expanded { expandedCard(model).transition(.move(edge: .bottom)) }
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.top, Theme.Spacing.xs)
                 }
         }
     }
@@ -284,31 +283,15 @@ struct ExploreRootView: View {
         if UIAccessibility.isReduceMotionEnabled { expanded = value } else { withAnimation(.spring(duration: 0.35)) { expanded = value } }
     }
 
-    private func expandedCard(_ model: ExploreModel) -> some View {
-        VStack(spacing: Theme.Spacing.s) {
-            Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
-                .frame(maxWidth: .infinity, minHeight: 20)
-                .contentShape(Rectangle())
-                .onTapGesture { setExpanded(false) }
-                .accessibilityLabel("Show the map")
-                .accessibilityAddTraits(.isButton)
-            searchBar(model).padding(.horizontal, Theme.Spacing.l)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) { sheetContent(model) }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.top, Theme.Spacing.s)
-                    .padding(.bottom, Theme.Spacing.xxl)
-            }
+    private func resultsCard(_ model: ExploreModel) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) { sheetContent(model) }
+                .padding(Theme.Spacing.l)
         }
-        .containerRelativeFrame(.vertical) { height, _ in height * 0.62 }
+        .containerRelativeFrame(.vertical) { height, _ in height * 0.6 }
         .frame(maxWidth: .infinity)
-        .background {
-            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
-                .fill(Roam.paper)
-                .shadow(color: .black.opacity(0.2), radius: 12, y: -2)
-                .ignoresSafeArea(edges: .bottom)
-        }
-        .gesture(DragGesture(minimumDistance: 12).onEnded { if $0.translation.height > 60 { setExpanded(false) } })
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Roam.paper).shadow(color: .black.opacity(0.2), radius: 12, y: 4))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private func searchBar(_ model: ExploreModel) -> some View {
@@ -332,23 +315,23 @@ struct ExploreRootView: View {
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: 30)
+                    .padding(.horizontal, 8)
+                    .frame(height: 28)
                     .background(Capsule().fill(PlaceState.visited.markerColor))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Your \(myItems.count) places here")
             }
+            Button { setExpanded(!expanded) } label: {
+                Image(systemName: expanded ? "chevron.up" : "list.bullet").foregroundStyle(Roam.ink).frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? "Hide the list" : "Show places as a list")
+            .accessibilityIdentifier("explore-toggle-list")
         }
         .padding(.horizontal, Theme.Spacing.m)
-        .frame(minHeight: 52)
-        .background {
-            if expanded {
-                Capsule().fill(Roam.fill)
-            } else {
-                Capsule().fill(.regularMaterial).shadow(color: .black.opacity(0.18), radius: 10, y: 3)
-            }
-        }
+        .frame(height: 48)
+        .floatingBubble(Capsule())
         .onChange(of: searching) { _, focused in if focused && !expanded { setExpanded(true) } }
     }
 
@@ -426,9 +409,10 @@ struct ExploreRootView: View {
                          selectedPinID: model.selectedID, focusRegion: model.focusRegion, focusToken: model.focusToken,
                          onSelectPin: { model.selectedID = $0.id }, onRegionChange: { model.regionChanged($0) },
                          onSelectMapFeature: { model.select(mapItem: $0) })
+                .ignoresSafeArea()
                 .mapAccessibility("Map with \(model.items.count) \(model.items.count == 1 ? "place" : "places"). Switch to the list to browse them.", identifier: "explore-map")
                 .overlay(alignment: .top) {
-                    if model.phase.isLoading { ProgressView().padding(8).background(Capsule().fill(.regularMaterial)).padding(.top, 8) }
+                    if model.phase.isLoading { ProgressView().padding(8).background(Capsule().fill(.regularMaterial)).padding(.top, 64) }
                 }
             if let selected = model.items.first(where: { $0.id == model.selectedID }) {
                 itemCard(selected, model: model)
@@ -569,6 +553,17 @@ struct ExploreRootView: View {
                 model.focusToken += 1
                 await model.load(region: region)
             }
+        }
+    }
+}
+
+extension View {
+    /// A floating control over a map: Liquid Glass on iOS 26, frosted material before it.
+    @ViewBuilder func floatingBubble<S: Shape>(_ shape: S) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.interactive(), in: shape)
+        } else {
+            background(.regularMaterial, in: shape).shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         }
     }
 }
