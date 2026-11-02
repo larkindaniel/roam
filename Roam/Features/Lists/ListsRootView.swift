@@ -157,6 +157,7 @@ struct MyPlacesRootView: View {
     @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
+    @State private var tab = MyPlacesTab.been
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
     @State private var focusRegion: MKCoordinateRegion?
@@ -200,37 +201,26 @@ struct MyPlacesRootView: View {
     }
 
     var body: some View {
-        GlobeSheetLayout(detent: $detent, peekHeight: 128, headerLabel: "My Places", headerIdentifier: "myplaces-sheet-header",
-                         onRefresh: { await model?.load() }) {
+        GlobeSheetLayout(detent: $detent, peekHeight: 128, headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
+                         headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, collapsesHeaderOnScroll: true) {
             globe
         } header: {
-            if let focusedCountry {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(countryTitle(focusedCountry)).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-                    Spacer()
-                    GlobeSheetChevron(detent: detent)
-                }
-            } else {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-                    Spacer()
-                    GlobeSheetChevron(detent: detent)
-                }
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
+                    .accessibilityAddTraits(.isHeader)
+                if focusedCountry == nil { MyPlacesTabPicker(tab: $tab) }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
             if let model, model.hasLoaded {
                 if let focusedCountry {
                     CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
                 } else {
-                    // One view: what's ahead, home, saved, every country you've been, then the past.
-                    TripsTimelineSection(model: model, part: .ahead) { sheet = .newTrip }
-                    HomeCitiesSection(model: model) { sheet = .homeCity }
-                    SavedSection(model: model)
-                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                        Text("Passport").font(.roamTitle()).accessibilityAddTraits(.isHeader)
-                        PassportSection(ownerID: model.ownerIDValue, countries: model.passport, isSelf: true) { sheet = .markCity }
+                    switch tab {
+                    case .been: BeenTab(model: model, onMarkCity: { sheet = .markCity }, onAddHome: { sheet = .homeCity })
+                    case .going: GoingTab(model: model) { sheet = .newTrip }
+                    case .saved: SavedTab(model: model)
                     }
-                    TripsTimelineSection(model: model, part: .past)
                 }
             } else if let error = model?.error {
                 InlineRetryView(message: error) { Task { await model?.load() } }
@@ -274,6 +264,8 @@ struct MyPlacesRootView: View {
             await model?.load()
         }
         .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
+        // Switching tabs turns the globe to that tab's places.
+        .onChange(of: tab) { _, _ in showWorld() }
         .onChange(of: router.path(for: .myPlaces).isEmpty) { _, isRoot in if isRoot { Task { await model?.load() } } }
         .overlay {
             if session.profile?.hasSeenBeenIntro == false {
@@ -297,14 +289,16 @@ struct MyPlacesRootView: View {
     /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
     @ViewBuilder private var globe: some View {
         if let model, model.hasLoaded {
-            GlobeMapView(pins: model.pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
-                         shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
+            // The globe shows the chosen tab: green where you've been, blue where you're going, yellow what you've saved.
+            let pins = focusedCountry == nil ? model.pins.filter { $0.state == tab.state } : model.pins
+            GlobeMapView(pins: pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
+                         shadedCountryCodes: Set(PlaceMapItem.countryTints(pins).keys),
                          focusRegion: focusRegion,
                          focusToken: recenterToken,
                          onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
-                         globeCenter: PlaceMapItem.startingRegion(model.pins.contains { $0.state == .visited } ? model.pins.filter { $0.state == .visited } : model.pins).center,
-                         countryTints: PlaceMapItem.countryTints(model.pins),
-                         pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
+                         globeCenter: PlaceMapItem.startingRegion(pins.isEmpty ? model.pins : pins).center,
+                         countryTints: PlaceMapItem.countryTints(pins),
+                         pinTints: Dictionary(uniqueKeysWithValues: pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
                          onSelectCountry: { code in zoom(to: code) },
                          onCameraChange: { center, scale in
                              // Landing after flying to a tapped country keeps that country, even if the middle of the
