@@ -94,9 +94,13 @@ struct ResearchBriefSheet: View {
                         Spacer(minLength: 0)
                         if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
                         Button { copy() } label: {
-                            Image(systemName: "doc.on.doc").font(.subheadline.weight(.semibold)).frame(width: 36, height: 36)
+                            Image(systemName: "doc.on.doc").font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink)
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Roam.fill))
+                                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                                .contentShape(Circle())
                         }
-                        .buttonStyle(PillButtonStyle())
+                        .buttonStyle(.plain)
                         .accessibilityLabel("Copy prompt")
                         .accessibilityIdentifier("research-brief-copy")
                     }

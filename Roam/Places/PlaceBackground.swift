@@ -41,6 +41,8 @@ enum AppleMapsLookup {
 /// its category symbol. Apple Maps doesn't share listing photos, so Look Around is the only Apple picture.
 struct PlaceThumbnail: View {
     let id: String
+    /// A photo from a Roam visit, which leads when there is one.
+    var path: String? = nil
     var url: URL?
     let coordinate: CLLocationCoordinate2D
     var symbol = "mappin"
@@ -53,7 +55,9 @@ struct PlaceThumbnail: View {
         Roam.fill
             .frame(width: size, height: size)
             .overlay {
-                if let url {
+                if let path {
+                    RemoteImageView(path: path, accessibilityLabel: "")
+                } else if let url {
                     AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
                 } else if let still {
                     Image(uiImage: still).resizable().scaledToFill()
@@ -64,7 +68,7 @@ struct PlaceThumbnail: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .accessibilityHidden(true)
             .task(id: id) {
-                guard url == nil else { return }
+                guard url == nil, path == nil else { return }
                 if let cached = Self.stills[id] { still = cached; return }
                 guard let scene = try? await MKLookAroundSceneRequest(coordinate: coordinate).scene else { return }
                 let options = MKLookAroundSnapshotter.Options()

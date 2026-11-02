@@ -330,7 +330,13 @@ struct ForYouRootView: View {
         if !places.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 sectionTitle("Places we think you'd enjoy")
-                ForEach(places) { place in placeCard(place, evidence: place.friendEvidence, photoHeight: 200) }
+                VStack(spacing: 0) {
+                    ForEach(places) { place in
+                        placeRow(place)
+                        if place.id != places.last?.id { Divider() }
+                    }
+                }
+                .roamCard(padding: Theme.Spacing.m)
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("discover-places")
@@ -413,23 +419,24 @@ struct ForYouRootView: View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
     }
 
-    private func placeCard(_ place: DiscoverPlace, evidence: String?, photoHeight: CGFloat) -> some View {
+    /// One row per place: its photo (a visit photo, its own, or Look Around) or else its category symbol.
+    private func placeRow(_ place: DiscoverPlace) -> some View {
         Button { router.push(.experience(place.id)) } label: {
-            PhotoCard(path: place.coverPath, url: place.experience.photoURL, credit: place.experience.photoCredit,
-                      label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin", height: photoHeight, lookAround: place.experience.coordinate) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
-                        Text([place.experience.category?.title, place.experience.locality].compactMap { $0 }.joined(separator: " · "))
-                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                        if let evidence { Text(evidence).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(1) }
-                    }
-                    Spacer(minLength: Theme.Spacing.s)
-                    if let score = (evidence != nil ? place.experience.followingScore : nil) ?? place.communityScore {
-                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                    }
+            HStack(spacing: Theme.Spacing.m) {
+                PlaceThumbnail(id: place.id.uuidString, path: place.coverPath, url: place.experience.photoURL,
+                               coordinate: place.experience.coordinate, symbol: place.experience.category?.symbolName ?? "mappin", size: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
+                    Text([place.experience.category?.title, place.experience.locality].compactMap { $0 }.joined(separator: " · "))
+                        .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                    if let evidence = place.friendEvidence { Text(evidence).font(.footnote).foregroundStyle(Roam.ink).lineLimit(1) }
+                }
+                Spacer(minLength: Theme.Spacing.s)
+                if let score = (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore {
+                    Text(score.formatted).font(.system(.headline, design: .rounded)).monospacedDigit().foregroundStyle(Roam.ink)
                 }
             }
+            .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
