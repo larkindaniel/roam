@@ -16,12 +16,10 @@ enum GlobeSheetDetent: CaseIterable {
 }
 
 /// A globe filling the screen behind a card that drags between peeking, half and full. Tapping the card's
-/// header swaps between half and full; while it peeks only the header shows. Used by Discover and My Places.
+/// header swaps between half and full; while it peeks only the header shows. Used by My Places.
 struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @Binding var detent: GlobeSheetDetent
     var peekHeight: CGFloat = 112
-    /// Off when the screen has a search field in its top bar: a map underneath would take its taps.
-    var extendsUnderTopBar = true
     var headerLabel: String
     var headerIdentifier: String
     var onRefresh: () async -> Void = {}
@@ -37,9 +35,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             let height = min(max(detent.height(in: available, peek: peekHeight) - dragOffset, peekHeight), available)
             ZStack(alignment: .bottom) {
                 globe()
-                    .frame(height: max(available - height + (extendsUnderTopBar ? proxy.safeAreaInsets.top : 0) + 28, 0))
+                    .frame(height: max(available - height + proxy.safeAreaInsets.top + 28, 0))
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .ignoresSafeArea(edges: extendsUnderTopBar ? .top : [])
+                    .ignoresSafeArea(edges: .top)
                 card(height: height, available: available)
             }
         }

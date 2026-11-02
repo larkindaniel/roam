@@ -13,6 +13,9 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
             request.region = MKCoordinateRegion(center: destination.coordinate,
                                                 latitudinalMeters: destination.radiusMeters * 2,
                                                 longitudinalMeters: destination.radiusMeters * 2)
+        } else if let nearby = await Self.nearbyRegion() {
+            // Like Apple Maps: nearby matches first, with famous places elsewhere still found.
+            request.region = nearby
         } else {
             // Without a region, results depend on device location and can come back empty.
             request.region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
@@ -20,6 +23,15 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         }
         let items = try await run(MKLocalSearch(request: request))
         return items.compactMap(Self.candidate(from:))
+    }
+
+    @MainActor private static let locationManager = CLLocationManager()
+
+    /// About 60 km around where you are, when Roam may use your location.
+    @MainActor static func nearbyRegion() -> MKCoordinateRegion? {
+        let status = locationManager.authorizationStatus
+        guard status == .authorizedWhenInUse || status == .authorizedAlways, let location = locationManager.location else { return nil }
+        return MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 60_000, longitudinalMeters: 60_000)
     }
 
     func searchDestinations(query: String) async throws -> [Destination] {

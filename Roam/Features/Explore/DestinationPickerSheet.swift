@@ -38,7 +38,7 @@ struct DestinationPickerSheet: View {
                 Section {
                     switch results {
                     case .idle:
-                        Text("Type a city or town, like “Portland” or “Kyoto”.").foregroundStyle(Theme.secondaryText)
+                        EmptyView()
                     case .loading:
                         HStack { ProgressView(); Text("Searching…").foregroundStyle(Theme.secondaryText) }
                     case .failed(let message):
@@ -90,6 +90,7 @@ struct DestinationPickerSheet: View {
     }
 
     private func search(_ text: String) async {
+        services.location.requestAccessIfNeeded()
         results = .loading
         do {
             let found = try await services.places.searchDestinations(query: text)

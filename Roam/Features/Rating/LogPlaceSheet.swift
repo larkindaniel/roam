@@ -38,6 +38,7 @@ struct LogPlaceSheet: View {
         }
         .task { if model == nil { model = ExperienceSearchModel(services: services) } }
         .task(id: query) {
+            if !query.isEmpty { services.location.requestAccessIfNeeded() }
             guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; onRoam = []; return }
             try? await Task.sleep(for: Limits.searchDebounce)
             guard !Task.isCancelled else { return }

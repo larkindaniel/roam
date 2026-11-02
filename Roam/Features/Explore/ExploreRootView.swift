@@ -37,6 +37,32 @@ final class ExploreModel {
     private let places: any PlaceSearchProviding
     private let experiences: any ExperienceService
     private var requestedRegion: MKCoordinateRegion?
+    private var followMap: Task<Void, Never>?
+
+    /// Places with Roam data stay pinned; Apple Maps' other places show on the map itself and open when tapped.
+    var pinnedItems: [ExploreItem] { items.filter { $0.experience != nil } }
+
+    /// Loads the area the map settles on, so places appear as you move around.
+    func regionChanged(_ region: MKCoordinateRegion) {
+        visibleRegion = region
+        followMap?.cancel()
+        followMap = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, loadedRegion == nil || canSearchThisArea else { return }
+            await load(region: region)
+        }
+    }
+
+    /// An Apple Maps place tapped on the map: its Roam match if there is one, else a new result to open or log.
+    func select(mapItem: MKMapItem) {
+        guard let candidate = MapKitPlaceSearchProvider.candidate(from: mapItem) else { return }
+        if let known = items.first(where: { $0.candidate?.id == candidate.id || ($0.name == candidate.name && abs($0.latitude - candidate.latitude) < 0.002 && abs($0.longitude - candidate.longitude) < 0.002) }) {
+            selectedID = known.id
+        } else {
+            items.append(ExploreItem(id: candidate.id, candidate: candidate, experience: nil))
+            selectedID = candidate.id
+        }
+    }
 
     init(services: AppServices) {
         places = services.places
@@ -219,13 +245,6 @@ struct ExploreRootView: View {
                 ZStack(alignment: .bottom) {
                     if model.showsMap { mapLayer(model) } else { listLayer(model) }
                     HStack {
-                        if model.showsMap && model.canSearchThisArea {
-                            Button { Task { await model.searchThisArea() } } label: {
-                                PillLabel(title: "Search this area", systemImage: "arrow.clockwise")
-                            }
-                            .buttonStyle(PillButtonStyle(isSelected: true))
-                            .accessibilityIdentifier("search-this-area")
-                        }
                         Spacer()
                         MapListToggle(showsMap: $model.showsMap)
                     }
@@ -262,9 +281,10 @@ struct ExploreRootView: View {
 
     private func mapLayer(_ model: ExploreModel) -> some View {
         ZStack(alignment: .bottom) {
-            GlobeMapView(pins: model.items.map(\.pin), shadedCountryCodes: [], style: .standard, interactive: true,
+            GlobeMapView(pins: model.pinnedItems.map(\.pin), shadedCountryCodes: [], style: .standard, interactive: true,
                          selectedPinID: model.selectedID, focusRegion: model.focusRegion, focusToken: model.focusToken,
-                         onSelectPin: { model.selectedID = $0.id }, onRegionChange: { model.visibleRegion = $0 })
+                         onSelectPin: { model.selectedID = $0.id }, onRegionChange: { model.regionChanged($0) },
+                         onSelectMapFeature: { model.select(mapItem: $0) })
                 .mapAccessibility("Map with \(model.items.count) \(model.items.count == 1 ? "place" : "places"). Switch to the list to browse them.", identifier: "explore-map")
                 .overlay(alignment: .top) {
                     if model.phase.isLoading { ProgressView().padding(8).background(Capsule().fill(.regularMaterial)).padding(.top, 8) }
@@ -292,7 +312,12 @@ struct ExploreRootView: View {
             } else {
                 List(model.items) { item in
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        row(item, model: model)
+                        HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                            PlaceThumbnail(id: item.id, url: item.experience?.photoURL,
+                                           coordinate: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),
+                                           symbol: item.category?.symbolName ?? "mappin")
+                            row(item, model: model)
+                        }
                         Button {
                             model.selectedID = item.id
                             model.focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), latitudinalMeters: 1_500, longitudinalMeters: 1_500)

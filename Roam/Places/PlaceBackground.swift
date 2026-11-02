@@ -37,6 +37,46 @@ enum AppleMapsLookup {
 
 }
 
+/// A small square picture for a list row: the place's own photo, else a Look Around still of the spot, else
+/// its category symbol. Apple Maps doesn't share listing photos, so Look Around is the only Apple picture.
+struct PlaceThumbnail: View {
+    let id: String
+    var url: URL?
+    let coordinate: CLLocationCoordinate2D
+    var symbol = "mappin"
+    var size: CGFloat = 64
+
+    @MainActor private static var stills: [String: UIImage] = [:]
+    @State private var still: UIImage?
+
+    var body: some View {
+        Roam.fill
+            .frame(width: size, height: size)
+            .overlay {
+                if let url {
+                    AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
+                } else if let still {
+                    Image(uiImage: still).resizable().scaledToFill()
+                } else {
+                    Image(systemName: symbol).foregroundStyle(Roam.inkMuted)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityHidden(true)
+            .task(id: id) {
+                guard url == nil else { return }
+                if let cached = Self.stills[id] { still = cached; return }
+                guard let scene = try? await MKLookAroundSceneRequest(coordinate: coordinate).scene else { return }
+                let options = MKLookAroundSnapshotter.Options()
+                options.size = CGSize(width: size * 2, height: size * 2)
+                if let image = try? await MKLookAroundSnapshotter(scene: scene, options: options).snapshot.image {
+                    Self.stills[id] = image
+                    still = image
+                }
+            }
+    }
+}
+
 /// One picture of a place: Apple's Look Around, its linked photo, or a photo from someone's visit.
 enum PlaceGalleryItem: Identifiable {
     case lookAround(MKLookAroundScene)
