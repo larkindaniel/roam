@@ -72,6 +72,11 @@ extension TripSummary {
         return status == .past ? .past : .planning
     }
 
+    /// The city to picture the trip by: the one it's named after, else its first.
+    var coverCity: Destination? {
+        cities.first { GeographyKey.normalize($0.name) == GeographyKey.normalize(name) } ?? cities.first
+    }
+
     /// "Tokyo, Kyoto", or the countries when it spans more than one.
     var placeLine: String {
         let countries = cities.compactMap(\.countryName).uniqued()

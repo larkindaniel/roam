@@ -261,14 +261,15 @@ struct CityGuide: Hashable {
 
     /// Tries the plain name, then the name with its region and country, and keeps only an article whose
     /// coordinates are near the city, so "Paris" in Ontario doesn't get the French capital.
-    @MainActor static func load(name: String, region: String?, country: String?, coordinate: CLLocationCoordinate2D) async -> CityGuide? {
+    @MainActor static func load(name: String, region: String?, country: String?, coordinate: CLLocationCoordinate2D,
+                                 within: CLLocationDistance = 80_000) async -> CityGuide? {
         let key = "\(name)|\(region ?? "")|\(country ?? "")"
         if let cached = cache[key] { return cached }
         let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         // "New York" is the state's article, so "New York City" is tried too.
         for title in [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }, "\(name) City"].compactMap({ $0 }) {
             guard let summary = await fetch(title), summary.type == "standard", let at = summary.coordinates,
-                  CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < 80_000 else { continue }
+                  CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < within else { continue }
             // Wikimedia serves any width of a thumbnail by changing the size in its path.
             let photo = summary.thumbnail.flatMap { URL(string: $0.source.absoluteString.replacingOccurrences(of: #"/\d+px-"#, with: "/960px-", options: .regularExpression)) }
             let guide = CityGuide(title: summary.title, extract: summary.extract, photoURL: photo, pageURL: summary.content_urls?.mobile?.page)
@@ -341,5 +342,27 @@ struct CityGuideCard: View {
         .task(id: "\(name)|\(region ?? "")|\(country ?? "")") {
             guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate)
         }
+    }
+}
+
+/// A city's (or country's) Wikipedia photo, else the given photo, else a map of the spot.
+struct WikipediaPhoto: View {
+    let name: String
+    var region: String?
+    var country: String?
+    let coordinate: CLLocationCoordinate2D
+    var within: CLLocationDistance = 80_000
+    var fallbackURL: URL?
+    var symbol = "mappin"
+    let height: CGFloat
+
+    @State private var guide: CityGuide?
+
+    var body: some View {
+        PlacePhotoView(url: guide?.photoURL ?? fallbackURL, label: "Photo of \(name)", placeholderSymbol: symbol, height: height,
+                       showsCredit: false, cornerRadius: 0, location: coordinate)
+            .task(id: name) {
+                guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate, within: within)
+            }
     }
 }

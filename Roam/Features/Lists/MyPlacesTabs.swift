@@ -26,15 +26,15 @@ enum MyPlacesTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// Three capsules in the place-state colours; the chosen one fills in.
+/// A three-way segmented control: one track, with the chosen segment's pill sliding across in its place-state colour.
 struct MyPlacesTabPicker: View {
     @Binding var tab: MyPlacesTab
+    @Namespace private var pill
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.s) {
+        HStack(spacing: 0) {
             ForEach(MyPlacesTab.allCases) { option in
                 let selected = option == tab
-                let tint = option.state.markerColor
                 Button {
                     withAnimation(.spring(duration: 0.3)) { tab = option }
                 } label: {
@@ -42,16 +42,27 @@ struct MyPlacesTabPicker: View {
                         Image(systemName: option.state.markerSymbol).font(.caption.weight(.bold))
                         Text(option.title).font(.subheadline.weight(.semibold))
                     }
-                    .foregroundStyle(selected ? .white : tint)
+                    .foregroundStyle(selected ? .white : Roam.ink)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 36)
-                    .background(Capsule().fill(selected ? tint : tint.opacity(0.15)))
+                    .frame(height: 32)
+                    .background {
+                        if selected {
+                            Capsule().fill(option.state.markerColor)
+                                .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                                .matchedGeometryEffect(id: "pill", in: pill)
+                        }
+                    }
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("myplaces-tab-\(option.rawValue)")
             }
         }
+        .padding(3)
+        .background(Capsule().fill(Color.gray.opacity(0.18)))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Show places")
     }
 }
 
@@ -200,8 +211,13 @@ struct GoingTab: View {
         let location = cover?.coordinate ?? trip.cities.first.map(\.coordinate)
         return Button { router.push(.trip(trip.id)) } label: {
             ZStack(alignment: .bottomLeading) {
-                PlacePhotoView(url: cover?.photoURL, label: "Photo for \(trip.name)", placeholderSymbol: "airplane", height: 210,
-                               showsCredit: false, cornerRadius: 0, location: location)
+                if let city = trip.coverCity {
+                    WikipediaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
+                                   fallbackURL: cover?.photoURL, symbol: "airplane", height: 210)
+                } else {
+                    PlacePhotoView(url: cover?.photoURL, label: "Photo for \(trip.name)", placeholderSymbol: "airplane", height: 210,
+                                   showsCredit: false, cornerRadius: 0, location: location)
+                }
                 LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
                     .allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 2) {
@@ -299,8 +315,12 @@ struct SavedTab: View {
         let cover = country.cities.flatMap(\.items).first { $0.experience.photoURL != nil }?.experience ?? country.cities.first?.items.first?.experience
         return Button { router.push(.wishlistCountry(code: country.code, title: country.title)) } label: {
             ZStack(alignment: .bottomLeading) {
-                PlacePhotoView(url: cover?.photoURL, label: "Photo from \(country.title)", placeholderSymbol: "bookmark", height: 150,
-                               showsCredit: false, cornerRadius: 0, location: cover?.coordinate)
+                // Pictured by the Wikipedia photo of the city you've saved most in (a country's own article leads with its flag).
+                let mainCity = country.cities.first
+                let anchor = mainCity?.items.first?.experience
+                WikipediaPhoto(name: mainCity?.name ?? country.title, region: anchor?.region, country: anchor?.countryName,
+                               coordinate: anchor?.coordinate ?? CLLocationCoordinate2D(), fallbackURL: cover?.photoURL,
+                               symbol: "bookmark", height: 150)
                 LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
                     .allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 0) {

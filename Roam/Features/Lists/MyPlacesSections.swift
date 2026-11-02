@@ -257,7 +257,12 @@ struct TripCard: View {
         Button { router.push(.trip(trip.id)) } label: {
             HStack(spacing: Theme.Spacing.m) {
                 Group {
-                    if let cover {
+                    if let city = trip.coverCity {
+                        WikipediaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
+                                       fallbackURL: cover?.photoURL, symbol: "airplane", height: 56)
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    } else if let cover {
                         PlaceThumbnail(id: cover.id.uuidString, url: cover.photoURL, coordinate: cover.coordinate, symbol: "airplane", size: 56)
                     } else {
                         Roam.fill.frame(width: 56, height: 56)

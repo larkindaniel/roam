@@ -133,7 +133,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                     } else {
-                        handle(available: available).background(Roam.paper.opacity(glassOpacity))
+                        // No band of its own: the header sits on the same even glass as the rest of the card.
+                        handle(available: available)
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: contentScrolled)
