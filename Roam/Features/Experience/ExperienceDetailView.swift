@@ -87,8 +87,8 @@ struct ExperienceDetailView: View {
             }
         }
         .background(Theme.groupedCanvas)
-        // While you look at the map, the place's own bubble takes the tab bar's spot; swipe it up and the tab bar returns.
-        .toolbar(model?.detail != nil && sheetDetent == .peek ? .hidden : .visible, for: .tabBar)
+        // The place's card takes the tab bar's spot and runs to the bottom of the screen.
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle(model?.detail?.summary.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -151,7 +151,7 @@ struct ExperienceDetailView: View {
     /// The place on a full-screen map you can move around, with everything about it on a card that swipes up over it.
     private func content(_ detail: ExperienceDetail) -> some View {
         let summary = detail.summary
-        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: sheetDetent == .peek ? 0 : 52, headerLabel: summary.name,
+        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: summary.name,
                                 headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
                                 mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }) {
             placeMap(detail)
@@ -297,25 +297,25 @@ struct ExperienceDetailView: View {
                 }
             }
             // Round icons in the place-state colours: log (green), plan (blue), save (yellow), then send.
-            HStack(spacing: Theme.Spacing.l) {
-                circleAction("plus", tint: PlaceState.visited.markerColor, filled: true,
+            HStack(spacing: Theme.Spacing.s) {
+                circleAction("plus", tint: PlaceState.visited.markerColor, filled: false, caption: rated ? "Add visit" : "Log",
                              label: rated ? "Add a visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
                     Task { await openLog(rated ? .addVisit : .firstLog) }
                 }
                 .disabled(deleting || failedDeletion != nil)
                 if !visited {
                     circleAction("airplane", tint: PlaceState.planned.markerColor, filled: !plannedTrips.isEmpty,
-                                 label: plannedTrips.isEmpty ? "Add to a trip" : "On \(plannedTrips.joined(separator: ", "))", identifier: "detail-plan") {
+                                 caption: plannedTrips.isEmpty ? "Plan" : "Planned", label: plannedTrips.isEmpty ? "Add to a trip" : "On \(plannedTrips.joined(separator: ", "))", identifier: "detail-plan") {
                         router.sheet = .addToTrip(experienceID: id, name: detail.summary.name)
                     }
                     .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
                 }
                 circleAction(library.isBookmarked(id) ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor,
-                             filled: library.isBookmarked(id), label: library.isBookmarked(id) ? "Saved" : "Save", identifier: "detail-save") {
+                             filled: library.isBookmarked(id), caption: library.isBookmarked(id) ? "Saved" : "Save", label: library.isBookmarked(id) ? "Saved" : "Save", identifier: "detail-save") {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
                 .disabled(visited && !library.isBookmarked(id))
-                circleAction("paperplane", tint: Roam.ink, filled: false, label: "Recommend to a friend", identifier: "detail-recommend") {
+                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Recommend to a friend", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
@@ -327,14 +327,18 @@ struct ExperienceDetailView: View {
     }
 
     /// A round icon button: filled in its colour when on (or always, for the main action), tinted outline otherwise.
-    private func circleAction(_ symbol: String, tint: Color, filled: Bool, label: String, identifier: String,
+    private func circleAction(_ symbol: String, tint: Color, filled: Bool, caption: String, label: String, identifier: String,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(filled ? .white : tint)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(filled ? .white : tint)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
+                Text(caption).font(.caption).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
+            }
+            .frame(minWidth: 64)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

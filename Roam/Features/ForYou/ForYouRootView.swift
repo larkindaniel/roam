@@ -119,7 +119,7 @@ struct ForYouRootView: View {
                 if selected != nil {
                     roundButton("chevron.left", label: "All cities", identifier: "discover-all-cities") { selected = nil }
                 } else {
-                    roundButton("plus", label: "Log a place", identifier: "log-place", tint: PlaceState.visited.markerColor) { router.sheet = .logPlace }
+                    roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
                 }
             }
             if selected == nil {

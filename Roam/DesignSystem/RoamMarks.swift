@@ -98,7 +98,7 @@ struct LogPlaceToolbarButton: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button { router.sheet = .logPlace } label: { Image(systemName: "plus").foregroundStyle(PlaceState.visited.markerColor) }
+            Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
                 .accessibilityLabel("Log a place")
                 .accessibilityIdentifier("log-place")
         }

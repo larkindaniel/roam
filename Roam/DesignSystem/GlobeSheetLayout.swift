@@ -36,6 +36,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     @GestureState private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
+    @State private var snapping = false
 
     /// Minimised, the card is just its header, sitting on the tab bar.
     private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
@@ -61,7 +62,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
         }
         .background(Color.black.ignoresSafeArea())
+        // With no tab bar below, the card runs down to the bottom of the screen.
+        .ignoresSafeArea(edges: bottomOverlap == 0 ? .bottom : [])
     }
+
+    private let displayCornerRadius: CGFloat = 55
 
     private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
     /// Minimised (or being dragged), the header shows in the grab area; opened up it scrolls with the content.
@@ -69,42 +74,87 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private func card(height: CGFloat, available: CGFloat) -> some View {
         let floating = isFloating
+        // Running down to the bottom of the screen, the card's lower corners follow the display's own rounded
+        // corners (about 55 points on current iPhones) with the same gap all the way round.
+        let bottomRadius: CGFloat = floating ? 28 : (bottomOverlap == 0 ? displayCornerRadius - Theme.Spacing.s : 26)
+        let shape = UnevenRoundedRectangle(topLeadingRadius: floating ? 28 : 26, bottomLeadingRadius: bottomRadius,
+                                           bottomTrailingRadius: bottomRadius, topTrailingRadius: floating ? 28 : 26, style: .continuous)
         return VStack(spacing: 0) {
-            handle(available: available)
+            if headerPinned { handle(available: available) }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                    // Opened up, the title scrolls away with everything else; only the grabber stays put.
-                    if !headerPinned { header() }
+                    // Opened up, the grabber and title scroll away with everything else, like Apple Maps.
+                    if !headerPinned {
+                        VStack(spacing: Theme.Spacing.s) {
+                            grabber
+                            header()
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { setDetent(detent == .half ? .full : .half) }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(headerLabel)
+                        .accessibilityAction(named: detent == .full ? "Show the map" : "Expand") { setDetent(detent == .half ? .full : .half) }
+                        .accessibilityIdentifier(headerIdentifier)
+                    }
                     content()
                 }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.top, Theme.Spacing.s)
-                    .padding(.bottom, Theme.Spacing.xxl)
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.s)
+                .padding(.bottom, Theme.Spacing.xxl)
             }
-            .refreshable { await onRefresh() }
+            // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+                guard !headerPinned, !snapping else { return }
+                if new < -70 {
+                    snap(to: detent == .full ? .half : .peek)
+                } else if detent == .half, new > 30, new > old {
+                    snap(to: .full)
+                }
+            }
+            .scrollDisabled(detent == .peek)
             .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
             .frame(height: floating ? 0 : nil)
         }
         .frame(height: floating ? nil : height - Theme.Spacing.s, alignment: .top)
         .frame(maxWidth: .infinity)
+        .clipShape(shape)
         .background {
-            RoundedRectangle(cornerRadius: floating ? 28 : 26, style: .continuous)
-                .fill(Roam.paper)
-                .shadow(color: .black.opacity(0.22), radius: 12, y: floating ? 4 : -1)
+            // White with a soft shadow all round so the card stands out from any map or globe behind it. The
+            // minimised bubble is a touch see-through, a hint of glass over the map.
+            if floating {
+                ZStack {
+                    shape.fill(.ultraThinMaterial)
+                    shape.fill(Roam.paperRaised.opacity(0.88))
+                }
+                .shadow(color: .black.opacity(0.25), radius: 16)
+            } else {
+                shape.fill(Roam.paperRaised).shadow(color: .black.opacity(0.25), radius: 16)
+            }
         }
-        .clipShape(RoundedRectangle(cornerRadius: floating ? 28 : 26, style: .continuous))
-        // Room round the card so the map or globe shows past its edges.
+        // Room round the card so the map or globe shows past its edges; the bubble sits a little higher.
         .padding(.horizontal, floating ? Theme.Spacing.l : Theme.Spacing.s)
-        .padding(.bottom, Theme.Spacing.s)
+        .padding(.bottom, floating ? Theme.Spacing.xl + Theme.Spacing.s : Theme.Spacing.s)
+    }
+
+    private var grabber: some View {
+        Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s).frame(maxWidth: .infinity)
+    }
+
+    /// Moves the card once per scroll gesture, so a long pull doesn't drop it two steps.
+    private func snap(to next: GlobeSheetDetent) {
+        snapping = true
+        setDetent(next)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            snapping = false
+        }
     }
 
     private func handle(available: CGFloat) -> some View {
         // As a floating bubble it's just the header, snug around it; as a card it has a grabber on top.
         VStack(spacing: Theme.Spacing.s) {
-            if !isFloating {
-                Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
-            }
-            if headerPinned { header() }
+            if !isFloating { grabber }
+            header()
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, Theme.Spacing.l)

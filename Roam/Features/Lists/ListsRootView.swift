@@ -251,7 +251,6 @@ struct MyPlacesRootView: View {
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             LogPlaceToolbarButton()
             ToolbarItem(placement: .topBarLeading) {
