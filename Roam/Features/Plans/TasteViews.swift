@@ -91,12 +91,13 @@ struct ResearchBriefSheet: View {
                     HStack(spacing: Theme.Spacing.s) {
                         assistantButton("ChatGPT", url: "https://chatgpt.com/")
                         assistantButton("Claude", url: "https://claude.ai/new")
-                        // The copy icon matches the assistants' icons, in a bubble of its own.
+                        Spacer(minLength: 0)
+                        if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
+                        // The copy icon matches the assistants' icons, in a bubble of its own on the right.
                         Button { copy() } label: { Image(systemName: "doc.on.doc") }
                             .buttonStyle(PillButtonStyle())
                             .accessibilityLabel("Copy prompt")
                             .accessibilityIdentifier("research-brief-copy")
-                        if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
                     }
                     .animation(.easeOut(duration: 0.2), value: copied)
                 }
