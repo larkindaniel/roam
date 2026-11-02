@@ -153,7 +153,7 @@ struct ExperienceDetailView: View {
         let summary = detail.summary
         return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: summary.name,
                                 headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
-                                mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }) {
+                                mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }, collapsesHeaderOnScroll: true) {
             placeMap(detail)
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
@@ -170,6 +170,8 @@ struct ExperienceDetailView: View {
                         Text([(detail.myRating?.category ?? summary.category)?.title, summary.areaLine.isEmpty ? nil : summary.areaLine]
                                 .compactMap { $0 }.joined(separator: " · "))
                             .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                            // Tucked right up under the name.
+                            .padding(.top, -4)
                     }
                 }
                 Spacer(minLength: 0)
@@ -193,6 +195,7 @@ struct ExperienceDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
+                actionRow(detail)
                 if !galleryItems(summary).isEmpty {
                     PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                 }
@@ -202,7 +205,6 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                actionRow(detail)
                 FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
@@ -283,43 +285,44 @@ struct ExperienceDetailView: View {
         .accessibilityIdentifier("detail-map")
     }
 
+    /// The place's state is shown by its button alone: once you've been, planned or saved it, that button fills in
+    /// and the other two step aside. Send is always there.
     private func actionRow(_ detail: ExperienceDetail) -> some View {
         let id = detail.summary.id
         let rated = detail.myRating != nil
         let visited = rated || detail.summary.viewer.hasVisits
+        let planned = !visited && !plannedTrips.isEmpty
+        let saved = !visited && !planned && library.isBookmarked(id)
+        let anyState = visited || planned || saved
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            if visited || library.isBookmarked(id) {
-                HStack(spacing: Theme.Spacing.s) {
-                    StatusMark(state: visited ? .visited : .wishlist)
-                    Text(visited ? "You've been here" : "On your wishlist")
-                        .font(.footnote).foregroundStyle(Roam.inkMuted)
-                        .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
+            HStack(spacing: Theme.Spacing.m) {
+                if visited || !anyState {
+                    circleAction("plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
+                                 label: visited ? "Been here. Add another visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
+                        Task { await openLog(rated ? .addVisit : .firstLog) }
+                    }
+                    .disabled(deleting || failedDeletion != nil)
                 }
-            }
-            // Round icons in the place-state colours: log (green), plan (blue), save (yellow), then send.
-            HStack(spacing: Theme.Spacing.s) {
-                circleAction("plus", tint: PlaceState.visited.markerColor, filled: false, caption: rated ? "Add visit" : "Log",
-                             label: rated ? "Add a visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
-                    Task { await openLog(rated ? .addVisit : .firstLog) }
-                }
-                .disabled(deleting || failedDeletion != nil)
-                if !visited {
-                    circleAction("airplane", tint: PlaceState.planned.markerColor, filled: !plannedTrips.isEmpty,
-                                 caption: plannedTrips.isEmpty ? "Plan" : "Planned", label: plannedTrips.isEmpty ? "Add to a trip" : "On \(plannedTrips.joined(separator: ", "))", identifier: "detail-plan") {
+                if planned || !anyState {
+                    circleAction("airplane", tint: PlaceState.planned.markerColor, filled: planned,
+                                 caption: planned ? "Planned" : "Plan", label: planned ? "On \(plannedTrips.joined(separator: ", "))" : "Add to a trip",
+                                 identifier: "detail-plan") {
                         router.sheet = .addToTrip(experienceID: id, name: detail.summary.name)
                     }
-                    .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
                 }
-                circleAction(library.isBookmarked(id) ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor,
-                             filled: library.isBookmarked(id), caption: library.isBookmarked(id) ? "Saved" : "Save", label: library.isBookmarked(id) ? "Saved" : "Save", identifier: "detail-save") {
-                    Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
+                if saved || !anyState {
+                    circleAction(saved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: saved,
+                                 caption: saved ? "Saved" : "Save", label: saved ? "Saved. Tap to remove" : "Save", identifier: "detail-save") {
+                        Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
+                    }
                 }
-                .disabled(visited && !library.isBookmarked(id))
                 circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Recommend to a friend", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
             }
+            .animation(.spring(duration: 0.3), value: anyState)
+            .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
             if let error = library.lastError {
                 InlineRetryView(message: error, retryTitle: "Dismiss") { library.clearError() }
             }
@@ -332,13 +335,14 @@ struct ExperienceDetailView: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline)
                     .foregroundStyle(filled ? .white : tint)
-                    .frame(width: 56, height: 56)
+                    // The same size as the directions button.
+                    .frame(width: 38, height: 38)
                     .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
-                Text(caption).font(.caption).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
+                Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
             }
-            .frame(minWidth: 64)
+            .frame(minWidth: 52)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

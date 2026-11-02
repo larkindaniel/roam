@@ -146,13 +146,28 @@ struct PillLabel: View {
     }
 }
 
+extension EnvironmentValues {
+    /// Inside a swipe-up card that isn't fully up, cards are a see-through grey rather than white.
+    @Entry var onGlass = false
+}
+
 extension View {
     /// Rounded card surface used across lists, sheets and detail sections.
     func roamCard(padding: CGFloat = Theme.Spacing.l) -> some View {
-        self.padding(padding)
-            .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
+        self.padding(padding).modifier(RoamCardSurface())
+    }
+}
+
+private struct RoamCardSurface: ViewModifier {
+    @Environment(\.onGlass) private var onGlass
+
+    func body(content: Content) -> some View {
+        content
+            .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                .fill(onGlass ? Color.gray.opacity(0.14) : Theme.raisedCard))
             // Set apart from the grey background the way Apple does: no border, just a soft shadow all round.
-            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
+            .shadow(color: .black.opacity(onGlass ? 0 : 0.07), radius: 10, y: 2)
+            .animation(.easeInOut(duration: 0.25), value: onGlass)
     }
 }
 

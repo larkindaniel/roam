@@ -143,7 +143,7 @@ struct ForYouRootView: View {
                         if let selected { destinations.select(selected, for: .explore) }
                         router.openExplore()
                     } label: {
-                        Image(systemName: "map").font(.headline).foregroundStyle(Roam.ink).frame(width: 40, height: 40)
+                        Image(systemName: "map").font(.system(size: 20, weight: .regular)).foregroundStyle(Roam.ink).frame(width: 40, height: 40)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Explore the map")
@@ -178,7 +178,8 @@ struct ForYouRootView: View {
 
     private func roundButton(_ symbol: String, label: String, identifier: String, tint: Color = Roam.ink, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.headline).foregroundStyle(tint).frame(width: 48, height: 48)
+            // Same glyph size as the system toolbar's + on Friends and My Places.
+            Image(systemName: symbol).font(.system(size: 20, weight: .regular)).foregroundStyle(tint).frame(width: 48, height: 48)
         }
         .buttonStyle(.plain)
         .floatingBubble(Circle())

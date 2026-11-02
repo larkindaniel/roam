@@ -31,6 +31,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var floatsWhenPeeking = false
     /// A control that sits on the map just above the card, at the left; hidden once the card fills the screen.
     var mapAccessory: AnyView? = nil
+    /// Scrolled, the header gives way to a dark fade with just the name (used for a place's card).
+    var collapsesHeaderOnScroll = false
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -111,51 +113,77 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         let bottom: CGFloat = floating ? 32 : max(displayCornerRadius - bottomMargin, 0)
         let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom,
                                            bottomTrailingRadius: bottom, topTrailingRadius: top, style: .continuous)
-        return VStack(spacing: 0) {
-            // The grabber, title and buttons stay put; the rest scrolls beneath them.
-            handle(available: available)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) { content() }
-                    .padding(.horizontal, Self.contentInset)
-                    .padding(.top, Theme.Spacing.s)
-                    // Clear of the tab bar floating over the bottom of the card.
-                    .padding(.bottom, Theme.Spacing.xxl + bottomOverlap)
-            }
-            // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
-            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
-                contentScrolled = new > 2
-                guard !snapping, detent != .peek else { return }
-                if new < -70 {
-                    snap(to: detent == .full ? .half : .peek)
-                } else if detent == .half, new > 30, new > old {
-                    snap(to: .full)
+        return Group {
+            if collapsesHeaderOnScroll && !floating {
+                // The content runs under the header; once scrolled, the header gives way to a dark fade with just the
+                // name, small and centred.
+                ZStack(alignment: .top) {
+                    scroller(topInset: headerHeight ?? 0, fadesUnderHeader: false)
+                    if contentScrolled && dragOffset == 0 {
+                        ZStack(alignment: .top) {
+                            LinearGradient(colors: [.black.opacity(0.6), .black.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 84)
+                            Text(headerLabel)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .padding(.horizontal, Self.contentInset * 2)
+                                .padding(.top, 14)
+                        }
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                    } else {
+                        handle(available: available).background(Roam.paper.opacity(glassOpacity))
+                    }
                 }
-            }
-            // Content fades out as it scrolls up under the header instead of being cut off at a hard edge.
-            .mask {
+                .animation(.easeInOut(duration: 0.2), value: contentScrolled)
+            } else {
                 VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: contentScrolled ? 20 : 0)
-                    Rectangle()
+                    // The grabber, title and buttons stay put; the rest scrolls beneath them.
+                    handle(available: available)
+                    scroller(topInset: 0, fadesUnderHeader: true)
+                        .frame(height: floating ? 0 : nil)
                 }
             }
-            .scrollDisabled(detent == .peek)
-            .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
-            .frame(height: floating ? 0 : nil)
         }
         .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
-        .background {
-            ZStack {
-                shape.fill(.ultraThinMaterial)
-                // Apple's light grey sheet, so the white cards inside it stand out.
-                shape.fill(Roam.paper.opacity(glassOpacity))
-            }
-            .shadow(color: .black.opacity(0.22), radius: 16)
-        }
+        .background { SheetGlass(shape: shape, tint: Roam.paper.opacity(glassOpacity), solid: detent == .full && dragOffset == 0) }
         .padding(.horizontal, sideMargin)
         .padding(.bottom, bottomMargin)
         .animation(.spring(duration: 0.35), value: detent)
+    }
+
+    private func scroller(topInset: CGFloat, fadesUnderHeader: Bool) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) { content() }
+                .environment(\.onGlass, detent != .full)
+                .padding(.horizontal, Self.contentInset)
+                .padding(.top, Theme.Spacing.s + topInset)
+                // Clear of the tab bar floating over the bottom of the card.
+                .padding(.bottom, Theme.Spacing.xxl + bottomOverlap)
+        }
+        // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+            contentScrolled = new > 8
+            guard !snapping, detent != .peek else { return }
+            if new < -70 {
+                snap(to: detent == .full ? .half : .peek)
+            } else if detent == .half, new > 30, new > old {
+                snap(to: .full)
+            }
+        }
+        // Content fades out as it scrolls up under the header instead of being cut off at a hard edge.
+        .mask {
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                    .frame(height: fadesUnderHeader && contentScrolled ? 20 : 0)
+                Rectangle()
+            }
+        }
+        .scrollDisabled(detent == .peek)
+        .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
     }
 
     private var grabber: some View {
@@ -220,5 +248,29 @@ struct GlobeSheetChevron: View {
     var body: some View {
         Image(systemName: detent == .full ? "chevron.down" : "chevron.up")
             .font(.footnote.weight(.bold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+    }
+}
+
+/// The card's surface: Liquid Glass tinted Apple's light grey on iOS 26 (frosted material before), solid once
+/// the card fills the screen.
+private struct SheetGlass<S: Shape>: View {
+    let shape: S
+    let tint: Color
+    let solid: Bool
+
+    var body: some View {
+        Group {
+            if solid {
+                shape.fill(Roam.paper)
+            } else if #available(iOS 26.0, *) {
+                Color.clear.glassEffect(.regular.tint(tint), in: shape)
+            } else {
+                ZStack {
+                    shape.fill(.ultraThinMaterial)
+                    shape.fill(tint)
+                }
+            }
+        }
+        .shadow(color: .black.opacity(0.18), radius: 16)
     }
 }
