@@ -146,10 +146,8 @@ struct ExperienceDetailView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 if !galleryItems(summary).isEmpty {
-                    PlaceGallery(items: galleryItems(summary), placeName: summary.name)
+                    PlaceGallery(items: galleryItems(summary), placeName: summary.name, lookAround: lookAround)
                         .padding(.top, Theme.Spacing.s)
-                } else {
-                    hero(detail)
                 }
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }
@@ -171,11 +169,11 @@ struct ExperienceDetailView: View {
                     }
                 }
                 actionRow(detail)
+                hero(detail)
                 FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
-                if !galleryItems(summary).isEmpty { hero(detail) }
                 memories(detail)
                 privateNote(detail)
                 if detail.isLocality {
@@ -202,13 +200,14 @@ struct ExperienceDetailView: View {
         }
     }
 
-    /// Look Around first, then the place's photo, then photos from friends' visits.
+    /// The place's photo first, then photos from friends' visits. Look Around is a button on the picture, and
+    /// only becomes the picture itself when there are no photos at all.
     private func galleryItems(_ summary: ExperienceSummary) -> [PlaceGalleryItem] {
         var items: [PlaceGalleryItem] = []
-        if let lookAround { items.append(.lookAround(lookAround)) }
         if let url = summary.photoURL { items.append(.photo(url, credit: summary.photoCredit)) }
         let visitPhotos = friendMemories.flatMap { $0.media.sorted { $0.position < $1.position } }.prefix(8)
         items += visitPhotos.map { .visitPhoto(path: $0.path) }
+        if items.isEmpty, let lookAround { items.append(.lookAround(lookAround)) }
         return items
     }
 
@@ -227,19 +226,35 @@ struct ExperienceDetailView: View {
         return "Report a problem"
     }
 
+    /// Where it is, right under the actions. Tapping it opens Apple Maps with directions.
     private func hero(_ detail: ExperienceDetail) -> some View {
         let coordinate = detail.summary.coordinate
-        return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: detail.isLocality ? 20_000 : 1_500,
+        return Button { openInMaps(detail) } label: { heroMap(detail, coordinate: coordinate) }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Map showing \(detail.summary.name)")
+            .accessibilityHint("Opens directions in Apple Maps")
+            .accessibilityIdentifier("detail-map")
+    }
+
+    private func heroMap(_ detail: ExperienceDetail, coordinate: CLLocationCoordinate2D) -> some View {
+        Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: detail.isLocality ? 20_000 : 1_500,
                                                               longitudinalMeters: detail.isLocality ? 20_000 : 1_500)),
                    interactionModes: []) {
             Marker(detail.summary.name, systemImage: (detail.myRating?.category ?? detail.summary.category)?.symbolName ?? "mappin",
                    coordinate: coordinate)
-                .tint(Theme.accent)
+                .tint(.red)
         }
-        .frame(height: 200)
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+        .allowsHitTesting(false)
+        .frame(height: 180)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-        .padding(.top, Theme.Spacing.s)
-        .accessibilityLabel("Map showing \(detail.summary.name)")
+        .overlay(alignment: .bottomTrailing) {
+            Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(.regularMaterial, in: Capsule())
+                .padding(Theme.Spacing.s)
+        }
     }
 
     private func actionRow(_ detail: ExperienceDetail) -> some View {

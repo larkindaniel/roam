@@ -58,7 +58,7 @@ struct PlaceThumbnail: View {
                 if let path {
                     RemoteImageView(path: path, accessibilityLabel: "")
                 } else if let url {
-                    AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
+                    WebImage(url: url) { Roam.fill } failure: { Image(systemName: symbol).foregroundStyle(Roam.inkMuted) }
                 } else if let still {
                     Image(uiImage: still).resizable().scaledToFill()
                 } else {
@@ -78,6 +78,48 @@ struct PlaceThumbnail: View {
                     still = image
                 }
             }
+    }
+}
+
+@MainActor private enum WebImageCache {
+    static var images: [URL: UIImage] = [:]
+}
+
+/// A web photo that keeps trying: a download cut off by scrolling away starts again when the view comes back,
+/// where `AsyncImage` would give up for good. Downloads are shared and cached across the app.
+struct WebImage<Placeholder: View, Failure: View>: View {
+    let url: URL
+    @ViewBuilder var placeholder: () -> Placeholder
+    @ViewBuilder var failure: () -> Failure
+
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else if failed {
+                failure()
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            if let cached = WebImageCache.images[url] { image = cached; return }
+            image = nil
+            failed = false
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+                      let loaded = UIImage(data: data) else { failed = true; return }
+                WebImageCache.images[url] = loaded
+                image = loaded
+            } catch {
+                // Cancelled because the view went away: not a failure, it loads again next time.
+                if !Task.isCancelled && (error as? URLError)?.code != .cancelled { failed = true }
+            }
+        }
     }
 }
 
@@ -116,12 +158,15 @@ enum PlaceGalleryItem: Identifiable {
     }
 }
 
-/// A place's pictures, Look Around first. The arrow in the corner steps to the next one.
+/// A place's pictures: its photo first, then photos from visits. The arrow in the corner steps to the next one,
+/// and a Look Around button opens Apple's street-level view of the spot.
 struct PlaceGallery: View {
     let items: [PlaceGalleryItem]
     let placeName: String
+    var lookAround: MKLookAroundScene?
 
     @State private var index = 0
+    @State private var showsLookAround = false
 
     private var current: PlaceGalleryItem? { items.isEmpty ? nil : items[min(index, items.count - 1)] }
 
@@ -145,6 +190,22 @@ struct PlaceGallery: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                if let lookAround, !items.contains(where: { if case .lookAround = $0 { return true } else { return false } }) {
+                    Button { showsLookAround = true } label: {
+                        Image(systemName: "binoculars.fill")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(.black.opacity(0.55)))
+                            .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(Theme.Spacing.xs)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .lookAroundViewer(isPresented: $showsLookAround, initialScene: lookAround)
+                    .accessibilityLabel("Look Around")
+                    .accessibilityIdentifier("place-look-around")
+                }
                 if items.count > 1 {
                     Button { index = (min(index, items.count - 1) + 1) % items.count } label: {
                         HStack(spacing: 4) {

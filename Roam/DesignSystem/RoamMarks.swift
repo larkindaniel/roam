@@ -127,19 +127,14 @@ struct PlacePhotoView: View {
                     if let path {
                         RemoteImageView(path: path, accessibilityLabel: label)
                     } else if let url {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().scaledToFill().accessibilityLabel(label)
-                            } else if phase.error != nil {
-                                if let location {
-                                    MapStill(coordinate: location, symbol: placeholderSymbol)
-                                } else {
-                                    Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
-                                }
+                        WebImage(url: url) { ProgressView() } failure: {
+                            if let location {
+                                MapStill(coordinate: location, symbol: placeholderSymbol)
                             } else {
-                                ProgressView()
+                                Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                             }
                         }
+                        .accessibilityLabel(label)
                     } else if let location {
                         MapStill(coordinate: location, symbol: placeholderSymbol)
                     } else {
