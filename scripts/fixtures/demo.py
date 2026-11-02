@@ -115,6 +115,14 @@ def plans_sql(data):
         rows.append(f"insert into public.trips (id, owner_id, name, status, start_date, end_date) values ({q(trip)}, {q(kieran)}, {q(name)}, '{status}', {dates[0]}, {dates[1]}) on conflict do nothing;")
         for position, spot in enumerate(spots[name]):
             rows.append(f"insert into public.trip_places (trip_id, experience_id, position) values ({q(trip)}, {q(uid('00000031', spot['id']))}, {position}) on conflict do nothing;")
+    # A place Kieran plans to go, on the hidden "Planned" trip that the Plan to go button uses.
+    place, experience, planned = uid("00000021", "vancouver-stanley-park"), uid("00000031", "vancouver-stanley-park"), uid("00000052", kieran, "Planned")
+    rows.append(f"""insert into public.places (id, provider, provider_place_id, name, normalized_name, address, normalized_address, locality, country_code, country_name, city_id, latitude, longitude, provider_category, is_locality, provenance)
+values ({q(place)}, 'fixture', 'demo-vancouver-stanley-park', 'Stanley Park', app_private.normalize_text('Stanley Park'), 'Vancouver, BC V6G 1Z4, Canada', app_private.normalize_text('Vancouver, BC V6G 1Z4, Canada'), 'Vancouver',
+ app_private.upsert_country('CA', 'Canada'), 'Canada', app_private.upsert_city('CA', 'Canada', null, 'Vancouver', 49.2827, -123.1207), 49.3017, -123.1417, 'Park', false, '{{}}'::jsonb) on conflict do nothing;
+insert into public.experiences (id, place_id, category, category_source) values ({q(experience)}, {q(place)}, 'outdoors', 'suggested') on conflict do nothing;
+insert into public.trips (id, owner_id, name, status) values ({q(planned)}, {q(kieran)}, 'Planned', 'planning') on conflict do nothing;
+insert into public.trip_places (trip_id, experience_id, position) values ({q(planned)}, {q(experience)}, 0) on conflict do nothing;""")
     for name in ("Reykjavík", "Copenhagen", "Medellín", "Lausanne"):
         for spot in spots[name]:
             rows.append(f"insert into public.bookmarks (owner_id, experience_id) values ({q(kieran)}, {q(uid('00000031', spot['id']))}) on conflict do nothing;")
