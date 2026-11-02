@@ -91,11 +91,9 @@ struct ResearchBriefSheet: View {
                                 HStack(spacing: Theme.Spacing.xs) {
                                     if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
                                     Button { copy() } label: {
-                                        Image(systemName: "doc.on.doc").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
-                                            .frame(width: 40, height: 40)
-                                            .background(Circle().fill(Roam.fill))
+                                        Image(systemName: "doc.on.doc").font(.title3).foregroundStyle(Roam.ink)
                                             .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                                            .contentShape(Circle())
+                                            .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("Copy prompt")
