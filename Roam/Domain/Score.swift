@@ -22,8 +22,15 @@ struct Score: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
 
     var decimalValue: Decimal { Decimal(tenths) / 10 }
 
-    /// Always one decimal place: "8.4", "10.0", "0.0".
-    var formatted: String { "\(tenths / 10).\(tenths % 10)" }
+    /// The stored score out of 10, always one decimal place: "8.4", "10.0", "0.0".
+    var formattedOutOf10: String { "\(tenths / 10).\(tenths % 10)" }
+
+    /// What people see: the score out of 5, one decimal place, halves rounded up ("8.4" shows "4.2", "8.5" shows "4.3").
+    /// Scores are still stored and ranked out of 10.
+    var formatted: String {
+        let halved = (tenths + 1) / 2
+        return "\(halved / 10).\(halved % 10)"
+    }
 
     var description: String { formatted }
 

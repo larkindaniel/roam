@@ -72,13 +72,13 @@ struct ScoreBadge: View {
 
     private var accessibilityText: String {
         switch (source, score) {
-        case (.you, let score?): return "Your score \(score.formatted) out of 10"
+        case (.you, let score?): return "Your score \(score.formatted) out of 5"
         case (.you, nil): return "Not rated"
-        case (.following(let count), let score?): return "Friends score \(score.formatted) out of 10 from \(count) \(count == 1 ? "person" : "people")"
+        case (.following(let count), let score?): return "Friends score \(score.formatted) out of 5 from \(count) \(count == 1 ? "person" : "people")"
         case (.following, nil): return "No friend ratings"
-        case (.owner(let name), let score?): return "\(name)'s score \(score.formatted) out of 10"
+        case (.owner(let name), let score?): return "\(name)'s score \(score.formatted) out of 5"
         case (.owner(let name), nil): return "\(name) has not rated this"
-        case (.snapshot, let score?): return "Score when posted \(score.formatted) out of 10"
+        case (.snapshot, let score?): return "Score when posted \(score.formatted) out of 5"
         case (.snapshot, nil): return "No score"
         }
     }

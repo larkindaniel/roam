@@ -191,7 +191,7 @@ struct PublicMemoryCard: View {
                         .font(.system(.body, design: .rounded).bold())
                         .monospacedDigit()
                         .frame(minHeight: Theme.minimumHitTarget)
-                        .accessibilityLabel("Rated \(score.formatted) out of 10")
+                        .accessibilityLabel("Rated \(score.formatted) out of 5")
                 }
                 Menu {
                     Button { onReport() } label: { Label("Report memory", systemImage: "flag") }
