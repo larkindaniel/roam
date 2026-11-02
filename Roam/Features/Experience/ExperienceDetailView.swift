@@ -47,6 +47,8 @@ final class ExperienceDetailModel {
 /// S06 experience detail.
 struct ExperienceDetailView: View {
     @State private var plannedTrips: [String] = []
+    @State private var choosingMapsApp = false
+    @State private var sheetDetent = GlobeSheetDetent.half
     @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
 
@@ -87,6 +89,8 @@ struct ExperienceDetailView: View {
         .navigationTitle(model?.detail?.summary.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // The card over the map names the place; the bar stays clear so the map shows through.
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             if let detail = model?.detail {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Native text share: public values, an Apple Maps link and only your own current score.
@@ -141,35 +145,56 @@ struct ExperienceDetailView: View {
         .screenIdentifier("experience-detail")
     }
 
+    /// The place on a full-screen map you can move around, with everything about it on a card that swipes up over it.
     private func content(_ detail: ExperienceDetail) -> some View {
         let summary = detail.summary
-        return ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                if !galleryItems(summary).isEmpty {
-                    PlaceGallery(items: galleryItems(summary), placeName: summary.name, lookAround: lookAround)
-                        .padding(.top, Theme.Spacing.s)
-                }
-                if let refreshError = model?.refreshError {
-                    InlineRetryView(message: refreshError) { Task { await model?.load() } }
-                }
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, headerLabel: summary.name, headerIdentifier: "detail-sheet-header",
+                                onRefresh: { await reload() }) {
+            placeMap(detail)
+        } header: {
+            HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(summary.name)
-                        .font(.roamDisplay(.title))
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(.roamTitle())
+                        .foregroundStyle(Roam.ink)
+                        .lineLimit(2)
                         .accessibilityAddTraits(.isHeader)
                     HStack(spacing: Theme.Spacing.s) {
                         CategoryBadge(category: detail.myRating?.category ?? summary.category)
                         if !summary.areaLine.isEmpty {
                             Text("·").foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
-                            Text(summary.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
+                            Text(summary.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
                         }
                     }
-                    if detail.isLocality {
-                        Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
-                    }
+                }
+                Spacer(minLength: 0)
+                Button { choosingMapsApp = true } label: {
+                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(PlaceState.planned.markerColor))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Directions to \(summary.name)")
+                .accessibilityIdentifier("detail-directions")
+                .confirmationDialog("Get directions", isPresented: $choosingMapsApp, titleVisibility: .visible) {
+                    Button("Apple Maps") { openInMaps(detail) }
+                    Button("Google Maps") { openInGoogleMaps(detail) }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } content: {
+                if !galleryItems(summary).isEmpty {
+                    PlaceGallery(items: galleryItems(summary), placeName: summary.name, lookAround: lookAround)
+                }
+                if let refreshError = model?.refreshError {
+                    InlineRetryView(message: refreshError) { Task { await model?.load() } }
+                }
+                if detail.isLocality {
+                    Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
                 actionRow(detail)
-                hero(detail)
                 FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
@@ -189,11 +214,8 @@ struct ExperienceDetailView: View {
                                           onReport: { target in reportReason = nil; reportTarget = target },
                                           excludedIDs: Set(friendMemories.map(\.id)))
                 }
-            }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.bottom, Theme.Spacing.xxl)
         }
-        .refreshable { await reload() }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .task(id: summary.id) {
             let appleItem = await AppleMapsLookup.mapItem(for: summary)
             lookAround = await AppleMapsLookup.lookAroundScene(item: appleItem, coordinate: summary.coordinate)
@@ -226,35 +248,18 @@ struct ExperienceDetailView: View {
         return "Report a problem"
     }
 
-    /// Where it is, right under the actions. Tapping it opens Apple Maps with directions.
-    private func hero(_ detail: ExperienceDetail) -> some View {
+    /// The place on a map that fills the screen behind the card; pan and zoom freely.
+    private func placeMap(_ detail: ExperienceDetail) -> some View {
         let coordinate = detail.summary.coordinate
-        return Button { openInMaps(detail) } label: { heroMap(detail, coordinate: coordinate) }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Map showing \(detail.summary.name)")
-            .accessibilityHint("Opens directions in Apple Maps")
-            .accessibilityIdentifier("detail-map")
-    }
-
-    private func heroMap(_ detail: ExperienceDetail, coordinate: CLLocationCoordinate2D) -> some View {
-        Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: detail.isLocality ? 20_000 : 1_500,
-                                                              longitudinalMeters: detail.isLocality ? 20_000 : 1_500)),
-                   interactionModes: []) {
+        let span: CLLocationDistance = detail.isLocality ? 20_000 : 1_500
+        return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span))) {
             Marker(detail.summary.name, systemImage: (detail.myRating?.category ?? detail.summary.category)?.symbolName ?? "mappin",
                    coordinate: coordinate)
                 .tint(.red)
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
-        .allowsHitTesting(false)
-        .frame(height: 180)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-        .overlay(alignment: .bottomTrailing) {
-            Label("Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(.regularMaterial, in: Capsule())
-                .padding(Theme.Spacing.s)
-        }
+        .accessibilityLabel("Map showing \(detail.summary.name)")
+        .accessibilityIdentifier("detail-map")
     }
 
     private func actionRow(_ detail: ExperienceDetail) -> some View {
@@ -279,20 +284,6 @@ struct ExperienceDetailView: View {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
                 .disabled(visited && !library.isBookmarked(id))
-                // Directions in either app: Apple Maps, or Google Maps (its app if installed, else the web).
-                Menu {
-                    Button { openInMaps(detail) } label: { Label("Apple Maps", systemImage: "map") }
-                    Button { openInGoogleMaps(detail) } label: { Label("Google Maps", systemImage: "globe") }
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.turn.up.right.diamond").font(.body.weight(.semibold))
-                        Text("Directions").font(.caption).lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                    .foregroundStyle(Roam.ink)
-                    .frame(maxWidth: .infinity, minHeight: 58)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Roam.fill))
-                }
-                .accessibilityIdentifier("detail-directions")
                 actionTile("Recommend", symbol: "paperplane", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }

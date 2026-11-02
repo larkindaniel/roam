@@ -106,6 +106,7 @@ struct ForYouRootView: View {
     @State private var openError: String?
     @State private var selected: Destination?
     @State private var barsHidden = false
+    @State private var navigationBarHidden = true
     @FocusState private var searchFocused: Bool
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -212,7 +213,13 @@ struct ForYouRootView: View {
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
         }
         .navigationTitle("Discover")
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
+        // Coming back from a pushed page can leave the system bar showing, empty, over the floating row and
+        // swallowing its taps; hiding it again on every return keeps the row tappable.
+        .onAppear {
+            navigationBarHidden = false
+            Task { @MainActor in navigationBarHidden = true }
+        }
         .task(id: query) {
             guard hasQuery else { results = .idle; return }
             try? await Task.sleep(for: Limits.searchDebounce)
