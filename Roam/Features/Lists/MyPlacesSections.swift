@@ -501,6 +501,8 @@ struct SavedSection: View {
     let model: MyPlacesModel
 
     @Environment(AppRouter.self) private var router
+    @State private var creatingList = false
+    @State private var newTitle = ""
 
     var body: some View {
         let countries = PlaceGroups(model.travelWishlist).countries
@@ -525,7 +527,9 @@ struct SavedSection: View {
                 HStack {
                     Text("Lists").font(.roamTitle()).accessibilityAddTraits(.isHeader)
                     Spacer()
-                    Button("Manage") { router.push(.lists) }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("open-lists")
+                    Button { newTitle = ""; creatingList = true } label: { Label("New list", systemImage: "plus") }
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("saved-new-list")
                 }
                 if model.lists.isEmpty {
                     Text("Make your own lists, like date-night spots or ramen to try.").font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -550,6 +554,15 @@ struct SavedSection: View {
                     .roamCard(padding: Theme.Spacing.m)
                 }
             }
+        }
+        .alert("New list", isPresented: $creatingList) {
+            TextField("Title", text: $newTitle).accessibilityIdentifier("saved-list-title")
+            Button("Create") {
+                Task { if let list = await model.createList(title: newTitle) { router.push(.list(list.id)) } }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Like date-night spots or ramen to try.")
         }
     }
 

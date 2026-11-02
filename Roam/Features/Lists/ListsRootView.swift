@@ -103,9 +103,29 @@ final class MyPlacesModel {
         await load()
     }
 
+    func createList(title: String) async -> PlaceList? {
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty,
+              let list = try? await services.plans.saveList(id: nil, title: title, description: "") else { return nil }
+        lists.insert(list, at: 0)
+        return list
+    }
+
     func markVisited(_ city: Destination) async {
         try? await services.plans.setCityVisited(city, present: true)
         await load()
+    }
+}
+
+/// A whole country as a destination, framed on its largest landmass so far-flung islands don't widen it.
+enum CountryDestination {
+    static func make(code: String) -> Destination? {
+        guard let main = CountryGeometry.shared.polygons(for: [code]).max(by: { $0.boundingMapRect.width * $0.boundingMapRect.height < $1.boundingMapRect.width * $1.boundingMapRect.height }) else { return nil }
+        let region = MKCoordinateRegion(main.boundingMapRect)
+        let widest = max(region.span.latitudeDelta, region.span.longitudeDelta * cos(region.center.latitude * .pi / 180))
+        let name = Locale.current.localizedString(forRegionCode: code) ?? code
+        return Destination(name: name, region: nil, countryCode: code, countryName: nil,
+                           latitude: region.center.latitude, longitude: region.center.longitude,
+                           radiusMeters: min(max(widest * 111_000 / 2, 50_000), 1_500_000))
     }
 }
 
@@ -142,6 +162,7 @@ struct MyPlacesRootView: View {
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
+    @Environment(DestinationStore.self) private var destinations
     @State private var model: MyPlacesModel?
     @State private var showsCoachmark = false
     @State private var detent = GlobeSheetDetent.half
@@ -246,7 +267,13 @@ struct MyPlacesRootView: View {
                          countryTints: PlaceMapItem.countryTints(model.pins),
                          pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
                          onSelectCountry: { code in
-                             if let country = model.countries.first(where: { $0.code == code }) { router.push(.myCountry(code: code, title: country.title)) }
+                             if let country = model.countries.first(where: { $0.code == code }) {
+                                 router.push(.myCountry(code: code, title: country.title))
+                             } else if let destination = CountryDestination.make(code: code) {
+                                 // A country you haven't been to opens Explore there.
+                                 destinations.select(destination, for: .explore)
+                                 router.push(.explore)
+                             }
                          })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {

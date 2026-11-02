@@ -368,7 +368,7 @@ struct GlobeMapView: UIViewRepresentable {
             return view
         }
 
-        /// Opens the dot under a tap, or else the coloured country. Dots close together zoom in to separate them first.
+        /// Opens the dot under a tap, or else the country under it. Dots close together zoom in to separate them first.
         @objc func handleGlobeTap(_ tap: UITapGestureRecognizer) {
             guard let map = tap.view as? MKMapView else { return }
             let location = tap.location(in: map)
@@ -380,7 +380,7 @@ struct GlobeMapView: UIViewRepresentable {
             }.sorted { $0.distance < $1.distance }
             guard let nearest = hits.first?.pin else {
                 if let coordinate = projection.coordinate(at: location),
-                   let code = CountryGeometry.shared.code(at: coordinate, among: Set(parent.countryTints.keys)) {
+                   let code = CountryGeometry.shared.code(at: coordinate, among: Set(CountryGeometry.shared.allCodes)) {
                     parent.onSelectCountry?(code)
                 }
                 return
