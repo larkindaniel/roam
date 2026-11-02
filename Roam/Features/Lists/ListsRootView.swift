@@ -204,17 +204,25 @@ struct MyPlacesRootView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
+                         floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
                          collapsesHeaderOnScroll: true) {
             globe
         } header: {
             if detent == .peek {
                 // Minimised, like a place's bubble: the name and one action.
                 HStack {
-                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
+                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
-                    Button { router.sheet = .logPlace } label: { PillLabel(title: "Add a place", systemImage: "plus") }
-                        .buttonStyle(PillButtonStyle(isSelected: true, tint: PlaceState.visited.markerColor))
+                    Button { router.sheet = .logPlace } label: {
+                        Label("Add a place", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .frame(height: 32)
+                            .background(Capsule().fill(PlaceState.visited.markerColor))
+                    }
+                    .buttonStyle(.plain)
                         .accessibilityIdentifier("myplaces-add-place")
                 }
             } else {

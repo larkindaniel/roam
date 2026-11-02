@@ -369,7 +369,6 @@ struct TripsTimelineSection: View {
                     }
                     if !entry.placeLine.isEmpty { Text(entry.placeLine).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(2) }
                     HStack(spacing: Theme.Spacing.s) {
-                        Text("\(entry.places.count) \(entry.places.count == 1 ? "place" : "places")")
                         if let best = entry.bestScore { Text("Best \(best.formatted)") }
                     }
                     .font(.footnote).foregroundStyle(Roam.inkMuted)

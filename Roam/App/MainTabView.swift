@@ -102,6 +102,8 @@ struct RoamTabBar: View {
     @Binding var selection: AppTab
     static let margin: CGFloat = 18
     static let height: CGFloat = 54
+    /// Wider at the sides than below: the screen's corners curve in, so this leaves the same gap at the corners.
+    static var sideMargin: CGFloat { margin + 14 }
     /// Room content keeps clear of, above the home indicator's safe area.
     static var reservedHeight: CGFloat { height + margin - 16 }
 
@@ -128,7 +130,8 @@ struct RoamTabBar: View {
         .padding(4)
         .frame(height: Self.height)
         .floatingBubble(Capsule())
-        .padding(.horizontal, Self.margin)
+        // Wider at the sides than below: the screen's corners curve in, so this leaves the same gap at the corners.
+        .padding(.horizontal, Self.sideMargin)
         .padding(.bottom, Self.margin)
     }
 }

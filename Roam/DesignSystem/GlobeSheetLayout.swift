@@ -29,6 +29,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var onRefresh: () async -> Void = {}
     /// Minimised, the card becomes a floating bubble over the map instead of a strip along the bottom.
     var floatsWhenPeeking = false
+    /// How far the minimised bubble floats above the bottom of the screen.
+    var floatingBottomMargin: CGFloat = Theme.Spacing.xl + Theme.Spacing.s
+    var floatingSideMargin: CGFloat = Theme.Spacing.l
     /// A control that sits on the map just above the card, at the left; hidden once the card fills the screen.
     var mapAccessory: AnyView? = nil
     /// The same, at the right.
@@ -89,7 +92,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     /// a narrow margin and less glass; fully up it is solid and runs to the edges of the screen.
     private var sideMargin: CGFloat {
         switch detent {
-        case .peek: return floatsWhenPeeking ? Theme.Spacing.l : Theme.Spacing.s
+        case .peek: return floatsWhenPeeking ? floatingSideMargin : Theme.Spacing.s
         case .half: return Theme.Spacing.s
         case .full: return 0
         }
@@ -97,7 +100,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private var bottomMargin: CGFloat {
         switch detent {
-        case .peek: return floatsWhenPeeking ? Theme.Spacing.xl + Theme.Spacing.s : Theme.Spacing.s
+        case .peek: return floatsWhenPeeking ? floatingBottomMargin : Theme.Spacing.s
         case .half: return Theme.Spacing.s
         case .full: return 0
         }
@@ -210,14 +213,14 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     private func handle(available: CGFloat) -> some View {
         // As a floating bubble it's just the header, snug around it; as a card it has a grabber on top.
         VStack(spacing: 2) {
-            if !isFloating { grabber }
+            // The grabber shows even on the bubble, so it's clear it swipes up.
+            grabber
             header()
         }
         .frame(maxWidth: .infinity)
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
-        .padding(.vertical, isFloating ? Theme.Spacing.s + 2 : 0)
-        .padding(.bottom, isFloating ? 0 : Theme.Spacing.s)
+        .padding(.bottom, isFloating ? Theme.Spacing.s : Theme.Spacing.s)
         // The minimised height is measured while the header sits here.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
