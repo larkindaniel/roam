@@ -310,59 +310,109 @@ struct ExploreRootView: View {
                                    message: "No \(model.category?.title.lowercased() ?? "places") found in this area. Try another category or move the map.")
                 }
             } else {
-                List(model.items) { item in
-                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                            PlaceThumbnail(id: item.id, url: item.experience?.photoURL,
-                                           coordinate: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),
-                                           symbol: item.category?.symbolName ?? "mappin")
-                            row(item, model: model)
+                ScrollView {
+                    LazyVStack(spacing: Theme.Spacing.s) {
+                        ForEach(model.items) { item in
+                            placeCard(item, model: model)
+                                .contextMenu {
+                                    Button { showOnMap(item, model) } label: { Label("Show on map", systemImage: "map") }
+                                }
+                                .accessibilityIdentifier("explore-list-row-\(item.name)")
                         }
-                        Button {
-                            model.selectedID = item.id
-                            model.focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), latitudinalMeters: 1_500, longitudinalMeters: 1_500)
-                            model.focusToken += 1
-                            model.showsMap = true
-                        } label: { Label("Show on map", systemImage: "mappin.and.ellipse") }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                        .accessibilityIdentifier("explore-show-on-map-\(item.name)")
                     }
-                        .listRowBackground(item.id == model.selectedID ? Theme.accentFill : Theme.raisedCard)
-                        .accessibilityElement(children: .contain)
-                        .accessibilityAddTraits(item.id == model.selectedID ? .isSelected : [])
-                        .accessibilityIdentifier("explore-list-row-\(item.name)")
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.top, Theme.Spacing.s)
+                    .padding(.bottom, 96)
                 }
-                .listStyle(.plain)
                 .accessibilityIdentifier("explore-list")
             }
         }
     }
 
-    private func row(_ item: ExploreItem, model: ExploreModel) -> some View {
+    private func showOnMap(_ item: ExploreItem, _ model: ExploreModel) {
+        model.selectedID = item.id
+        model.focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude), latitudinalMeters: 1_500, longitudinalMeters: 1_500)
+        model.focusToken += 1
+        model.showsMap = true
+    }
+
+    /// Photo, name, where it is and who rated it; tap to open. Save and Log sit on the right.
+    private func placeCard(_ item: ExploreItem, model: ExploreModel, onClose: (() -> Void)? = nil) -> some View {
         let experience = item.experience
         let rated = experience.map { library.ratedCategory($0.id) != nil || $0.viewer.isRated } ?? false
         let save: SaveActionState = experience.map { rated ? .alreadyBeen : library.saveState(for: $0.id) } ?? .notSaved
-        return ExperienceRow(name: item.name, category: item.category, area: item.area,
-                             score: experience?.viewer.myScore, scoreSource: .you,
-                             secondaryScore: experience?.followingScore, secondarySource: experience.map { .following(count: $0.followingCount) },
-                             statusLine: item.candidate?.address,
-                             saveState: save, logTitle: rated ? "Add visit" : "Log",
-                             onOpen: { Task { await open(item, model) } },
-                             onSave: { Task { await toggleSave(item, model) } },
-                             onLog: { Task { await log(item, model) } })
+        return HStack(spacing: Theme.Spacing.m) {
+            Button { Task { await open(item, model) } } label: {
+                HStack(spacing: Theme.Spacing.m) {
+                    PlaceThumbnail(id: item.id, url: experience?.photoURL,
+                                   coordinate: CLLocationCoordinate2D(latitude: item.latitude, longitude: item.longitude),
+                                   symbol: item.category?.symbolName ?? "mappin")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
+                        Text([item.category?.title, experience?.locality ?? item.candidate?.locality].compactMap { $0 }.joined(separator: " · "))
+                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                        if let line = scoreLine(experience) {
+                            Text(line).font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink).monospacedDigit()
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the place")
+            HStack(spacing: 0) { actions(item, model: model, save: save, rated: rated, onClose: onClose) }
+        }
+        .padding(Theme.Spacing.m)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Roam.paperRaised))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+            .strokeBorder(item.id == model.selectedID && onClose == nil ? Roam.ink : Roam.rule, lineWidth: item.id == model.selectedID && onClose == nil ? 1.5 : 1))
+    }
+
+    @ViewBuilder private func actions(_ item: ExploreItem, model: ExploreModel, save: SaveActionState, rated: Bool, onClose: (() -> Void)?) -> some View {
+            switch save {
+            case .alreadyBeen:
+                EmptyView()
+            case .pending:
+                ProgressView().frame(width: 36, height: 36)
+            case .saved, .notSaved:
+                circleButton(save == .saved ? "bookmark.fill" : "bookmark", label: save == .saved ? "Remove \(item.name) from wishlist" : "Save \(item.name) to wishlist") {
+                    Task { await toggleSave(item, model) }
+                }
+            }
+            circleButton("plus", label: rated ? "Add a visit to \(item.name)" : "Log \(item.name)", prominent: true) {
+                Task { await log(item, model) }
+            }
+            if let onClose {
+                circleButton("xmark", label: "Close selected place", action: onClose)
+            }
+    }
+
+    private func scoreLine(_ experience: ExperienceSummary?) -> String? {
+        guard let experience else { return nil }
+        if let mine = experience.viewer.myScore { return "You · \(mine.formatted)" }
+        if let friends = experience.followingScore, experience.followingCount > 0 {
+            return "\(friends.formatted) · \(experience.followingCount) \(experience.followingCount == 1 ? "friend" : "friends")"
+        }
+        return nil
+    }
+
+    private func circleButton(_ symbol: String, label: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.footnote.weight(.bold))
+                .foregroundStyle(prominent ? Roam.paper : Roam.ink)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(prominent ? Roam.ink : Roam.fill))
+                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func itemCard(_ item: ExploreItem, model: ExploreModel) -> some View {
-        HStack(alignment: .top) {
-            row(item, model: model)
-            Button { model.selectedID = nil } label: {
-                Image(systemName: "xmark").font(.footnote.weight(.bold)).frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-            }
-            .accessibilityLabel("Close selected place")
-        }
-        .roamCard(padding: Theme.Spacing.m)
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
-        .accessibilityIdentifier("selected-place-card")
+        placeCard(item, model: model) { model.selectedID = nil }
+            .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+            .accessibilityIdentifier("selected-place-card")
     }
 
     private func open(_ item: ExploreItem, _ model: ExploreModel) async {
