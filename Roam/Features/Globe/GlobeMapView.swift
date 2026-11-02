@@ -173,6 +173,8 @@ struct GlobeMapView: UIViewRepresentable {
     var countryTints: [String: UIColor] = [:]
     var pinTints: [String: UIColor] = [:]
     var onSelectCountry: ((String) -> Void)?
+    /// Where the camera settles: the point below it and how high it is.
+    var onCameraChange: ((CLLocationCoordinate2D, CLLocationDistance) -> Void)?
     /// When set, Apple Maps' own places on a standard map can be tapped, and report their listing here.
     var onSelectMapFeature: ((MKMapItem) -> Void)?
 
@@ -218,6 +220,11 @@ struct GlobeMapView: UIViewRepresentable {
             if style == .globe, focusRegion == nil {
                 // Back to the starting view of the whole Earth.
                 map.setCamera(MKMapCamera(lookingAtCenter: globeCenter ?? Self.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0),
+                              animated: !UIAccessibility.isReduceMotionEnabled)
+            } else if style == .globe, let focusRegion {
+                // On the globe a region is shown by flying the camera over it, high enough to take it all in.
+                let distance = max(focusRegion.span.latitudeDelta, focusRegion.span.longitudeDelta * cos(focusRegion.center.latitude * .pi / 180)) * 111_000 * 2.4
+                map.setCamera(MKMapCamera(lookingAtCenter: focusRegion.center, fromDistance: max(distance, 250_000), pitch: 0, heading: 0),
                               animated: !UIAccessibility.isReduceMotionEnabled)
             } else if let focusRegion {
                 map.setRegion(focusRegion, animated: !UIAccessibility.isReduceMotionEnabled)
@@ -476,6 +483,7 @@ struct GlobeMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
             parent.onRegionChange?(mapView.region)
+            parent.onCameraChange?(mapView.camera.centerCoordinate, mapView.camera.centerCoordinateDistance)
         }
     }
 }

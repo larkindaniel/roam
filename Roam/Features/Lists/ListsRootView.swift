@@ -168,32 +168,80 @@ struct MyPlacesRootView: View {
     @State private var recenterToken = 0
     @State private var tab = MyPlacesTab.trips
     @State private var sheet: MyPlacesSheet?
+    /// The country the globe is zoomed in on; the card shows that country instead of everything.
+    @State private var focusedCountry: String?
+    @State private var focusRegion: MKCoordinateRegion?
+    @State private var flyingToCountry = false
+
+    private func countryTitle(_ code: String) -> String {
+        model?.countries.first { $0.code == code }?.title ?? CountryTitle.text(name: Locale.current.localizedString(forRegionCode: code), code: code)
+    }
+
+    private func zoom(to code: String) {
+        // Framed on your places there when you have some, so a big country doesn't open on empty land.
+        let mine = model?.countries.first { $0.code == code }?.items.map(\.experience) ?? []
+        if let minLat = mine.map(\.latitude).min(), let maxLat = mine.map(\.latitude).max(),
+           let minLon = mine.map(\.longitude).min(), let maxLon = mine.map(\.longitude).max() {
+            focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
+                                             span: MKCoordinateSpan(latitudeDelta: max((maxLat - minLat) * 1.4, 1.5), longitudeDelta: max((maxLon - minLon) * 1.4, 1.5)))
+        } else if let destination = CountryDestination.make(code: code) {
+            focusRegion = MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: destination.radiusMeters * 2, longitudinalMeters: destination.radiusMeters * 2)
+        } else {
+            return
+        }
+        recenterToken += 1
+        flyingToCountry = true
+        focusedCountry = code
+        if detent == .full { detent = .half }
+    }
+
+    private func showWorld() {
+        focusRegion = nil
+        recenterToken += 1
+        focusedCountry = nil
+    }
 
     var body: some View {
         GlobeSheetLayout(detent: $detent, peekHeight: 128, headerLabel: "My Places", headerIdentifier: "myplaces-sheet-header",
                          onRefresh: { await model?.load() }) {
             globe
         } header: {
-            VStack(spacing: Theme.Spacing.s) {
+            if let focusedCountry {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+                    Text(countryTitle(focusedCountry)).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
                     Spacer()
-                    GlobeSheetChevron(detent: detent)
+                    Button { showWorld() } label: {
+                        Label("World", systemImage: "globe").font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(PillButtonStyle())
+                    .accessibilityIdentifier("myplaces-show-world")
                 }
-                Picker("Section", selection: $tab) {
-                    ForEach(MyPlacesTab.allCases) { Text($0.title).tag($0) }
+            } else {
+                VStack(spacing: Theme.Spacing.s) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+                        Spacer()
+                        GlobeSheetChevron(detent: detent)
+                    }
+                    Picker("Section", selection: $tab) {
+                        ForEach(MyPlacesTab.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("myplaces-tabs")
+                    .onChange(of: tab) { _, _ in if detent == .peek { detent = .half } }
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("myplaces-tabs")
-                .onChange(of: tab) { _, _ in if detent == .peek { detent = .half } }
             }
         } content: {
             if let model, model.hasLoaded {
-                switch tab {
-                case .trips: TripsTimelineSection(model: model) { sheet = .newTrip }
-                case .home: HomeCitiesSection(model: model) { sheet = .homeCity }
-                case .passport: PassportSection(ownerID: model.ownerIDValue, countries: model.passport, isSelf: true) { sheet = .markCity }
-                case .saved: SavedSection(model: model)
+                if let focusedCountry {
+                    CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
+                } else {
+                    switch tab {
+                    case .trips: TripsTimelineSection(model: model) { sheet = .newTrip }
+                    case .home: HomeCitiesSection(model: model) { sheet = .homeCity }
+                    case .passport: PassportSection(ownerID: model.ownerIDValue, countries: model.passport, isSelf: true) { sheet = .markCity }
+                    case .saved: SavedSection(model: model)
+                    }
                 }
             } else if let error = model?.error {
                 InlineRetryView(message: error) { Task { await model?.load() } }
@@ -218,16 +266,19 @@ struct MyPlacesRootView: View {
         .toolbar {
             LogPlaceToolbarButton()
             ToolbarItem(placement: .topBarLeading) {
-                Button { recenterToken += 1 } label: { Image(systemName: "scope") }
+                Button { showWorld() } label: { Image(systemName: "scope") }
                     .accessibilityLabel("Recenter globe")
                     .accessibilityIdentifier("recenter-globe")
             }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { tab = .saved; if detent == .peek { detent = .half } } label: { Image(systemName: "bookmark") }
-                    .accessibilityLabel("Wishlist")
-                    .accessibilityIdentifier("open-wishlist")
+                // The globe stays satellite; the street map opens on its own, on the country you're looking at.
+                Button {
+                    if let focusedCountry { router.push(.myCountry(code: focusedCountry, title: countryTitle(focusedCountry))) } else { router.push(.explore) }
+                } label: { Image(systemName: "map") }
+                    .accessibilityLabel(focusedCountry.map { "Map of \(countryTitle($0))" } ?? "Explore the map")
+                    .accessibilityIdentifier("myplaces-open-map")
             }
         }
         .task {
@@ -260,14 +311,20 @@ struct MyPlacesRootView: View {
         if let model, model.hasLoaded {
             GlobeMapView(pins: model.pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
+                         focusRegion: focusRegion,
                          focusToken: recenterToken,
                          onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
                          globeCenter: PlaceMapItem.startingRegion(model.pins.contains { $0.state == .visited } ? model.pins.filter { $0.state == .visited } : model.pins).center,
                          countryTints: PlaceMapItem.countryTints(model.pins),
                          pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
-                         onSelectCountry: { code in
-                             // Every country opens Explore there; where you have places, they come up on a card.
-                             router.push(.myCountry(code: code, title: model.countries.first { $0.code == code }?.title ?? CountryTitle.text(name: Locale.current.localizedString(forRegionCode: code), code: code)))
+                         onSelectCountry: { code in zoom(to: code) },
+                         onCameraChange: { center, distance in
+                             // Landing after flying to a tapped country keeps that country, even if the middle of the
+                             // view (framed on your places there) falls just over a border.
+                             if flyingToCountry { flyingToCountry = false; return }
+                             // Close enough to see one country, the card follows whichever is under the middle of the view.
+                             let code = distance < 12_000_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)) : nil
+                             if code != focusedCountry { focusedCountry = code }
                          })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {

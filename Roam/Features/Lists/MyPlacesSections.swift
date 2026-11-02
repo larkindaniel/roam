@@ -1076,3 +1076,44 @@ struct TripDatesRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+/// The country the My Places globe is zoomed in on: your trips there and your places by city.
+struct CountryFocusSection: View {
+    let model: MyPlacesModel
+    let code: String
+    let title: String
+
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        let items = model.countries.first { $0.code == code }?.items ?? []
+        let trips = model.trips.filter { trip in
+            trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code }
+        }
+        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+            if items.isEmpty && trips.isEmpty {
+                Text("You haven't been to \(Locale.current.localizedString(forRegionCode: code) ?? title) yet.")
+                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                Button { router.push(.myCountry(code: code, title: title)) } label: { PillLabel(title: "Explore the map", systemImage: "map") }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                    .accessibilityIdentifier("country-focus-explore")
+            }
+            if !trips.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    Text("Trips").font(.roamTitle()).accessibilityAddTraits(.isHeader)
+                    VStack(spacing: 0) {
+                        ForEach(trips) { trip in
+                            TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
+                            if trip.id != trips.last?.id { Divider() }
+                        }
+                    }
+                    .roamCard(padding: Theme.Spacing.m)
+                }
+            }
+            if !items.isEmpty {
+                PlaceBreakdown(items: items, scores: model.scores)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
