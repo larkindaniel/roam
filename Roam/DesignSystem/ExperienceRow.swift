@@ -40,7 +40,7 @@ struct ExperienceRow: View {
                     if let thumbnailURL {
                         AsyncImage(url: thumbnailURL) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
                             .frame(width: 52, height: 52)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             .accessibilityHidden(true)
                     }
                     info.frame(maxWidth: .infinity, alignment: .leading)

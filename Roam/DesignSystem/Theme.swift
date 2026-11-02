@@ -60,7 +60,8 @@ enum Theme {
         static let xxl: CGFloat = 32
     }
 
-    static let cornerRadius: CGFloat = 16
+    /// Generous, continuous (squircle) corners like current iOS cards.
+    static let cornerRadius: CGFloat = 26
     static let minimumHitTarget: CGFloat = 44
 }
 

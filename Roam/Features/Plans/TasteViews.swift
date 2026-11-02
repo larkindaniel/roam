@@ -83,7 +83,7 @@ struct ResearchBriefSheet: View {
                             .scrollContentBackground(.hidden)
                             .frame(minHeight: 200)
                             .padding(Theme.Spacing.s)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Roam.paperRaised))
+                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Roam.paperRaised))
                             .accessibilityIdentifier("research-brief-text")
                         Text("Edit it however you like.").font(.caption).foregroundStyle(Roam.inkMuted)
                     }

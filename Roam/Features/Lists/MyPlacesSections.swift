@@ -262,7 +262,7 @@ struct TripCard: View {
                     } else {
                         Roam.fill.frame(width: 56, height: 56)
                             .overlay { Image(systemName: "airplane").foregroundStyle(PlaceState.planned.markerColor) }
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {
@@ -430,7 +430,7 @@ struct HomeCitiesSection: View {
                     PlaceThumbnail(id: cover.id.uuidString, url: cover.photoURL, coordinate: cover.coordinate, symbol: "house", size: 56)
                 } else {
                     Roam.fill.frame(width: 56, height: 56).overlay { Image(systemName: "house").foregroundStyle(Roam.inkMuted) }
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(city.name).font(.headline).foregroundStyle(Roam.ink)

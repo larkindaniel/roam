@@ -65,7 +65,7 @@ struct PlaceThumbnail: View {
                     Image(systemName: symbol).foregroundStyle(Roam.inkMuted)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .accessibilityHidden(true)
             .task(id: id) {
                 guard url == nil, path == nil else { return }
