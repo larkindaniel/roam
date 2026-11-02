@@ -98,6 +98,7 @@ struct MyPlacesRootView: View {
     @State private var model: MyPlacesModel?
     @State private var showsCoachmark = false
     @State private var detent = MyPlacesSheetDetent.half
+    @State private var recenterToken = 0
     @GestureState private var dragOffset: CGFloat = 0
 
     var body: some View {
@@ -117,6 +118,11 @@ struct MyPlacesRootView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { recenterToken += 1 } label: { Image(systemName: "scope") }
+                    .accessibilityLabel("Recenter globe")
+                    .accessibilityIdentifier("recenter-globe")
+            }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
@@ -160,6 +166,7 @@ struct MyPlacesRootView: View {
         if let model, model.hasLoaded {
             GlobeMapView(pins: model.pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
+                         focusToken: recenterToken,
                          onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
                          globeCenter: PlaceMapItem.startingRegion(model.pins.contains { $0.state == .visited } ? model.pins.filter { $0.state == .visited } : model.pins).center,
                          countryTints: PlaceMapItem.countryTints(model.pins),

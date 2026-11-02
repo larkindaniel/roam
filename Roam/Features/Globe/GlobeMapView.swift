@@ -205,9 +205,15 @@ struct GlobeMapView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.sync(map: map, with: self)
         context.coordinator.applyInitialCameraIfNeeded(map)
-        if context.coordinator.lastFocusToken != focusToken, let focusRegion {
+        if context.coordinator.lastFocusToken != focusToken {
             context.coordinator.lastFocusToken = focusToken
-            map.setRegion(focusRegion, animated: !UIAccessibility.isReduceMotionEnabled)
+            if style == .globe, focusRegion == nil {
+                // Back to the starting view of the whole Earth.
+                map.setCamera(MKMapCamera(lookingAtCenter: globeCenter ?? Self.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0),
+                              animated: !UIAccessibility.isReduceMotionEnabled)
+            } else if let focusRegion {
+                map.setRegion(focusRegion, animated: !UIAccessibility.isReduceMotionEnabled)
+            }
         }
     }
 
