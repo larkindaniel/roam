@@ -88,7 +88,7 @@ struct ExperienceDetailView: View {
         }
         .background(Theme.groupedCanvas)
         // The place's card takes the tab bar's spot and runs to the bottom of the screen.
-        .toolbar(.hidden, for: .tabBar)
+        .roamTabBar(hidden: true)
         .navigationTitle(model?.detail?.summary.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

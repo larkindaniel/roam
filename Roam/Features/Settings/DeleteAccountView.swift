@@ -142,7 +142,7 @@ struct DeleteAccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(isFinished)
         // After the request the account can't act anywhere; Done is the only way on.
-        .toolbar(isFinished ? .hidden : .automatic, for: .tabBar)
+        .roamTabBar(hidden: isFinished)
         .task {
             if model == nil {
                 model = DeleteAccountModel(auth: services.auth, account: services.account, providers: session.session?.providers ?? [])

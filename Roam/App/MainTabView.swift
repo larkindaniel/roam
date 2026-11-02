@@ -1,33 +1,46 @@
 import SwiftUI
 
-/// Three tabs, each with its own navigation stack. Each tab's main screen has a Log button at its top left. Tab views stay
-/// alive, so query, filter and scroll state persist for the session.
+/// Three tabs, each with its own navigation stack, under one floating glass tab bar. Tab views stay alive, so
+/// query, filter and scroll state persist for the session. The bar is Roam's own so it can sit with even margins
+/// and screens can step it aside (a place's card, Explore, My Places until its card is fully up).
 struct MainTabView: View {
     @Environment(AppRouter.self) private var router
+    @State private var tabBar = TabBarState()
 
     var body: some View {
         @Bindable var router = router
-        tabs(selection: $router.selectedTab)
-            .sheet(item: $router.sheet) { sheet in
-                SheetContent(route: sheet)
-                    .presentationBackground(Roam.paper)
+        ZStack(alignment: .bottom) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                let selected = router.selectedTab == tab
+                stack(tab)
+                    .environment(\.roamTab, tab)
+                    .opacity(selected ? 1 : 0)
+                    .allowsHitTesting(selected)
+                    .accessibilityHidden(!selected)
             }
+            if !tabBar.isHidden(on: router.selectedTab) {
+                // Measured from the very bottom of the screen, not the home indicator, so the gaps match.
+                VStack {
+                    Spacer()
+                    RoamTabBar(selection: $router.selectedTab)
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: tabBar.isHidden(on: router.selectedTab))
+        .environment(tabBar)
+        .sheet(item: $router.sheet) { sheet in
+            SheetContent(route: sheet)
+                .presentationBackground(Roam.paper)
+        }
     }
 
-    private func tabs(selection: Binding<AppTab>) -> some View {
-        TabView(selection: selection) {
-            Tab(AppTab.forYou.title, systemImage: AppTab.forYou.symbolName, value: AppTab.forYou) {
-                stack(.forYou) { ForYouRootView() }
-            }
-            .accessibilityIdentifier("tab-foryou")
-            Tab(AppTab.friends.title, systemImage: AppTab.friends.symbolName, value: AppTab.friends) {
-                stack(.friends) { FeedRootView() }
-            }
-            .accessibilityIdentifier("tab-friends")
-            Tab(AppTab.myPlaces.title, systemImage: AppTab.myPlaces.symbolName, value: AppTab.myPlaces) {
-                stack(.myPlaces) { MyPlacesRootView() }
-            }
-            .accessibilityIdentifier("tab-myplaces")
+    @ViewBuilder private func stack(_ tab: AppTab) -> some View {
+        switch tab {
+        case .forYou: stack(.forYou) { ForYouRootView() }
+        case .friends: stack(.friends) { FeedRootView() }
+        case .myPlaces: stack(.myPlaces) { MyPlacesRootView() }
         }
     }
 
@@ -42,6 +55,81 @@ struct MainTabView: View {
                         .background(Roam.paper)
                 }
         }
+        // Content scrolls clear of the floating bar.
+        .safeAreaPadding(.bottom, tabBar.isHidden(on: tab) ? 0 : RoamTabBar.reservedHeight)
+    }
+}
+
+/// Which screens on each tab have asked for the tab bar to step aside.
+@MainActor
+@Observable
+final class TabBarState {
+    private var hiders: [AppTab: Set<UUID>] = [:]
+
+    func isHidden(on tab: AppTab) -> Bool { !(hiders[tab]?.isEmpty ?? true) }
+
+    func set(_ hidden: Bool, by id: UUID, on tab: AppTab) {
+        if hidden { hiders[tab, default: []].insert(id) } else { hiders[tab]?.remove(id) }
+    }
+}
+
+extension EnvironmentValues {
+    /// The tab a view belongs to.
+    @Entry var roamTab: AppTab = .forYou
+}
+
+private struct TabBarHider: ViewModifier {
+    let hidden: Bool
+    @Environment(TabBarState.self) private var state
+    @Environment(\.roamTab) private var tab
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { state.set(hidden, by: id, on: tab) }
+            .onChange(of: hidden) { _, value in state.set(value, by: id, on: tab) }
+            .onDisappear { state.set(false, by: id, on: tab) }
+    }
+}
+
+extension View {
+    /// Hides Roam's floating tab bar while this screen is showing.
+    func roamTabBar(hidden: Bool) -> some View { modifier(TabBarHider(hidden: hidden)) }
+}
+
+/// The floating glass tab bar: the same gap from the sides of the screen as from its bottom.
+struct RoamTabBar: View {
+    @Binding var selection: AppTab
+    static let margin: CGFloat = 18
+    static let height: CGFloat = 54
+    /// Room content keeps clear of, above the home indicator's safe area.
+    static var reservedHeight: CGFloat { height + margin - 16 }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                let selected = tab == selection
+                Button { selection = tab } label: {
+                    VStack(spacing: 1) {
+                        Image(systemName: tab.symbolName).font(.system(size: 17, weight: .semibold)).frame(height: 21)
+                        Text(tab.title).font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Roam.ink)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background { if selected { Capsule().fill(Roam.ink.opacity(0.08)) } }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier("tab-\(tab.rawValue)")
+            }
+        }
+        .padding(4)
+        .frame(height: Self.height)
+        .floatingBubble(Capsule())
+        .padding(.horizontal, Self.margin)
+        .padding(.bottom, Self.margin)
     }
 }
 

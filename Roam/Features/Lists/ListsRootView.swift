@@ -201,17 +201,30 @@ struct MyPlacesRootView: View {
     }
 
     var body: some View {
-        GlobeSheetLayout(detent: $detent, peekHeight: 128, headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
-                         headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() },
-                         mapTrailingAccessory: AnyView(recenterButton), collapsesHeaderOnScroll: true) {
+        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
+                         headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
+                         headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
+                         collapsesHeaderOnScroll: true) {
             globe
         } header: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
-                    .accessibilityAddTraits(.isHeader)
-                if focusedCountry == nil { MyPlacesTabPicker(tab: $tab) }
+            if detent == .peek {
+                // Minimised, like a place's bubble: the name and one action.
+                HStack {
+                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    Button { router.sheet = .logPlace } label: { PillLabel(title: "Add a place", systemImage: "plus") }
+                        .buttonStyle(PillButtonStyle(isSelected: true, tint: PlaceState.visited.markerColor))
+                        .accessibilityIdentifier("myplaces-add-place")
+                }
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    if focusedCountry == nil { MyPlacesTabPicker(tab: $tab) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
             if let model, model.hasLoaded {
                 if let focusedCountry {
@@ -242,10 +255,26 @@ struct MyPlacesRootView: View {
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
         // The tab bar comes back only once the card is fully up; over the globe the card has the bottom to itself.
-        .toolbar(detent == .full ? .visible : .hidden, for: .tabBar)
+        .roamTabBar(hidden: detent != .full)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            LogPlaceToolbarButton()
+            // Fully up: log a place, with the tab bar below. Lower down, back to Discover takes its place.
+            ToolbarItem(placement: .topBarLeading) {
+                if detent == .full {
+                    Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Log a place")
+                        .accessibilityIdentifier("log-place")
+                } else {
+                    Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("Back to Discover")
+                        .accessibilityIdentifier("myplaces-back")
+                }
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showWorld() } label: { Image(systemName: "scope") }
+                    .accessibilityLabel("Recenter globe")
+                    .accessibilityIdentifier("recenter-globe")
+            }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) {
                 // The globe stays satellite; the street map opens on its own, on the country you're looking at.
@@ -282,16 +311,6 @@ struct MyPlacesRootView: View {
             if showsCoachmark { LogCoachmark { showsCoachmark = false } }
         }
         .screenIdentifier("myplaces-root")
-    }
-
-    private var recenterButton: some View {
-        Button { showWorld() } label: {
-            Image(systemName: "scope").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .floatingBubble(Circle())
-        .accessibilityLabel("Recenter globe")
-        .accessibilityIdentifier("recenter-globe")
     }
 
     /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
