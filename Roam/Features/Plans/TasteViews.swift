@@ -83,28 +83,34 @@ struct ResearchBriefSheet: View {
                             .scrollContentBackground(.hidden)
                             .frame(minHeight: 200)
                             .padding(Theme.Spacing.s)
+                            .padding(.trailing, 40)
                             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Roam.paperRaised))
                             .accessibilityIdentifier("research-brief-text")
+                            // Copy sits in the prompt's corner.
+                            .overlay(alignment: .topTrailing) {
+                                HStack(spacing: Theme.Spacing.xs) {
+                                    if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
+                                    Button { copy() } label: {
+                                        Image(systemName: "doc.on.doc").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
+                                            .frame(width: 40, height: 40)
+                                            .background(Circle().fill(Roam.fill))
+                                            .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                                            .contentShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Copy prompt")
+                                    .accessibilityIdentifier("research-brief-copy")
+                                }
+                                .padding(Theme.Spacing.xs)
+                                .animation(.easeOut(duration: 0.2), value: copied)
+                            }
                         Text("Edit it however you like.").font(.caption).foregroundStyle(Roam.inkMuted)
                     }
-                    // One row: open an assistant (the prompt is copied on the way), or just copy it.
+                    // Open an assistant; the prompt is copied on the way.
                     HStack(spacing: Theme.Spacing.s) {
                         assistantButton("ChatGPT", url: "https://chatgpt.com/")
                         assistantButton("Claude", url: "https://claude.ai/new")
-                        Spacer(minLength: 0)
-                        if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
-                        Button { copy() } label: {
-                            Image(systemName: "doc.on.doc").font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink)
-                                .frame(width: 34, height: 34)
-                                .background(Circle().fill(Roam.fill))
-                                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                                .contentShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Copy prompt")
-                        .accessibilityIdentifier("research-brief-copy")
                     }
-                    .animation(.easeOut(duration: 0.2), value: copied)
                 }
                 .padding(Theme.Spacing.l)
             }
