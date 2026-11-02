@@ -179,7 +179,8 @@ struct CityGuide: Hashable {
         let key = "\(name)|\(region ?? "")|\(country ?? "")"
         if let cached = cache[key] { return cached }
         let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        for title in [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }].compactMap({ $0 }) {
+        // "New York" is the state's article, so "New York City" is tried too.
+        for title in [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }, "\(name) City"].compactMap({ $0 }) {
             guard let summary = await fetch(title), summary.type == "standard", let at = summary.coordinates,
                   CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < 80_000 else { continue }
             // Wikimedia serves any width of a thumbnail by changing the size in its path.

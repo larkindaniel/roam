@@ -94,13 +94,88 @@ struct ForYouRootView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
     @State private var query = ""
-    @State private var isSearching = false
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var selected: Destination?
     @State private var barsHidden = false
+    @FocusState private var searchFocused: Bool
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    /// While you're searching, the search bar takes the whole row.
+    private var searchActive: Bool { searchFocused || hasQuery }
+
+    private var topBar: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            if !searchActive {
+                if selected != nil {
+                    roundButton("chevron.left", label: "All cities", identifier: "discover-all-cities") { selected = nil }
+                } else {
+                    roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
+                }
+            }
+            if selected == nil {
+                searchField
+            } else {
+                Spacer(minLength: 0)
+            }
+            if searchActive {
+                Button("Cancel") {
+                    query = ""
+                    searchFocused = false
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Roam.ink)
+                .accessibilityIdentifier("discover-search-cancel")
+            } else {
+                HStack(spacing: Theme.Spacing.xs) {
+                    ProfileAvatarButton()
+                    Button {
+                        // On a city's page the map opens on that city.
+                        if let selected { destinations.select(selected, for: .explore) }
+                        router.openExplore()
+                    } label: {
+                        Image(systemName: "map").font(.headline).foregroundStyle(Roam.ink).frame(width: 40, height: 40)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Explore the map")
+                    .accessibilityIdentifier("open-explore")
+                }
+                .padding(.horizontal, 6)
+                .frame(height: 48)
+                .floatingBubble(Capsule())
+            }
+        }
+        .animation(.spring(duration: 0.3), value: searchActive)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            TextField("Search", text: $query, prompt: Text(searchActive ? "A city, neighbourhood or place" : "Search"))
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .accessibilityIdentifier("discover-search")
+            if hasQuery {
+                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.m)
+        .frame(maxWidth: .infinity)
+        .frame(height: 48)
+        .floatingBubble(Capsule())
+    }
+
+    private func roundButton(_ symbol: String, label: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Circle())
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
 
     var body: some View {
         Group {
@@ -119,34 +194,17 @@ struct ForYouRootView: View {
             }
         }
         .background(Roam.paper)
-        // A city's page has no search: back returns to the list, where searching happens.
-        .discoverSearch(enabled: selected == nil, text: $query, isPresented: $isSearching)
-        // The title stays for the back button and VoiceOver; on screen the search bar leads.
-        .navigationTitle("Discover")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(barsHidden && !hasQuery ? .hidden : .visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            if selected != nil {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { selected = nil } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("All cities")
-                        .accessibilityIdentifier("discover-all-cities")
-                }
-            } else {
-                LogPlaceToolbarButton()
-            }
-            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    // On a city's page the map opens on that city.
-                    if let selected { destinations.select(selected, for: .explore) }
-                    router.openExplore()
-                } label: { Image(systemName: "map") }
-                    .accessibilityLabel("Explore the map")
-                    .accessibilityIdentifier("open-explore")
-            }
+        // One row of floating controls instead of a navigation bar: log or back, search, then profile and map.
+        // Scrolling down tucks the row away; scrolling up brings it back.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            topBar
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.bottom, Theme.Spacing.s)
+                .offset(y: barsHidden && !hasQuery && !searchFocused ? -140 : 0)
+                .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
         }
+        .navigationTitle("Discover")
+        .toolbar(.hidden, for: .navigationBar)
         .task(id: query) {
             guard hasQuery else { results = .idle; return }
             try? await Task.sleep(for: Limits.searchDebounce)
@@ -267,10 +325,16 @@ struct ForYouRootView: View {
     /// What's known about one city: its Wikipedia summary, then friends' finds and highly rated places.
     @ViewBuilder private func cityDetail(_ destination: Destination, _ sections: ForYouSections) -> some View {
         CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate, showsPhoto: false)
-        if !sections.friends.isEmpty { friendsSection(sections.friends) }
-        if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
-        if !sections.more.isEmpty { moreSection(sections.more) }
-        if sections.friends.count + sections.highlyRated.count + sections.more.count < 3 { researchLink(destination) }
+        // One list: friends' places first, then the best rated, then the rest. Each card says who's been.
+        let places = (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
+        if !places.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                sectionTitle("Places we think you'd enjoy")
+                ForEach(places) { place in placeCard(place, evidence: place.friendEvidence, photoHeight: 200) }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("discover-places")
+        }
     }
 
     @ViewBuilder private func citiesSection(_ cities: [DiscoverCity]) -> some View {
@@ -280,7 +344,6 @@ struct ForYouRootView: View {
                 .accessibilityIdentifier("discover-empty")
         } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                sectionTitle("Cities to explore")
                 ForEach(cities) { city in cityCard(city) }
             }
             .accessibilityElement(children: .contain)
@@ -291,8 +354,10 @@ struct ForYouRootView: View {
     private func cityCard(_ city: DiscoverCity) -> some View {
         Button { choose(city.destination) } label: {
             CityCoverCard(city: city) {
-                Text(city.destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
-                Text(cityLine(city)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(city.destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
+                    Text(cityLine(city)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
+                }
             }
             .contentShape(Rectangle())
         }
@@ -341,33 +406,8 @@ struct ForYouRootView: View {
         }
     }
 
-    private func friendsSection(_ places: [DiscoverPlace]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            sectionTitle("From your friends")
-                .accessibilityIdentifier("discover-friends")
-            ForEach(places) { place in
-                placeCard(place, evidence: place.friendEvidence, photoHeight: 200)
-            }
-        }
-    }
 
-    private func highlyRatedSection(_ places: [DiscoverPlace]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            sectionTitle(selected.map { "Highly rated in \($0.name)" } ?? "Highly rated")
-            ForEach(places) { place in
-                placeCard(place, evidence: nil, photoHeight: 200)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("discover-highly-rated")
-    }
 
-    private func moreSection(_ places: [DiscoverPlace]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            sectionTitle("More places")
-            ForEach(places) { place in placeCard(place, evidence: nil, photoHeight: 160) }
-        }
-    }
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
@@ -396,21 +436,11 @@ struct ForYouRootView: View {
         .accessibilityIdentifier("foryou-place-\(place.experience.name)")
     }
 
-    private func researchLink(_ destination: Destination) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            Text("Planning a trip to \(destination.name)? Get ideas from an AI assistant.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-            Button("Copy a brief for ChatGPT or Claude") { router.sheet = .researchBrief(destination) }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .accessibilityIdentifier("foryou-research-open")
-        }
-    }
-
     private func choose(_ destination: Destination) {
         selected = destination
         destinations.select(destination, for: .search)
         query = ""
-        isSearching = false
+        searchFocused = false
     }
 
     private func search(_ text: String) async {
@@ -475,18 +505,28 @@ private struct CityCoverCard<Content: View>: View {
 private struct CityHeader: View {
     let destination: Destination
 
+    @Environment(AppRouter.self) private var router
     @State private var guide: CityGuide?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            if let photo = guide?.photoURL {
-                PlacePhotoView(url: photo, credit: "Wikipedia", label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                if !destination.subtitle.isEmpty {
-                    Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+            HStack(alignment: .center, spacing: Theme.Spacing.m) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+                    if !destination.subtitle.isEmpty {
+                        Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    }
                 }
+                Spacer(minLength: 0)
+                Button { router.sheet = .researchBrief(destination) } label: {
+                    Label("Plan with AI", systemImage: "sparkles").font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                .accessibilityIdentifier("foryou-research-open")
+            }
+            // Credited once, under the blurb that follows.
+            if let photo = guide?.photoURL {
+                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220, showsCredit: false)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -498,12 +538,3 @@ private struct CityHeader: View {
     }
 }
 
-private extension View {
-    @ViewBuilder func discoverSearch(enabled: Bool, text: Binding<String>, isPresented: Binding<Bool>) -> some View {
-        if enabled {
-            searchable(text: text, isPresented: isPresented, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search cities or places")
-        } else {
-            self
-        }
-    }
-}
