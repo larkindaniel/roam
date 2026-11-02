@@ -316,8 +316,8 @@ struct TripsTimelineSection: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             if part == .ahead {
                 if !now.isEmpty { tripGroup("On the go", now) }
-                if !upcoming.isEmpty { tripGroup("Upcoming", upcoming) }
-                if !planning.isEmpty { tripGroup("Planning", planning) }
+                // Dated trips first, soonest first; trips without dates yet after them.
+                if !(upcoming + planning).isEmpty { tripGroup("Coming up", upcoming + planning) }
                 Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
                     .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
                     .accessibilityIdentifier("new-trip")

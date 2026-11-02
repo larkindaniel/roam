@@ -307,12 +307,12 @@ struct MyPlacesRootView: View {
                          countryTints: PlaceMapItem.countryTints(model.pins),
                          pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
                          onSelectCountry: { code in zoom(to: code) },
-                         onCameraChange: { center, distance in
+                         onCameraChange: { center, scale in
                              // Landing after flying to a tapped country keeps that country, even if the middle of the
                              // view (framed on your places there) falls just over a border.
                              if flyingToCountry { flyingToCountry = false; return }
                              // Close enough to see one country, the card follows whichever is under the middle of the view.
-                             let code = distance < 12_000_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)).flatMap { isYours($0) ? $0 : nil } : nil
+                             let code = scale < 22_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)).flatMap { isYours($0) ? $0 : nil } : nil
                              if code != focusedCountry { focusedCountry = code }
                          })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")

@@ -269,8 +269,7 @@ struct ForYouRootView: View {
 
     private func cityCard(_ city: DiscoverCity) -> some View {
         Button { choose(city.destination) } label: {
-            PhotoCard(path: city.coverPath, url: city.coverURL, credit: city.coverCredit,
-                      label: "Photo from \(city.destination.name)", height: 180) {
+            CityCoverCard(city: city) {
                 Text(city.destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
                 Text(cityLine(city)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
             }
@@ -443,5 +442,31 @@ struct ForYouRootView: View {
         if let place = pick.experience { router.push(.experience(place.id)) }
         else if let list = pick.list { router.push(.list(list.id)) }
         else if let trip = pick.trip { router.push(.trip(trip.id)) }
+    }
+}
+
+/// A city's card, led by its Wikipedia photo; a photo from a place there when Wikipedia has none.
+private struct CityCoverCard<Content: View>: View {
+    let city: DiscoverCity
+    @ViewBuilder var content: () -> Content
+
+    @State private var guide: CityGuide?
+    @State private var looked = false
+
+    var body: some View {
+        let destination = city.destination
+        Group {
+            if let photo = guide?.photoURL {
+                PhotoCard(url: photo, credit: "Wikipedia", label: "Photo of \(destination.name)", height: 180, content: content)
+            } else if looked {
+                PhotoCard(path: city.coverPath, url: city.coverURL, credit: city.coverCredit, label: "Photo from \(destination.name)", height: 180, content: content)
+            } else {
+                PhotoCard(label: "Photo of \(destination.name)", height: 180, content: content)
+            }
+        }
+        .task(id: destination.id) {
+            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+            looked = true
+        }
     }
 }
