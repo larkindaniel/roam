@@ -114,6 +114,8 @@ struct SecondaryButtonStyle: ButtonStyle {
 /// truncates or wraps its label mid-word.
 struct PillButtonStyle: ButtonStyle {
     var isSelected = false
+    /// A place-state colour (planned blue, been-there green) for actions that move a place into that state.
+    var tint: Color?
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -122,8 +124,8 @@ struct PillButtonStyle: ButtonStyle {
             .fixedSize()
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .foregroundStyle(isSelected ? Roam.onInk : Roam.ink)
-            .background(Capsule().fill(isSelected ? Roam.ink : Roam.fill))
+            .foregroundStyle(isSelected ? (tint == nil ? Roam.onInk : .white) : (tint ?? Roam.ink))
+            .background(Capsule().fill(isSelected ? (tint ?? Roam.ink) : (tint?.opacity(0.14) ?? Roam.fill)))
             .opacity(configuration.isPressed ? 0.75 : 1)
             .frame(minHeight: Theme.minimumHitTarget)
             .contentShape(Rectangle())

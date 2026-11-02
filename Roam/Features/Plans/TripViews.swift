@@ -228,11 +228,11 @@ struct TripDetailView: View {
             HStack(spacing: Theme.Spacing.s) {
                 if !wishlist.isEmpty {
                     Button { addingFromWishlist = true } label: { PillLabel(title: "Add from wishlist", systemImage: "bookmark") }
-                        .buttonStyle(PillButtonStyle())
+                        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
                         .accessibilityIdentifier("trip-add-from-wishlist")
                 }
                 Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
-                    .buttonStyle(PillButtonStyle())
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
                     .accessibilityIdentifier("trip-add-city")
             }
         }
@@ -287,9 +287,8 @@ struct TripEditorSheet: View {
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
-    @State private var hasDates = false
-    @State private var start = Date()
-    @State private var end = Date().addingTimeInterval(7 * 86_400)
+    @State private var start: Date?
+    @State private var end: Date?
     @State private var cities: [Destination] = []
     @State private var pickingCity = false
     @State private var error: String?
@@ -315,12 +314,8 @@ struct TripEditorSheet: View {
                         Button("Add a city") { pickingCity = true }.accessibilityIdentifier("trip-editor-add-city")
                     }
                 }
-                Section("Dates") {
-                    Toggle("I know the dates", isOn: $hasDates)
-                    if hasDates {
-                        DatePicker("Starts", selection: $start, displayedComponents: .date)
-                        DatePicker("Ends", selection: $end, in: start..., displayedComponents: .date)
-                    }
+                Section("Dates (optional)") {
+                    TripDatesRow(start: $start, end: $end)
                 }
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }
@@ -342,8 +337,8 @@ struct TripEditorSheet: View {
                 }
             }
             .onAppear {
-                if let date = draft.startDate?.date() { hasDates = true; start = date }
-                if let date = draft.endDate?.date() { hasDates = true; end = date }
+                start = draft.startDate?.date()
+                end = draft.endDate?.date()
             }
         }
         .roamSheetStyle()
@@ -352,8 +347,8 @@ struct TripEditorSheet: View {
 
     private func save() async {
         var value = draft
-        value.startDate = hasDates ? LocalDate(date: start, timeZone: .current) : nil
-        value.endDate = hasDates ? LocalDate(date: end, timeZone: .current) : nil
+        value.startDate = start.map { LocalDate(date: $0, timeZone: .current) }
+        value.endDate = end.map { LocalDate(date: $0, timeZone: .current) }
         value.status = TripSummary.status(start: value.startDate, end: value.endDate, today: MyTimeline.today())
         if let message = value.validationMessage { error = message; return }
         saving = true

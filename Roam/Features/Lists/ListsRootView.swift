@@ -162,7 +162,6 @@ struct MyPlacesRootView: View {
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
-    @Environment(DestinationStore.self) private var destinations
     @State private var model: MyPlacesModel?
     @State private var showsCoachmark = false
     @State private var detent = GlobeSheetDetent.half
@@ -267,52 +266,12 @@ struct MyPlacesRootView: View {
                          countryTints: PlaceMapItem.countryTints(model.pins),
                          pinTints: Dictionary(uniqueKeysWithValues: model.pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
                          onSelectCountry: { code in
-                             if let country = model.countries.first(where: { $0.code == code }) {
-                                 router.push(.myCountry(code: code, title: country.title))
-                             } else if let destination = CountryDestination.make(code: code) {
-                                 // A country you haven't been to opens Explore there.
-                                 destinations.select(destination, for: .explore)
-                                 router.push(.explore)
-                             }
+                             // Every country opens Explore there; where you have places, they come up on a card.
+                             router.push(.myCountry(code: code, title: model.countries.first { $0.code == code }?.title ?? CountryTitle.text(name: Locale.current.localizedString(forRegionCode: code), code: code)))
                          })
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {
             Color.black
         }
     }
-}
-
-/// Your places in one country: a map, then the places you've been, planned and saved.
-struct MyCountryView: View {
-    let code: String
-    let title: String
-
-    @Environment(AppServices.self) private var services
-    @Environment(SessionStore.self) private var session
-    @Environment(AppRouter.self) private var router
-    @State private var model: MyPlacesModel?
-
-    private var items: [PlaceMapItem] { model?.countries.first { $0.code == code }?.items ?? [] }
-
-    var body: some View {
-        PlacesMapScreen(title: title, items: items, onRefresh: { await model?.load() }) {
-            if let model, model.hasLoaded {
-                if items.isEmpty { Text("No places here yet.").font(.subheadline).foregroundStyle(Roam.inkMuted) }
-                PlaceBreakdown(items: items, scores: model.scores)
-            } else if let error = model?.error {
-                InlineRetryView(message: error) { Task { await model?.load() } }
-            } else {
-                SkeletonList(rows: 4)
-            }
-        }
-        .task {
-            if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
-            await model?.load()
-        }
-        .screenIdentifier("my-country")
-    }
-}
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

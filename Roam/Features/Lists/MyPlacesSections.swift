@@ -261,7 +261,7 @@ struct TripCard: View {
                         PlaceThumbnail(id: cover.id.uuidString, url: cover.photoURL, coordinate: cover.coordinate, symbol: "airplane", size: 56)
                     } else {
                         Roam.fill.frame(width: 56, height: 56)
-                            .overlay { Image(systemName: "airplane").foregroundStyle(Roam.inkMuted) }
+                            .overlay { Image(systemName: "airplane").foregroundStyle(PlaceState.planned.markerColor) }
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                 }
@@ -310,7 +310,7 @@ struct TripsTimelineSection: View {
             if !upcoming.isEmpty { tripGroup("Upcoming", upcoming) }
             if !planning.isEmpty { tripGroup("Planning", planning) }
             Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
-                .buttonStyle(PillButtonStyle())
+                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
                 .accessibilityIdentifier("new-trip")
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Text("Past").font(.roamTitle()).accessibilityAddTraits(.isHeader)
@@ -350,7 +350,7 @@ struct TripsTimelineSection: View {
                     Text(MyTimeline.range(entry.start, entry.end) ?? "Date unknown").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(entry.title).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
-                        if case .trip = entry.kind { Image(systemName: "airplane").font(.caption).foregroundStyle(Roam.inkMuted) }
+                        if case .trip = entry.kind { Image(systemName: "airplane").font(.caption).foregroundStyle(PlaceState.planned.markerColor) }
                     }
                     if !entry.placeLine.isEmpty { Text(entry.placeLine).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(2) }
                     HStack(spacing: Theme.Spacing.s) {
@@ -404,7 +404,7 @@ struct HomeCitiesSection: View {
                 .roamCard(padding: Theme.Spacing.m)
             }
             Button(action: onAddHome) { PillLabel(title: "Add a home city", systemImage: "house") }
-                .buttonStyle(PillButtonStyle())
+                .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
                 .accessibilityIdentifier("add-home-city")
         }
     }
@@ -612,7 +612,7 @@ struct WishlistCountryView: View {
                         Label("Plan a trip", systemImage: "airplane").font(.headline).frame(maxWidth: .infinity).frame(minHeight: 50)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(Roam.ink)
+                    .tint(PlaceState.planned.markerColor)
                     .accessibilityIdentifier("plan-trip")
                 }
                 if !trips.isEmpty {
@@ -659,9 +659,8 @@ struct PlanTripSheet: View {
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var hasDates = false
-    @State private var start = Date()
-    @State private var end = Date().addingTimeInterval(7 * 86_400)
+    @State private var start: Date?
+    @State private var end: Date?
     @State private var selected: Set<UUID> = []
     @State private var saving = false
     @State private var error: String?
@@ -672,11 +671,7 @@ struct PlanTripSheet: View {
                 if trip == nil {
                     Section {
                         TextField("Trip name", text: $name).accessibilityIdentifier("plan-trip-name")
-                        Toggle("I know the dates", isOn: $hasDates)
-                        if hasDates {
-                            DatePicker("Starts", selection: $start, displayedComponents: .date)
-                            DatePicker("Ends", selection: $end, in: start..., displayedComponents: .date)
-                        }
+                        TripDatesRow(start: $start, end: $end)
                     }
                 }
                 ForEach(PlaceGroups(candidates.map { PlaceMapItem(experience: $0, state: .wishlist) }).countries) { country in
@@ -731,8 +726,8 @@ struct PlanTripSheet: View {
                 target = trip
             } else {
                 let today = MyTimeline.today()
-                let startDate = hasDates ? LocalDate(date: start, timeZone: .current) : nil
-                let endDate = hasDates ? LocalDate(date: end, timeZone: .current) : nil
+                let startDate = start.map { LocalDate(date: $0, timeZone: .current) }
+                let endDate = end.map { LocalDate(date: $0, timeZone: .current) }
                 target = try await services.plans.saveTrip(TripDraft(name: name, startDate: startDate, endDate: endDate,
                                                                     status: TripSummary.status(start: startDate, end: endDate, today: today)))
             }
@@ -779,7 +774,7 @@ struct PassportSection: View {
             }
             if let onMarkCity {
                 Button(action: onMarkCity) { PillLabel(title: "Add a city you've been to", systemImage: "plus") }
-                    .buttonStyle(PillButtonStyle())
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
                     .accessibilityIdentifier("mark-city")
             }
         }
@@ -1040,3 +1035,44 @@ struct PlacesMapScreen<Content: View>: View {
     }
 }
 
+
+/// Optional start and end dates side by side. Each is blank until tapped, and can be cleared again.
+struct TripDatesRow: View {
+    @Binding var start: Date?
+    @Binding var end: Date?
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.m) {
+            slot("Start", date: $start, from: nil) { picked in
+                if let end, end < picked { self.end = picked }
+            }
+            slot("End", date: $end, from: start) { _ in }
+        }
+    }
+
+    private func slot(_ title: String, date: Binding<Date?>, from minimum: Date?, onPick: @escaping (Date) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+            if let value = date.wrappedValue {
+                HStack(spacing: 4) {
+                    DatePicker(title, selection: Binding(get: { value }, set: { date.wrappedValue = $0; onPick($0) }),
+                               in: (minimum ?? .distantPast)..., displayedComponents: .date)
+                        .labelsHidden()
+                    Button { date.wrappedValue = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear \(title.lowercased()) date")
+                }
+            } else {
+                Button {
+                    let picked = minimum ?? Calendar.current.startOfDay(for: Date())
+                    date.wrappedValue = picked
+                    onPick(picked)
+                } label: { Label("Add", systemImage: "calendar") }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Add \(title.lowercased()) date")
+                    .accessibilityIdentifier("trip-\(title.lowercased())-date")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}

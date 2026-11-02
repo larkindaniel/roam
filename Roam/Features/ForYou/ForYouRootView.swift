@@ -113,8 +113,11 @@ struct ForYouRootView: View {
         }
         .background(Roam.paper)
         .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search cities or places")
+        // The title stays for the back button and VoiceOver; on screen the search bar leads.
         .navigationTitle("Discover")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             LogPlaceToolbarButton()
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {

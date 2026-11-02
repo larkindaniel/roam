@@ -62,7 +62,7 @@ struct RouteDestinationView: View {
         case .countryUpdates(let ownerID, let countryCode, let title, let byline):
             CountryUpdatesView(ownerID: ownerID, countryCode: countryCode, title: title, byline: byline)
         case .myCountry(let code, let title):
-            MyCountryView(code: code, title: title)
+            ExploreRootView(countryCode: code, countryTitle: title)
         case .placeGroup(let title, let subtitle, let ids):
             PlaceGroupView(title: title, subtitle: subtitle, ids: ids)
         case .homeCity(let city):

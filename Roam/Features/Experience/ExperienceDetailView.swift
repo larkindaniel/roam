@@ -268,7 +268,7 @@ struct ExperienceDetailView: View {
                     Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: {
                         PillLabel(title: plannedTrips.isEmpty ? "Add to trip" : "On \(plannedTrips.joined(separator: ", "))", systemImage: "airplane")
                     }
-                    .buttonStyle(PillButtonStyle(isSelected: !plannedTrips.isEmpty))
+                    .buttonStyle(PillButtonStyle(isSelected: !plannedTrips.isEmpty, tint: PlaceState.planned.markerColor))
                     .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
                     .accessibilityIdentifier("detail-plan")
                 }

@@ -173,6 +173,16 @@ struct ExploreRootView: View {
     @State private var actionError: String?
     @State private var pendingSaves: Set<String> = []
     @State private var pendingLogs: Set<String> = []
+    /// Set when opened for a country: Explore starts on it, and your places there come up on a card.
+    var countryCode: String?
+    var countryTitle: String?
+    @State private var mine: MyPlacesModel?
+    @State private var detent = GlobeSheetDetent.peek
+
+    private var myItems: [PlaceMapItem] {
+        guard let countryCode else { return [] }
+        return mine?.countries.first { $0.code == countryCode }?.items ?? []
+    }
 
     var body: some View {
         // A ZStack always has a view to host `.task`; an empty Group would never run it.
@@ -185,14 +195,21 @@ struct ExploreRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.groupedCanvas)
-        .navigationTitle("Explore")
+        .navigationTitle(countryTitle ?? "Explore")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if model == nil {
                 model = ExploreModel(services: services)
             }
+            if model?.loadedRegion == nil, let countryCode, let destination = CountryDestination.make(code: countryCode) {
+                destinations.select(destination, for: .explore)
+            }
             if model?.loadedRegion == nil, let destination = destinations.explore {
                 await model?.focus(on: destination)
+            }
+            if countryCode != nil, let me = session.userID {
+                if mine == nil { mine = MyPlacesModel(services: services, ownerID: me) }
+                await mine?.load()
             }
         }
         .onChange(of: library.revision) { _, _ in
@@ -242,15 +259,36 @@ struct ExploreRootView: View {
                                    primaryTitle: "Choose a destination", primaryAction: { router.sheet = .destinationPicker(.explore) })
                 }
             } else {
-                ZStack(alignment: .bottom) {
-                    if model.showsMap { mapLayer(model) } else { listLayer(model) }
-                    HStack {
-                        Spacer()
-                        MapListToggle(showsMap: $model.showsMap)
+                if model.showsMap && !myItems.isEmpty {
+                    GlobeSheetLayout(detent: $detent, peekHeight: 92, headerLabel: "Your places", headerIdentifier: "explore-my-places-header",
+                                     onRefresh: { await mine?.load() }) {
+                        layers(model)
+                    } header: {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Your places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+                            Text("\(myItems.count)").font(.subheadline).foregroundStyle(Roam.inkMuted).monospacedDigit()
+                            Spacer()
+                            GlobeSheetChevron(detent: detent)
+                        }
+                    } content: {
+                        PlaceBreakdown(items: myItems, scores: mine?.scores ?? [:])
                     }
-                    .padding(Theme.Spacing.l)
+                } else {
+                    layers(model)
                 }
             }
+        }
+    }
+
+    private func layers(_ model: ExploreModel) -> some View {
+        @Bindable var model = model
+        return ZStack(alignment: .bottom) {
+            if model.showsMap { mapLayer(model) } else { listLayer(model) }
+            HStack {
+                Spacer()
+                MapListToggle(showsMap: $model.showsMap)
+            }
+            .padding(Theme.Spacing.l)
         }
     }
 

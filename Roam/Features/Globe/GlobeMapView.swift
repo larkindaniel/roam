@@ -198,7 +198,7 @@ struct GlobeMapView: UIViewRepresentable {
             // styling stays a flat projection (verified on the iOS 26.2 simulator in M1).
             map.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
         case .standard:
-            map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+            map.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
         }
         if style == .globe {
             let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleGlobeTap(_:)))

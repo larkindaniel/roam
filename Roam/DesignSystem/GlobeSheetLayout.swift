@@ -28,10 +28,17 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     @GestureState private var dragOffset: CGFloat = 0
+    @State private var headerHeight: CGFloat?
+
+    /// Minimised, the card is just its header sitting on the floating tab bar, which overlaps the bottom of the
+    /// layout by about this much on iOS 26 (measured on the iPhone 17 simulator).
+    private let tabBarOverlap: CGFloat = 52
+    private var peek: CGFloat { headerHeight.map { $0 + tabBarOverlap } ?? peekHeight }
 
     var body: some View {
         GeometryReader { proxy in
             let available = proxy.size.height
+            let peekHeight = peek
             let height = min(max(detent.height(in: available, peek: peekHeight) - dragOffset, peekHeight), available)
             ZStack(alignment: .bottom) {
                 globe()
@@ -73,15 +80,16 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.bottom, Theme.Spacing.s)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
         .onTapGesture { setDetent(detent == .half ? .full : .half) }
         .gesture(
             DragGesture(minimumDistance: 4)
                 .updating($dragOffset) { value, offset, _ in offset = value.translation.height }
                 .onEnded { value in
-                    let target = detent.height(in: available, peek: peekHeight) - value.predictedEndTranslation.height
+                    let target = detent.height(in: available, peek: peek) - value.predictedEndTranslation.height
                     setDetent(GlobeSheetDetent.allCases.min {
-                        abs($0.height(in: available, peek: peekHeight) - target) < abs($1.height(in: available, peek: peekHeight) - target)
+                        abs($0.height(in: available, peek: peek) - target) < abs($1.height(in: available, peek: peek) - target)
                     } ?? .half)
                 }
         )
