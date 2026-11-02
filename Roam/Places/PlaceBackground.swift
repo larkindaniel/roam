@@ -1,8 +1,8 @@
 import MapKit
 import SwiftUI
 
-/// Apple Maps' own listing for a Roam place, used for a Look Around picture and Apple's place card when
-/// nobody on Roam has a photo. MapKit shares no listing photos or descriptions, only these.
+/// Apple Maps' own listing for a Roam place, used to find its Look Around imagery. MapKit shares no listing
+/// photos or descriptions with apps.
 @MainActor
 enum AppleMapsLookup {
     private static var items: [UUID: MKMapItem] = [:]
@@ -37,46 +37,77 @@ enum AppleMapsLookup {
 
 }
 
-/// Apple's own place card for a listing: photos, hours, ratings and description.
-struct AppleMapsCard: UIViewControllerRepresentable, Identifiable {
-    let item: MKMapItem
-    let id = UUID()
+/// One picture of a place: Apple's Look Around, its linked photo, or a photo from someone's visit.
+enum PlaceGalleryItem: Identifiable {
+    case lookAround(MKLookAroundScene)
+    case photo(URL, credit: String?)
+    case visitPhoto(path: String)
 
-    func makeUIViewController(context: Context) -> UINavigationController {
-        let detail = MKMapItemDetailViewController(mapItem: item)
-        detail.delegate = context.coordinator
-        context.coordinator.dismiss = context.environment.dismiss
-        return UINavigationController(rootViewController: detail)
-    }
-
-    func updateUIViewController(_ controller: UINavigationController, context: Context) {
-        context.coordinator.dismiss = context.environment.dismiss
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    /// Apple's card has its own close button; it reports here rather than dismissing itself.
-    final class Coordinator: NSObject, MKMapItemDetailViewControllerDelegate {
-        var dismiss: DismissAction?
-
-        func mapItemDetailViewControllerDidFinish(_ detailViewController: MKMapItemDetailViewController) {
-            dismiss?()
+    var id: String {
+        switch self {
+        case .lookAround: return "look-around"
+        case .photo(let url, _): return url.absoluteString
+        case .visitPhoto(let path): return path
         }
     }
 }
 
-/// Apple's street-level view of a spot. Tap it to look around full screen.
-struct LookAroundCard: View {
-    let scene: MKLookAroundScene
-    let label: String
+/// A place's pictures, Look Around first. The arrow in the corner steps to the next one.
+struct PlaceGallery: View {
+    let items: [PlaceGalleryItem]
+    let placeName: String
+
+    @State private var index = 0
+
+    private var current: PlaceGalleryItem? { items.isEmpty ? nil : items[min(index, items.count - 1)] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            LookAroundPreview(initialScene: scene, allowsNavigation: true, badgePosition: .bottomTrailing)
-                .frame(height: 220)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-                .accessibilityLabel(label)
-            Text("Tap to look around in Apple Maps").font(.caption2).foregroundStyle(Roam.inkMuted)
+            ZStack(alignment: .topTrailing) {
+                Roam.fill
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .overlay {
+                        switch current {
+                        case .lookAround(let scene):
+                            LookAroundPreview(initialScene: scene, allowsNavigation: true, badgePosition: .bottomTrailing)
+                                .accessibilityLabel("Look Around at \(placeName)")
+                        case .photo(let url, _):
+                            PlacePhotoView(url: url, label: "Photo of \(placeName)", height: 220, showsCredit: false, cornerRadius: 0)
+                        case .visitPhoto(let path):
+                            RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
+                        case nil:
+                            EmptyView()
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                if items.count > 1 {
+                    Button { index = (min(index, items.count - 1) + 1) % items.count } label: {
+                        HStack(spacing: 4) {
+                            Text("\(min(index, items.count - 1) + 1)/\(items.count)").monospacedDigit()
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .frame(height: 32)
+                        .background(Capsule().fill(.black.opacity(0.55)))
+                        .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(Theme.Spacing.xs)
+                    .accessibilityLabel("Next picture, \(min(index, items.count - 1) + 1) of \(items.count)")
+                    .accessibilityIdentifier("place-gallery-next")
+                }
+            }
+            switch current {
+            case .lookAround:
+                Text("Tap to look around in Apple Maps").font(.caption2).foregroundStyle(Roam.inkMuted)
+            case .photo(_, let credit?):
+                Text("Photo: \(credit)").font(.caption2).foregroundStyle(Roam.inkMuted)
+            default:
+                EmptyView()
+            }
         }
     }
 }

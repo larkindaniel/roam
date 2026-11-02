@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Three tabs, each with its own navigation stack, plus the Log a place action. Tab views stay
+/// Three tabs, each with its own navigation stack. Each tab's main screen has a Log button at its top left. Tab views stay
 /// alive, so query, filter and scroll state persist for the session.
 struct MainTabView: View {
     @Environment(AppRouter.self) private var router
@@ -15,7 +15,7 @@ struct MainTabView: View {
     }
 
     private func tabs(selection: Binding<AppTab>) -> some View {
-        let view = TabView(selection: selection) {
+        TabView(selection: selection) {
             Tab(AppTab.forYou.title, systemImage: AppTab.forYou.symbolName, value: AppTab.forYou) {
                 stack(.forYou) { ForYouRootView() }
             }
@@ -28,18 +28,6 @@ struct MainTabView: View {
                 stack(.myPlaces) { MyPlacesRootView() }
             }
             .accessibilityIdentifier("tab-myplaces")
-        }
-        return Group {
-            if #available(iOS 26.0, *) {
-                if #available(iOS 26.1, *) {
-                    // Only the tabs' main screens carry it, so it never covers a form or detail page.
-                    view.tabViewBottomAccessory(isEnabled: router.path(for: router.selectedTab).isEmpty) { LogPlaceAccessory() }
-                } else {
-                    view.tabViewBottomAccessory { LogPlaceAccessory() }
-                }
-            } else {
-                view
-            }
         }
     }
 

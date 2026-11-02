@@ -91,34 +91,15 @@ struct ProfileAvatarButton: View {
     }
 }
 
-/// + Log a place: the raised capsule in the tab bar's bottom accessory.
-struct LogPlaceAccessory: View {
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        Button { router.sheet = .logPlace } label: {
-            Label("Log a place", systemImage: "plus")
-                .font(.headline)
-                .foregroundStyle(Roam.ink)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("log-place")
-    }
-}
-
-/// The toolbar fallback for + Log a place before iOS 26.
-struct LogPlaceToolbarFallback: ToolbarContent {
+/// Log a place, at the top left of each tab's main screen.
+struct LogPlaceToolbarButton: ToolbarContent {
     @Environment(AppRouter.self) private var router
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            if #unavailable(iOS 26.0) {
-                Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("Log a place")
-                    .accessibilityIdentifier("log-place")
-            }
+        ToolbarItem(placement: .topBarLeading) {
+            Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
+                .accessibilityLabel("Log a place")
+                .accessibilityIdentifier("log-place")
         }
     }
 }

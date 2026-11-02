@@ -41,6 +41,8 @@ final class ExperiencePinAnnotation: NSObject, MKAnnotation {
 final class PinDotOverlay: NSObject, MKOverlay {
     let pin: MapPin
     var tint: UIColor?
+    /// Drawn larger, for the one place a screen is about.
+    var isEmphasized = false
     let coordinate: CLLocationCoordinate2D
     let boundingMapRect: MKMapRect
 
@@ -64,7 +66,7 @@ final class PinDotRenderer: MKOverlayRenderer {
         guard let dot = overlay as? PinDotOverlay else { return }
         let center = point(for: MKMapPoint(dot.coordinate))
         let bounds = rect(for: dot.boundingMapRect)
-        let radius = min(Self.screenRadius / zoomScale, bounds.width / 2, bounds.height / 2)
+        let radius = min(Self.screenRadius * (dot.isEmphasized ? 1.8 : 1) / zoomScale, bounds.width / 2, bounds.height / 2)
         let outer = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
         context.setFillColor(UIColor.white.cgColor)
         context.fillEllipse(in: outer)
@@ -168,6 +170,7 @@ struct GlobeMapView: UIViewRepresentable {
     var countryTints: [String: UIColor] = [:]
     var pinTints: [String: UIColor] = [:]
     var onSelectCountry: ((String) -> Void)?
+    var emphasizedPinID: String?
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -290,6 +293,7 @@ struct GlobeMapView: UIViewRepresentable {
         private var currentShaded: Set<String> = []
         private var currentCountryTints: [String: UIColor] = [:]
         private var currentPinTints: [String: UIColor] = [:]
+        private var currentEmphasized: String?
         private var countryOverlays: [MKOverlay] = []
         private var pinOverlays: [MKOverlay] = []
 
@@ -303,11 +307,13 @@ struct GlobeMapView: UIViewRepresentable {
                 // projection, so markers land in the wrong place or vanish (iOS 26.2 simulator, M1/M7
                 // probes). Overlays are projected onto the globe correctly, so globe pins are dots.
                 // Selecting a pin happens on the flat map or in the list.
-                if view.pins != currentPins || view.pinTints != currentPinTints {
+                if view.pins != currentPins || view.pinTints != currentPinTints || view.emphasizedPinID != currentEmphasized {
+                    currentEmphasized = view.emphasizedPinID
                     map.removeOverlays(pinOverlays)
                     pinOverlays = view.pins.map { pin in
                         let dot = PinDotOverlay(pin: pin)
                         dot.tint = view.pinTints[pin.id]
+                        dot.isEmphasized = view.emphasizedPinID == pin.id
                         return dot
                     }
                     currentPinTints = view.pinTints

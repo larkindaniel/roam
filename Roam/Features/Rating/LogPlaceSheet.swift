@@ -68,7 +68,7 @@ struct LogPlaceSheet: View {
             }
             switch model?.phase ?? .idle {
             case .idle:
-                Text("Search for the place you visited.").foregroundStyle(Roam.inkMuted).listRowBackground(Roam.paperRaised)
+                EmptyView()
             case .loading:
                 HStack { ProgressView(); Text("Searching…").foregroundStyle(Roam.inkMuted) }.listRowBackground(Roam.paperRaised)
             case .failed(let message):

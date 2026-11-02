@@ -41,8 +41,6 @@ final class ExperienceDetailModel {
 /// S06 experience detail.
 struct ExperienceDetailView: View {
     @State private var isPlanned = false
-    @State private var appleItem: MKMapItem?
-    @State private var presentedAppleItem: AppleMapsCard?
     @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
 
@@ -104,9 +102,6 @@ struct ExperienceDetailView: View {
                 Task { await reload() }
             }
         }
-        .sheet(item: $presentedAppleItem) { card in
-            card.ignoresSafeArea().presentationDetents([.medium, .large])
-        }
         .sheet(isPresented: $showsPrivateNote) {
             PrivateNoteEditor(experienceID: experienceID) { Task { await model?.load() } }
         }
@@ -144,11 +139,8 @@ struct ExperienceDetailView: View {
         let summary = detail.summary
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                if summary.photoURL != nil {
-                    PlacePhotoView(url: summary.photoURL, credit: summary.photoCredit, label: "Photo of \(summary.name)", height: 220)
-                        .padding(.top, Theme.Spacing.s)
-                } else if let lookAround {
-                    LookAroundCard(scene: lookAround, label: "Look Around at \(summary.name)")
+                if !galleryItems(summary).isEmpty {
+                    PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                         .padding(.top, Theme.Spacing.s)
                 } else {
                     hero(detail)
@@ -177,13 +169,16 @@ struct ExperienceDetailView: View {
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
-                if summary.photoURL != nil || lookAround != nil { hero(detail) }
+                if !galleryItems(summary).isEmpty { hero(detail) }
                 memories(detail)
                 privateNote(detail)
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
-                about(detail)
+                if detail.providerStatus == .unavailable {
+                    Label("This listing is no longer available in Apple Maps. Your memories stay here.", systemImage: "exclamationmark.triangle")
+                        .font(.footnote).foregroundStyle(Theme.fine)
+                }
                 if let memoriesModel, !memoriesModel.hasLoaded || memoriesModel.memories.contains(where: { !$0.isOwn && !friendMemories.map(\.id).contains($0.id) }) {
                     PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
                                           onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
@@ -196,11 +191,19 @@ struct ExperienceDetailView: View {
         }
         .refreshable { await reload() }
         .task(id: summary.id) {
-            appleItem = await AppleMapsLookup.mapItem(for: summary)
-            if summary.photoURL == nil {
-                lookAround = await AppleMapsLookup.lookAroundScene(item: appleItem, coordinate: summary.coordinate)
-            }
+            let appleItem = await AppleMapsLookup.mapItem(for: summary)
+            lookAround = await AppleMapsLookup.lookAroundScene(item: appleItem, coordinate: summary.coordinate)
         }
+    }
+
+    /// Look Around first, then the place's photo, then photos from friends' visits.
+    private func galleryItems(_ summary: ExperienceSummary) -> [PlaceGalleryItem] {
+        var items: [PlaceGalleryItem] = []
+        if let lookAround { items.append(.lookAround(lookAround)) }
+        if let url = summary.photoURL { items.append(.photo(url, credit: summary.photoCredit)) }
+        let visitPhotos = friendMemories.flatMap { $0.media.sorted { $0.position < $1.position } }.prefix(8)
+        items += visitPhotos.map { .visitPhoto(path: $0.path) }
+        return items
     }
 
     private func reload() async {
@@ -401,53 +404,16 @@ struct ExperienceDetailView: View {
         .accessibilityIdentifier("detail-private-note")
     }
 
-    private func about(_ detail: ExperienceDetail) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("About").font(.roamTitle(.title3))
-            if detail.providerStatus == .unavailable {
-                Label("This listing is no longer available in Apple Maps. Your memories stay here.", systemImage: "exclamationmark.triangle")
-                    .font(.footnote).foregroundStyle(Theme.fine)
-            }
-            if let address = detail.address {
-                Label(address, systemImage: "mappin.and.ellipse").font(.subheadline).textSelection(.enabled)
-            } else {
-                Label("Address not available", systemImage: "mappin.slash").font(.subheadline).foregroundStyle(Theme.secondaryText)
-            }
-            // Pills never shrink, so a row that cannot fit (large text) stacks instead of widening the screen.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Spacing.s) { utilityPills(detail) }
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
-            }
-            if let appleItem {
-                Button { presentedAppleItem = AppleMapsCard(item: appleItem) } label: { PillLabel(title: "Apple Maps details", systemImage: "info.circle") }
-                    .buttonStyle(PillButtonStyle())
-                    .accessibilityHint("Shows Apple Maps' photos, hours and description")
-                    .accessibilityIdentifier("detail-apple-maps")
-            }
-            if detail.provider != .fixture {
-                Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Added by someone on Roam.")
-                    .font(.caption).foregroundStyle(Theme.secondaryText)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .roamCard()
-    }
-
-    @ViewBuilder private func utilityPills(_ detail: ExperienceDetail) -> some View {
-        if let website = detail.website {
-            Button { openURL(website) } label: { PillLabel(title: "Website", systemImage: "safari") }
-                .buttonStyle(PillButtonStyle())
-                .accessibilityIdentifier("detail-website")
-        }
-        if let phone = detail.phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
-            Button { openURL(url) } label: { PillLabel(title: "Call", systemImage: "phone") }
-                .buttonStyle(PillButtonStyle())
-                .accessibilityIdentifier("detail-call")
-        }
-    }
-
     private func overflowMenu(_ detail: ExperienceDetail) -> some View {
         Menu {
+            if let website = detail.website {
+                Button { openURL(website) } label: { Label("Website", systemImage: "safari") }
+                    .accessibilityIdentifier("detail-website")
+            }
+            if let phone = detail.phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
+                Button { openURL(url) } label: { Label("Call", systemImage: "phone") }
+                    .accessibilityIdentifier("detail-call")
+            }
             if detail.myRating != nil {
                 Button { Task { await openLog(.rerank) } } label: { Label("Rank again", systemImage: "arrow.triangle.2.circlepath") }
                     .disabled(deleting || failedDeletion != nil)

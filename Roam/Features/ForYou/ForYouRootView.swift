@@ -98,6 +98,12 @@ struct ForYouRootView: View {
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var selected: Destination?
+    /// The globe of suggested cities, or the same cities as a list.
+    @State private var showsList = false
+    @State private var cityIndex = 0
+    @State private var cityModel: ForYouModel?
+    @State private var detent = GlobeSheetDetent.peek
+    @State private var flyToken = 0
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -107,21 +113,33 @@ struct ForYouRootView: View {
                 List { searchResults }
                     .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
-            } else {
+            } else if showsList {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+            } else {
+                globeScreen
             }
         }
         .background(Roam.paper)
+        .navigationBarTitleDisplayMode(showsGlobe ? .inline : .large)
+        .toolbarBackground(showsGlobe ? .hidden : .automatic, for: .navigationBar)
+        .toolbarColorScheme(showsGlobe ? .dark : nil, for: .navigationBar)
         .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search cities or places")
         .navigationTitle("Discover")
         .toolbar {
+            LogPlaceToolbarButton()
+            if showsList && !hasQuery {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showsList = false } label: { Image(systemName: "globe.americas") }
+                        .accessibilityLabel("Show cities on the globe")
+                        .accessibilityIdentifier("discover-show-globe")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { router.openExplore() } label: { Image(systemName: "map") }
                     .accessibilityLabel("Explore the map")
                     .accessibilityIdentifier("open-explore")
             }
-            LogPlaceToolbarFallback()
         }
         .task(id: query) {
             guard hasQuery else { results = .idle; return }
@@ -129,6 +147,11 @@ struct ForYouRootView: View {
             guard !Task.isCancelled else { return }
             await search(query)
         }
+        .task(id: current?.id) {
+            if cityModel == nil { cityModel = ForYouModel(plans: services.plans) }
+            if let current { await cityModel?.load(current) }
+        }
+        .onChange(of: current?.id) { _, _ in flyToken += 1 }
         .task(id: selected?.id) {
             if model == nil { model = ForYouModel(plans: services.plans) }
             await model?.loadPicks()
@@ -234,16 +257,114 @@ struct ForYouRootView: View {
             case .loaded where selected == nil:
                 citiesSection(model?.cities ?? [])
             case .loaded(let sections):
-                if let selected, sections.friends.isEmpty {
-                    CityGuideCard(name: selected.name, region: selected.region, country: selected.countryName, coordinate: selected.coordinate)
-                }
-                if !sections.friends.isEmpty { friendsSection(sections.friends) }
-                if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
-                if !sections.more.isEmpty { moreSection(sections.more) }
-                if let selected, sections.friends.count + sections.highlyRated.count + sections.more.count < 3 { researchLink(selected) }
+                if let selected { cityDetail(selected, sections) }
             }
         }
         .padding(.top, Theme.Spacing.s)
+    }
+
+    /// What's known about one city: friends' finds and highly rated places, with Wikipedia when no friend has been.
+    @ViewBuilder private func cityDetail(_ destination: Destination, _ sections: ForYouSections) -> some View {
+        if sections.friends.isEmpty {
+            CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+        }
+        if !sections.friends.isEmpty { friendsSection(sections.friends) }
+        if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
+        if !sections.more.isEmpty { moreSection(sections.more) }
+        if sections.friends.count + sections.highlyRated.count + sections.more.count < 3 { researchLink(destination) }
+    }
+
+    private var showsGlobe: Bool { !showsList && !hasQuery }
+    private var suggestions: [DiscoverCity] { model?.cities ?? [] }
+
+    /// The city on the globe: the one you searched for, or else the suggestion you've stepped to.
+    private var current: Destination? {
+        selected ?? (suggestions.isEmpty ? nil : suggestions[cityIndex % suggestions.count].destination)
+    }
+
+    private var currentSuggestion: DiscoverCity? { suggestions.first { $0.id == current?.id } }
+
+    private func step(_ offset: Int) {
+        guard !suggestions.isEmpty else { return }
+        let from = selected.flatMap { chosen in suggestions.firstIndex { $0.id == chosen.id } } ?? (selected == nil ? cityIndex : -offset)
+        selected = nil
+        cityIndex = ((from + offset) % suggestions.count + suggestions.count) % suggestions.count
+    }
+
+    /// Suggested cities on the globe, the current one as a red pin. Drag up the card for what's known there.
+    private var globeScreen: some View {
+        GlobeSheetLayout(detent: $detent, peekHeight: 108, extendsUnderTopBar: false, headerLabel: current?.name ?? "Discover", headerIdentifier: "discover-sheet-header",
+                         onRefresh: { await cityModel?.load(current) }) {
+            globe
+        } header: {
+            cityCardHeader
+        } content: {
+            if let current {
+                if let city = currentSuggestion, city.coverPath != nil || city.coverURL != nil {
+                    PlacePhotoView(path: city.coverPath, url: city.coverURL, credit: city.coverCredit, label: "Photo from \(current.name)", height: 200)
+                }
+                switch cityModel?.phase ?? .loading {
+                case .idle, .loading:
+                    SkeletonList(rows: 3)
+                case .failed(let message):
+                    InlineRetryView(message: message) { Task { await cityModel?.load(current) } }
+                case .loaded(let sections):
+                    cityDetail(current, sections)
+                }
+            } else {
+                Text("Search for a city or a place to get started.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            }
+        }
+    }
+
+    @ViewBuilder private var globe: some View {
+        if model?.phase.value != nil || selected != nil {
+            // The current city goes last so its pin draws on top of nearby ones.
+            let all = suggestions.map(\.destination) + (selected.map { chosen in suggestions.contains { $0.id == chosen.id } ? [] : [chosen] } ?? [])
+            let cities = all.filter { $0.id != current?.id } + all.filter { $0.id == current?.id }
+            GlobeMapView(pins: cities.map { MapPin(id: $0.id, name: $0.name, category: nil, latitude: $0.latitude, longitude: $0.longitude) },
+                         shadedCountryCodes: [],
+                         focusToken: flyToken,
+                         onSelectPin: { pin in
+                             if let index = suggestions.firstIndex(where: { $0.id == pin.id }) { selected = nil; cityIndex = index }
+                         },
+                         globeCenter: current?.coordinate,
+                         pinTints: Dictionary(uniqueKeysWithValues: cities.map { ($0.id, $0.id == current?.id ? UIColor.systemRed : UIColor.white) }),
+                         emphasizedPinID: current?.id)
+                .mapAccessibility("Globe of cities to explore\(current.map { ", showing \($0.name)" } ?? "")", identifier: "discover-globe")
+        } else {
+            Color.black
+        }
+    }
+
+    private var cityCardHeader: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.s) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(current?.name ?? "Discover").font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1).accessibilityAddTraits(.isHeader)
+                if let current {
+                    Text(currentSuggestion.map(cityLine) ?? current.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            if suggestions.count > 1 {
+                roundButton("chevron.left", label: "Previous city", identifier: "discover-previous-city") { step(-1) }
+                roundButton("chevron.right", label: "Next city", identifier: "discover-next-city", prominent: true) { step(1) }
+            }
+            roundButton("xmark", label: "Show cities as a list", identifier: "discover-show-list") { showsList = true }
+        }
+    }
+
+    private func roundButton(_ symbol: String, label: String, identifier: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.footnote.weight(.bold))
+                .foregroundStyle(prominent ? Roam.paper : Roam.ink)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(prominent ? Roam.ink : Roam.fill))
+                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 
     @ViewBuilder private func citiesSection(_ cities: [DiscoverCity]) -> some View {
@@ -396,6 +517,8 @@ struct ForYouRootView: View {
 
     private func choose(_ destination: Destination) {
         selected = destination
+        showsList = false
+        detent = .half
         destinations.select(destination, for: .search)
         query = ""
         isSearching = false

@@ -14,6 +14,7 @@ struct FeedRootView: View {
             .background(Roam.paper)
             .navigationTitle("Friends")
             .toolbar {
+                LogPlaceToolbarButton()
                 ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -29,7 +30,6 @@ struct FeedRootView: View {
                     .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
                     .accessibilityIdentifier("open-notifications")
                 }
-                LogPlaceToolbarFallback()
             }
             .navigationBarTitleDisplayMode(.large)
             .task { await load() }
