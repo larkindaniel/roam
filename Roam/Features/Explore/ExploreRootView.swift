@@ -22,6 +22,8 @@ struct ExploreItem: Identifiable, Hashable {
 @Observable
 final class ExploreModel {
     var category: ExperienceCategory?
+    /// Text typed in the search bar; while set, the map searches for it instead of browsing.
+    private(set) var query = ""
     var showsMap = true
     var selectedID: String?
     private(set) var items: [ExploreItem] = []
@@ -113,7 +115,12 @@ final class ExploreModel {
         }
         phase = .loading
         do {
-            async let poiResult = places.pointsOfInterest(in: region, category: category)
+            let text = query
+            let around = Destination(name: "", region: nil, countryCode: nil, countryName: nil, latitude: region.center.latitude,
+                                     longitude: region.center.longitude, radiusMeters: region.span.latitudeDelta * 111_000 / 2)
+            async let poiResult = text.isEmpty
+                ? places.pointsOfInterest(in: region, category: category)
+                : places.searchPlaces(query: text, around: around)
             async let roamResult = experiences.experiences(in: GeoBounds(region: region), category: category)
             let pois = try await poiResult
             let roam = try await roamResult
@@ -147,6 +154,13 @@ final class ExploreModel {
         await load(region: region)
     }
 
+    /// Searches the area on the map for the text, or goes back to browsing when it's empty.
+    func search(_ text: String) async {
+        query = text.trimmingCharacters(in: .whitespaces)
+        guard let region = visibleRegion ?? loadedRegion else { return }
+        await load(region: region)
+    }
+
     func searchThisArea() async {
         guard let visibleRegion else { return }
         await load(region: visibleRegion)
@@ -177,7 +191,9 @@ struct ExploreRootView: View {
     var countryCode: String?
     var countryTitle: String?
     @State private var mine: MyPlacesModel?
-    @State private var detent = GlobeSheetDetent.peek
+    @State private var expanded = false
+    @State private var query = ""
+    @FocusState private var searching: Bool
 
     private var myItems: [PlaceMapItem] {
         guard let countryCode else { return [] }
@@ -197,6 +213,21 @@ struct ExploreRootView: View {
         .background(Theme.groupedCanvas)
         .navigationTitle(countryTitle ?? "Explore")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            // The map speaks for itself; the title stays only for the back button and VoiceOver.
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+            if let model {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { Task { await useCurrentLocation(model) } } label: {
+                        Image(systemName: services.location.isAuthorized ? "location.fill" : "location")
+                    }
+                    .accessibilityLabel(services.location.isAuthorized ? "Recenter on my location" : "Use current location")
+                    .accessibilityIdentifier("explore-current-location")
+                }
+            }
+        }
         .task {
             if model == nil {
                 model = ExploreModel(services: services)
@@ -222,74 +253,146 @@ struct ExploreRootView: View {
         .screenIdentifier("explore-root")
     }
 
+    /// Like Apple Maps: the map fills the screen with a floating search bubble where the tab bar was. Swipe the
+    /// bubble up for your places here and everything the map has found.
     @ViewBuilder private func content(_ model: ExploreModel) -> some View {
-        @Bindable var model = model
-        VStack(spacing: Theme.Spacing.s) {
-            HStack(spacing: Theme.Spacing.s) {
-                DestinationChip(destination: destinations.explore) { router.sheet = .destinationPicker(.explore) }
-                    .accessibilityIdentifier("explore-destination-button")
-                Button { Task { await useCurrentLocation(model) } } label: {
-                    Image(systemName: services.location.isAuthorized ? "location.fill" : "location")
-                        .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.accentFill))
-                }
-                .accessibilityLabel(services.location.isAuthorized ? "Recenter on my location" : "Use current location")
-                .accessibilityIdentifier("explore-current-location")
+        if destinations.explore == nil && model.loadedRegion == nil {
+            ScrollView {
+                EmptyStateView(systemImage: "map", title: "Explore anywhere",
+                               message: "Pick a destination to browse places on the map. Location access is optional.",
+                               primaryTitle: "Choose a destination", primaryAction: { router.sheet = .destinationPicker(.explore) })
             }
-            .padding(.horizontal, Theme.Spacing.l)
-            categoryChips(model)
-            if case .failed(let message) = model.phase {
-                InlineRetryView(message: message) { Task { await model.retry() } }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .accessibilityIdentifier("explore-load-error")
-                if !model.items.isEmpty {
-                    Text("Showing places from the last successful area search.")
-                        .font(.footnote).foregroundStyle(Theme.secondaryText)
-                }
-            }
-            if let message = model.locationMessage ?? actionError {
-                InlineRetryView(message: message, retryTitle: "Dismiss") { model.locationMessage = nil; actionError = nil }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .accessibilityIdentifier("explore-location-message")
-            }
-            if destinations.explore == nil && model.loadedRegion == nil {
-                ScrollView {
-                    EmptyStateView(systemImage: "map", title: "Explore anywhere",
-                                   message: "Pick a destination to browse places on the map. Location access is optional.",
-                                   primaryTitle: "Choose a destination", primaryAction: { router.sheet = .destinationPicker(.explore) })
-                }
-            } else {
-                if model.showsMap && !myItems.isEmpty {
-                    GlobeSheetLayout(detent: $detent, peekHeight: 92, headerLabel: "Your places", headerIdentifier: "explore-my-places-header",
-                                     onRefresh: { await mine?.load() }) {
-                        layers(model)
-                    } header: {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("Your places").font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-                            Text("\(myItems.count)").font(.subheadline).foregroundStyle(Roam.inkMuted).monospacedDigit()
-                            Spacer()
-                            GlobeSheetChevron(detent: detent)
-                        }
-                    } content: {
-                        PlaceBreakdown(items: myItems, scores: mine?.scores ?? [:])
+        } else {
+            mapLayer(model)
+                .ignoresSafeArea(edges: [.top, .bottom])
+                .safeAreaInset(edge: .bottom) {
+                    if !expanded {
+                        searchBar(model)
+                            .padding(.horizontal, Theme.Spacing.l)
+                            .padding(.bottom, Theme.Spacing.xs)
+                            .gesture(DragGesture(minimumDistance: 12).onEnded { if $0.translation.height < -20 { setExpanded(true) } })
                     }
-                } else {
-                    layers(model)
                 }
-            }
+                .overlay(alignment: .bottom) {
+                    if expanded { expandedCard(model).transition(.move(edge: .bottom)) }
+                }
         }
     }
 
-    private func layers(_ model: ExploreModel) -> some View {
-        @Bindable var model = model
-        return ZStack(alignment: .bottom) {
-            if model.showsMap { mapLayer(model) } else { listLayer(model) }
-            HStack {
-                Spacer()
-                MapListToggle(showsMap: $model.showsMap)
+    private func setExpanded(_ value: Bool) {
+        if !value { searching = false }
+        if UIAccessibility.isReduceMotionEnabled { expanded = value } else { withAnimation(.spring(duration: 0.35)) { expanded = value } }
+    }
+
+    private func expandedCard(_ model: ExploreModel) -> some View {
+        VStack(spacing: Theme.Spacing.s) {
+            Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
+                .frame(maxWidth: .infinity, minHeight: 20)
+                .contentShape(Rectangle())
+                .onTapGesture { setExpanded(false) }
+                .accessibilityLabel("Show the map")
+                .accessibilityAddTraits(.isButton)
+            searchBar(model).padding(.horizontal, Theme.Spacing.l)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) { sheetContent(model) }
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.top, Theme.Spacing.s)
+                    .padding(.bottom, Theme.Spacing.xxl)
             }
-            .padding(Theme.Spacing.l)
         }
+        .containerRelativeFrame(.vertical) { height, _ in height * 0.62 }
+        .frame(maxWidth: .infinity)
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
+                .fill(Roam.paper)
+                .shadow(color: .black.opacity(0.2), radius: 12, y: -2)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .gesture(DragGesture(minimumDistance: 12).onEnded { if $0.translation.height > 60 { setExpanded(false) } })
+    }
+
+    private func searchBar(_ model: ExploreModel) -> some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            TextField(countryTitle.map { "Search \($0)" } ?? "Search this area", text: $query)
+                .focused($searching)
+                .submitLabel(.search)
+                .onSubmit { Task { await model.search(query) } }
+                .accessibilityIdentifier("explore-search")
+            if !query.isEmpty {
+                Button { query = ""; Task { await model.search("") } } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+            }
+            if !expanded && !myItems.isEmpty {
+                Button { setExpanded(true) } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: PlaceState.visited.markerSymbol)
+                        Text("\(myItems.count)").monospacedDigit()
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 30)
+                    .background(Capsule().fill(PlaceState.visited.markerColor))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Your \(myItems.count) places here")
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.m)
+        .frame(minHeight: 52)
+        .background {
+            if expanded {
+                Capsule().fill(Roam.fill)
+            } else {
+                Capsule().fill(.regularMaterial).shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+            }
+        }
+        .onChange(of: searching) { _, focused in if focused && !expanded { setExpanded(true) } }
+    }
+
+    @ViewBuilder private func sheetContent(_ model: ExploreModel) -> some View {
+        categoryChips(model).padding(.horizontal, -Theme.Spacing.l)
+        if case .failed(let message) = model.phase {
+            InlineRetryView(message: message) { Task { await model.retry() } }
+                .accessibilityIdentifier("explore-load-error")
+        }
+        if let message = model.locationMessage ?? actionError {
+            InlineRetryView(message: message, retryTitle: "Dismiss") { model.locationMessage = nil; actionError = nil }
+                .accessibilityIdentifier("explore-location-message")
+        }
+        if !myItems.isEmpty && model.query.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Your places").font(.roamTitle()).accessibilityAddTraits(.isHeader)
+                    Text("\(myItems.count)").font(.subheadline).foregroundStyle(Roam.inkMuted).monospacedDigit()
+                }
+                PlaceBreakdown(items: myItems, scores: mine?.scores ?? [:])
+            }
+        }
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            HStack {
+                Text(model.query.isEmpty ? "On the map" : "Results").font(.roamTitle()).accessibilityAddTraits(.isHeader)
+                Spacer()
+                if model.phase.isLoading { ProgressView() }
+            }
+            if model.items.isEmpty && !model.phase.isLoading {
+                Text(model.query.isEmpty ? "Move the map to find places." : "Nothing called “\(model.query)” here. Try moving the map.")
+                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+            }
+            LazyVStack(spacing: Theme.Spacing.s) {
+                ForEach(model.items) { item in
+                    placeCard(item, model: model)
+                        .contextMenu {
+                            Button { showOnMap(item, model); setExpanded(false) } label: { Label("Show on map", systemImage: "map") }
+                        }
+                        .accessibilityIdentifier("explore-list-row-\(item.name)")
+                }
+            }
+        }
+        DestinationChip(destination: destinations.explore) { router.sheet = .destinationPicker(.explore) }
+            .accessibilityIdentifier("explore-destination-button")
     }
 
     private func categoryChips(_ model: ExploreModel) -> some View {
@@ -330,39 +433,7 @@ struct ExploreRootView: View {
             if let selected = model.items.first(where: { $0.id == model.selectedID }) {
                 itemCard(selected, model: model)
                     .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.bottom, 72)
-            }
-        }
-    }
-
-    @ViewBuilder private func listLayer(_ model: ExploreModel) -> some View {
-        switch model.phase {
-        case .loading where model.items.isEmpty:
-            ScrollView { SkeletonList(rows: 6).padding(.horizontal) }
-        case .failed where model.items.isEmpty:
-            ScrollView { ContentUnavailableView("Places unavailable", systemImage: "wifi.exclamationmark", description: Text("Retry the last area or choose another destination.")) }
-        default:
-            if model.items.isEmpty {
-                ScrollView {
-                    EmptyStateView(systemImage: "mappin.slash", title: "Nothing here yet",
-                                   message: "No \(model.category?.title.lowercased() ?? "places") found in this area. Try another category or move the map.")
-                }
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: Theme.Spacing.s) {
-                        ForEach(model.items) { item in
-                            placeCard(item, model: model)
-                                .contextMenu {
-                                    Button { showOnMap(item, model) } label: { Label("Show on map", systemImage: "map") }
-                                }
-                                .accessibilityIdentifier("explore-list-row-\(item.name)")
-                        }
-                    }
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.top, Theme.Spacing.s)
-                    .padding(.bottom, 96)
-                }
-                .accessibilityIdentifier("explore-list")
+                    .padding(.bottom, Theme.Spacing.s)
             }
         }
     }

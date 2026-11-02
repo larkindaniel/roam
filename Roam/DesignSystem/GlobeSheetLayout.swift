@@ -20,6 +20,9 @@ enum GlobeSheetDetent: CaseIterable {
 struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @Binding var detent: GlobeSheetDetent
     var peekHeight: CGFloat = 112
+    /// How much the floating tab bar covers the bottom of the layout (about 52 points on iOS 26, measured on
+    /// the iPhone 17 simulator); 0 where the tab bar is hidden.
+    var bottomOverlap: CGFloat = 52
     var headerLabel: String
     var headerIdentifier: String
     var onRefresh: () async -> Void = {}
@@ -30,10 +33,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @GestureState private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
 
-    /// Minimised, the card is just its header sitting on the floating tab bar, which overlaps the bottom of the
-    /// layout by about this much on iOS 26 (measured on the iPhone 17 simulator).
-    private let tabBarOverlap: CGFloat = 52
-    private var peek: CGFloat { headerHeight.map { $0 + tabBarOverlap } ?? peekHeight }
+    /// Minimised, the card is just its header, sitting on the tab bar.
+    private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
 
     var body: some View {
         GeometryReader { proxy in
