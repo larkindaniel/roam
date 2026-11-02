@@ -5,7 +5,7 @@ import UIKit
 /// Settings). Photos and place-state colours are the only colour.
 enum Roam {
     static let paper = dynamic(light: 0xF2F2F7, dark: 0x000000)
-    static let paperRaised = dynamic(light: 0xFFFFFF, dark: 0x1C1C1E)
+    static let paperRaised = dynamic(light: 0xFCFCFD, dark: 0x1C1C1E)
     static let ink = dynamic(light: 0x111111, dark: 0xF2F2F7)
     static let inkMuted = dynamic(light: 0x6C6C70, dark: 0x98989F)
     static let inkFaint = dynamic(light: 0x8E8E93, dark: 0x636366)
@@ -151,7 +151,8 @@ extension View {
     func roamCard(padding: CGFloat = Theme.Spacing.l) -> some View {
         self.padding(padding)
             .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline))
+            // Set apart from the grey background the way Apple does: no border, just a soft shadow all round.
+            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
     }
 }
 

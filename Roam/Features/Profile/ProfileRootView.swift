@@ -340,7 +340,7 @@ struct ProfileView: View {
             }
             .background(Theme.raisedCard)
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline.opacity(0.5)))
+            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
         }
         .buttonStyle(.plain)
         .padding(.horizontal)

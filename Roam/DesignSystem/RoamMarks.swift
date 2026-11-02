@@ -176,7 +176,7 @@ struct PhotoCard<Content: View>: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Roam.paperRaised)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Roam.rule))
+        .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
     }
 }
 

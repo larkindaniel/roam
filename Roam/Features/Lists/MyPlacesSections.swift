@@ -808,7 +808,7 @@ struct PassportSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.m)
         .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Theme.hairline))
+        .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
         .accessibilityElement(children: .combine)
     }
 }
