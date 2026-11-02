@@ -1,16 +1,17 @@
 import SwiftUI
 import UIKit
 
-/// Roam design tokens: ink on eggshell paper with no highlight colour. Photos are the only colour.
+/// Roam design tokens: ink on Apple's neutral greys (the grouped background with white cards, as in Maps and
+/// Settings). Photos and place-state colours are the only colour.
 enum Roam {
-    static let paper = dynamic(light: 0xF4F2EC, dark: 0x121211)
-    static let paperRaised = dynamic(light: 0xFBFAF7, dark: 0x1C1C1A)
-    static let ink = dynamic(light: 0x121211, dark: 0xEEECE5)
-    static let inkMuted = dynamic(light: 0x5C5A54, dark: 0xA4A29B)
-    static let inkFaint = dynamic(light: 0x8E8B83, dark: 0x6F6D67)
-    static let rule = dynamic(light: 0xDCD9D0, dark: 0x2E2D2A)
-    static let fill = dynamic(light: 0xE9E6DD, dark: 0x2A2926)
-    static let onInk = dynamic(light: 0xF4F2EC, dark: 0x121211)
+    static let paper = dynamic(light: 0xF2F2F7, dark: 0x000000)
+    static let paperRaised = dynamic(light: 0xFFFFFF, dark: 0x1C1C1E)
+    static let ink = dynamic(light: 0x111111, dark: 0xF2F2F7)
+    static let inkMuted = dynamic(light: 0x6C6C70, dark: 0x98989F)
+    static let inkFaint = dynamic(light: 0x8E8E93, dark: 0x636366)
+    static let rule = dynamic(light: 0xD1D1D6, dark: 0x38383A)
+    static let fill = dynamic(light: 0xE5E5EA, dark: 0x2C2C2E)
+    static let onInk = dynamic(light: 0xF2F2F7, dark: 0x000000)
     static let signal = dynamic(light: 0xB3261E, dark: 0xFF8A80)
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {

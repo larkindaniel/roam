@@ -157,7 +157,7 @@ struct ExperienceDetailView: View {
             placeMap(detail)
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
-            HStack(alignment: sheetDetent == .peek ? .center : .top, spacing: Theme.Spacing.s) {
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 // Opened up, the category and area sit right under the name.
                 VStack(alignment: .leading, spacing: 0) {
                     Text(summary.name)

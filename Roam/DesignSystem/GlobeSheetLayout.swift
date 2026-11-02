@@ -72,7 +72,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     /// The rounding of current iPhone screens (about 62 points on the iPhone 17 and 16 Pro).
     private let displayCornerRadius: CGFloat = 62
-    private static var topClearance: CGFloat { 26 }
+    private static var topClearance: CGFloat { 12 }
+    private static var contentInset: CGFloat { 20 }
 
     private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
 
@@ -96,8 +97,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private var glassOpacity: Double {
         switch detent {
-        case .peek: return 0.5
-        case .half: return 0.78
+        case .peek: return 0.35
+        case .half: return 0.55
         case .full: return 1
         }
     }
@@ -115,7 +116,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             handle(available: available)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) { content() }
-                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.horizontal, Self.contentInset)
                     .padding(.top, Theme.Spacing.s)
                     // Clear of the tab bar floating over the bottom of the card.
                     .padding(.bottom, Theme.Spacing.xxl + bottomOverlap)
@@ -147,7 +148,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .background {
             ZStack {
                 shape.fill(.ultraThinMaterial)
-                shape.fill(Roam.paperRaised.opacity(glassOpacity))
+                // Apple's light grey sheet, so the white cards inside it stand out.
+                shape.fill(Roam.paper.opacity(glassOpacity))
             }
             .shadow(color: .black.opacity(0.22), radius: 16)
         }
@@ -177,8 +179,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             header()
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.vertical, isFloating ? Theme.Spacing.xs : 0)
+        // The same gap to the left of the title as there is above it.
+        .padding(.horizontal, Self.contentInset)
+        .padding(.vertical, isFloating ? Theme.Spacing.s + 2 : 0)
         .padding(.bottom, isFloating ? 0 : Theme.Spacing.s)
         // The minimised height is measured while the header sits here.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
