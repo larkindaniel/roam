@@ -98,6 +98,7 @@ struct ForYouRootView: View {
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var selected: Destination?
+    @State private var barsHidden = false
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -109,19 +110,39 @@ struct ForYouRootView: View {
                     .scrollContentBackground(.hidden)
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+                    // Reading down hides the top buttons and search; any move back up brings them back.
+                    .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
+                        let hide = new > 40 && new > old
+                        if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
+                        else if hide && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
+                    }
             }
         }
         .background(Roam.paper)
-        .searchable(text: $query, isPresented: $isSearching, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search cities or places")
+        // A city's page has no search: back returns to the list, where searching happens.
+        .discoverSearch(enabled: selected == nil, text: $query, isPresented: $isSearching)
         // The title stays for the back button and VoiceOver; on screen the search bar leads.
         .navigationTitle("Discover")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(barsHidden && !hasQuery ? .hidden : .visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            LogPlaceToolbarButton()
+            if selected != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { selected = nil } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("All cities")
+                        .accessibilityIdentifier("discover-all-cities")
+                }
+            } else {
+                LogPlaceToolbarButton()
+            }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
-                Button { router.openExplore() } label: { Image(systemName: "map") }
+                Button {
+                    // On a city's page the map opens on that city.
+                    if let selected { destinations.select(selected, for: .explore) }
+                    router.openExplore()
+                } label: { Image(systemName: "map") }
                     .accessibilityLabel("Explore the map")
                     .accessibilityIdentifier("open-explore")
             }
@@ -245,7 +266,7 @@ struct ForYouRootView: View {
 
     /// What's known about one city: its Wikipedia summary, then friends' finds and highly rated places.
     @ViewBuilder private func cityDetail(_ destination: Destination, _ sections: ForYouSections) -> some View {
-        CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+        CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate, showsPhoto: false)
         if !sections.friends.isEmpty { friendsSection(sections.friends) }
         if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
         if !sections.more.isEmpty { moreSection(sections.more) }
@@ -288,23 +309,9 @@ struct ForYouRootView: View {
         return parts.joined(separator: " · ")
     }
 
-    /// The chosen city heads the page, with a way back to all cities. Searching for another place or city replaces it.
+    /// The chosen city heads the page: its Wikipedia photo, then its name and where it is.
     private func cityHeader(_ destination: Destination) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Button { selected = nil } label: {
-                Label("All cities", systemImage: "chevron.left").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
-                    .frame(minHeight: Theme.minimumHitTarget)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("discover-all-cities")
-            Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            if !destination.subtitle.isEmpty {
-                Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("discover-city-header")
+        CityHeader(destination: destination)
     }
 
     private func picksSection(_ picks: [DirectShare]) -> some View {
@@ -337,16 +344,10 @@ struct ForYouRootView: View {
     private func friendsSection(_ places: [DiscoverPlace]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             sectionTitle("From your friends")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                    ForEach(places) { place in
-                        placeCard(place, evidence: place.friendEvidence, photoHeight: 150).frame(width: 250)
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("discover-friends")
+            ForEach(places) { place in
+                placeCard(place, evidence: place.friendEvidence, photoHeight: 200)
             }
-            .scrollClipDisabled()
-            .accessibilityIdentifier("discover-friends")
         }
     }
 
@@ -467,6 +468,42 @@ private struct CityCoverCard<Content: View>: View {
         .task(id: destination.id) {
             guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
             looked = true
+        }
+    }
+}
+
+private struct CityHeader: View {
+    let destination: Destination
+
+    @State private var guide: CityGuide?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            if let photo = guide?.photoURL {
+                PlacePhotoView(url: photo, credit: "Wikipedia", label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+                if !destination.subtitle.isEmpty {
+                    Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("discover-city-header")
+        .task(id: destination.id) {
+            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder func discoverSearch(enabled: Bool, text: Binding<String>, isPresented: Binding<Bool>) -> some View {
+        if enabled {
+            searchable(text: text, isPresented: isPresented, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search cities or places")
+        } else {
+            self
         }
     }
 }

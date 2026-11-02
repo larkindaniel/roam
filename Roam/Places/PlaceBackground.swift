@@ -208,6 +208,7 @@ struct CityGuideCard: View {
     var region: String?
     var country: String?
     let coordinate: CLLocationCoordinate2D
+    var showsPhoto = true
 
     @State private var guide: CityGuide?
     @Environment(\.openURL) private var openURL
@@ -215,9 +216,23 @@ struct CityGuideCard: View {
     var body: some View {
         // A stack, not a Group: a Group with nothing in it yet would never run the task that loads it.
         VStack(spacing: 0) {
-            if let guide {
+            if let guide, !showsPhoto {
+                // Under a city's own header: just the blurb, no card or title.
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(guide.extract).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(6)
+                    HStack(spacing: Theme.Spacing.s) {
+                        Text("From Wikipedia").font(.caption).foregroundStyle(Roam.inkMuted)
+                        if let page = guide.pageURL {
+                            Button("Read more") { openURL(page) }.font(.caption.weight(.semibold))
+                                .accessibilityIdentifier("city-guide-more")
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("city-guide")
+            } else if let guide {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    if let photo = guide.photoURL {
+                    if showsPhoto, let photo = guide.photoURL {
                         PlacePhotoView(url: photo, credit: "Wikimedia Commons", label: "Photo of \(guide.title)", placeholderSymbol: "building.2", height: 180)
                     }
                     Text("About \(name)").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
