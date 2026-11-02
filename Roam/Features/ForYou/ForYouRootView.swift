@@ -57,6 +57,14 @@ final class ForYouModel {
             guard token == generation, !Task.isCancelled else { return }
             if destination == nil { cities = DiscoverCity.cities(from: found) }
             phase = .loaded(ForYouSections(places: found))
+            // A city's places pick up Google photos and ratings in the background, then the list refreshes once.
+            if destination != nil {
+                let missing = found.filter { $0.experience.googleRating == nil || $0.experience.photoURL == nil }.map(\.id)
+                if await plans.refreshGoogleDetails(experienceIDs: Array(missing.prefix(30))),
+                   token == generation, let refreshed = try? await plans.discoverPlaces(in: bounds), token == generation {
+                    phase = .loaded(ForYouSections(places: refreshed))
+                }
+            }
         } catch {
             guard token == generation, !(error is CancellationError) else { return }
             phase = .failed(error.roamMessage)
@@ -429,6 +437,7 @@ struct ForYouRootView: View {
                         Text([place.experience.category?.title, place.experience.locality].compactMap { $0 }.joined(separator: " · "))
                             .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
                         if let evidence = place.friendEvidence { Text(evidence).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(1) }
+                        GoogleRatingLine(experience: place.experience)
                     }
                     Spacer(minLength: Theme.Spacing.s)
                     if let score = (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore {

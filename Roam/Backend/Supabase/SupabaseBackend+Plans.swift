@@ -43,6 +43,19 @@ extension SupabaseBackend: PlanService {
         try await rpc("passport", ["p_owner": RPC.uuid(ownerID)])
     }
 
+    func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool {
+        guard !experienceIDs.isEmpty, let snapshot = try? await requestSnapshot(), snapshot.userID != nil else { return false }
+        var request = URLRequest(url: config.supabaseURL.appendingPathComponent("functions/v1/google-place"))
+        request.httpMethod = "POST"
+        snapshot.headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["experienceIDs": experienceIDs.prefix(30).map { $0.uuidString.lowercased() }])
+        guard let (body, response) = try? await send(request), (response as? HTTPURLResponse)?.statusCode == 200,
+              let result = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let updated = result["updated"] as? [String] else { return false }
+        return !updated.isEmpty
+    }
+
     func myLists() async throws -> [PlaceList] { try await rpc("my_lists") }
 
     func list(id: UUID) async throws -> PlaceListDetail {

@@ -142,6 +142,8 @@ extension FixtureBackend: PlanService {
         }.sorted { $0.name < $1.name }
     }
 
+    func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool { false }
+
     func myLists() async throws -> [PlaceList] {
         let me = try await authenticatedActor()
         return placeLists.values.filter { $0.owner == me }.sorted { $0.createdAt > $1.createdAt }.map { listSummary($0, viewer: me) }

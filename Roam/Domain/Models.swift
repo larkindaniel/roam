@@ -212,6 +212,9 @@ struct ExperienceSummary: Codable, Hashable, Identifiable, Sendable {
     /// A linked photo and its required credit, loaded from its source.
     var photoURL: URL? = nil
     var photoCredit: String? = nil
+    /// Google's star rating out of 5 and how many reviews it's from, shown beside Roam's scores, never mixed in.
+    var googleRating: Double? = nil
+    var googleRatingCount: Int? = nil
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 

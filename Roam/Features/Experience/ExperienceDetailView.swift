@@ -28,6 +28,12 @@ final class ExperienceDetailModel {
             guard token == generation else { return }
             phase = .loaded(detail)
             refreshError = nil
+            // Google's photo and rating arrive in the background on the first visit, then the page refreshes once.
+            if detail.summary.googleRating == nil || detail.summary.photoURL == nil,
+               await services.plans.refreshGoogleDetails(experienceIDs: [experienceID]), token == generation,
+               let refreshed = try? await services.experiences.detail(experienceID: experienceID), token == generation {
+                phase = .loaded(refreshed)
+            }
         } catch is CancellationError {
             guard token == generation else { return }
             if detail == nil { phase = .idle }
@@ -310,6 +316,7 @@ struct ExperienceDetailView: View {
     }
 
     private func scores(_ detail: ExperienceDetail) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
         HStack(alignment: .top, spacing: Theme.Spacing.l) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("You").font(.headline)
@@ -341,6 +348,13 @@ struct ExperienceDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("detail-following-score")
+        }
+            // Google's stars sit apart from Roam's scores, never blended in.
+            if detail.summary.googleRating != nil {
+                Divider()
+                GoogleRatingLine(experience: detail.summary).font(.subheadline)
+                    .accessibilityIdentifier("detail-google-rating")
+            }
         }
         .roamCard()
     }

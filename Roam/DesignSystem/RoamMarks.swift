@@ -131,7 +131,11 @@ struct PlacePhotoView: View {
                             if let image = phase.image {
                                 image.resizable().scaledToFill().accessibilityLabel(label)
                             } else if phase.error != nil {
-                                Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
+                                if let location {
+                                    MapStill(coordinate: location, symbol: placeholderSymbol)
+                                } else {
+                                    Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
+                                }
                             } else {
                                 ProgressView()
                             }
@@ -178,5 +182,27 @@ struct PhotoCard<Content: View>: View {
         .background(Roam.paperRaised)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).strokeBorder(Roam.rule))
+    }
+}
+
+/// "★ 4.6 Google · 1,240 reviews", shown beside Roam's own scores when Google has rated the place.
+struct GoogleRatingLine: View {
+    let experience: ExperienceSummary
+
+    var body: some View {
+        if let rating = experience.googleRating {
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill").foregroundStyle(.orange)
+                Text(String(format: "%.1f", rating)).fontWeight(.semibold).foregroundStyle(Roam.ink).monospacedDigit()
+                Text("Google").foregroundStyle(Roam.inkMuted)
+                if let count = experience.googleRatingCount {
+                    Text("· \(count.formatted()) \(count == 1 ? "review" : "reviews")").foregroundStyle(Roam.inkMuted)
+                }
+            }
+            .font(.footnote)
+            .lineLimit(1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Google rating \(String(format: "%.1f", rating)) out of 5\(experience.googleRatingCount.map { " from \($0) reviews" } ?? "")")
+        }
     }
 }

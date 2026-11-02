@@ -306,6 +306,8 @@ protocol PlanService: AnyObject, Sendable {
     func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination]
     func setCityVisited(_ city: Destination, present: Bool) async throws
     func passport(ownerID: UUID) async throws -> [PassportCountry]
+    /// Looks places up on Google for a photo and star rating, at most about once a week each. True when any changed.
+    func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool
     func myLists() async throws -> [PlaceList]
     func list(id: UUID) async throws -> PlaceListDetail
     func saveList(id: UUID?, title: String, description: String) async throws -> PlaceList
