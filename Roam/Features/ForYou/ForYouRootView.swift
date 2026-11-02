@@ -286,16 +286,22 @@ struct ForYouRootView: View {
         return parts.joined(separator: " · ")
     }
 
-    /// The chosen city heads the page. Searching for another place or city replaces it.
+    /// The chosen city heads the page, with a way back to all cities. Searching for another place or city replaces it.
     private func cityHeader(_ destination: Destination) -> some View {
         VStack(alignment: .leading, spacing: 2) {
+            Button { selected = nil } label: {
+                Label("All cities", systemImage: "chevron.left").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
+                    .frame(minHeight: Theme.minimumHitTarget)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("discover-all-cities")
             Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
             if !destination.subtitle.isEmpty {
                 Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("discover-city-header")
     }
 
