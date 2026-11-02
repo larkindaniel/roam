@@ -49,6 +49,7 @@ struct ExperienceDetailView: View {
     @State private var plannedTrips: [String] = []
     @State private var choosingMapsApp = false
     @State private var sheetDetent = GlobeSheetDetent.half
+    @State private var showsLookAround = false
     @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
 
@@ -86,6 +87,8 @@ struct ExperienceDetailView: View {
             }
         }
         .background(Theme.groupedCanvas)
+        // While you look at the map, the place's own bubble takes the tab bar's spot; swipe it up and the tab bar returns.
+        .toolbar(model?.detail != nil && sheetDetent == .peek ? .hidden : .visible, for: .tabBar)
         .navigationTitle(model?.detail?.summary.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -148,33 +151,35 @@ struct ExperienceDetailView: View {
     /// The place on a full-screen map you can move around, with everything about it on a card that swipes up over it.
     private func content(_ detail: ExperienceDetail) -> some View {
         let summary = detail.summary
-        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, headerLabel: summary.name, headerIdentifier: "detail-sheet-header",
-                                onRefresh: { await reload() }) {
+        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: sheetDetent == .peek ? 0 : 52, headerLabel: summary.name,
+                                headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
+                                mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }) {
             placeMap(detail)
         } header: {
-            HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text(summary.name)
-                        .font(.roamTitle())
-                        .foregroundStyle(Roam.ink)
-                        .lineLimit(2)
-                        .accessibilityAddTraits(.isHeader)
-                    HStack(spacing: Theme.Spacing.s) {
-                        CategoryBadge(category: detail.myRating?.category ?? summary.category)
-                        if !summary.areaLine.isEmpty {
-                            Text("·").foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
-                            Text(summary.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
-                        }
-                    }
-                }
+            // Just the name and directions, so the bubble over the map stays short.
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                Image(systemName: (detail.myRating?.category ?? summary.category)?.symbolName ?? "mappin")
+                    .font(.headline)
+                    .foregroundStyle(Roam.ink)
+                    .frame(width: 26)
+                    .accessibilityLabel((detail.myRating?.category ?? summary.category)?.title ?? "Place")
+                Text(summary.name)
+                    .font(.roamTitle())
+                    .foregroundStyle(Roam.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
                 Button { choosingMapsApp = true } label: {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                        .font(.title3)
+                        .font(.headline)
                         .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 38, height: 38)
                         .background(Circle().fill(PlaceState.planned.markerColor))
+                        .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
                 }
+                // Sit in the bubble's rounded end: the same gap on the right as above and below.
+                .padding(.trailing, sheetDetent == .peek ? -(Theme.Spacing.l - Theme.Spacing.xs) : 0)
                 .buttonStyle(.plain)
                 .accessibilityLabel("Directions to \(summary.name)")
                 .accessibilityIdentifier("detail-directions")
@@ -185,8 +190,11 @@ struct ExperienceDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
+                Text([(detail.myRating?.category ?? summary.category)?.title, summary.areaLine.isEmpty ? nil : summary.areaLine]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
                 if !galleryItems(summary).isEmpty {
-                    PlaceGallery(items: galleryItems(summary), placeName: summary.name, lookAround: lookAround)
+                    PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                 }
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }
@@ -222,14 +230,12 @@ struct ExperienceDetailView: View {
         }
     }
 
-    /// The place's photo first, then photos from friends' visits. Look Around is a button on the picture, and
-    /// only becomes the picture itself when there are no photos at all.
+    /// The place's photo first, then photos from friends' visits. Look Around is a button on the map.
     private func galleryItems(_ summary: ExperienceSummary) -> [PlaceGalleryItem] {
         var items: [PlaceGalleryItem] = []
         if let url = summary.photoURL { items.append(.photo(url, credit: summary.photoCredit)) }
         let visitPhotos = friendMemories.flatMap { $0.media.sorted { $0.position < $1.position } }.prefix(8)
         items += visitPhotos.map { .visitPhoto(path: $0.path) }
-        if items.isEmpty, let lookAround { items.append(.lookAround(lookAround)) }
         return items
     }
 
@@ -246,6 +252,21 @@ struct ExperienceDetailView: View {
         if reportReason == .incorrectPlaceOrCategory { return "Report category issue" }
         if case .visit = target { return "Report memory" }
         return "Report a problem"
+    }
+
+    /// Apple's street-level view of the spot, from a binoculars button on the map.
+    private func lookAroundButton(_ scene: MKLookAroundScene) -> some View {
+        Button { showsLookAround = true } label: {
+            Image(systemName: "binoculars.fill")
+                .font(.headline)
+                .foregroundStyle(Roam.ink)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Circle())
+        .lookAroundViewer(isPresented: $showsLookAround, initialScene: scene)
+        .accessibilityLabel("Look Around")
+        .accessibilityIdentifier("detail-look-around")
     }
 
     /// The place on a map that fills the screen behind the card; pan and zoom freely.
@@ -275,51 +296,51 @@ struct ExperienceDetailView: View {
                         .accessibilityIdentifier(visited ? "detail-already-been" : "detail-place-state")
                 }
             }
-            HStack(spacing: Theme.Spacing.s) {
-                actionTile(rated ? "Add visit" : "Log visit", symbol: "plus", prominent: true, identifier: rated ? "detail-add-visit" : "detail-log") {
+            // Round icons in the place-state colours: log (green), plan (blue), save (yellow), then send.
+            HStack(spacing: Theme.Spacing.l) {
+                circleAction("plus", tint: PlaceState.visited.markerColor, filled: true,
+                             label: rated ? "Add a visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
                     Task { await openLog(rated ? .addVisit : .firstLog) }
                 }
                 .disabled(deleting || failedDeletion != nil)
-                actionTile(library.isBookmarked(id) ? "Saved" : "Save", symbol: library.isBookmarked(id) ? "bookmark.fill" : "bookmark", identifier: "detail-save") {
+                if !visited {
+                    circleAction("airplane", tint: PlaceState.planned.markerColor, filled: !plannedTrips.isEmpty,
+                                 label: plannedTrips.isEmpty ? "Add to a trip" : "On \(plannedTrips.joined(separator: ", "))", identifier: "detail-plan") {
+                        router.sheet = .addToTrip(experienceID: id, name: detail.summary.name)
+                    }
+                    .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
+                }
+                circleAction(library.isBookmarked(id) ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor,
+                             filled: library.isBookmarked(id), label: library.isBookmarked(id) ? "Saved" : "Save", identifier: "detail-save") {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
                 .disabled(visited && !library.isBookmarked(id))
-                actionTile("Recommend", symbol: "paperplane", identifier: "detail-recommend") {
+                circleAction("paperplane", tint: Roam.ink, filled: false, label: "Recommend to a friend", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
+                Spacer(minLength: 0)
             }
-            HStack(spacing: Theme.Spacing.s) {
-                if !visited {
-                    Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: {
-                        PillLabel(title: plannedTrips.isEmpty ? "Add to trip" : "On \(plannedTrips.joined(separator: ", "))", systemImage: "airplane")
-                    }
-                    .buttonStyle(PillButtonStyle(isSelected: !plannedTrips.isEmpty, tint: PlaceState.planned.markerColor))
-                    .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
-                    .accessibilityIdentifier("detail-plan")
-                }
-                Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
-                    .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-list")
-            }
-            .font(.subheadline)
             if let error = library.lastError {
                 InlineRetryView(message: error, retryTitle: "Dismiss") { library.clearError() }
             }
         }
     }
 
-    private func actionTile(_ title: String, symbol: String, prominent: Bool = false, identifier: String, action: @escaping () -> Void) -> some View {
+    /// A round icon button: filled in its colour when on (or always, for the main action), tinted outline otherwise.
+    private func circleAction(_ symbol: String, tint: Color, filled: Bool, label: String, identifier: String,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: symbol).font(.body.weight(.semibold))
-                Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(prominent ? Roam.onInk : Roam.ink)
-            .frame(maxWidth: .infinity, minHeight: 58)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(prominent ? Roam.ink : Roam.fill))
+            Image(systemName: symbol)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(filled ? .white : tint)
+                .frame(width: 56, height: 56)
+                .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
     }
+
 
     private func scores(_ detail: ExperienceDetail) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {

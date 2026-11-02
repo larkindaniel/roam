@@ -26,6 +26,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var headerLabel: String
     var headerIdentifier: String
     var onRefresh: () async -> Void = {}
+    /// Minimised, the card becomes a floating bubble over the map instead of a strip along the bottom.
+    var floatsWhenPeeking = false
+    /// A control that sits on the map just above the card, at the left; hidden once the card fills the screen.
+    var mapAccessory: AnyView? = nil
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -41,47 +45,73 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             let available = proxy.size.height
             let peekHeight = peek
             let height = min(max(detent.height(in: available, peek: peekHeight) - dragOffset, peekHeight), available)
+            let floating = isFloating
             ZStack(alignment: .bottom) {
-                globe()
-                    .frame(height: max(available - height + proxy.safeAreaInsets.top + 28, 0))
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .ignoresSafeArea(edges: .top)
-                card(height: height, available: available)
+                // The card floats with a margin all round, so the map fills the whole screen behind it.
+                globe().ignoresSafeArea()
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    if let mapAccessory, detent != .full {
+                        mapAccessory
+                            .padding(.leading, Theme.Spacing.l)
+                            .transition(.opacity)
+                    }
+                    card(height: height, available: available)
+                }
             }
+            .frame(width: proxy.size.width, height: available, alignment: .bottom)
         }
         .background(Color.black.ignoresSafeArea())
     }
 
+    private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
+    /// Minimised (or being dragged), the header shows in the grab area; opened up it scrolls with the content.
+    private var headerPinned: Bool { detent == .peek || dragOffset != 0 }
+
     private func card(height: CGFloat, available: CGFloat) -> some View {
-        VStack(spacing: 0) {
+        let floating = isFloating
+        return VStack(spacing: 0) {
             handle(available: available)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) { content() }
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                    // Opened up, the title scrolls away with everything else; only the grabber stays put.
+                    if !headerPinned { header() }
+                    content()
+                }
                     .padding(.horizontal, Theme.Spacing.l)
                     .padding(.top, Theme.Spacing.s)
                     .padding(.bottom, Theme.Spacing.xxl)
             }
             .refreshable { await onRefresh() }
             .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
+            .frame(height: floating ? 0 : nil)
         }
-        .frame(height: height, alignment: .top)
+        .frame(height: floating ? nil : height - Theme.Spacing.s, alignment: .top)
         .frame(maxWidth: .infinity)
         .background {
-            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: floating ? 28 : 26, style: .continuous)
                 .fill(Roam.paper)
-                .shadow(color: .black.opacity(0.25), radius: 12, y: -2)
-                .ignoresSafeArea(edges: .bottom)
+                .shadow(color: .black.opacity(0.22), radius: 12, y: floating ? 4 : -1)
         }
+        .clipShape(RoundedRectangle(cornerRadius: floating ? 28 : 26, style: .continuous))
+        // Room round the card so the map or globe shows past its edges.
+        .padding(.horizontal, floating ? Theme.Spacing.l : Theme.Spacing.s)
+        .padding(.bottom, Theme.Spacing.s)
     }
 
     private func handle(available: CGFloat) -> some View {
+        // As a floating bubble it's just the header, snug around it; as a card it has a grabber on top.
         VStack(spacing: Theme.Spacing.s) {
-            Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
-            header()
+            if !isFloating {
+                Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s)
+            }
+            if headerPinned { header() }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, Theme.Spacing.l)
-        .padding(.bottom, Theme.Spacing.s)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+        .padding(.vertical, isFloating ? Theme.Spacing.xs : 0)
+        .padding(.bottom, isFloating ? 0 : Theme.Spacing.s)
+        // The minimised height is measured while the header sits here.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if headerPinned { headerHeight = $0 } }
         .contentShape(Rectangle())
         .onTapGesture { setDetent(detent == .half ? .full : .half) }
         .gesture(

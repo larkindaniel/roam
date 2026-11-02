@@ -119,7 +119,7 @@ struct ForYouRootView: View {
                 if selected != nil {
                     roundButton("chevron.left", label: "All cities", identifier: "discover-all-cities") { selected = nil }
                 } else {
-                    roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
+                    roundButton("plus", label: "Log a place", identifier: "log-place", tint: PlaceState.visited.markerColor) { router.sheet = .logPlace }
                 }
             }
             if selected == nil {
@@ -176,9 +176,9 @@ struct ForYouRootView: View {
         .floatingBubble(Capsule())
     }
 
-    private func roundButton(_ symbol: String, label: String, identifier: String, action: @escaping () -> Void) -> some View {
+    private func roundButton(_ symbol: String, label: String, identifier: String, tint: Color = Roam.ink, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+            Image(systemName: symbol).font(.headline).foregroundStyle(tint).frame(width: 48, height: 48)
         }
         .buttonStyle(.plain)
         .floatingBubble(Circle())
@@ -362,7 +362,7 @@ struct ForYouRootView: View {
                 .accessibilityIdentifier("discover-empty")
         } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                sectionTitle("Cities we think you'd enjoy")
+                sectionTitle("Places we think you'd enjoy")
                 ForEach(cities) { city in cityCard(city) }
             }
             .accessibilityElement(children: .contain)
