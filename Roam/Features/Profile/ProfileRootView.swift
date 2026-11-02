@@ -75,6 +75,24 @@ struct ProfileView: View {
                         InlineRetryView(message: actionError, retryTitle: "Dismiss") { self.actionError = nil }.padding(.horizontal)
                     }
                     globeCard(value)
+                    if value.relationship.isSelf || value.relationship.friendState == .friends {
+                        Button { router.push(.passport(ownerID: userID, name: value.member.displayName)) } label: {
+                            HStack {
+                                Image(systemName: "book.closed").accessibilityHidden(true)
+                                Text(value.relationship.isSelf ? "Your passport" : "Passport").font(.headline)
+                                Spacer()
+                                Text("Every country and city").font(.footnote).foregroundStyle(Theme.secondaryText)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
+                            }
+                            .foregroundStyle(.primary)
+                            .frame(minHeight: Theme.minimumHitTarget)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .roamCard(padding: Theme.Spacing.m)
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("profile-passport")
+                    }
                     Picker("Profile section", selection: $tab) {
                         ForEach(ProfileTab.allCases) { Text($0.title).tag($0) }
                     }

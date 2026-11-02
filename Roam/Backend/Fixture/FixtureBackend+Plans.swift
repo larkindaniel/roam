@@ -9,6 +9,7 @@ extension FixtureBackend: PlanService {
         var draft: TripDraft
         var createdAt: Date
         var places: [(experience: UUID, stop: String)] = []
+        var cities: [Destination] = []
     }
 
     struct ListRow {
@@ -50,7 +51,7 @@ extension FixtureBackend: PlanService {
         TripSummary(id: row.id, owner: memberSummary(row.owner), name: row.draft.name, description: row.draft.description,
                     startDate: row.draft.startDate, endDate: row.draft.endDate, status: row.draft.status, isOwn: row.owner == viewer,
                     plannedCount: row.places.count, visitedCount: Set(visibleTripVisits(row.id, viewer: viewer).map(\.experience)).count,
-                    stops: Array(Set(row.places.map(\.stop).filter { !$0.isEmpty })).sorted())
+                    stops: Array(Set(row.places.map(\.stop).filter { !$0.isEmpty })).sorted(), cities: row.cities)
     }
 
     private func listSummary(_ row: ListRow, viewer: UUID) -> PlaceList {
@@ -104,6 +105,41 @@ extension FixtureBackend: PlanService {
         guard trips[tripID]?.owner == me else { throw RoamError.notFound }
         trips[tripID]?.places.removeAll { $0.experience == experienceID }
         if present { trips[tripID]?.places.append((experienceID, stop)) }
+    }
+
+    func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws {
+        let me = try await authenticatedActor()
+        guard trips[tripID]?.owner == me else { throw RoamError.notFound }
+        trips[tripID]?.cities.removeAll { $0.id == city.id }
+        if present { trips[tripID]?.cities.append(city) }
+    }
+
+    func homeCities() async throws -> [Destination] {
+        let me = try await authenticatedActor()
+        return fixtureHomeCities[me] ?? []
+    }
+
+    func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination] {
+        let me = try await authenticatedActor()
+        fixtureHomeCities[me, default: []].removeAll { $0.id == city.id }
+        if present { fixtureHomeCities[me, default: []].append(city) }
+        return fixtureHomeCities[me] ?? []
+    }
+
+    func setCityVisited(_ city: Destination, present: Bool) async throws {
+        let me = try await authenticatedActor()
+        fixtureVisitedCities[me, default: []].removeAll { $0.id == city.id }
+        if present { fixtureVisitedCities[me, default: []].append(city) }
+    }
+
+    func passport(ownerID: UUID) async throws -> [PassportCountry] {
+        _ = try await authenticatedActor()
+        let cities = (fixtureVisitedCities[ownerID] ?? []) + (fixtureHomeCities[ownerID] ?? [])
+        return Dictionary(grouping: cities) { $0.countryCode ?? "" }.map { code, cities in
+            PassportCountry(code: code, name: cities.first?.countryName ?? code,
+                            cities: cities.uniqued().map { PassportCity(city: $0, placeCount: 0, visibleCount: 0, isMarked: true, isHome: false) },
+                            otherPlaceCount: 0, otherVisibleCount: 0)
+        }.sorted { $0.name < $1.name }
     }
 
     func myLists() async throws -> [PlaceList] {

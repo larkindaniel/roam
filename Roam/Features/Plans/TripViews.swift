@@ -68,6 +68,7 @@ struct TripDetailView: View {
     let tripID: UUID
 
     @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var detail: LoadPhase<TripDetail> = .idle
@@ -77,29 +78,33 @@ struct TripDetailView: View {
     @State private var showsShare = false
     @State private var view: TripViewMode = .places
     @State private var entries: [TripFeedEntry] = []
+    @State private var wishlist: [ExperienceSummary] = []
+    @State private var addingFromWishlist = false
+    @State private var addingCity = false
 
     var body: some View {
-        List { Group {
-            switch detail {
-            case .idle, .loading:
-                Section { SkeletonList(rows: 3) }
-            case .failed(let message):
-                Section { InlineRetryView(message: message) { Task { await load() } } }
-            case .loaded(let value):
-                content(value)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                switch detail {
+                case .idle, .loading:
+                    SkeletonList(rows: 3)
+                case .failed(let message):
+                    InlineRetryView(message: message) { Task { await load() } }
+                case .loaded(let value):
+                    content(value)
+                }
             }
+            .padding(Theme.Spacing.l)
         }
-        .listRowBackground(Roam.paperRaised)
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
         .background(Roam.paper)
         .navigationTitle(detail.value?.summary.name ?? "Trip")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let summary = detail.value?.summary, summary.isOwn {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Edit trip") { editing = draft(summary) }
+                        Button("Add a city") { addingCity = true }
                         Button("Share with a friend") { showsShare = true }
                         Button("Delete trip", role: .destructive) { confirmingDelete = true }
                     } label: { Image(systemName: "ellipsis") }
@@ -109,10 +114,24 @@ struct TripDetailView: View {
             }
         }
         .sheet(item: $editing) { draft in
-            TripEditorSheet(draft: draft) { Task { await load() } }.presentationBackground(Roam.paper)
+            TripEditorSheet(draft: draft) { _ in Task { await load() } }.presentationBackground(Roam.paper)
         }
         .sheet(isPresented: $showsShare) {
             ShareSheet(target: .trip(tripID), title: detail.value?.summary.name ?? "this trip").presentationBackground(Roam.paper)
+        }
+        .sheet(isPresented: $addingFromWishlist) {
+            if let summary = detail.value?.summary {
+                PlanTripSheet(candidates: wishlist, suggestedName: summary.name, trip: summary) { Task { await load() } }
+                    .presentationBackground(Roam.paper)
+            }
+        }
+        .sheet(isPresented: $addingCity) {
+            DestinationPickerSheet(purpose: .homeCity, title: "Add a city") { city in
+                Task {
+                    do { try await services.plans.setTripCity(tripID: tripID, city: city, present: true); await load() }
+                    catch { actionError = error.roamMessage }
+                }
+            }
         }
         .confirmationDialog("Delete this trip?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete trip", role: .destructive) {
@@ -131,42 +150,29 @@ struct TripDetailView: View {
 
     @ViewBuilder private func content(_ value: TripDetail) -> some View {
         header(value)
-        Section {
-            Picker("View", selection: $view) {
-                ForEach(TripViewMode.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
-            .accessibilityIdentifier("trip-view-mode")
+        Picker("View", selection: $view) {
+            ForEach(TripViewMode.allCases) { Text($0.title).tag($0) }
         }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("trip-view-mode")
         switch view {
         case .places: places(value)
-        case .timeline: timeline
-        case .topPicks: topPicks
+        case .timeline: entryList(entries, empty: "No visits logged on this trip yet.")
+        case .topPicks: entryList(TripText.topPicks(entries), empty: "Rank a place from this trip to see top picks here.")
         }
     }
 
-    private var timeline: some View {
-        Section {
-            if entries.isEmpty {
-                Text("No visits logged on this trip yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+    private func entryList(_ list: [TripFeedEntry], empty: String) -> some View {
+        VStack(spacing: 0) {
+            if list.isEmpty {
+                Text(empty).font(.subheadline).foregroundStyle(Roam.inkMuted).frame(maxWidth: .infinity, alignment: .leading)
             }
-            ForEach(entries) { entry in entryRow(entry) }
-        }
-        .listRowBackground(Roam.paperRaised)
-    }
-
-    private var topPicks: some View {
-        Section {
-            let picks = TripText.topPicks(entries)
-            if picks.isEmpty {
-                Text("Rank a place from this trip to see top picks here.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    .accessibilityIdentifier("trip-top-picks-empty")
+            ForEach(list) { entry in
+                entryRow(entry)
+                if entry.id != list.last?.id { Divider() }
             }
-            ForEach(picks) { entry in entryRow(entry) }
         }
-        .listRowBackground(Roam.paperRaised)
+        .roamCard(padding: Theme.Spacing.m)
     }
 
     private func entryRow(_ entry: TripFeedEntry) -> some View {
@@ -183,63 +189,60 @@ struct TripDetailView: View {
                 if !entry.publicNote.isEmpty { Text(entry.publicNote).font(.subheadline).foregroundStyle(Roam.ink) }
             }
             .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
     }
 
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
-        Section {
-            HStack {
-                TripStatusPill(status: value.summary.status)
-                Text(TripText.dates(value.summary)).font(.footnote).foregroundStyle(Roam.inkMuted)
-            }
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            if !value.summary.placeLine.isEmpty && value.summary.placeLine != value.summary.name { Text(value.summary.placeLine).font(.roamTitle(.title3)).foregroundStyle(Roam.ink) }
+            Text(dateLine(value.summary)).font(.subheadline).foregroundStyle(Roam.inkMuted)
             if !value.summary.isOwn { Text("From \(value.summary.owner.displayName)").font(.footnote).foregroundStyle(Roam.inkMuted) }
-            if !value.summary.description.isEmpty { Text(value.summary.description) }
-            if let actionError { Text(actionError).foregroundStyle(Roam.signal) }
+            if !value.summary.description.isEmpty { Text(value.summary.description).font(.subheadline) }
+            if let actionError { Text(actionError).font(.footnote).foregroundStyle(Roam.signal) }
         }
-        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func dateLine(_ trip: TripSummary) -> String {
+        let today = MyTimeline.today()
+        let dates = MyTimeline.range(trip.startDate, trip.endDate) ?? "No dates yet"
+        if let start = trip.startDate, start > today {
+            let days = MyTimeline.days(from: today, to: start)
+            return "\(dates) · \(days == 1 ? "tomorrow" : "in \(days) days")"
+        }
+        return trip.phase(today: today) == .now ? "\(dates) · Happening now" : dates
     }
 
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
-        if !value.places.isEmpty {
-            Section {
-                PlaceMapView(items: value.places.map { PlaceMapItem(experience: $0.experience, state: $0.state) }) { router.push(.experience($0)) }
-                .id(value.places.map(\.id))
+        let items = value.places.map { PlaceMapItem(experience: $0.experience, state: $0.state) }
+        if !items.isEmpty {
+            PlaceMapView(items: items) { router.push(.experience($0)) }
+                .id(items.map(\.id))
                 .frame(height: 220)
-                .listRowInsets(EdgeInsets())
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
                 .accessibilityIdentifier("trip-map")
-            }
         }
-        if value.places.isEmpty {
-            Section {
-                Text("No places yet. Open a place and choose Add to trip.")
-                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    .accessibilityIdentifier("trip-places-empty")
-            }
-            .listRowBackground(Roam.paperRaised)
-        }
-        ForEach(value.placesByStop, id: \.stop) { group in
-            Section(group.stop.isEmpty ? "Places" : group.stop) {
-                ForEach(group.places) { place in
-                    Button { router.push(.experience(place.id)) } label: {
-                        HStack(spacing: Theme.Spacing.m) {
-                            StatusMark(state: place.state)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink)
-                                Text(place.state.title).font(.footnote).foregroundStyle(Roam.inkMuted)
-                            }
-                        }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                    }
-                    .accessibilityIdentifier("trip-place-\(place.experience.name)")
-                    .swipeActions {
-                        if value.summary.isOwn && place.isPlanned {
-                            Button("Remove", role: .destructive) { Task { await remove(place) } }
-                        }
-                    }
+        if value.summary.isOwn {
+            HStack(spacing: Theme.Spacing.s) {
+                if !wishlist.isEmpty {
+                    Button { addingFromWishlist = true } label: { PillLabel(title: "Add from wishlist", systemImage: "bookmark") }
+                        .buttonStyle(PillButtonStyle())
+                        .accessibilityIdentifier("trip-add-from-wishlist")
                 }
+                Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
+                    .buttonStyle(PillButtonStyle())
+                    .accessibilityIdentifier("trip-add-city")
             }
-            .listRowBackground(Roam.paperRaised)
+        }
+        if items.isEmpty && value.summary.cities.isEmpty {
+            Text("No places yet. Add some from your wishlist, or open a place and choose Add to trip.")
+                .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                .accessibilityIdentifier("trip-places-empty")
+        } else {
+            PlaceBreakdown(items: items, extraCities: value.summary.cities,
+                           onRemove: value.summary.isOwn ? { id in Task { await remove(id) } } : nil)
         }
     }
 
@@ -248,9 +251,9 @@ struct TripDetailView: View {
                   startDate: summary.startDate, endDate: summary.endDate, status: summary.status)
     }
 
-    private func remove(_ place: TripPlace) async {
+    private func remove(_ id: UUID) async {
         do {
-            try await services.plans.setTripPlace(tripID: tripID, experienceID: place.id, stop: place.stop, present: false)
+            try await services.plans.setTripPlace(tripID: tripID, experienceID: id, stop: "", present: false)
             await load()
         } catch { actionError = error.roamMessage }
     }
@@ -261,6 +264,14 @@ struct TripDetailView: View {
             let loaded = try await services.plans.trip(id: tripID)
             detail = .loaded(loaded)
             entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
+            if loaded.summary.isOwn, let me = session.userID {
+                let countries = Set(loaded.summary.cities.compactMap { $0.countryCode?.uppercased() } + loaded.places.compactMap { $0.experience.countryCode?.uppercased() })
+                let onTrip = Set(loaded.places.map(\.id))
+                let saved = (try? await services.lists.want(ownerID: me)) ?? []
+                wishlist = saved.map(\.experience).filter {
+                    !onTrip.contains($0.id) && !$0.viewer.hasVisits && (countries.isEmpty || countries.contains($0.countryCode?.uppercased() ?? ""))
+                }
+            }
         }
         catch { if detail.value == nil { detail = .failed(error.roamMessage) } else { actionError = error.roamMessage } }
     }
@@ -269,16 +280,18 @@ struct TripDetailView: View {
 extension TripDraft: Identifiable {
 }
 
+/// Names and dates a trip. A new trip also takes its cities here; its status follows its dates.
 struct TripEditorSheet: View {
     @State var draft: TripDraft
-    var onSaved: () -> Void
+    var onSaved: (TripSummary) -> Void
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
-    @State private var hasStart = false
-    @State private var hasEnd = false
+    @State private var hasDates = false
     @State private var start = Date()
-    @State private var end = Date()
+    @State private var end = Date().addingTimeInterval(7 * 86_400)
+    @State private var cities: [Destination] = []
+    @State private var pickingCity = false
     @State private var error: String?
     @State private var saving = false
 
@@ -289,21 +302,27 @@ struct TripEditorSheet: View {
                     TextField("Trip name", text: $draft.name).accessibilityIdentifier("trip-name")
                     TextField("Description (optional)", text: $draft.description, axis: .vertical)
                 }
-                .listRowBackground(Roam.paperRaised)
-                Section("Status") {
-                    Picker("Status", selection: $draft.status) {
-                        ForEach(TripStatus.allCases) { Text($0.title).tag($0) }
+                if draft.id == nil {
+                    Section("Cities") {
+                        ForEach(cities) { city in
+                            HStack {
+                                Text(city.name)
+                                Spacer()
+                                Text(city.countryName ?? "").font(.footnote).foregroundStyle(Roam.inkMuted)
+                            }
+                        }
+                        .onDelete { cities.remove(atOffsets: $0) }
+                        Button("Add a city") { pickingCity = true }.accessibilityIdentifier("trip-editor-add-city")
                     }
                 }
-                .listRowBackground(Roam.paperRaised)
-                Section("Dates (optional)") {
-                    Toggle("Start date", isOn: $hasStart)
-                    if hasStart { DatePicker("Starts", selection: $start, displayedComponents: .date) }
-                    Toggle("End date", isOn: $hasEnd)
-                    if hasEnd { DatePicker("Ends", selection: $end, displayedComponents: .date) }
+                Section("Dates") {
+                    Toggle("I know the dates", isOn: $hasDates)
+                    if hasDates {
+                        DatePicker("Starts", selection: $start, displayedComponents: .date)
+                        DatePicker("Ends", selection: $end, in: start..., displayedComponents: .date)
+                    }
                 }
-                .listRowBackground(Roam.paperRaised)
-                if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+                if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }
             .listRowBackground(Roam.paperRaised)
             }
@@ -316,9 +335,15 @@ struct TripEditorSheet: View {
                     Button("Save") { Task { await save() } }.disabled(saving).accessibilityIdentifier("trip-save")
                 }
             }
+            .sheet(isPresented: $pickingCity) {
+                DestinationPickerSheet(purpose: .homeCity, title: "Add a city") { city in
+                    if !cities.contains(city) { cities.append(city) }
+                    if draft.name.isEmpty { draft.name = city.name }
+                }
+            }
             .onAppear {
-                if let date = draft.startDate?.date() { hasStart = true; start = date }
-                if let date = draft.endDate?.date() { hasEnd = true; end = date }
+                if let date = draft.startDate?.date() { hasDates = true; start = date }
+                if let date = draft.endDate?.date() { hasDates = true; end = date }
             }
         }
         .roamSheetStyle()
@@ -327,62 +352,72 @@ struct TripEditorSheet: View {
 
     private func save() async {
         var value = draft
-        value.startDate = hasStart ? LocalDate(date: start, timeZone: .current) : nil
-        value.endDate = hasEnd ? LocalDate(date: end, timeZone: .current) : nil
+        value.startDate = hasDates ? LocalDate(date: start, timeZone: .current) : nil
+        value.endDate = hasDates ? LocalDate(date: end, timeZone: .current) : nil
+        value.status = TripSummary.status(start: value.startDate, end: value.endDate, today: MyTimeline.today())
         if let message = value.validationMessage { error = message; return }
         saving = true
         defer { saving = false }
         do {
-            _ = try await services.plans.saveTrip(value)
-            onSaved()
+            let saved = try await services.plans.saveTrip(value)
+            for city in cities { try await services.plans.setTripCity(tripID: saved.id, city: city, present: true) }
+            onSaved(saved)
             dismiss()
         } catch { self.error = error.roamMessage }
     }
 }
 
-/// Adds a place to a trip as a plan. Planning never creates a visit or a rating.
+/// Puts a place on one of your trips, or takes it off. Planning never creates a visit or a rating.
 struct AddToTripSheet: View {
     let experienceID: UUID
     let placeName: String
 
     @Environment(AppServices.self) private var services
+    @Environment(LibraryStore.self) private var library
     @Environment(\.dismiss) private var dismiss
     @State private var trips: LoadPhase<[TripSummary]> = .idle
-    @State private var stop = ""
+    @State private var holding: Set<UUID> = []
     @State private var error: String?
     @State private var creating: TripDraft?
 
     var body: some View {
         NavigationStack {
             List { Group {
-                Section("Stop or city (optional)") {
-                    TextField("Lisbon", text: $stop).accessibilityIdentifier("add-to-trip-stop")
-                }
-                .listRowBackground(Roam.paperRaised)
-                Section("Add to") {
+                Section {
                     switch trips {
                     case .idle, .loading: ProgressView()
                     case .failed(let message): Text(message).foregroundStyle(Roam.signal)
                     case .loaded(let value):
                         if value.isEmpty { Text("No trips yet.").foregroundStyle(Roam.inkMuted) }
                         ForEach(value) { trip in
-                            Button(trip.name) { Task { await add(to: trip) } }
-                                .accessibilityIdentifier("add-to-trip-\(trip.name)")
+                            Button { Task { await toggle(trip) } } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(trip.name).font(.headline).foregroundStyle(Roam.ink)
+                                        Text([trip.placeLine.isEmpty ? nil : trip.placeLine, MyTimeline.range(trip.startDate, trip.endDate) ?? "No dates yet"]
+                                            .compactMap { $0 }.joined(separator: " · "))
+                                            .font(.footnote).foregroundStyle(Roam.inkMuted)
+                                    }
+                                    Spacer()
+                                    if holding.contains(trip.id) { Image(systemName: "checkmark").foregroundStyle(Roam.ink) }
+                                }
+                                .frame(minHeight: Theme.minimumHitTarget)
+                            }
+                            .accessibilityIdentifier("add-to-trip-\(trip.name)")
                         }
                     }
-                    Button("New trip") { creating = TripDraft() }.accessibilityIdentifier("add-to-trip-new")
+                    Button { creating = TripDraft() } label: { Label("New trip", systemImage: "plus") }.accessibilityIdentifier("add-to-trip-new")
                 }
-                .listRowBackground(Roam.paperRaised)
-                if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+                if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }
             .listRowBackground(Roam.paperRaised)
             }
             .scrollContentBackground(.hidden)
-            .navigationTitle("Add \(placeName)")
+            .navigationTitle("Add \(placeName) to a trip")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(item: $creating) { draft in
-                TripEditorSheet(draft: draft) { Task { await load() } }.presentationBackground(Roam.paper)
+                TripEditorSheet(draft: draft) { trip in Task { await add(to: trip) } }.presentationBackground(Roam.paper)
             }
             .task { await load() }
         }
@@ -391,14 +426,31 @@ struct AddToTripSheet: View {
     }
 
     private func load() async {
-        do { trips = .loaded(try await services.plans.myTrips()) }
-        catch { trips = .failed(error.roamMessage) }
+        do {
+            let all = try await services.plans.myTrips().filter { $0.phase(today: MyTimeline.today()) != .past }
+            var held: Set<UUID> = []
+            for trip in all where (try? await services.plans.trip(id: trip.id))?.places.contains(where: { $0.id == experienceID && $0.isPlanned }) == true {
+                held.insert(trip.id)
+            }
+            holding = held
+            trips = .loaded(all)
+        } catch { trips = .failed(error.roamMessage) }
+    }
+
+    private func toggle(_ trip: TripSummary) async {
+        let present = !holding.contains(trip.id)
+        do {
+            try await services.plans.setTripPlace(tripID: trip.id, experienceID: experienceID, stop: "", present: present)
+            if present { holding.insert(trip.id) } else { holding.remove(trip.id) }
+            library.noteChanged()
+        } catch { self.error = error.roamMessage }
     }
 
     private func add(to trip: TripSummary) async {
         do {
-            try await services.plans.setTripPlace(tripID: trip.id, experienceID: experienceID, stop: stop, present: true)
-            dismiss()
+            try await services.plans.setTripPlace(tripID: trip.id, experienceID: experienceID, stop: "", present: true)
+            library.noteChanged()
+            await load()
         } catch { self.error = error.roamMessage }
     }
 }

@@ -39,6 +39,121 @@ struct TripSummary: Codable, Hashable, Identifiable, Sendable {
     var plannedCount: Int
     var visitedCount: Int
     var stops: [String]
+    /// The cities the trip covers: the ones named for it, then the cities of its places.
+    var cities: [Destination] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case id, owner, name, description, startDate, endDate, status, isOwn, plannedCount, visitedCount, stops, cities
+    }
+}
+
+extension TripSummary {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        owner = try c.decode(MemberSummary.self, forKey: .owner)
+        name = try c.decode(String.self, forKey: .name)
+        description = try c.decode(String.self, forKey: .description)
+        startDate = try c.decodeIfPresent(LocalDate.self, forKey: .startDate)
+        endDate = try c.decodeIfPresent(LocalDate.self, forKey: .endDate)
+        status = try c.decode(TripStatus.self, forKey: .status)
+        isOwn = try c.decode(Bool.self, forKey: .isOwn)
+        plannedCount = try c.decode(Int.self, forKey: .plannedCount)
+        visitedCount = try c.decode(Int.self, forKey: .visitedCount)
+        stops = try c.decodeIfPresent([String].self, forKey: .stops) ?? []
+        cities = try c.decodeIfPresent([Destination].self, forKey: .cities) ?? []
+    }
+
+    /// Where the trip sits on your timeline, from its dates when it has them.
+    func phase(today: LocalDate) -> TripPhase {
+        if let end = endDate, end < today { return .past }
+        if let start = startDate { return start > today ? .upcoming : .now }
+        if endDate != nil { return .upcoming }
+        return status == .past ? .past : .planning
+    }
+
+    /// "Tokyo, Kyoto", or the countries when it spans more than one.
+    var placeLine: String {
+        let countries = cities.compactMap(\.countryName).uniqued()
+        if countries.count > 1 { return countries.joined(separator: ", ") }
+        return cities.map(\.name).uniqued().joined(separator: ", ")
+    }
+
+    /// The status a trip is saved with for its dates.
+    static func status(start: LocalDate?, end: LocalDate?, today: LocalDate) -> TripStatus {
+        if let end, end < today { return .past }
+        if let start, start <= today { return .ongoing }
+        return start == nil && end == nil ? .planning : .upcoming
+    }
+}
+
+enum TripPhase: Hashable {
+    case now
+    case upcoming
+    case planning
+    case past
+}
+
+/// A city in someone's passport. Friends see every city, but open only the places shared with them.
+struct PassportCity: Codable, Hashable, Identifiable, Sendable {
+    var city: Destination
+    var placeCount: Int
+    var visibleCount: Int
+    var firstVisit: LocalDate?
+    var lastVisit: LocalDate?
+    var isMarked: Bool
+    var isHome: Bool
+
+    var id: String { city.id }
+}
+
+/// A country in someone's passport, with its cities.
+struct PassportCountry: Codable, Hashable, Identifiable, Sendable {
+    var code: String
+    var name: String
+    var cities: [PassportCity]
+    var otherPlaceCount: Int
+    var otherVisibleCount: Int
+
+    var id: String { code }
+    var title: String { CountryTitle.text(name: name, code: code) }
+    var placeCount: Int { cities.map(\.placeCount).reduce(otherPlaceCount, +) }
+
+    private enum CodingKeys: String, CodingKey { case code, name, cities, otherPlaceCount, otherVisibleCount }
+
+    init(code: String, name: String, cities: [PassportCity], otherPlaceCount: Int, otherVisibleCount: Int) {
+        self.code = code
+        self.name = name
+        self.cities = PassportCountry.merged(cities)
+        self.otherPlaceCount = otherPlaceCount
+        self.otherVisibleCount = otherVisibleCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(code: try c.decode(String.self, forKey: .code), name: try c.decode(String.self, forKey: .name),
+                  cities: try c.decode([PassportCity].self, forKey: .cities),
+                  otherPlaceCount: try c.decode(Int.self, forKey: .otherPlaceCount), otherVisibleCount: try c.decode(Int.self, forKey: .otherVisibleCount))
+    }
+
+    /// One entry per city name: the same city can be stored under more than one region spelling.
+    static func merged(_ cities: [PassportCity]) -> [PassportCity] {
+        var order: [String] = []
+        var byName: [String: PassportCity] = [:]
+        for city in cities {
+            let key = GeographyKey.normalize(city.city.name)
+            guard var existing = byName[key] else { order.append(key); byName[key] = city; continue }
+            if existing.city.latitude == 0 && existing.city.longitude == 0 { existing.city = city.city }
+            existing.placeCount += city.placeCount
+            existing.visibleCount += city.visibleCount
+            existing.firstVisit = [existing.firstVisit, city.firstVisit].compactMap { $0 }.min()
+            existing.lastVisit = [existing.lastVisit, city.lastVisit].compactMap { $0 }.max()
+            existing.isMarked = existing.isMarked || city.isMarked
+            existing.isHome = existing.isHome || city.isHome
+            byName[key] = existing
+        }
+        return order.compactMap { byName[$0] }.sorted { $0.placeCount != $1.placeCount ? $0.placeCount > $1.placeCount : $0.city.name < $1.city.name }
+    }
 }
 
 /// One place on a trip. Planned and visited are independent: a past trip can keep unvisited plans,

@@ -63,6 +63,18 @@ struct RouteDestinationView: View {
             CountryUpdatesView(ownerID: ownerID, countryCode: countryCode, title: title, byline: byline)
         case .myCountry(let code, let title):
             MyCountryView(code: code, title: title)
+        case .placeGroup(let title, let subtitle, let ids):
+            PlaceGroupView(title: title, subtitle: subtitle, ids: ids)
+        case .homeCity(let city):
+            HomeCityView(city: city)
+        case .wishlistCountry(let code, let title):
+            WishlistCountryView(code: code, title: title)
+        case .passport(let ownerID, let name):
+            PassportView(ownerID: ownerID, name: name)
+        case .passportCountry(let ownerID, let country):
+            PassportCountryView(ownerID: ownerID, country: country)
+        case .passportCity(let ownerID, let city):
+            PassportCityView(ownerID: ownerID, city: city)
         case .lists:
             PlaceListsView()
         case .list(let id):

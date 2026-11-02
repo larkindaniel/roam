@@ -40,7 +40,7 @@ final class ExperienceDetailModel {
 
 /// S06 experience detail.
 struct ExperienceDetailView: View {
-    @State private var isPlanned = false
+    @State private var plannedTrips: [String] = []
     @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
 
@@ -236,13 +236,6 @@ struct ExperienceDetailView: View {
         .accessibilityLabel("Map showing \(detail.summary.name)")
     }
 
-    private func togglePlanned(_ id: UUID) async {
-        let next = !isPlanned
-        isPlanned = next
-        do { try await PlannedPlaces.set(id, planned: next, services: services) }
-        catch { isPlanned = !next }
-    }
-
     private func actionRow(_ detail: ExperienceDetail) -> some View {
         let id = detail.summary.id
         let rated = detail.myRating != nil
@@ -272,10 +265,12 @@ struct ExperienceDetailView: View {
             }
             HStack(spacing: Theme.Spacing.s) {
                 if !visited {
-                    Button { Task { await togglePlanned(id) } } label: { PillLabel(title: isPlanned ? "Planned" : "Plan to go", systemImage: "airplane") }
-                        .buttonStyle(PillButtonStyle(isSelected: isPlanned))
-                        .task(id: id) { isPlanned = (try? await PlannedPlaces.tripsHolding(id, services: services))?.isEmpty == false }
-                        .accessibilityIdentifier("detail-plan")
+                    Button { router.sheet = .addToTrip(experienceID: id, name: detail.summary.name) } label: {
+                        PillLabel(title: plannedTrips.isEmpty ? "Add to trip" : "On \(plannedTrips.joined(separator: ", "))", systemImage: "airplane")
+                    }
+                    .buttonStyle(PillButtonStyle(isSelected: !plannedTrips.isEmpty))
+                    .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
+                    .accessibilityIdentifier("detail-plan")
                 }
                 Button { router.sheet = .addToList(experienceID: id, name: detail.summary.name) } label: { PillLabel(title: "Add to list", systemImage: "list.bullet") }
                     .buttonStyle(PillButtonStyle()).accessibilityIdentifier("detail-add-to-list")
@@ -527,32 +522,16 @@ private struct DetailDeletion: Codable, Identifiable {
 
 /// Places you plan to go. Stored on your trips, including ones from before places were organized by country;
 /// new plans go on a single "Planned" trip that never appears in the app.
+/// The upcoming or planning trips a place is on.
 enum PlannedPlaces {
-    private static let tripName = "Planned"
-
-    @MainActor static func tripsHolding(_ id: UUID, services: AppServices) async throws -> [UUID] {
-        var holding: [UUID] = []
-        for trip in try await services.plans.myTrips() {
-            let detail = try await services.plans.trip(id: trip.id)
-            if detail.places.contains(where: { $0.id == id && $0.isPlanned }) { holding.append(trip.id) }
-        }
-        return holding
-    }
-
-    @MainActor static func set(_ id: UUID, planned: Bool, services: AppServices) async throws {
-        if planned {
-            let trips = try await services.plans.myTrips()
-            let trip: TripSummary
-            if let existing = trips.first(where: { $0.name == tripName }) {
-                trip = existing
-            } else {
-                trip = try await services.plans.saveTrip(TripDraft(name: tripName))
-            }
-            try await services.plans.setTripPlace(tripID: trip.id, experienceID: id, stop: "", present: true)
-        } else {
-            for trip in try await tripsHolding(id, services: services) {
-                try await services.plans.setTripPlace(tripID: trip, experienceID: id, stop: "", present: false)
+    @MainActor static func trips(holding id: UUID, services: AppServices) async -> [String] {
+        let today = MyTimeline.today()
+        var names: [String] = []
+        for trip in (try? await services.plans.myTrips()) ?? [] where trip.phase(today: today) != .past {
+            if let detail = try? await services.plans.trip(id: trip.id), detail.places.contains(where: { $0.id == id && $0.isPlanned }) {
+                names.append(trip.name)
             }
         }
+        return names
     }
 }

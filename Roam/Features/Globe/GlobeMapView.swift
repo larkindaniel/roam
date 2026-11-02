@@ -58,13 +58,18 @@ final class PinDotOverlay: NSObject, MKOverlay {
 /// overlay tiles are drawn at twice the screen's zoom scale (measured on the iOS 26.2 simulator), so
 /// 14 map-render points come out about 7 screen points.
 final class PinDotRenderer: MKOverlayRenderer {
-    static let screenRadius: CGFloat = 14
+    /// Small from the whole-earth view so the dots don't hide where they are, growing as you zoom in.
+    var screenRadius: CGFloat = 14
+
+    static func screenRadius(cameraDistance: CLLocationDistance) -> CGFloat {
+        cameraDistance > 8_000_000 ? 6 : cameraDistance > 3_000_000 ? 9 : 14
+    }
 
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         guard let dot = overlay as? PinDotOverlay else { return }
         let center = point(for: MKMapPoint(dot.coordinate))
         let bounds = rect(for: dot.boundingMapRect)
-        let radius = min(Self.screenRadius / zoomScale, bounds.width / 2, bounds.height / 2)
+        let radius = min(screenRadius / zoomScale, bounds.width / 2, bounds.height / 2)
         let outer = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
         context.setFillColor(UIColor.white.cgColor)
         context.fillEllipse(in: outer)
@@ -415,25 +420,58 @@ struct GlobeMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let dot = overlay as? PinDotOverlay {
-                return PinDotRenderer(overlay: dot)
+                let renderer = PinDotRenderer(overlay: dot)
+                renderer.screenRadius = dotRadius
+                return renderer
             }
             if let polygon = overlay as? MKPolygon {
                 let renderer = MKPolygonRenderer(polygon: polygon)
-                let teal = UIColor(named: "AccentColor") ?? .systemTeal
-                if let code = polygon.title, let tint = parent.countryTints[code] {
-                    renderer.fillColor = tint.withAlphaComponent(0.5)
-                    renderer.strokeColor = tint
-                    renderer.lineWidth = 1.5
-                    return renderer
-                }
-                // Bright fill + white outline stays legible on daylit and night-side imagery.
-                renderer.fillColor = UIColor(red: 0.93, green: 0.925, blue: 0.898, alpha: 0.55)
-                renderer.strokeColor = UIColor.white.withAlphaComponent(0.95)
-                renderer.lineWidth = 1.2
-                _ = teal
+                style(renderer, code: polygon.title)
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        /// Countries are filled only from far enough out to see whole countries; closer in, the map is left clear.
+        private static let countryLevelDistance: CLLocationDistance = 1_200_000
+        private var showsCountries = true
+        private var dotRadius: CGFloat = PinDotRenderer.screenRadius(cameraDistance: 20_000_000)
+
+        private func style(_ renderer: MKPolygonRenderer, code: String?) {
+            guard showsCountries else {
+                renderer.fillColor = .clear
+                renderer.strokeColor = .clear
+                return
+            }
+            if let code, let tint = parent.countryTints[code] {
+                renderer.fillColor = tint.withAlphaComponent(0.5)
+                renderer.strokeColor = tint
+                renderer.lineWidth = 1.5
+                return
+            }
+            // Bright fill + white outline stays legible on daylit and night-side imagery.
+            renderer.fillColor = UIColor(red: 0.93, green: 0.925, blue: 0.898, alpha: 0.55)
+            renderer.strokeColor = UIColor.white.withAlphaComponent(0.95)
+            renderer.lineWidth = 1.2
+        }
+
+        func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            let distance = mapView.camera.centerCoordinateDistance
+            let radius = PinDotRenderer.screenRadius(cameraDistance: distance)
+            let countries = distance > Self.countryLevelDistance
+            guard radius != dotRadius || countries != showsCountries else { return }
+            let restyleCountries = countries != showsCountries
+            dotRadius = radius
+            showsCountries = countries
+            for overlay in mapView.overlays {
+                if let renderer = mapView.renderer(for: overlay) as? PinDotRenderer, renderer.screenRadius != radius {
+                    renderer.screenRadius = radius
+                    renderer.setNeedsDisplay()
+                } else if restyleCountries, let polygon = overlay as? MKPolygon, let renderer = mapView.renderer(for: polygon) as? MKPolygonRenderer {
+                    style(renderer, code: polygon.title)
+                    renderer.setNeedsDisplay()
+                }
+            }
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {

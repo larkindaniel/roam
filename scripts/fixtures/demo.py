@@ -115,14 +115,19 @@ def plans_sql(data):
         rows.append(f"insert into public.trips (id, owner_id, name, status, start_date, end_date) values ({q(trip)}, {q(kieran)}, {q(name)}, '{status}', {dates[0]}, {dates[1]}) on conflict do nothing;")
         for position, spot in enumerate(spots[name]):
             rows.append(f"insert into public.trip_places (trip_id, experience_id, position) values ({q(trip)}, {q(uid('00000031', spot['id']))}, {position}) on conflict do nothing;")
-    # A place Kieran plans to go, on the hidden "Planned" trip that the Plan to go button uses.
+    # A place Kieran plans to go, on an undated Vancouver trip.
     place, experience, planned = uid("00000021", "vancouver-stanley-park"), uid("00000031", "vancouver-stanley-park"), uid("00000052", kieran, "Planned")
     rows.append(f"""insert into public.places (id, provider, provider_place_id, name, normalized_name, address, normalized_address, locality, country_code, country_name, city_id, latitude, longitude, provider_category, is_locality, provenance)
 values ({q(place)}, 'fixture', 'demo-vancouver-stanley-park', 'Stanley Park', app_private.normalize_text('Stanley Park'), 'Vancouver, BC V6G 1Z4, Canada', app_private.normalize_text('Vancouver, BC V6G 1Z4, Canada'), 'Vancouver',
  app_private.upsert_country('CA', 'Canada'), 'Canada', app_private.upsert_city('CA', 'Canada', null, 'Vancouver', 49.2827, -123.1207), 49.3017, -123.1417, 'Park', false, '{{}}'::jsonb) on conflict do nothing;
 insert into public.experiences (id, place_id, category, category_source) values ({q(experience)}, {q(place)}, 'outdoors', 'suggested') on conflict do nothing;
-insert into public.trips (id, owner_id, name, status) values ({q(planned)}, {q(kieran)}, 'Planned', 'planning') on conflict do nothing;
+insert into public.trips (id, owner_id, name, status) values ({q(planned)}, {q(kieran)}, 'Vancouver', 'planning') on conflict (id) do update set name = 'Vancouver';
 insert into public.trip_places (trip_id, experience_id, position) values ({q(planned)}, {q(experience)}, 0) on conflict do nothing;""")
+    # Tokyo is a two-city trip; Kieran lives in Waterloo and Kitchener and has been to Montréal without logging a place.
+    rows.append(f"insert into public.trip_cities (trip_id, city_id, position) values ({q(uid('00000052', kieran, 'Tokyo'))}, app_private.upsert_city('JP', 'Japan', null, 'Kyoto', 35.0116, 135.7681), 1) on conflict do nothing;")
+    for position, city in enumerate(("Waterloo", "Kitchener")):
+        rows.append(f"insert into public.home_cities (owner_id, city_id, position) select {q(kieran)}, id, {position} from public.cities where country_code = 'CA' and name = {q(city)} on conflict do nothing;")
+    rows.append(f"insert into public.visited_cities (owner_id, city_id) values ({q(kieran)}, app_private.upsert_city('CA', 'Canada', 'Quebec', 'Montréal', 45.5019, -73.5674)) on conflict do nothing;")
     for name in ("Reykjavík", "Copenhagen", "Medellín", "Lausanne"):
         for spot in spots[name]:
             rows.append(f"insert into public.bookmarks (owner_id, experience_id) values ({q(kieran)}, {q(uid('00000031', spot['id']))}) on conflict do nothing;")

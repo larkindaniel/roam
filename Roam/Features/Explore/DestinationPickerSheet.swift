@@ -4,6 +4,9 @@ import SwiftUI
 /// "Use current location" asks for permission only when tapped.
 struct DestinationPickerSheet: View {
     let purpose: DestinationPickerPurpose
+    var title: String?
+    /// When set, the chosen city goes here instead of the shared destination store.
+    var onPick: ((Destination) -> Void)?
 
     @Environment(AppServices.self) private var services
     @Environment(DestinationStore.self) private var store
@@ -49,7 +52,7 @@ struct DestinationPickerSheet: View {
                     case .loaded(let destinations):
                         ForEach(destinations) { destination in
                             Button {
-                                store.select(destination, for: purpose)
+                                pick(destination)
                                 dismiss()
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -69,7 +72,7 @@ struct DestinationPickerSheet: View {
             .listRowBackground(Roam.paperRaised)
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "City or town")
-            .navigationTitle(purpose == .homeCity ? "Home city" : "Choose destination")
+            .navigationTitle(title ?? (purpose == .homeCity ? "Home city" : "Choose destination"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -87,6 +90,10 @@ struct DestinationPickerSheet: View {
         }
         .roamSheetStyle()
         .screenIdentifier("destination-picker")
+    }
+
+    private func pick(_ destination: Destination) {
+        if let onPick { onPick(destination) } else { store.select(destination, for: purpose) }
     }
 
     private func search(_ text: String) async {
@@ -110,7 +117,7 @@ struct DestinationPickerSheet: View {
         switch outcome {
         case .located(let coordinate, _):
             if let destination = try? await services.places.destination(for: coordinate) {
-                store.select(destination, for: purpose)
+                pick(destination)
                 locationMessage = outcome.message
                 dismiss()
             } else {

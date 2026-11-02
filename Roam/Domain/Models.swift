@@ -283,3 +283,11 @@ extension Array where Element: Hashable {
         return filter { seen.insert($0).inserted }
     }
 }
+
+extension Array {
+    /// The first element for each key, in order.
+    func uniqued<Key: Hashable>(by key: (Element) -> Key) -> [Element] {
+        var seen = Set<Key>()
+        return filter { seen.insert(key($0)).inserted }
+    }
+}

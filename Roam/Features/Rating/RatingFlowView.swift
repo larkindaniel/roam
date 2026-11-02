@@ -11,6 +11,8 @@ struct RatingFlowView: View {
     @State private var showsNote = false
     @State private var showsDate = false
     @State private var showsPhotos = false
+    @State private var trips: [TripSummary] = []
+    @State private var home: Destination?
 
     var body: some View {
         NavigationStack {
@@ -227,6 +229,18 @@ struct RatingFlowView: View {
             if let photos = model.photos, !photos.canCommit {
                 Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked)
             }
+            if request.mode != .rerank {
+                pickerRow("Part of", symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane") {
+                    Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
+                        Text(home.map { "Home · \($0.name)" } ?? "No trip").tag(UUID?.none)
+                        ForEach(trips) { Text($0.name).tag(Optional($0.id)) }
+                    }
+                    .labelsHidden()
+                    .accessibilityIdentifier("rating-part-of")
+                }
+                .roamCard(padding: Theme.Spacing.m)
+                .task(id: request.experience.id) { await loadPlacement(model) }
+            }
             if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -252,6 +266,23 @@ struct RatingFlowView: View {
             }
         }
         .screenIdentifier("rating-details")
+    }
+
+    /// Near one of your home cities, a visit goes with that home. Otherwise it joins a trip covering this city
+    /// right now, if there is one; you can always pick another trip.
+    private func loadPlacement(_ model: RatingFlowModel) async {
+        let homes = HomeCities.distinct((try? await services.plans.homeCities()) ?? [])
+        let all = (try? await services.plans.myTrips()) ?? []
+        let today = MyTimeline.today()
+        trips = all.sorted { ($0.phase(today: today) == .past ? 1 : 0, $0.name) < ($1.phase(today: today) == .past ? 1 : 0, $1.name) }
+        home = CityMatch.home(for: request.experience, homes: homes)
+        guard home == nil, model.visit.tripID == nil else { return }
+        let place = request.experience
+        if let match = all.first(where: { trip in
+            trip.phase(today: today) == .now && trip.cities.contains { city in CityMatch.same(place, city) || place.countryCode?.uppercased() == city.countryCode?.uppercased() }
+        }) {
+            model.setTrip(match.id)
+        }
     }
 
     private func comparison(_ model: RatingFlowModel) -> some View {

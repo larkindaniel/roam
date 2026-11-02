@@ -131,6 +131,8 @@ actor FixtureBackend {
     var media: [UUID: MediaRow] = [:]
     var activities: [UUID: ActivityRow] = [:]
     var trips: [UUID: TripRow] = [:]
+    var fixtureHomeCities: [UUID: [Destination]] = [:]
+    var fixtureVisitedCities: [UUID: [Destination]] = [:]
     var placeLists: [UUID: ListRow] = [:]
     var shares: [UUID: ShareRow] = [:]
     var tastes: [UUID: TasteProfile] = [:]

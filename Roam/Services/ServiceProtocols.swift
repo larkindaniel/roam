@@ -301,6 +301,11 @@ protocol PlanService: AnyObject, Sendable {
     func saveTrip(_ draft: TripDraft) async throws -> TripSummary
     func deleteTrip(id: UUID) async throws
     func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws
+    func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws
+    func homeCities() async throws -> [Destination]
+    func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination]
+    func setCityVisited(_ city: Destination, present: Bool) async throws
+    func passport(ownerID: UUID) async throws -> [PassportCountry]
     func myLists() async throws -> [PlaceList]
     func list(id: UUID) async throws -> PlaceListDetail
     func saveList(id: UUID?, title: String, description: String) async throws -> PlaceList
