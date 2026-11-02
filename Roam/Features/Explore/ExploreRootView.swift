@@ -349,8 +349,10 @@ struct ExploreRootView: View {
                                    symbol: item.category?.symbolName ?? "mappin")
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
-                        Text([item.category?.title, experience?.locality ?? item.candidate?.locality].compactMap { $0 }.joined(separator: " · "))
-                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                        // The area is already in the destination bar above the list.
+                        if let category = item.category {
+                            Text(category.title).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                        }
                         if let line = scoreLine(experience) {
                             Text(line).font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink).monospacedDigit()
                         }

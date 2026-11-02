@@ -240,11 +240,9 @@ struct ForYouRootView: View {
         .padding(.top, Theme.Spacing.s)
     }
 
-    /// What's known about one city: friends' finds and highly rated places, with Wikipedia when no friend has been.
+    /// What's known about one city: its Wikipedia summary, then friends' finds and highly rated places.
     @ViewBuilder private func cityDetail(_ destination: Destination, _ sections: ForYouSections) -> some View {
-        if sections.friends.isEmpty {
-            CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
-        }
+        CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
         if !sections.friends.isEmpty { friendsSection(sections.friends) }
         if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
         if !sections.more.isEmpty { moreSection(sections.more) }
