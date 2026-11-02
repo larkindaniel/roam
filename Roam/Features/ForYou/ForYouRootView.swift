@@ -416,7 +416,7 @@ struct ForYouRootView: View {
     private func placeCard(_ place: DiscoverPlace, evidence: String?, photoHeight: CGFloat) -> some View {
         Button { router.push(.experience(place.id)) } label: {
             PhotoCard(path: place.coverPath, url: place.experience.photoURL, credit: place.experience.photoCredit,
-                      label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin", height: photoHeight) {
+                      label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin", height: photoHeight, lookAround: place.experience.coordinate) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)

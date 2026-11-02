@@ -91,13 +91,16 @@ struct ResearchBriefSheet: View {
                     HStack(spacing: Theme.Spacing.s) {
                         assistantButton("ChatGPT", url: "https://chatgpt.com/")
                         assistantButton("Claude", url: "https://claude.ai/new")
+                        Spacer(minLength: 0)
+                        if copied { Text("Copied").font(.caption).foregroundStyle(Roam.inkMuted).transition(.opacity) }
                         Button { copy() } label: {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 24, height: 44)
+                            Image(systemName: "doc.on.doc").font(.subheadline.weight(.semibold)).frame(width: 36, height: 36)
                         }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(copied ? "Copied" : "Copy prompt")
+                        .buttonStyle(PillButtonStyle())
+                        .accessibilityLabel("Copy prompt")
                         .accessibilityIdentifier("research-brief-copy")
                     }
+                    .animation(.easeOut(duration: 0.2), value: copied)
                 }
                 .padding(Theme.Spacing.l)
             }
@@ -115,10 +118,9 @@ struct ResearchBriefSheet: View {
             copy()
             if let url = URL(string: url) { openURL(url) }
         } label: {
-            Label(title, systemImage: "arrow.up.forward.app").frame(maxWidth: .infinity).frame(minHeight: 44)
+            PillLabel(title: title, systemImage: "arrow.up.right")
         }
-        .buttonStyle(.borderedProminent)
-        .tint(PlaceState.planned.markerColor)
+        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
         .accessibilityLabel("Open \(title)")
         .accessibilityHint("Copies the prompt, then opens the assistant")
     }

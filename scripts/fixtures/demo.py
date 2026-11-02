@@ -57,10 +57,11 @@ def sql_for(data):
         for spot_index, spot in enumerate(city["spots"]):
             place, experience = uid("00000021", spot["id"]), uid("00000031", spot["id"])
             kind = category(spot["type"], spot["name"])
+            # No linked photos: we have no rights to the collected links, so the app shows Apple's Look Around instead.
             rows.append(f"""insert into public.places (id, provider, provider_place_id, name, normalized_name, address, normalized_address, locality, country_code, country_name, city_id, latitude, longitude, provider_category, is_locality, provenance, photo_url, photo_credit)
 values ({q(place)}, 'fixture', {q('demo-' + spot['id'])}, {q(spot['name'])}, app_private.normalize_text({q(spot['name'])}), {q(spot['address'])}, nullif(app_private.normalize_text({q(spot['address'])}), ''), {q(city['name'])},
  app_private.upsert_country({q(code)}, {q(city['country'])}), {q(city['country'])}, app_private.upsert_city({q(code)}, {q(city['country'])}, null, {q(city['name'])}, {city['lat']}, {city['lng']}),
- {spot['lat']}, {spot['lng']}, {q(spot['type'])}, false, '{{}}'::jsonb, {q(spot['photo'])}, {q(spot['photoAuthor'])});""")
+ {spot['lat']}, {spot['lng']}, {q(spot['type'])}, false, '{{}}'::jsonb, null, null);""")
             rows.append(f"insert into public.experiences (id, place_id, category, category_source) values ({q(experience)}, {q(place)}, '{kind}', 'suggested');")
             owner = TEAM[OWNER_CYCLE[spot["contributor"] % len(OWNER_CYCLE)]][0]
             trip = None
