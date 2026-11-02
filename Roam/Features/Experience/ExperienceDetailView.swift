@@ -258,7 +258,20 @@ struct ExperienceDetailView: View {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
                 .disabled(visited && !library.isBookmarked(id))
-                actionTile("Directions", symbol: "arrow.triangle.turn.up.right.diamond", identifier: "detail-directions") { openInMaps(detail) }
+                // Directions in either app: Apple Maps, or Google Maps (its app if installed, else the web).
+                Menu {
+                    Button { openInMaps(detail) } label: { Label("Apple Maps", systemImage: "map") }
+                    Button { openInGoogleMaps(detail) } label: { Label("Google Maps", systemImage: "globe") }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.turn.up.right.diamond").font(.body.weight(.semibold))
+                        Text("Directions").font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                    .foregroundStyle(Roam.ink)
+                    .frame(maxWidth: .infinity, minHeight: 58)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Roam.fill))
+                }
+                .accessibilityIdentifier("detail-directions")
                 actionTile("Recommend", symbol: "paperplane", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
@@ -481,6 +494,15 @@ struct ExperienceDetailView: View {
     }
 
     /// Hands off to Apple Maps; cancelling there leaves Roam unchanged.
+    private func openInGoogleMaps(_ detail: ExperienceDetail) {
+        var parts = URLComponents(string: "https://www.google.com/maps/dir/")!
+        parts.queryItems = [
+            URLQueryItem(name: "api", value: "1"),
+            URLQueryItem(name: "destination", value: "\(detail.summary.latitude),\(detail.summary.longitude)"),
+        ]
+        if let url = parts.url { openURL(url) }
+    }
+
     private func openInMaps(_ detail: ExperienceDetail) {
         Task { @MainActor in
             var item: MKMapItem?

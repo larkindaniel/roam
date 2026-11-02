@@ -115,8 +115,8 @@ struct PlacePhotoView: View {
     var height: CGFloat
     var showsCredit = true
     var cornerRadius: CGFloat = Theme.cornerRadius
-    /// Where the place is: with no photo, Apple's Look Around of the spot stands in.
-    var lookAround: CLLocationCoordinate2D?
+    /// Where the place is: with no photo, a map of the spot stands in.
+    var location: CLLocationCoordinate2D?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -136,8 +136,8 @@ struct PlacePhotoView: View {
                                 ProgressView()
                             }
                         }
-                    } else if let lookAround {
-                        LookAroundStill(coordinate: lookAround, symbol: placeholderSymbol)
+                    } else if let location {
+                        MapStill(coordinate: location)
                     } else {
                         Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                     }
@@ -158,13 +158,13 @@ struct PhotoCard<Content: View>: View {
     var label: String
     var placeholderSymbol = "mappin"
     var height: CGFloat
-    var lookAround: CLLocationCoordinate2D?
+    var location: CLLocationCoordinate2D?
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PlacePhotoView(path: path, url: url, credit: nil, label: label, placeholderSymbol: placeholderSymbol, height: height,
-                           showsCredit: false, cornerRadius: 0, lookAround: lookAround)
+                           showsCredit: false, cornerRadius: 0, location: location)
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 content()
                 if path == nil, url != nil, let credit {

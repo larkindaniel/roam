@@ -81,45 +81,21 @@ struct PlaceThumbnail: View {
     }
 }
 
-/// Apple's Look Around of a spot as a still picture, filling its frame; the symbol where Apple has no imagery.
-struct LookAroundStill: View {
+/// A small map of where a place is, with a pin, for places without a photo. It doesn't move; tapping goes to
+/// whatever the card opens.
+struct MapStill: View {
     let coordinate: CLLocationCoordinate2D
-    var symbol = "mappin"
-
-    @MainActor private static var stills: [String: UIImage] = [:]
-    @MainActor private static var missing: Set<String> = []
-    @State private var still: UIImage?
-    @State private var looked = false
-
-    private var key: String { String(format: "%.5f,%.5f", coordinate.latitude, coordinate.longitude) }
+    var tint: Color = .red
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                if let still {
-                    Image(uiImage: still).resizable().scaledToFill().frame(width: proxy.size.width, height: proxy.size.height).clipped()
-                } else if looked {
-                    Image(systemName: symbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
-                } else {
-                    ProgressView()
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .task(id: key) {
-                if let cached = Self.stills[key] { still = cached; looked = true; return }
-                guard !Self.missing.contains(key), let scene = try? await MKLookAroundSceneRequest(coordinate: coordinate).scene else {
-                    Self.missing.insert(key); looked = true; return
-                }
-                let options = MKLookAroundSnapshotter.Options()
-                options.size = CGSize(width: max(proxy.size.width, 1) * 2, height: max(proxy.size.height, 1) * 2)
-                if let image = try? await MKLookAroundSnapshotter(scene: scene, options: options).snapshot.image {
-                    Self.stills[key] = image
-                    still = image
-                }
-                looked = true
-            }
+        Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)),
+            interactionModes: []) {
+            Marker("", coordinate: coordinate).tint(tint)
         }
-        .accessibilityLabel("Look Around view of the spot")
+        // Full Apple Maps colour, like Explore.
+        .mapStyle(.standard(elevation: .realistic, emphasis: .automatic, pointsOfInterest: .all))
+        .allowsHitTesting(false)
+        .accessibilityLabel("Map of where it is")
     }
 }
 
