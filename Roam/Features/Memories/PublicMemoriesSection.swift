@@ -140,23 +140,24 @@ struct FriendMemoriesSection: View {
     let onReport: (ReportTarget) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("From your friends").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
-            if memories.isEmpty {
-                Text("None of your friends have been here yet.")
-                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
-                    .accessibilityIdentifier("friend-memories-empty")
+        if memories.isEmpty {
+            Label("None of your friends have been here yet.", systemImage: "person.2")
+                .font(.footnote).foregroundStyle(Theme.secondaryText)
+                .accessibilityIdentifier("friend-memories-empty")
+        } else {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                Text("From your friends").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+                ForEach(memories) { memory in
+                    PublicMemoryCard(memory: memory, onOpenAuthor: { onOpenAuthor(memory.author.id) },
+                                     onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
+                    if memory.id != memories.last?.id { Divider() }
+                }
             }
-            ForEach(memories) { memory in
-                PublicMemoryCard(memory: memory, onOpenAuthor: { onOpenAuthor(memory.author.id) },
-                                 onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
-                if memory.id != memories.last?.id { Divider() }
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .roamCard()
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-friend-memories")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .roamCard()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("detail-friend-memories")
     }
 }
 

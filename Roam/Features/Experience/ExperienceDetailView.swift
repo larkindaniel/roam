@@ -41,6 +41,9 @@ final class ExperienceDetailModel {
 /// S06 experience detail.
 struct ExperienceDetailView: View {
     @State private var isPlanned = false
+    @State private var appleItem: MKMapItem?
+    @State private var presentedAppleItem: AppleMapsCard?
+    @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
 
     @Environment(AppServices.self) private var services
@@ -101,6 +104,9 @@ struct ExperienceDetailView: View {
                 Task { await reload() }
             }
         }
+        .sheet(item: $presentedAppleItem) { card in
+            card.ignoresSafeArea().presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showsPrivateNote) {
             PrivateNoteEditor(experienceID: experienceID) { Task { await model?.load() } }
         }
@@ -141,6 +147,9 @@ struct ExperienceDetailView: View {
                 if summary.photoURL != nil {
                     PlacePhotoView(url: summary.photoURL, credit: summary.photoCredit, label: "Photo of \(summary.name)", height: 220)
                         .padding(.top, Theme.Spacing.s)
+                } else if let lookAround {
+                    LookAroundCard(scene: lookAround, label: "Look Around at \(summary.name)")
+                        .padding(.top, Theme.Spacing.s)
                 } else {
                     hero(detail)
                 }
@@ -168,9 +177,12 @@ struct ExperienceDetailView: View {
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
-                if summary.photoURL != nil { hero(detail) }
+                if summary.photoURL != nil || lookAround != nil { hero(detail) }
                 memories(detail)
                 privateNote(detail)
+                if detail.isLocality {
+                    CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
+                }
                 about(detail)
                 if let memoriesModel, !memoriesModel.hasLoaded || memoriesModel.memories.contains(where: { !$0.isOwn && !friendMemories.map(\.id).contains($0.id) }) {
                     PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
@@ -183,6 +195,12 @@ struct ExperienceDetailView: View {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .refreshable { await reload() }
+        .task(id: summary.id) {
+            appleItem = await AppleMapsLookup.mapItem(for: summary)
+            if summary.photoURL == nil {
+                lookAround = await AppleMapsLookup.lookAroundScene(item: appleItem, coordinate: summary.coordinate)
+            }
+        }
     }
 
     private func reload() async {
@@ -399,6 +417,12 @@ struct ExperienceDetailView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.s) { utilityPills(detail) }
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) { utilityPills(detail) }
+            }
+            if let appleItem {
+                Button { presentedAppleItem = AppleMapsCard(item: appleItem) } label: { PillLabel(title: "Apple Maps details", systemImage: "info.circle") }
+                    .buttonStyle(PillButtonStyle())
+                    .accessibilityHint("Shows Apple Maps' photos, hours and description")
+                    .accessibilityIdentifier("detail-apple-maps")
             }
             if detail.provider != .fixture {
                 Text(detail.provider == .mapkit ? "Place details from Apple Maps." : "Added by someone on Roam.")

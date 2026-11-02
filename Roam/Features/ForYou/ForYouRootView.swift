@@ -224,7 +224,7 @@ struct ForYouRootView: View {
 
     private var landing: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            if let selected { selectedChip(selected) }
+            if let selected { cityHeader(selected) }
             if let model, !model.picks.isEmpty { picksSection(model.picks) }
             switch model?.phase ?? .loading {
             case .idle, .loading:
@@ -234,14 +234,12 @@ struct ForYouRootView: View {
             case .loaded where selected == nil:
                 citiesSection(model?.cities ?? [])
             case .loaded(let sections):
+                if let selected, sections.friends.isEmpty {
+                    CityGuideCard(name: selected.name, region: selected.region, country: selected.countryName, coordinate: selected.coordinate)
+                }
                 if !sections.friends.isEmpty { friendsSection(sections.friends) }
                 if !sections.highlyRated.isEmpty { highlyRatedSection(sections.highlyRated) }
                 if !sections.more.isEmpty { moreSection(sections.more) }
-                if sections.friends.isEmpty && sections.highlyRated.isEmpty && sections.more.isEmpty {
-                    Text(selected.map { "Nobody has logged a place in \($0.name) yet." } ?? "")
-                        .font(.subheadline).foregroundStyle(Roam.inkMuted)
-                        .accessibilityIdentifier("discover-empty")
-                }
                 if let selected, sections.friends.count + sections.highlyRated.count + sections.more.count < 3 { researchLink(selected) }
             }
         }
@@ -285,21 +283,17 @@ struct ForYouRootView: View {
         return parts.joined(separator: " · ")
     }
 
-    private func selectedChip(_ destination: Destination) -> some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Text(destination.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-            Button { selected = nil } label: {
-                Image(systemName: "xmark").font(.caption.weight(.bold)).frame(width: 28, height: 28)
+    /// The chosen city heads the page. Searching for another place or city replaces it.
+    private func cityHeader(_ destination: Destination) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+            if !destination.subtitle.isEmpty {
+                Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
             }
-            .accessibilityLabel("Clear \(destination.name)")
-            .accessibilityIdentifier("discover-clear")
         }
-        .foregroundStyle(Roam.ink)
-        .padding(.leading, Theme.Spacing.m)
-        .padding(.trailing, Theme.Spacing.xs)
-        .frame(minHeight: Theme.minimumHitTarget)
-        .background(Capsule().fill(Roam.fill))
-        .accessibilityIdentifier("discover-selected")
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("discover-city-header")
     }
 
     private func picksSection(_ picks: [DirectShare]) -> some View {
@@ -392,7 +386,7 @@ struct ForYouRootView: View {
 
     private func researchLink(_ destination: Destination) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            Text("Not much here yet. Want suggestions from an AI assistant?").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            Text("Planning a trip to \(destination.name)? Get ideas from an AI assistant.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             Button("Copy a brief for ChatGPT or Claude") { router.sheet = .researchBrief(destination) }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
