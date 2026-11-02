@@ -210,7 +210,7 @@ struct TravelProfileSection: View {
 
     /// Name, area and count side by side; stacked at accessibility sizes so nothing squeezes.
     private func rowLabel(_ row: TravelRow) -> some View {
-        let count = Text("\(row.count) \(row.count == 1 ? "place" : "places")").font(.subheadline).monospacedDigit().foregroundStyle(Theme.secondaryText)
+        let count = Text("")
         return HStack(spacing: Theme.Spacing.m) {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {

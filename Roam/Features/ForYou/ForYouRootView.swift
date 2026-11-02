@@ -136,8 +136,8 @@ struct ForYouRootView: View {
                 .foregroundStyle(Roam.ink)
                 .accessibilityIdentifier("discover-search-cancel")
             } else {
+                // The map, then your profile on the far right, the same on every tab.
                 HStack(spacing: Theme.Spacing.xs) {
-                    ProfileAvatarButton()
                     Button {
                         // On a city's page the map opens on that city.
                         if let selected { destinations.select(selected, for: .explore) }
@@ -148,6 +148,7 @@ struct ForYouRootView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Explore the map")
                     .accessibilityIdentifier("open-explore")
+                    ProfileAvatarButton()
                 }
                 .padding(.horizontal, 6)
                 .frame(height: 48)
@@ -386,7 +387,7 @@ struct ForYouRootView: View {
     }
 
     private func cityLine(_ city: DiscoverCity) -> String {
-        var parts = [city.destination.countryName, "\(city.placeCount) \(city.placeCount == 1 ? "place" : "places")"].compactMap { $0 }
+        var parts = [city.destination.countryName].compactMap { $0 }
         let names = city.friendNames.compactMap { $0.split(separator: " ").first.map(String.init) }
         if let first = names.first {
             parts.append(names.count == 1 ? "\(first) has been" : (names.count == 2 ? "\(first) and \(names[1]) have been" : "\(first) and \(names.count - 1) others have been"))

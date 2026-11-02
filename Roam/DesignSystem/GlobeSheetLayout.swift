@@ -31,6 +31,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var floatsWhenPeeking = false
     /// A control that sits on the map just above the card, at the left; hidden once the card fills the screen.
     var mapAccessory: AnyView? = nil
+    /// The same, at the right.
+    var mapTrailingAccessory: AnyView? = nil
     /// Scrolled, the header gives way to a dark fade with just the name (used for a place's card).
     var collapsesHeaderOnScroll = false
     @ViewBuilder var globe: () -> Globe
@@ -57,10 +59,14 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 // The card floats with a margin all round, so the map fills the whole screen behind it.
                 globe().ignoresSafeArea()
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    if let mapAccessory, detent != .full {
-                        mapAccessory
-                            .padding(.leading, Theme.Spacing.l)
-                            .transition(.opacity)
+                    if detent != .full, mapAccessory != nil || mapTrailingAccessory != nil {
+                        HStack {
+                            mapAccessory
+                            Spacer()
+                            mapTrailingAccessory
+                        }
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .transition(.opacity)
                     }
                     card(height: height, available: available)
                 }

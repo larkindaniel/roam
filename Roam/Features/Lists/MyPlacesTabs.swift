@@ -138,13 +138,11 @@ struct BeenTab: View {
         } else {
             VStack(spacing: 0) {
                 ForEach(model.homeCities) { city in
-                    let spots = model.pins.filter { $0.state == .visited && CityMatch.inHome($0.experience, city, homes: model.homeCities) }.count
                     Button { router.push(.homeCity(city)) } label: {
                         HStack(spacing: Theme.Spacing.m) {
                             Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).frame(width: 24)
                             Text(city.name).font(.headline).foregroundStyle(Roam.ink)
                             Spacer()
-                            Text("\(spots) \(spots == 1 ? "spot" : "spots")").font(.subheadline).foregroundStyle(Roam.inkMuted)
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
                         }
                         .frame(minHeight: Theme.minimumHitTarget)
@@ -311,7 +309,6 @@ struct SavedTab: View {
     }
 
     private func tile(_ country: PlaceGroups.Country) -> some View {
-        let count = country.cities.map(\.items.count).reduce(0, +)
         let cover = country.cities.flatMap(\.items).first { $0.experience.photoURL != nil }?.experience ?? country.cities.first?.items.first?.experience
         return Button { router.push(.wishlistCountry(code: country.code, title: country.title)) } label: {
             ZStack(alignment: .bottomLeading) {
@@ -325,7 +322,6 @@ struct SavedTab: View {
                     .allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(country.title).font(.headline).foregroundStyle(.white).lineLimit(1)
-                    Text("\(count) \(count == 1 ? "place" : "places")").font(.caption).foregroundStyle(.white.opacity(0.85))
                 }
                 .padding(Theme.Spacing.m)
             }

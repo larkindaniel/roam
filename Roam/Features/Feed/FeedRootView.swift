@@ -15,7 +15,6 @@ struct FeedRootView: View {
             .navigationTitle("Friends")
             .toolbar {
                 LogPlaceToolbarButton()
-                ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         if let me = session.userID { router.push(.followGraph(me, .friends)) }
@@ -30,6 +29,7 @@ struct FeedRootView: View {
                     .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
                     .accessibilityIdentifier("open-notifications")
                 }
+                ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             }
             .navigationBarTitleDisplayMode(.large)
             .task { await load() }

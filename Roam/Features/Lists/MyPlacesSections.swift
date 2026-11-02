@@ -101,8 +101,7 @@ struct PlaceBreakdown: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(city.name).font(.headline).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
                 Spacer()
-                Text(city.items.isEmpty ? "No places yet" : "\(city.items.count) \(city.items.count == 1 ? "place" : "places")")
-                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                if city.items.isEmpty { Text("No places yet").font(.footnote).foregroundStyle(Roam.inkMuted) }
             }
             if !city.items.isEmpty {
                 VStack(spacing: 0) {
@@ -427,7 +426,6 @@ struct HomeCitiesSection: View {
 
     private func row(_ city: Destination) -> some View {
         let been = model.pins.filter { $0.state == .visited && CityMatch.inHome($0.experience, city, homes: model.homeCities) }
-        let wanted = model.pins.filter { $0.state != .visited && CityMatch.inHome($0.experience, city, homes: model.homeCities) }
         let top = been.max { (model.scores[$0.id]?.tenths ?? 0) < (model.scores[$1.id]?.tenths ?? 0) }
         return Button { router.push(.homeCity(city)) } label: {
             HStack(spacing: Theme.Spacing.m) {
@@ -439,8 +437,7 @@ struct HomeCitiesSection: View {
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(city.name).font(.headline).foregroundStyle(Roam.ink)
-                    Text([been.isEmpty ? "No places yet" : "\(been.count) \(been.count == 1 ? "spot" : "spots")",
-                          wanted.isEmpty ? nil : "\(wanted.count) to try"].compactMap { $0 }.joined(separator: " · "))
+                    Text(been.isEmpty ? "No places yet" : "Your spots")
                         .font(.footnote).foregroundStyle(Roam.inkMuted)
                 }
                 Spacer(minLength: 0)
@@ -918,9 +915,7 @@ struct PassportCountryView: View {
         if city.placeCount == 0 {
             parts.append("Been here")
         } else if city.visibleCount < city.placeCount && session.userID != ownerID {
-            parts.append(city.visibleCount == 0 ? "\(city.placeCount) private places" : "\(city.visibleCount) of \(city.placeCount) places shared")
-        } else {
-            parts.append("\(city.placeCount) \(city.placeCount == 1 ? "place" : "places")")
+            parts.append(city.visibleCount == 0 ? "Kept private" : "Some kept private")
         }
         if let first = city.firstVisit, let last = city.lastVisit {
             parts.append(first.year == last.year ? "\(first.year)" : "\(first.year)–\(last.year)")
@@ -1036,7 +1031,7 @@ struct PlacesMapScreen<Content: View>: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1).accessibilityAddTraits(.isHeader)
-                    Text(subtitle ?? "\(items.count) \(items.count == 1 ? "place" : "places")").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted) }
                 }
                 Spacer()
                 GlobeSheetChevron(detent: detent)

@@ -202,7 +202,8 @@ struct MyPlacesRootView: View {
 
     var body: some View {
         GlobeSheetLayout(detent: $detent, peekHeight: 128, headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
-                         headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, collapsesHeaderOnScroll: true) {
+                         headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() },
+                         mapTrailingAccessory: AnyView(recenterButton), collapsesHeaderOnScroll: true) {
             globe
         } header: {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -240,16 +241,12 @@ struct MyPlacesRootView: View {
         }
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
+        // The tab bar comes back only once the card is fully up; over the globe the card has the bottom to itself.
+        .toolbar(detent == .full ? .visible : .hidden, for: .tabBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             LogPlaceToolbarButton()
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showWorld() } label: { Image(systemName: "scope") }
-                    .accessibilityLabel("Recenter globe")
-                    .accessibilityIdentifier("recenter-globe")
-            }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 // The globe stays satellite; the street map opens on its own, on the country you're looking at.
                 Button {
@@ -258,6 +255,7 @@ struct MyPlacesRootView: View {
                     .accessibilityLabel(focusedCountry.map { "Map of \(countryTitle($0))" } ?? "Explore the map")
                     .accessibilityIdentifier("myplaces-open-map")
             }
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
         }
         .task {
             if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
@@ -284,6 +282,16 @@ struct MyPlacesRootView: View {
             if showsCoachmark { LogCoachmark { showsCoachmark = false } }
         }
         .screenIdentifier("myplaces-root")
+    }
+
+    private var recenterButton: some View {
+        Button { showWorld() } label: {
+            Image(systemName: "scope").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Circle())
+        .accessibilityLabel("Recenter globe")
+        .accessibilityIdentifier("recenter-globe")
     }
 
     /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
