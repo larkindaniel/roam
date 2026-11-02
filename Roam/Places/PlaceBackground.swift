@@ -85,12 +85,14 @@ struct PlaceThumbnail: View {
 /// whatever the card opens.
 struct MapStill: View {
     let coordinate: CLLocationCoordinate2D
+    /// The place's category symbol, drawn in the pin as on its own page.
+    var symbol = "mappin"
     var tint: Color = .red
 
     var body: some View {
         Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)),
             interactionModes: []) {
-            Marker("", coordinate: coordinate).tint(tint)
+            Marker("", systemImage: symbol, coordinate: coordinate).tint(tint)
         }
         // Full Apple Maps colour, like Explore.
         .mapStyle(.standard(elevation: .realistic, emphasis: .automatic, pointsOfInterest: .all))

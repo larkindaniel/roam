@@ -137,7 +137,7 @@ struct PlacePhotoView: View {
                             }
                         }
                     } else if let location {
-                        MapStill(coordinate: location)
+                        MapStill(coordinate: location, symbol: placeholderSymbol)
                     } else {
                         Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                     }
