@@ -189,7 +189,8 @@ struct PlaceGallery: View {
                             EmptyView()
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+                    // Concentric with the card around it: its 38-point corners less the 16-point inset.
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 if let lookAround, !items.contains(where: { if case .lookAround = $0 { return true } else { return false } }) {
                     Button { showsLookAround = true } label: {
                         Image(systemName: "binoculars.fill")

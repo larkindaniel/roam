@@ -20,9 +20,10 @@ enum GlobeSheetDetent: CaseIterable {
 struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @Binding var detent: GlobeSheetDetent
     var peekHeight: CGFloat = 112
-    /// How much the floating tab bar covers the bottom of the layout (about 52 points on iOS 26, measured on
-    /// the iPhone 17 simulator); 0 where the tab bar is hidden.
-    var bottomOverlap: CGFloat = 52
+    /// How much the floating tab bar covers the bottom of the screen, home indicator included (about 86 points
+    /// on iOS 26, measured on the iPhone 17 simulator); 0 where the tab bar is hidden. The card always runs down
+    /// behind the tab bar to the bottom of the screen; it never stops short above it.
+    var bottomOverlap: CGFloat = 86
     var headerLabel: String
     var headerIdentifier: String
     var onRefresh: () async -> Void = {}
@@ -37,6 +38,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @GestureState private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
     @State private var snapping = false
+    @State private var contentScrolled = false
 
     /// Minimised, the card is just its header, sitting on the tab bar.
     private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
@@ -45,7 +47,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         GeometryReader { proxy in
             let available = proxy.size.height
             let peekHeight = peek
-            let height = min(max(detent.height(in: available, peek: peekHeight) - dragOffset, peekHeight), available)
+            // Fully up, the card stops below the floating buttons at the top of the screen.
+            let top = available - Self.topClearance
+            let height = min(max(min(detent.height(in: available, peek: peekHeight), top) - dragOffset, peekHeight), top)
             let floating = isFloating
             ZStack(alignment: .bottom) {
                 // The card floats with a margin all round, so the map fills the whole screen behind it.
@@ -63,81 +67,97 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .background(Color.black.ignoresSafeArea())
         // With no tab bar below, the card runs down to the bottom of the screen.
-        .ignoresSafeArea(edges: bottomOverlap == 0 ? .bottom : [])
+        .ignoresSafeArea(edges: .bottom)
     }
 
-    private let displayCornerRadius: CGFloat = 55
+    /// The rounding of current iPhone screens (about 62 points on the iPhone 17 and 16 Pro).
+    private let displayCornerRadius: CGFloat = 62
+    private static var topClearance: CGFloat { 26 }
 
     private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
-    /// Minimised (or being dragged), the header shows in the grab area; opened up it scrolls with the content.
-    private var headerPinned: Bool { detent == .peek || dragOffset != 0 }
+
+    /// Like Apple Maps: the minimised bubble floats with a wide margin and is most see-through; halfway up it has
+    /// a narrow margin and less glass; fully up it is solid and runs to the edges of the screen.
+    private var sideMargin: CGFloat {
+        switch detent {
+        case .peek: return floatsWhenPeeking ? Theme.Spacing.l : Theme.Spacing.s
+        case .half: return Theme.Spacing.s
+        case .full: return 0
+        }
+    }
+
+    private var bottomMargin: CGFloat {
+        switch detent {
+        case .peek: return floatsWhenPeeking ? Theme.Spacing.xl + Theme.Spacing.s : Theme.Spacing.s
+        case .half: return Theme.Spacing.s
+        case .full: return 0
+        }
+    }
+
+    private var glassOpacity: Double {
+        switch detent {
+        case .peek: return 0.5
+        case .half: return 0.78
+        case .full: return 1
+        }
+    }
 
     private func card(height: CGFloat, available: CGFloat) -> some View {
         let floating = isFloating
-        // Running down to the bottom of the screen, the card's lower corners follow the display's own rounded
-        // corners (about 55 points on current iPhones) with the same gap all the way round.
-        let bottomRadius: CGFloat = floating ? 28 : (bottomOverlap == 0 ? displayCornerRadius - Theme.Spacing.s : 26)
-        let shape = UnevenRoundedRectangle(topLeadingRadius: floating ? 28 : 26, bottomLeadingRadius: bottomRadius,
-                                           bottomTrailingRadius: bottomRadius, topTrailingRadius: floating ? 28 : 26, style: .continuous)
+        // Rounded like the screen itself: the bubble is pill-shaped, the card's top corners echo the display's.
+        let top: CGFloat = floating ? 32 : 38
+        // Down at the bottom of the screen, the lower corners follow the display's own rounded corners.
+        let bottom: CGFloat = floating ? 32 : max(displayCornerRadius - bottomMargin, 0)
+        let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom,
+                                           bottomTrailingRadius: bottom, topTrailingRadius: top, style: .continuous)
         return VStack(spacing: 0) {
-            if headerPinned { handle(available: available) }
+            // The grabber, title and buttons stay put; the rest scrolls beneath them.
+            handle(available: available)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                    // Opened up, the grabber and title scroll away with everything else, like Apple Maps.
-                    if !headerPinned {
-                        VStack(spacing: Theme.Spacing.s) {
-                            grabber
-                            header()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { setDetent(detent == .half ? .full : .half) }
-                        .accessibilityElement(children: .contain)
-                        .accessibilityLabel(headerLabel)
-                        .accessibilityAction(named: detent == .full ? "Show the map" : "Expand") { setDetent(detent == .half ? .full : .half) }
-                        .accessibilityIdentifier(headerIdentifier)
-                    }
-                    content()
-                }
-                .padding(.horizontal, Theme.Spacing.l)
-                .padding(.top, Theme.Spacing.s)
-                .padding(.bottom, Theme.Spacing.xxl)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) { content() }
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.top, Theme.Spacing.s)
+                    // Clear of the tab bar floating over the bottom of the card.
+                    .padding(.bottom, Theme.Spacing.xxl + bottomOverlap)
             }
             // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
-                guard !headerPinned, !snapping else { return }
+                contentScrolled = new > 2
+                guard !snapping, detent != .peek else { return }
                 if new < -70 {
                     snap(to: detent == .full ? .half : .peek)
                 } else if detent == .half, new > 30, new > old {
                     snap(to: .full)
                 }
             }
+            // Content fades out as it scrolls up under the header instead of being cut off at a hard edge.
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: contentScrolled ? 20 : 0)
+                    Rectangle()
+                }
+            }
             .scrollDisabled(detent == .peek)
             .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
             .frame(height: floating ? 0 : nil)
         }
-        .frame(height: floating ? nil : height - Theme.Spacing.s, alignment: .top)
+        .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
         .background {
-            // White with a soft shadow all round so the card stands out from any map or globe behind it. The
-            // minimised bubble is a touch see-through, a hint of glass over the map.
-            if floating {
-                ZStack {
-                    shape.fill(.ultraThinMaterial)
-                    shape.fill(Roam.paperRaised.opacity(0.88))
-                }
-                .shadow(color: .black.opacity(0.25), radius: 16)
-            } else {
-                shape.fill(Roam.paperRaised).shadow(color: .black.opacity(0.25), radius: 16)
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(Roam.paperRaised.opacity(glassOpacity))
             }
+            .shadow(color: .black.opacity(0.22), radius: 16)
         }
-        // Room round the card so the map or globe shows past its edges; the bubble sits a little higher.
-        .padding(.horizontal, floating ? Theme.Spacing.l : Theme.Spacing.s)
-        .padding(.bottom, floating ? Theme.Spacing.xl + Theme.Spacing.s : Theme.Spacing.s)
+        .padding(.horizontal, sideMargin)
+        .padding(.bottom, bottomMargin)
+        .animation(.spring(duration: 0.35), value: detent)
     }
 
     private var grabber: some View {
-        Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, Theme.Spacing.s).frame(maxWidth: .infinity)
+        Capsule().fill(Roam.rule).frame(width: 36, height: 5).padding(.top, 6).frame(maxWidth: .infinity)
     }
 
     /// Moves the card once per scroll gesture, so a long pull doesn't drop it two steps.
@@ -152,7 +172,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private func handle(available: CGFloat) -> some View {
         // As a floating bubble it's just the header, snug around it; as a card it has a grabber on top.
-        VStack(spacing: Theme.Spacing.s) {
+        VStack(spacing: 2) {
             if !isFloating { grabber }
             header()
         }
@@ -161,7 +181,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .padding(.vertical, isFloating ? Theme.Spacing.xs : 0)
         .padding(.bottom, isFloating ? 0 : Theme.Spacing.s)
         // The minimised height is measured while the header sits here.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if headerPinned { headerHeight = $0 } }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
         .onTapGesture { setDetent(detent == .half ? .full : .half) }
         .gesture(

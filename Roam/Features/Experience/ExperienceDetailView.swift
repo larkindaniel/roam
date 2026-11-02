@@ -157,18 +157,21 @@ struct ExperienceDetailView: View {
             placeMap(detail)
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
-            HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                Image(systemName: (detail.myRating?.category ?? summary.category)?.symbolName ?? "mappin")
-                    .font(.headline)
-                    .foregroundStyle(Roam.ink)
-                    .frame(width: 26)
-                    .accessibilityLabel((detail.myRating?.category ?? summary.category)?.title ?? "Place")
-                Text(summary.name)
-                    .font(.roamTitle())
-                    .foregroundStyle(Roam.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .accessibilityAddTraits(.isHeader)
+            HStack(alignment: sheetDetent == .peek ? .center : .top, spacing: Theme.Spacing.s) {
+                // Opened up, the category and area sit right under the name.
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(summary.name)
+                        .font(.roamTitle())
+                        .foregroundStyle(Roam.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .accessibilityAddTraits(.isHeader)
+                    if sheetDetent != .peek {
+                        Text([(detail.myRating?.category ?? summary.category)?.title, summary.areaLine.isEmpty ? nil : summary.areaLine]
+                                .compactMap { $0 }.joined(separator: " · "))
+                            .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                    }
+                }
                 Spacer(minLength: 0)
                 Button { choosingMapsApp = true } label: {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
@@ -176,10 +179,10 @@ struct ExperienceDetailView: View {
                         .foregroundStyle(.white)
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(PlaceState.planned.markerColor))
-                        .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                        .contentShape(Circle().inset(by: -4))
                 }
                 // Sit in the bubble's rounded end: the same gap on the right as above and below.
-                .padding(.trailing, sheetDetent == .peek ? -(Theme.Spacing.l - Theme.Spacing.xs) : 0)
+                .padding(.trailing, sheetDetent == .peek ? -(Theme.Spacing.l - Theme.Spacing.s) : 0)
                 .buttonStyle(.plain)
                 .accessibilityLabel("Directions to \(summary.name)")
                 .accessibilityIdentifier("detail-directions")
@@ -190,9 +193,6 @@ struct ExperienceDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
-                Text([(detail.myRating?.category ?? summary.category)?.title, summary.areaLine.isEmpty ? nil : summary.areaLine]
-                        .compactMap { $0 }.joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
                 if !galleryItems(summary).isEmpty {
                     PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                 }
