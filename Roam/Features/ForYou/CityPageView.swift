@@ -327,7 +327,7 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
@@ -509,6 +509,10 @@ struct CityPhotoCard: View {
 /// The city heads its page: name and where it is, Plan with AI when you haven't been, then its Wikipedia photo.
 struct CityHeader: View {
     let destination: Destination
+    /// You've been: you have spots here (or just marked it).
+    var hasBeen = false
+    @State private var markedNow = false
+    private var beenHere: Bool { hasBeen || markedNow }
     var isHome = false
     var showsPlanWithAI = true
     /// Set (or unset) the city as home; nil when it isn't yours to change. Anywhere within 100 km of a home city counts
@@ -536,67 +540,79 @@ struct CityHeader: View {
         }
     }
 
-    @ViewBuilder private var actions: some View {
-        if showsPlanWithAI || onToggleHome != nil || trips != nil {
-            // ViewThatFits drops to icon-only pills when the card is too narrow for the words.
-            ViewThatFits(in: .horizontal) {
-                actionPills(compact: false)
-                actionPills(compact: true)
+    /// Set as home, on the title row; a home city shows as a solid green house.
+    @ViewBuilder private var homePill: some View {
+        if let onToggleHome {
+            Button(action: onToggleHome) {
+                if isHome { Image(systemName: "house.fill") } else { Label("Set as home", systemImage: "house") }
             }
+            .buttonStyle(PillButtonStyle(isSelected: isHome, tint: PlaceState.visited.markerColor))
+            .accessibilityLabel(isHome ? "Home" : "Set as home")
+            .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
+            .accessibilityIdentifier("city-toggle-home")
         }
     }
 
-    private func actionPills(compact: Bool) -> some View {
-            HStack(spacing: Theme.Spacing.s) {
-                if let onToggleHome {
-                    // Once it's home, the pill shrinks to a solid green house.
-                    Button(action: onToggleHome) {
-                        if compact || isHome { Image(systemName: isHome ? "house.fill" : "house") }
-                        else { Label("Set as home", systemImage: "house") }
-                    }
-                    .buttonStyle(PillButtonStyle(isSelected: isHome, tint: PlaceState.visited.markerColor))
-                    .accessibilityLabel(isHome ? "Home" : "Set as home")
-                    .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
-                    .accessibilityIdentifier("city-toggle-home")
+    /// Round actions with a caption under each, laid out like a place's: been here (green), wishlist (yellow), add to a
+    /// trip (blue), send (black) and plan with AI (pink). A home city keeps just send and AI.
+    private var actionRow: some View {
+        HStack(spacing: Theme.Spacing.m) {
+            if trips != nil {
+                circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
+                       caption: beenHere ? "Been here" : "Log", identifier: "city-log") { if !beenHere { markedNow = true; onMarkVisited() } }
+                circle(isSaved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: isSaved,
+                       caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") { onToggleSaved() }
+                Menu {
+                    ForEach(trips ?? []) { trip in Button(trip.name) { onAddToTrip(trip) } }
+                    Button("New trip", systemImage: "plus") { onNewTrip() }
+                } label: {
+                    circleLabel("airplane", tint: PlaceState.planned.markerColor, filled: false, caption: "Trip")
                 }
-                // A home city isn't somewhere to take a trip: the button is just Plan with AI.
-                if trips == nil, showsPlanWithAI {
-                    Button { router.sheet = .researchBrief(destination) } label: {
-                        if compact { Image(systemName: "sparkles") } else { Label("Plan with AI", systemImage: "sparkles") }
-                    }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityLabel("Plan with AI")
-                    .accessibilityIdentifier("foryou-research-open")
-                }
-                // Otherwise one Plan menu: add the city to a trip (only cities are planned), start one, or plan it with AI.
-                if trips != nil {
-                    Menu {
-                        if let trips {
-                            ForEach(trips) { trip in Button("Add to \(trip.name)", systemImage: "airplane") { onAddToTrip(trip) } }
-                            Button("New trip", systemImage: "plus") { onNewTrip() }
-                            Button("I've been here", systemImage: "checkmark") { onMarkVisited() }
-                            Button(isSaved ? "Remove from wishlist" : "Save to wishlist", systemImage: isSaved ? "bookmark.slash" : "bookmark") { onToggleSaved() }
-                        }
-                        if showsPlanWithAI {
-                            Button("Plan with AI", systemImage: "sparkles") { router.sheet = .researchBrief(destination) }
-                        }
-                    } label: {
-                        Label("Plan", systemImage: "airplane")
-                    }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("city-plan")
-                }
+                .accessibilityLabel("Add to a trip")
+                .accessibilityIdentifier("city-trip")
             }
+            ShareLink(item: "\(destination.name)\(destination.countryName.map { ", \($0)" } ?? "") on Roam") {
+                circleLabel("paperplane", tint: Roam.ink, filled: false, caption: "Send")
+            }
+            .accessibilityLabel("Send to a friend")
+            .accessibilityIdentifier("city-send")
+            circle("sparkles", tint: .pink, filled: false, caption: "Plan with AI", identifier: "foryou-research-open") {
+                router.sheet = .researchBrief(destination)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func circle(_ symbol: String, tint: Color, filled: Bool, caption: String, identifier: String,
+                        action: @escaping () -> Void) -> some View {
+        Button(action: action) { circleLabel(symbol, tint: tint, filled: filled, caption: caption) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(caption)
+            .accessibilityIdentifier(identifier)
+    }
+
+    private func circleLabel(_ symbol: String, tint: Color, filled: Bool, caption: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(filled ? .white : tint)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
+            Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
+        }
+        .frame(minWidth: 52)
+        .contentShape(Rectangle())
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            // The actions always sit level with the name: home, then Plan, on the right. A long name shrinks to fit.
+            // The name with Set as home beside it, then the actions underneath, as on a place.
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 title.layoutPriority(-1)
                 Spacer(minLength: Theme.Spacing.xs)
-                actions
+                homePill
             }
+            actionRow
             // Credited once, under the blurb that follows.
             if showsPhoto { CityPhoto(destination: destination) }
         }
