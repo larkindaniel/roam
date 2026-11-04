@@ -220,7 +220,7 @@ struct MyPlacesRootView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 12)
                             .frame(height: 32)
-                            .background(Capsule().fill(PlaceState.visited.markerColor))
+                            .background(Capsule().fill(Roam.ink))
                     }
                     .buttonStyle(.plain)
                         .accessibilityIdentifier("myplaces-add-place")
