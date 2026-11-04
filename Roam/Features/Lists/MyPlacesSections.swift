@@ -872,25 +872,20 @@ struct PassportCountryView: View {
     let ownerID: UUID
     let country: PassportCountry
 
+    @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
+    @State private var expanded: Set<String> = []
+    @State private var entries: [ListEntry] = []
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                VStack(spacing: 0) {
-                    // Your homes first, then the places you travelled to.
-                    let cities = country.cities.filter(\.isHome) + country.cities.filter { !$0.isHome }
-                    ForEach(cities) { city in
-                        let opens = city.visibleCount > 0
-                        Button { if opens { router.push(.passportCity(ownerID: ownerID, city: city)) } } label: { row(city, opens: opens) }
-                            .buttonStyle(.plain)
-                            .allowsHitTesting(opens)
-                            .accessibilityIdentifier("passport-city-\(city.city.name)")
-                        if city.id != cities.last?.id { Divider() }
-                    }
-                }
-                .roamCard(padding: Theme.Spacing.m)
+                // Your homes in one card, the places you travelled to in another.
+                let homes = country.cities.filter(\.isHome)
+                let away = country.cities.filter { !$0.isHome }
+                if !homes.isEmpty { card(homes) }
+                if !away.isEmpty { card(away) }
                 if country.otherPlaceCount > 0 {
                     Text("Plus \(country.otherPlaceCount) \(country.otherPlaceCount == 1 ? "place" : "places") outside a city.").font(.footnote).foregroundStyle(Roam.inkMuted)
                 }
@@ -901,18 +896,64 @@ struct PassportCountryView: View {
         .navigationTitle(country.title)
         .navigationBarTitleDisplayMode(.inline)
         .screenIdentifier("passport-country")
+        .task { entries = (try? await services.lists.been(ownerID: ownerID)) ?? [] }
     }
 
-    private func row(_ city: PassportCity, opens: Bool) -> some View {
+    private func card(_ cities: [PassportCity]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(cities) { city in
+                let opens = city.visibleCount > 0
+                let isOpen = expanded.contains(city.id)
+                // A city opens in place to show its spots.
+                Button {
+                    withAnimation(.snappy) { if isOpen { expanded.remove(city.id) } else { expanded.insert(city.id) } }
+                } label: { row(city, opens: opens, isOpen: isOpen) }
+                    .buttonStyle(.plain)
+                    .allowsHitTesting(opens)
+                    .accessibilityIdentifier("passport-city-\(city.city.name)")
+                if isOpen { spots(in: city) }
+                // Every separator starts under the names, so the lines run the same between each row.
+                if city.id != cities.last?.id { Divider().padding(.leading, Self.iconWidth + Theme.Spacing.m) }
+            }
+        }
+        .roamCard(padding: Theme.Spacing.m)
+    }
+
+    @ViewBuilder private func spots(in city: PassportCity) -> some View {
+        let items = entries.filter { CityMatch.same($0.experience, city.city) }
+            .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
+        VStack(spacing: 0) {
+            ForEach(items) { entry in
+                Divider()
+                PlaceRow(item: PlaceMapItem(experience: entry.experience, state: .visited), score: entry.ownerScore) {
+                    router.push(.experience(entry.id))
+                }
+            }
+            if city.placeCount > items.count, session.userID != ownerID {
+                Text("\(city.placeCount - items.count) more kept private.").font(.footnote).foregroundStyle(Roam.inkMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Theme.Spacing.s)
+            }
+        }
+        .padding(.leading, Self.iconWidth + Theme.Spacing.m)
+        .padding(.bottom, Theme.Spacing.xs)
+        .transition(.opacity)
+    }
+
+    private static let iconWidth: CGFloat = 24
+
+    private func row(_ city: PassportCity, opens: Bool, isOpen: Bool) -> some View {
         HStack(spacing: Theme.Spacing.m) {
-            Image(systemName: city.isHome ? "house.fill" : "mappin.circle.fill").foregroundStyle(PlaceState.visited.markerColor).accessibilityHidden(true)
+            Image(systemName: city.isHome ? "house.fill" : "mappin.circle.fill").foregroundStyle(PlaceState.visited.markerColor)
+                .frame(width: Self.iconWidth).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(city.city.name).font(.headline).foregroundStyle(Roam.ink)
-                Text(detail(city)).font(.footnote).foregroundStyle(Roam.inkMuted)
+                if let detail = detail(city) { Text(detail).font(.footnote).foregroundStyle(Roam.inkMuted) }
             }
             Spacer(minLength: 0)
             if opens {
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                    .rotationEffect(.degrees(isOpen ? 90 : 0)).accessibilityHidden(true)
             }
         }
         .frame(minHeight: Theme.minimumHitTarget)
@@ -920,9 +961,10 @@ struct PassportCountryView: View {
         .contentShape(Rectangle())
     }
 
-    private func detail(_ city: PassportCity) -> String {
+    /// Homes need no explanation; elsewhere, when you went (or that you've been, for a city marked without places).
+    private func detail(_ city: PassportCity) -> String? {
+        if city.isHome { return nil }
         var parts: [String] = []
-        if city.isHome { parts.append("Home") }
         if city.placeCount == 0 {
             parts.append("Been here")
         } else if city.visibleCount < city.placeCount && session.userID != ownerID {
@@ -931,7 +973,7 @@ struct PassportCountryView: View {
         if let first = city.firstVisit, let last = city.lastVisit {
             parts.append(first.year == last.year ? "\(first.year)" : "\(first.year)–\(last.year)")
         }
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 
