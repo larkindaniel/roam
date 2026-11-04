@@ -204,7 +204,7 @@ struct MyPlacesRootView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
-                         floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
+                         floatingBottomMargin: RoamTabBar.sideMargin, floatingSideMargin: RoamTabBar.sideMargin,
                          collapsesHeaderOnScroll: true) {
             globe
         } header: {
@@ -324,8 +324,9 @@ struct MyPlacesRootView: View {
     /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
     @ViewBuilder private var globe: some View {
         if let model, model.hasLoaded {
-            // The globe shows the chosen tab: green where you've been, blue where you're going, yellow what you've saved.
-            let pins = focusedCountry == nil ? model.pins.filter { $0.state == tab.state } : model.pins
+            // Minimised, the globe shows everything; with the card up it shows the chosen tab: green where you've been,
+            // blue where you're going, yellow what you've saved.
+            let pins = focusedCountry == nil && detent != .peek ? model.pins.filter { $0.state == tab.state } : model.pins
             GlobeMapView(pins: pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          shadedCountryCodes: Set(PlaceMapItem.countryTints(pins).keys),
                          focusRegion: focusRegion,

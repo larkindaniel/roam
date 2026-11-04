@@ -220,7 +220,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .frame(maxWidth: .infinity)
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
-        .padding(.bottom, isFloating ? Theme.Spacing.s : Theme.Spacing.s)
+        // As a bubble, the same room below the header as the grabber takes above it, so the row sits centred.
+        .padding(.bottom, isFloating ? 13 : Theme.Spacing.s)
         // The minimised height is measured while the header sits here.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
