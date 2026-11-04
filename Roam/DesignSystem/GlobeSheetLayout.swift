@@ -237,9 +237,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         Group {
             if isFloating, let floatingHeight {
                 // A slim bubble: the row centred in it, the grabber tucked into the top edge.
+                // No grabber on the slim bubble; it swipes up all the same.
                 header()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay(alignment: .top) { Capsule().fill(Roam.rule).frame(width: 36, height: 4).padding(.top, 5) }
                     .frame(height: floatingHeight)
             } else {
                 VStack(spacing: 2) {

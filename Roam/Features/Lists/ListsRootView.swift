@@ -218,6 +218,9 @@ struct MyPlacesRootView: View {
             Image(systemName: "magnifyingglass").foregroundStyle(overGlobe ? Color.white.opacity(0.85) : Roam.inkMuted).accessibilityHidden(true)
             TextField("", text: $query, prompt: Text("Search places").foregroundStyle(overGlobe ? Color.white.opacity(0.75) : Roam.inkMuted))
                 .foregroundStyle(overGlobe ? Color.white : Roam.ink)
+                // A white, regular-sized cursor over the dark glass.
+                .tint(overGlobe ? Color.white : Color.blue)
+                .font(.body)
                 .focused($searching)
                 .submitLabel(.search)
                 .textInputAutocapitalization(.never)
