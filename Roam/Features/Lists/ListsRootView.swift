@@ -227,7 +227,7 @@ struct MyPlacesRootView: View {
                             .padding(.horizontal, 14)
                             .frame(height: 36)
                             // A soft grey fill, like the search field in Apple Maps.
-                            .background(Capsule().fill(Color(.tertiarySystemFill)))
+                            .background(Capsule().fill(Roam.ink.opacity(0.12)))
                     }
                     .buttonStyle(.plain)
                     // A little nearer the bubble's edge than the title is.
@@ -277,13 +277,13 @@ struct MyPlacesRootView: View {
                         .font(.headline)
                         .foregroundStyle(Roam.ink)
                         .frame(maxWidth: .infinity)
-                        .frame(height: RoamTabBar.height)
+                        .frame(height: 44)
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .floatingBubble(Capsule())
+                .modifier(GreyGlass())
                 .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, RoamTabBar.margin)
+                .padding(.bottom, 10)
                 .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("log-place")
@@ -374,6 +374,17 @@ struct MyPlacesRootView: View {
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {
             Color.black
+        }
+    }
+}
+
+/// Grey, see-through glass for My Places' Add a place bar.
+private struct GreyGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(Color.gray.opacity(0.3)).interactive(), in: Capsule())
+        } else {
+            content.background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(Color.gray.opacity(0.25))))
         }
     }
 }
