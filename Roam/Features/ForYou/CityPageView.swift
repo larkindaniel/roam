@@ -29,6 +29,9 @@ struct CityPageView: View {
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
+    /// The place opened from here: it zooms open out of what you tapped instead of sliding in from the side.
+    @State private var openPlace: UUID?
+    @Namespace private var placeZoom
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -73,7 +76,7 @@ struct CityPageView: View {
             guard let picked else { return }
             selection = nil
             if let id = picked.value {
-                router.push(.experience(id))
+                openPlace = id
             } else if let feature = picked.feature {
                 Task { await open(feature) }
             }
@@ -85,6 +88,10 @@ struct CityPageView: View {
             guard !Task.isCancelled else { return }
             if search == nil { search = ExperienceSearchModel(services: services) }
             await search?.search(query, near: destination)
+        }
+        .navigationDestination(item: $openPlace) { id in
+            ExperienceDetailView(experienceID: id)
+                .navigationTransition(.zoom(sourceID: id, in: placeZoom))
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -210,7 +217,7 @@ struct CityPageView: View {
         guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
               let candidate = MapKitPlaceSearchProvider.candidate(from: item),
               let place = try? await services.experiences.resolve(candidate) else { return }
-        router.push(.experience(place.id))
+        openPlace = place.id
     }
 
     private func open(_ hit: SearchHit) async {
@@ -220,7 +227,7 @@ struct CityPageView: View {
             guard let search else { return }
             let place = try await search.resolve(hit)
             openError = nil
-            router.push(.experience(place.id))
+            openPlace = place.id
         } catch { openError = error.roamMessage }
     }
 
@@ -239,7 +246,8 @@ struct CityPageView: View {
                 sectionTitle(isOwn ? "Your spots" : "Their spots")
                 LazyVStack(spacing: Theme.Spacing.l) {
                     ForEach(spots) { entry in
-                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { router.push(.experience(entry.id)) }
+                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { openPlace = entry.id }
+                            .matchedTransitionSource(id: entry.id, in: placeZoom)
                     }
                 }
             }
@@ -258,8 +266,9 @@ struct CityPageView: View {
                         ForEach(recommended) { place in
                             DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
                                               score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
-                                router.push(.experience(place.id))
+                                openPlace = place.id
                             }
+                            .matchedTransitionSource(id: place.id, in: placeZoom)
                         }
                     }
                 }

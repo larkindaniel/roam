@@ -69,6 +69,7 @@ struct ExperienceDetailView: View {
     @State private var failedDeletion: DetailDeletion?
     @State private var actionError: String?
     @State private var deleting = false
+    @State private var nearbyFeature: MapFeature?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -275,12 +276,25 @@ struct ExperienceDetailView: View {
     private func placeMap(_ detail: ExperienceDetail) -> some View {
         let coordinate = detail.summary.coordinate
         let span: CLLocationDistance = detail.isLocality ? 20_000 : 1_500
-        return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span))) {
+        return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span)),
+                   selection: $nearbyFeature) {
             Marker(detail.summary.name, systemImage: PlaceIcon.symbol(appleType: detail.summary.providerCategory, category: detail.myRating?.category ?? detail.summary.category),
                    coordinate: coordinate)
                 .tint(.red)
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+        // Tapping a nearby place Apple shows on the map opens that place's page.
+        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
+        .onChange(of: nearbyFeature) { _, feature in
+            guard let feature else { return }
+            nearbyFeature = nil
+            Task {
+                guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
+                      let candidate = MapKitPlaceSearchProvider.candidate(from: item),
+                      let place = try? await services.experiences.resolve(candidate), place.id != experienceID else { return }
+                router.push(.experience(place.id))
+            }
+        }
         .accessibilityLabel("Map showing \(detail.summary.name)")
         .accessibilityIdentifier("detail-map")
     }
