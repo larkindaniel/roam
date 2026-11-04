@@ -40,6 +40,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var collapsesHeaderOnScroll = false
     /// Minimised, a fixed bubble height (the tab bar's, on My Places) with the row centred in it.
     var floatingHeight: CGFloat? = nil
+    /// Tapping the header raises or lowers the card; off when the header holds a search field.
+    var headerTapToggles = true
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -238,7 +240,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         // The minimised height is measured while the header sits here.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
-        .onTapGesture { setDetent(detent == .half ? .full : .half) }
+        .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
         .gesture(
             DragGesture(minimumDistance: 4)
                 .updating($dragOffset) { value, offset, _ in offset = value.translation.height }

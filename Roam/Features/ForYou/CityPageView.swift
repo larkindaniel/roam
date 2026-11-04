@@ -1,9 +1,11 @@
 import MapKit
 import SwiftUI
 
-/// One city's page, the same from Discover and from My Places: its photo and blurb, the spots you (or the friend whose
-/// passport you're in) have been to there, then places we think you'd enjoy. Plan with AI shows only for a city you
-/// haven't logged anywhere in yet.
+/// One city, the same from Discover and from My Places, and the app's way of exploring it: a full-screen map of the
+/// city under a card that swipes up, like a place's page. Minimised, the card is a search bar in the tab bar's spot
+/// ("Search Jardín", limited to the city and around it). Halfway or fully up it keeps the search at the top over the
+/// city's photo, blurb, the spots you (or the friend whose passport you're in) have been to, and places we think you'd
+/// enjoy; while you search, the results take their place. Fully up, the tab bar comes back.
 struct CityPageView: View {
     let destination: Destination
     /// Whose spots to show; nil for your own.
@@ -12,76 +14,72 @@ struct CityPageView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
-    @Environment(DestinationStore.self) private var destinations
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
+    @State private var search: ExperienceSearchModel?
+    @State private var query = ""
+    @FocusState private var searching: Bool
+    @State private var opening: String?
+    @State private var openError: String?
+    @State private var detent = GlobeSheetDetent.half
     @State private var spots: [ListEntry] = []
     @State private var mySpotCount = 0
     @State private var loadedSpots = false
     @State private var homes: [Destination] = []
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
+    @State private var selectedPin: UUID?
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     /// Home cities can be stored under more than one region spelling, so they match by country and name.
     private var matchingHomes: [Destination] {
         homes.filter { $0.countryCode == destination.countryCode && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
     }
     private var isHome: Bool { !matchingHomes.isEmpty }
 
+    /// Places others loved that aren't already among your spots.
+    private var recommended: [DiscoverPlace] {
+        guard case .loaded(let sections) = model?.phase else { return [] }
+        let shown = Set(spots.map(\.id))
+        return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }.filter { !shown.contains($0.id) }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
-                           onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
-                           trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
-                           onAddToTrip: { trip in Task { await add(to: trip) } },
-                           onNewTrip: { planningNewTrip = true })
-                CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
-                              coordinate: destination.coordinate, showsPhoto: false)
-                if !spots.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                        sectionTitle(isOwn ? "Your spots" : "Their spots")
-                        LazyVStack(spacing: Theme.Spacing.l) {
-                            ForEach(spots) { entry in
-                                DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { router.push(.experience(entry.id)) }
-                            }
-                        }
-                    }
-                }
-                recommendations
+        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
+                         headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
+                         floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
+                         floatingHeight: RoamTabBar.height, headerTapToggles: false) {
+            cityMap
+        } header: {
+            searchField
+        } content: {
+            if hasQuery {
+                searchResults
+            } else {
+                cityInfo
             }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.top, Theme.Spacing.s)
-            .padding(.bottom, Theme.Spacing.xxl)
         }
-        .background(Roam.paper)
+        // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
+        .roamTabBar(hidden: detent != .full)
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                // The map opens on this city.
-                Button {
-                    destinations.select(destination, for: .explore)
-                    router.openExplore()
-                } label: { Image(systemName: "map") }
-                    .accessibilityLabel("Map of \(destination.name)")
-                    .accessibilityIdentifier("city-open-map")
-            }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
+        // Searching wants room for the results.
+        .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
+        .onChange(of: selectedPin) { _, id in
+            guard let id else { return }
+            router.push(.experience(id))
+            selectedPin = nil
         }
-        .task(id: destination.id) {
-            async let mine = loadSpots(of: session.userID)
-            async let theirs = isOwn ? [] : loadSpots(of: ownerID)
-            let own = await mine
-            mySpotCount = own.count
-            spots = isOwn ? own : await theirs
-            loadedSpots = true
-            if isOwn {
-                homes = (try? await services.plans.homeCities()) ?? []
-                trips = (try? await services.plans.myTrips()) ?? []
-            }
-            if model == nil { model = ForYouModel(plans: services.plans) }
-            await model?.load(destination)
+        .task(id: destination.id) { await reload() }
+        .task(id: query) {
+            guard hasQuery else { search?.query = ""; return }
+            try? await Task.sleep(for: Limits.searchDebounce)
+            guard !Task.isCancelled else { return }
+            if search == nil { search = ExperienceSearchModel(services: services) }
+            await search?.search(query, near: destination)
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -90,22 +88,144 @@ struct CityPageView: View {
         .screenIdentifier("city-page")
     }
 
-    /// Places others loved that aren't already among the spots above.
-    @ViewBuilder private var recommendations: some View {
+    // MARK: Map
+
+    /// The city, with your spots in green and the places we'd suggest in red; tapping one opens it.
+    private var cityMap: some View {
+        let span = max(destination.radiusMeters * 2.2, 6_000)
+        return Map(initialPosition: .region(MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)),
+                   selection: $selectedPin) {
+            ForEach(spots) { entry in
+                Marker(entry.experience.name, systemImage: entry.experience.category?.symbolName ?? "mappin", coordinate: entry.experience.coordinate)
+                    .tint(PlaceState.visited.markerColor)
+                    .tag(entry.id)
+            }
+            ForEach(recommended) { place in
+                Marker(place.experience.name, systemImage: place.experience.category?.symbolName ?? "mappin", coordinate: place.experience.coordinate)
+                    .tint(.red)
+                    .tag(place.id)
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+        .accessibilityLabel("Map of \(destination.name)")
+        .accessibilityIdentifier("city-map")
+    }
+
+    // MARK: Search
+
+    private var searchField: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            TextField("Search \(destination.name)", text: $query)
+                .focused($searching)
+                .submitLabel(.search)
+                .accessibilityIdentifier("city-search")
+            if hasQuery || searching {
+                Button {
+                    query = ""
+                    searching = false
+                } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel search")
+            }
+        }
+        .font(.body)
+        .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
+        .frame(height: 40)
+        // Minimised the bubble is the search bar; opened up it's a grey field at the top of the card, as in Maps.
+        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.07)) } }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Only what's in the city or just around it.
+    private var nearbyHits: [SearchHit] {
+        let center = CLLocation(latitude: destination.latitude, longitude: destination.longitude)
+        let limit = max(destination.radiusMeters * 3, 25_000)
+        return (search?.hits ?? []).filter {
+            CLLocation(latitude: $0.candidate.latitude, longitude: $0.candidate.longitude).distance(from: center) <= limit
+        }
+    }
+
+    @ViewBuilder private var searchResults: some View {
+        if let openError { Text(openError).font(.footnote).foregroundStyle(Roam.signal) }
+        switch search?.phase ?? .loading {
+        case .idle, .loading:
+            SkeletonList(rows: 3)
+        case .failed(let message):
+            InlineRetryView(message: message) { Task { await search?.search(query, near: destination) } }
+        case .noResults, .results:
+            if nearbyHits.isEmpty {
+                Text("Nothing in \(destination.name) matches \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(nearbyHits) { hit in
+                        Button { Task { await open(hit) } } label: {
+                            HStack(spacing: Theme.Spacing.m) {
+                                Image(systemName: hit.category?.symbolName ?? "mappin").foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                                    Text(hit.candidate.address ?? hit.candidate.locality ?? "").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                                }
+                                Spacer(minLength: Theme.Spacing.s)
+                                if opening == hit.id { ProgressView() }
+                            }
+                            .frame(minHeight: Theme.minimumHitTarget)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(opening != nil)
+                        .accessibilityIdentifier("city-result-\(hit.candidate.name)")
+                        if hit.id != nearbyHits.last?.id { Divider().padding(.leading, 24 + Theme.Spacing.m) }
+                    }
+                }
+                .roamCard(padding: Theme.Spacing.m)
+            }
+        }
+    }
+
+    private func open(_ hit: SearchHit) async {
+        opening = hit.id
+        defer { opening = nil }
+        do {
+            guard let search else { return }
+            let place = try await search.resolve(hit)
+            openError = nil
+            router.push(.experience(place.id))
+        } catch { openError = error.roamMessage }
+    }
+
+    // MARK: City
+
+    @ViewBuilder private var cityInfo: some View {
+        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
+                   onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
+                   trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
+                   onAddToTrip: { trip in Task { await add(to: trip) } },
+                   onNewTrip: { planningNewTrip = true })
+        CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
+                      coordinate: destination.coordinate, showsPhoto: false)
+        if !spots.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                sectionTitle(isOwn ? "Your spots" : "Their spots")
+                LazyVStack(spacing: Theme.Spacing.l) {
+                    ForEach(spots) { entry in
+                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { router.push(.experience(entry.id)) }
+                    }
+                }
+            }
+        }
         switch model?.phase ?? .loading {
         case .idle, .loading:
             SkeletonList(rows: 3)
         case .failed(let message):
             InlineRetryView(message: message) { Task { await model?.load(destination) } }
-        case .loaded(let sections):
-            let shown = Set(spots.map(\.id))
-            let places = (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }.filter { !shown.contains($0.id) }
-            if !places.isEmpty {
+        case .loaded:
+            if !recommended.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     sectionTitle("Places we think you'd enjoy")
                     // Lazy, so only the cards on screen build their maps.
                     LazyVStack(spacing: Theme.Spacing.l) {
-                        ForEach(places) { place in
+                        ForEach(recommended) { place in
                             DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
                                               score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
                                 router.push(.experience(place.id))
@@ -117,6 +237,21 @@ struct CityPageView: View {
                 .accessibilityIdentifier("discover-places")
             }
         }
+    }
+
+    private func reload() async {
+        async let mine = loadSpots(of: session.userID)
+        async let theirs = isOwn ? [] : loadSpots(of: ownerID)
+        let own = await mine
+        mySpotCount = own.count
+        spots = isOwn ? own : await theirs
+        loadedSpots = true
+        if isOwn {
+            homes = (try? await services.plans.homeCities()) ?? []
+            trips = (try? await services.plans.myTrips()) ?? []
+        }
+        if model == nil { model = ForYouModel(plans: services.plans) }
+        await model?.load(destination)
     }
 
     /// Only cities are planned: the city joins the trip, and places you've saved here show up on it.
@@ -227,7 +362,7 @@ struct CityHeader: View {
     private var title: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Theme.Spacing.s) {
-                Text(destination.name).font(.roamDisplay(.title)).lineLimit(1).fixedSize().accessibilityAddTraits(.isHeader)
+                Text(destination.name).font(.roamDisplay(.title)).lineLimit(1).minimumScaleFactor(0.6).accessibilityAddTraits(.isHeader)
                 if isHome {
                     Image(systemName: "house.fill").font(.title3).foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home")
                 }
@@ -240,12 +375,23 @@ struct CityHeader: View {
 
     @ViewBuilder private var actions: some View {
         if showsPlanWithAI || onToggleHome != nil || trips != nil {
+            // ViewThatFits drops to icon-only pills when the card is too narrow for the words.
+            ViewThatFits(in: .horizontal) {
+                actionPills(compact: false)
+                actionPills(compact: true)
+            }
+        }
+    }
+
+    private func actionPills(compact: Bool) -> some View {
             HStack(spacing: Theme.Spacing.s) {
                 if let onToggleHome {
                     Button(action: onToggleHome) {
-                        Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house")
+                        if compact { Image(systemName: isHome ? "house.fill" : "house") }
+                        else { Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house") }
                     }
                     .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .accessibilityLabel(isHome ? "Home" : "Set as home")
                     .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
                     .accessibilityIdentifier("city-toggle-home")
                 }
@@ -266,23 +412,15 @@ struct CityHeader: View {
                     .accessibilityIdentifier("city-plan")
                 }
             }
-        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            // The actions sit level with the name (home on the left, Plan with AI on the right); a long name pushes
-            // them onto their own row.
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                    title
-                    Spacer(minLength: Theme.Spacing.s)
-                    actions
-                }
-                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    title
-                    ScrollView(.horizontal, showsIndicators: false) { actions }.scrollClipDisabled()
-                }
+            // The actions always sit level with the name: home, then Plan, on the right. A long name shrinks to fit.
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                title.layoutPriority(-1)
+                Spacer(minLength: Theme.Spacing.xs)
+                actions
             }
             // Credited once, under the blurb that follows.
             if let photo = guide?.photoURL {
