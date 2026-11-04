@@ -14,7 +14,6 @@ struct FeedRootView: View {
             .background(Roam.paper)
             .navigationTitle("Friends")
             .toolbar {
-                LogPlaceToolbarButton()
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         if let me = session.userID { router.push(.followGraph(me, .friends)) }
