@@ -329,7 +329,7 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
@@ -517,6 +517,9 @@ struct CityHeader: View {
     let destination: Destination
     /// You've been: you have spots here (or just marked it).
     var hasBeen = false
+    /// How many places you've logged here; while there are any, the city stays been.
+    var spotCount = 0
+    @State private var confirmingUnbeen = false
     @State private var markedNow = false
     private var beenHere: Bool { markedNow || hasBeen }
     var isHome = false
@@ -566,9 +569,22 @@ struct CityHeader: View {
         HStack(spacing: 0) {
             if trips != nil {
                 circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
-                       caption: beenHere ? "Been here" : "Log", identifier: "city-log") {
-                    // Tapping again takes it back off where you've been.
-                    if beenHere { markedNow = false; onMarkVisited(false) } else { markedNow = true; onMarkVisited(true) }
+                       caption: beenHere ? "Been" : "Log", identifier: "city-log") {
+                    // Tapping again asks before taking it back off where you've been.
+                    if beenHere { confirmingUnbeen = true } else { markedNow = true; onMarkVisited(true) }
+                }
+                .alert(spotCount > 0 ? "You've logged \(spotCount) \(spotCount == 1 ? "spot" : "spots") here" : "Remove from places you've been?",
+                       isPresented: $confirmingUnbeen) {
+                    if spotCount > 0 {
+                        Button("OK", role: .cancel) {}
+                    } else {
+                        Button("Remove", role: .destructive) { markedNow = false; onMarkVisited(false) }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                } message: {
+                    if spotCount > 0 {
+                        Text("\(destination.name) counts as somewhere you've been while those are logged. Remove them from their pages to take it off.")
+                    }
                 }
                 // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.
                 circle(isSaved ? "bookmark.fill" : "bookmark", tint: beenHere ? Roam.inkFaint : PlaceState.wishlist.markerColor,

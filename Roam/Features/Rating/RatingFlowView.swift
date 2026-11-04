@@ -363,7 +363,7 @@ private struct RatingNoteEditor: View {
     var body: some View {
         NavigationStack {
             Form { Group {
-                TextEditor(text: $note).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
+                TextEditor(text: $note).textInputAutocapitalization(.never).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
                 Text("\(Validation.characterCount(note)) / 5,000 characters").foregroundStyle(Validation.characterCount(note) > 5_000 ? Color.red : Color.gray)
                 if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
             }

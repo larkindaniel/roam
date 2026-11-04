@@ -184,7 +184,7 @@ struct AddToListSheet: View {
         NavigationStack {
             List { Group {
                 Section("Note (optional)") {
-                    TextField("Why this place?", text: $note, axis: .vertical)
+                    TextField("Why this place?", text: $note, axis: .vertical).textInputAutocapitalization(.never)
                 }
                 .listRowBackground(Roam.paperRaised)
                 Section("Add to") {

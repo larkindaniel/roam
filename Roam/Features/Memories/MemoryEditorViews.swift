@@ -60,7 +60,7 @@ struct VisitMemoryEditor: View {
         @Bindable var model = model
         return Form { Group {
             Section {
-                TextEditor(text: $model.note).frame(minHeight: 180).disabled(!model.canEdit)
+                TextEditor(text: $model.note).textInputAutocapitalization(.never).frame(minHeight: 180).disabled(!model.canEdit)
                     .accessibilityIdentifier("memory-note-text")
                 Text("\(Validation.characterCount(model.note)) / 5,000 characters")
                     .foregroundStyle(Validation.characterCount(model.note) > 5_000 ? Theme.disliked : .secondary)
@@ -193,7 +193,7 @@ struct PrivateNoteEditor: View {
             Section {
                 Label("Only you can see this note", systemImage: "lock.fill").accessibilityIdentifier("private-note-warning")
                 if model.loaded {
-                    TextEditor(text: $model.text).frame(minHeight: 240).disabled(!model.canEdit)
+                    TextEditor(text: $model.text).textInputAutocapitalization(.never).frame(minHeight: 240).disabled(!model.canEdit)
                         .accessibilityIdentifier("private-note-text")
                     Text("\(Validation.characterCount(model.text)) / 10,000 characters")
                         .foregroundStyle(Validation.characterCount(model.text) > 10_000 ? Theme.disliked : .secondary)

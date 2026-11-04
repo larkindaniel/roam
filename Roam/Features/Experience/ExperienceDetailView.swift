@@ -399,7 +399,7 @@ struct ExperienceDetailView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.m) {
                 do {
-                    circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
+                    circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been" : "Log",
                                  label: visited ? "Been here" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
                         // Been here offers another visit, or taking the place off where you've been.
                         if visited { choosingBeen = true } else { Task { await openLog(.firstLog) } }
