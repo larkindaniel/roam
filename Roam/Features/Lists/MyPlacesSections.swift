@@ -961,19 +961,10 @@ struct PassportCountryView: View {
         .contentShape(Rectangle())
     }
 
-    /// Homes need no explanation; elsewhere, when you went (or that you've been, for a city marked without places).
+    /// Just the name, so the spots have room; on a friend's passport, a note when they've kept places private.
     private func detail(_ city: PassportCity) -> String? {
-        if city.isHome { return nil }
-        var parts: [String] = []
-        if city.placeCount == 0 {
-            parts.append("Been here")
-        } else if city.visibleCount < city.placeCount && session.userID != ownerID {
-            parts.append(city.visibleCount == 0 ? "Kept private" : "Some kept private")
-        }
-        if let first = city.firstVisit, let last = city.lastVisit {
-            parts.append(first.year == last.year ? "\(first.year)" : "\(first.year)–\(last.year)")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        guard session.userID != ownerID, city.placeCount > 0, city.visibleCount < city.placeCount else { return nil }
+        return city.visibleCount == 0 ? "Kept private" : "Some kept private"
     }
 }
 
