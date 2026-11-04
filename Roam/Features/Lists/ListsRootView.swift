@@ -203,8 +203,6 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
-    }
-
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private var searchField: some View {
@@ -340,7 +338,7 @@ struct MyPlacesRootView: View {
         .roamTabBar(hidden: detent != .full)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            // Back to Discover at every height; fully up, adding a place is the bar along the bottom.
+            // Back to Discover at every height.
             ToolbarItem(placement: .topBarLeading) {
                 Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
                     .accessibilityLabel("Back to Discover")
