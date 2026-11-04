@@ -38,6 +38,8 @@ struct CityPageView: View {
     /// What the city's map is showing now, for opening a place on the same view.
     @State private var cityViewRegion: MKCoordinateRegion?
     @State private var spotsCollapsed = false
+    /// Places you've saved in this city (yours, or the friend's whose passport you're in).
+    @State private var wishlist: [ListEntry] = []
     @State private var suggestionsCollapsed = false
 
     /// The view and card height a city opened from another city's map keeps.
@@ -87,7 +89,7 @@ struct CityPageView: View {
         .onChange(of: selection) { _, picked in
             guard let picked else { return }
             selection = nil
-            if let id = picked.value, let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) {
+            if let id = picked.value, let place = mapPins.map(\.place).first(where: { $0.id == id }) {
                 fly(to: place, moveMap: false)
             } else if let feature = picked.feature {
                 Task { await open(feature, moveMap: false) }
@@ -169,7 +171,9 @@ struct CityPageView: View {
     /// Every pin on the city's map, each in its place's own colour: green where you've been, yellow if saved, red
     /// otherwise. Opening one keeps its colour.
     private var mapPins: [(place: ExperienceSummary, tint: Color)] {
-        spots.map { ($0.experience, PlaceState.visited.markerColor) } + recommended.map { ($0.experience, $0.experience.pinTint) }
+        // Only your own places go on the map: where you've been, then what you've saved here. Suggestions stay in the list.
+        spots.map { ($0.experience, PlaceState.visited.markerColor) }
+            + wishlist.filter { item in !spots.contains { $0.id == item.id } }.map { ($0.experience, PlaceState.wishlist.markerColor) }
     }
 
     private var cityMap: some View {
@@ -383,6 +387,10 @@ struct CityPageView: View {
         let own = await loadSpots(of: session.userID)
         mySpotCount = own.count
         if isOwn { spots = own; homes = (try? await services.plans.homeCities()) ?? homes }
+        // Saving or logging a place here updates its pin.
+        if isOwn, let me = session.userID, let saved = try? await services.lists.want(ownerID: me) {
+            wishlist = saved.filter { CityMatch.same($0.experience, destination) }
+        }
     }
 
     private func reload() async {
@@ -400,6 +408,9 @@ struct CityPageView: View {
                 markedVisited = passport.flatMap(\.cities).contains { $0.isMarked && GeographyKey.normalize($0.city.name) == GeographyKey.normalize(destination.name)
                     && $0.city.countryCode?.uppercased() == destination.countryCode?.uppercased() }
             }
+        }
+        if isOwn, let me = session.userID, let saved = try? await services.lists.want(ownerID: me) {
+            wishlist = saved.filter { CityMatch.same($0.experience, destination) }
         }
         if model == nil { model = ForYouModel(plans: services.plans) }
         await model?.load(destination)
