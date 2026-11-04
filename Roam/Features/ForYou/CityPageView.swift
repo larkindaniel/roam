@@ -37,6 +37,8 @@ struct CityPageView: View {
     @State private var placeShown = false
     /// What's already known about the open place, so its card shows straight away while the rest loads.
     @State private var openPreview: ExperienceSummary?
+    @State private var spotsCollapsed = false
+    @State private var suggestionsCollapsed = false
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -310,12 +312,12 @@ struct CityPageView: View {
                       coordinate: destination.coordinate, showsPhoto: false)
         if !spots.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                sectionTitle(isOwn ? "Your spots" : "Their spots")
-                LazyVStack(spacing: Theme.Spacing.l) {
+                collapsibleTitle(isOwn ? "Your spots" : "Their spots", collapsed: $spotsCollapsed)
+                if !spotsCollapsed { LazyVStack(spacing: Theme.Spacing.l) {
                     ForEach(spots) { entry in
                         DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { fly(to: entry.experience) }
                     }
-                }
+                } }
             }
         }
         switch model?.phase ?? .loading {
@@ -326,16 +328,16 @@ struct CityPageView: View {
         case .loaded:
             if !recommended.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    sectionTitle("Places we think you'd enjoy")
+                    collapsibleTitle("Places we think you'd enjoy", collapsed: $suggestionsCollapsed)
                     // Lazy, so only the cards on screen build their maps.
-                    LazyVStack(spacing: Theme.Spacing.l) {
+                    if !suggestionsCollapsed { LazyVStack(spacing: Theme.Spacing.l) {
                         ForEach(recommended) { place in
                             DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
                                               score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
                                 fly(to: place.experience)
                             }
                         }
-                    }
+                    } }
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("discover-places")
@@ -388,6 +390,24 @@ struct CityPageView: View {
         guard let owner, let been = try? await services.lists.been(ownerID: owner) else { return [] }
         return been.filter { CityMatch.same($0.experience, destination) }
             .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
+    }
+
+    /// A section heading with a chevron that folds the list away and back.
+    private func collapsibleTitle(_ title: String, collapsed: Binding<Bool>) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.25)) { collapsed.wrappedValue.toggle() }
+        } label: {
+            HStack {
+                Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
+                Spacer(minLength: Theme.Spacing.s)
+                Image(systemName: "chevron.down").font(.headline).foregroundStyle(Roam.inkMuted)
+                    .rotationEffect(.degrees(collapsed.wrappedValue ? -90 : 0))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityHint(collapsed.wrappedValue ? "Shows the list" : "Hides the list")
     }
 
     private func sectionTitle(_ title: String) -> some View {

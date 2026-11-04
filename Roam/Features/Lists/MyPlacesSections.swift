@@ -619,14 +619,6 @@ struct WishlistCountryView: View {
     var body: some View {
         PlacesMapScreen(title: title, items: wishlist, onRefresh: { await model?.load() }) {
             if let model, model.hasLoaded {
-                if !wishlist.isEmpty {
-                    Button { planning = true } label: {
-                        Label("Plan a trip", systemImage: "airplane").font(.headline).frame(maxWidth: .infinity).frame(minHeight: 50)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(PlaceState.planned.markerColor)
-                    .accessibilityIdentifier("plan-trip")
-                }
                 if !trips.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                         Text("Your trips here").font(.roamTitle()).accessibilityAddTraits(.isHeader)
@@ -646,6 +638,29 @@ struct WishlistCountryView: View {
                 }
             } else {
                 SkeletonList(rows: 4)
+            }
+        }
+        // Plan a trip takes the tab bar's spot, in the same bar My Places uses for Add a place.
+        .roamTabBar(hidden: !wishlist.isEmpty)
+        .overlay(alignment: .bottom) {
+            if !wishlist.isEmpty {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Button { planning = true } label: {
+                        Label("Plan a trip", systemImage: "airplane")
+                            .font(.headline)
+                            .foregroundStyle(Roam.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .floatingBubble(Capsule())
+                    .padding(.horizontal, RoamTabBar.sideMargin)
+                    .padding(.bottom, 22)
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .accessibilityIdentifier("plan-trip")
             }
         }
         .sheet(isPresented: $planning) {
