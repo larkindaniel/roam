@@ -223,7 +223,15 @@ struct MyPlacesRootView: View {
         .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
         .frame(height: 40)
         .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.12)) } }
-        .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
+        .onChange(of: searching) { _, focused in
+            guard focused, detent != .full else { return }
+            // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
+            detent = .full
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(380))
+                searching = true
+            }
+        }
         .task(id: query) {
             guard hasQuery else { search?.query = ""; cityHits = []; return }
             try? await Task.sleep(for: Limits.searchDebounce)
@@ -338,11 +346,13 @@ struct MyPlacesRootView: View {
         .roamTabBar(hidden: detent != .full)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            // Back to Discover at every height.
-            ToolbarItem(placement: .topBarLeading) {
-                Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
-                    .accessibilityLabel("Back to Discover")
-                    .accessibilityIdentifier("myplaces-back")
+            // Back to Discover over the globe; fully up the tab bar is there instead.
+            if detent != .full {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("Back to Discover")
+                        .accessibilityIdentifier("myplaces-back")
+                }
             }
             // Recentring only matters while the globe is in view.
             if detent != .full {

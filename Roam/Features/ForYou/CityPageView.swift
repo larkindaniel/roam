@@ -40,6 +40,10 @@ struct CityPageView: View {
     @State private var spotsCollapsed = false
     @State private var suggestionsCollapsed = false
 
+    /// The view and card height a city opened from another city's map keeps.
+    @MainActor static var handoffRegion: [String: MKCoordinateRegion] = [:]
+    @MainActor static var handoffDetent: [String: GlobeSheetDetent] = [:]
+
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     /// Home cities can be stored under more than one region spelling, so they match by country and name.
@@ -63,12 +67,22 @@ struct CityPageView: View {
         cityLayout
         // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
         .roamTabBar(hidden: detent != .full)
+        // Fully up, the tab bar is there; the back button only shows over the map.
+        .navigationBarBackButtonHidden(detent == .full)
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
         // Searching wants room for the results.
-        .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
+        .onChange(of: searching) { _, focused in
+            guard focused, detent != .full else { return }
+            // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
+            detent = .full
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(380))
+                searching = true
+            }
+        }
         // Tapping a pin, or any place Apple shows on the map, opens that place's page.
         .onChange(of: selection) { _, picked in
             guard let picked else { return }
@@ -80,7 +94,8 @@ struct CityPageView: View {
             }
         }
         .task(id: destination.id) {
-            camera = .region(cityRegion)
+            camera = .region(Self.handoffRegion.removeValue(forKey: destination.id) ?? cityRegion)
+            if let kept = Self.handoffDetent.removeValue(forKey: destination.id) { detent = kept }
             await reload()
         }
         // Saving or logging the open place recolours its pin.
@@ -177,7 +192,7 @@ struct CityPageView: View {
             }
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
-        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
+        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest && $0.kind != .territory }
         .onMapCameraChange(frequency: .onEnd) { cityViewRegion = $0.region }
         .accessibilityLabel("Map of \(destination.name)")
         .accessibilityIdentifier("city-map")
@@ -270,6 +285,19 @@ struct CityPageView: View {
     }
 
     private func open(_ feature: MapFeature, moveMap: Bool = true) async {
+        // Another city on the map opens that city's page.
+        if feature.kind == .territory {
+            if let city = try? await services.places.destination(for: feature.coordinate),
+               GeographyKey.normalize(city.name) != GeographyKey.normalize(destination.name) {
+                // Like going place to place: the map stays put and the card keeps its height; only what's in it changes.
+                Self.handoffRegion[city.id] = cityViewRegion
+                Self.handoffDetent[city.id] = detent
+                var instant = Transaction()
+                instant.disablesAnimations = true
+                withTransaction(instant) { router.push(.city(city)) }
+            }
+            return
+        }
         guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
               let candidate = MapKitPlaceSearchProvider.candidate(from: item),
               let place = try? await services.experiences.resolve(candidate) else { return }
