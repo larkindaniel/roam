@@ -218,12 +218,14 @@ struct MyPlacesRootView: View {
                         Label("Add a place", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Roam.ink)
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
                             // A soft grey fill, like the search field in Apple Maps.
                             .background(Capsule().fill(Color(.tertiarySystemFill)))
                     }
                     .buttonStyle(.plain)
+                    // A little nearer the bubble's edge than the title is.
+                    .padding(.trailing, -6)
                         .accessibilityIdentifier("myplaces-add-place")
                 }
             } else {
