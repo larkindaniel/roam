@@ -576,7 +576,7 @@ struct CityHeader: View {
             }
             .accessibilityLabel("Send to a friend")
             .accessibilityIdentifier("city-send")
-            circle("sparkles", tint: .pink, filled: false, caption: "Plan with AI", identifier: "foryou-research-open") {
+            circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {
                 router.sheet = .researchBrief(destination)
             }
             Spacer(minLength: 0)
