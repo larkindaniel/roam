@@ -71,24 +71,18 @@ struct StatusMark: View {
 /// The signed-in member's avatar, opening their profile from any tab's navigation bar.
 struct ProfileAvatarButton: View {
     @Environment(AppRouter.self) private var router
-    @Environment(SessionStore.self) private var session
 
     var body: some View {
+        // A settings cog: for now your profile is just settings.
         Button { router.push(.ownProfile) } label: {
-            Text(initials)
-                .font(.footnote.weight(.semibold))
+            Image(systemName: "gearshape")
+                .font(.system(size: 18, weight: .regular))
                 .foregroundStyle(Roam.ink)
                 .frame(width: 34, height: 34)
-                .background(Circle().fill(Roam.fill))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Profile")
+        .accessibilityLabel("Settings")
         .accessibilityIdentifier("open-profile")
-    }
-
-    private var initials: String {
-        let name = session.profile?.displayName ?? ""
-        return String(name.split(separator: " ").prefix(2).compactMap(\.first)).uppercased()
     }
 }
 
