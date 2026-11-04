@@ -27,6 +27,8 @@ struct CityPageView: View {
     @State private var loadedSpots = false
     @State private var homes: [Destination] = []
     @State private var saved: [Destination] = []
+    /// Marked as been without logging a place there.
+    @State private var markedVisited = false
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -327,13 +329,13 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        CityHeader(destination: destination, hasBeen: mySpotCount > 0, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
                    onAddToTrip: { trip in Task { await add(to: trip) } },
                    onNewTrip: { planningNewTrip = true },
-                   onMarkVisited: { Task { try? await services.plans.setCityVisited(destination, present: true); library.noteChanged() } },
+                   onMarkVisited: { present in Task { try? await services.plans.setCityVisited(destination, present: present); markedVisited = present; library.noteChanged() } },
                    isSaved: isSaved,
                    onToggleSaved: { Task { await setSaved(!isSaved) } },
                    showsPhoto: showsPhoto)
@@ -366,6 +368,10 @@ struct CityPageView: View {
             homes = (try? await services.plans.homeCities()) ?? []
             trips = (try? await services.plans.myTrips()) ?? []
             saved = (try? await services.plans.savedCities()) ?? []
+            if let me = session.userID, let passport = try? await services.plans.passport(ownerID: me) {
+                markedVisited = passport.flatMap(\.cities).contains { $0.isMarked && GeographyKey.normalize($0.city.name) == GeographyKey.normalize(destination.name)
+                    && $0.city.countryCode?.uppercased() == destination.countryCode?.uppercased() }
+            }
         }
         if model == nil { model = ForYouModel(plans: services.plans) }
         await model?.load(destination)
@@ -512,7 +518,7 @@ struct CityHeader: View {
     /// You've been: you have spots here (or just marked it).
     var hasBeen = false
     @State private var markedNow = false
-    private var beenHere: Bool { hasBeen || markedNow }
+    private var beenHere: Bool { markedNow || hasBeen }
     var isHome = false
     var showsPlanWithAI = true
     /// Set (or unset) the city as home; nil when it isn't yours to change. Anywhere within 100 km of a home city counts
@@ -522,7 +528,7 @@ struct CityHeader: View {
     var trips: [TripSummary]?
     var onAddToTrip: (TripSummary) -> Void = { _ in }
     var onNewTrip: () -> Void = {}
-    var onMarkVisited: () -> Void = {}
+    var onMarkVisited: (Bool) -> Void = { _ in }
     var isSaved = false
     var onToggleSaved: () -> Void = {}
     var showsPhoto = true
@@ -560,7 +566,10 @@ struct CityHeader: View {
         HStack(spacing: 0) {
             if trips != nil {
                 circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
-                       caption: beenHere ? "Been here" : "Log", identifier: "city-log") { if !beenHere { markedNow = true; onMarkVisited() } }
+                       caption: beenHere ? "Been here" : "Log", identifier: "city-log") {
+                    // Tapping again takes it back off where you've been.
+                    if beenHere { markedNow = false; onMarkVisited(false) } else { markedNow = true; onMarkVisited(true) }
+                }
                 // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.
                 circle(isSaved ? "bookmark.fill" : "bookmark", tint: beenHere ? Roam.inkFaint : PlaceState.wishlist.markerColor,
                        filled: isSaved && !beenHere, caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") {
@@ -575,11 +584,11 @@ struct CityHeader: View {
                 .accessibilityLabel("Add to a trip")
                 .accessibilityIdentifier("city-trip")
             }
-            ShareLink(item: "\(destination.name)\(destination.countryName.map { ", \($0)" } ?? "") on Roam") {
-                circleLabel("paperplane", tint: .indigo, filled: false, caption: "Send")
-            }
-            .accessibilityLabel("Send to a friend")
-            .accessibilityIdentifier("city-send")
+            // Sending isn't ready yet, so Send shows greyed out.
+            circleLabel("paperplane", tint: Roam.inkFaint, filled: false, caption: "Send")
+                .opacity(0.7)
+                .accessibilityLabel("Send (coming soon)")
+                .accessibilityIdentifier("city-send")
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {
                 router.sheet = .researchBrief(destination)
             }

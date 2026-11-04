@@ -95,6 +95,8 @@ struct ExperienceDetailView: View {
     @State private var actionError: String?
     @State private var deleting = false
     @State private var nearbyFeature: MapFeature?
+    @State private var choosingBeen = false
+    @State private var confirmingUnbeen = false
     /// The card rises from the bottom once the page is up, as in Apple Maps.
     @State private var cardRisen = false
 
@@ -398,8 +400,19 @@ struct ExperienceDetailView: View {
             HStack(spacing: Theme.Spacing.m) {
                 do {
                     circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
-                                 label: visited ? "Been here. Add another visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
-                        Task { await openLog(rated ? .addVisit : .firstLog) }
+                                 label: visited ? "Been here" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
+                        // Been here offers another visit, or taking the place off where you've been.
+                        if visited { choosingBeen = true } else { Task { await openLog(.firstLog) } }
+                    }
+                    .confirmationDialog("Been here", isPresented: $choosingBeen, titleVisibility: .hidden) {
+                        Button("Add another visit") { Task { await openLog(rated ? .addVisit : .firstLog) } }
+                        Button("Remove from places I've been", role: .destructive) { confirmingUnbeen = true }
+                    }
+                    .alert("Remove from places you've been?", isPresented: $confirmingUnbeen) {
+                        Button("Remove", role: .destructive) { Task { await removeBeen(detail) } }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This deletes your visits here, with their notes and photos, and your ranking.")
                     }
                     .disabled(deleting || failedDeletion != nil)
                 }
@@ -408,7 +421,9 @@ struct ExperienceDetailView: View {
                              inactive: visited) {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
-                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Recommend to a friend", identifier: "detail-recommend") {
+                // Sending isn't ready yet, so Send shows greyed out.
+                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Send (coming soon)", identifier: "detail-recommend",
+                             inactive: true) {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
@@ -564,6 +579,27 @@ struct ExperienceDetailView: View {
     private func openLog(_ mode: LogRequest.Mode) async {
         do { router.sheet = .log(try await services.makeLogRequest(experienceID: experienceID, mode: mode)) }
         catch { actionError = session.handle(error) }
+    }
+
+    /// Takes the place off where you've been: every visit goes, and the ranking with the last one.
+    private func removeBeen(_ detail: ExperienceDetail) async {
+        guard !deleting else { return }
+        deleting = true
+        defer { deleting = false }
+        actionError = nil
+        do {
+            for visit in detail.myVisits {
+                let result = try await services.ranking.deleteVisit(visitID: visit.id, operationID: UUID(), allowRatingRemoval: true)
+                if result.removedRating { library.applyRatingRemoved(experienceID) }
+            }
+            if detail.myRating != nil, detail.myVisits.isEmpty {
+                try await services.ranking.removeRating(experienceID: experienceID, operationID: UUID())
+                library.applyRatingRemoved(experienceID)
+            }
+            await library.refresh()
+            library.noteChanged()
+            await model?.load()
+        } catch { actionError = session.handle(error) }
     }
 
     private func confirmDeletion(_ action: DetailDeletion) async {
