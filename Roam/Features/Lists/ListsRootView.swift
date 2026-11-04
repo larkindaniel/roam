@@ -162,6 +162,11 @@ struct MyPlacesRootView: View {
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
     @State private var tab = MyPlacesTab.been
+    @State private var query = ""
+    @FocusState private var searching: Bool
+    @State private var search: ExperienceSearchModel?
+    @State private var cityHits: [Destination] = []
+    @State private var openingHit: String?
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
     @State private var focusRegion: MKCoordinateRegion?
@@ -207,6 +212,81 @@ struct MyPlacesRootView: View {
         }
     }
 
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private var searchField: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            TextField("Search places", text: $query)
+                .focused($searching)
+                .submitLabel(.search)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityIdentifier("myplaces-search")
+            if hasQuery || searching {
+                Button { query = ""; searching = false } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel search")
+            }
+        }
+        .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
+        .frame(height: 40)
+        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.07)) } }
+        .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
+        .task(id: query) {
+            guard hasQuery else { search?.query = ""; cityHits = []; return }
+            try? await Task.sleep(for: Limits.searchDebounce)
+            guard !Task.isCancelled else { return }
+            if search == nil { search = ExperienceSearchModel(services: services) }
+            async let cities = services.places.searchDestinations(query: query)
+            await search?.search(query, near: nil)
+            cityHits = Array(((try? await cities) ?? []).prefix(3))
+        }
+    }
+
+    /// Your own places first, then cities, then everywhere else Apple knows.
+    @ViewBuilder private var searchResults: some View {
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let mine = (model?.pins ?? []).filter { $0.experience.name.lowercased().contains(needle) }.uniqued { $0.id }
+        VStack(spacing: 0) {
+            ForEach(mine.prefix(8)) { item in
+                resultRow(symbol: item.experience.iconName, tint: item.state.markerColor, title: item.experience.name,
+                          subtitle: item.experience.areaLine) { router.push(.experience(item.id)) }
+            }
+            ForEach(cityHits) { city in
+                resultRow(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
+            }
+            ForEach((search?.hits ?? []).filter { hit in !mine.contains { $0.id == hit.experience?.id } }) { hit in
+                resultRow(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
+                          subtitle: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.joined(separator: ", ")) {
+                    Task {
+                        openingHit = hit.id
+                        defer { openingHit = nil }
+                        if let place = try? await search?.resolve(hit) { router.push(.experience(place.id)) }
+                    }
+                }
+            }
+        }
+        .roamCard(padding: Theme.Spacing.m)
+    }
+
+    private func resultRow(symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: symbol).foregroundStyle(tint).frame(width: 24).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: Theme.minimumHitTarget)
+            .padding(.vertical, Theme.Spacing.xs)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     private func showWorld() {
         focusRegion = nil
         recenterToken += 1
@@ -218,39 +298,23 @@ struct MyPlacesRootView: View {
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: false) {
             globe
         } header: {
-            if detent == .peek {
-                // Minimised, like a place's bubble: the name and one action.
-                HStack {
-                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
-                        .accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 0)
-                    addButton { title in
-                        Label(title, systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Roam.ink)
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            // A soft grey fill, like the search field in Apple Maps.
-                            .background(Capsule().fill(Roam.ink.opacity(0.12)))
-                    }
-                    .buttonStyle(.plain)
-                    // A little nearer the bubble's edge than the title is.
-                    .padding(.trailing, -6)
-                        .accessibilityIdentifier("myplaces-add-place")
-                }
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            // A search bar for every place, there at every height; opened up, your places sit under it.
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                searchField
+                if detent != .peek, !hasQuery {
                     Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
                     if focusedCountry == nil { MyPlacesTabPicker(tab: $tab) }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         } content: {
-            if let model, model.hasLoaded {
+            if hasQuery {
+                searchResults
+            } else if let model, model.hasLoaded {
                 if let focusedCountry {
                     CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
                 } else {
