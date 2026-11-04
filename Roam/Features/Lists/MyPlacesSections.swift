@@ -778,7 +778,7 @@ struct PassportSection: View {
             } else {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.s), GridItem(.flexible(), spacing: Theme.Spacing.s)], spacing: Theme.Spacing.s) {
                     ForEach(countries) { country in
-                        Button { router.push(.passportCountry(ownerID: ownerID, country: country)) } label: { stamp(country) }
+                        Button { router.push(PassportCountry.route(ownerID: ownerID, country: country)) } label: { stamp(country) }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("passport-\(country.code)")
                     }
@@ -857,6 +857,16 @@ struct PassportView: View {
     }
 }
 
+extension PassportCountry {
+    /// A country with just one city you can open goes straight to that city.
+    static func route(ownerID: UUID, country: PassportCountry) -> AppRoute {
+        if country.cities.count == 1, country.otherPlaceCount == 0, let city = country.cities.first, city.visibleCount > 0 {
+            return .passportCity(ownerID: ownerID, city: city)
+        }
+        return .passportCountry(ownerID: ownerID, country: country)
+    }
+}
+
 /// The cities in one country of someone's passport.
 struct PassportCountryView: View {
     let ownerID: UUID
@@ -869,13 +879,15 @@ struct PassportCountryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 VStack(spacing: 0) {
-                    ForEach(country.cities) { city in
+                    // Your homes first, then the places you travelled to.
+                    let cities = country.cities.filter(\.isHome) + country.cities.filter { !$0.isHome }
+                    ForEach(cities) { city in
                         let opens = city.visibleCount > 0
                         Button { if opens { router.push(.passportCity(ownerID: ownerID, city: city)) } } label: { row(city, opens: opens) }
                             .buttonStyle(.plain)
                             .allowsHitTesting(opens)
                             .accessibilityIdentifier("passport-city-\(city.city.name)")
-                        if city.id != country.cities.last?.id { Divider() }
+                        if city.id != cities.last?.id { Divider() }
                     }
                 }
                 .roamCard(padding: Theme.Spacing.m)

@@ -92,7 +92,7 @@ struct BeenTab: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
                           spacing: Theme.Spacing.m) {
                     ForEach(countries) { country in
-                        Button { router.push(.passportCountry(ownerID: model.ownerIDValue, country: country)) } label: { tile(country) }
+                        Button { router.push(PassportCountry.route(ownerID: model.ownerIDValue, country: country)) } label: { tile(country) }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("passport-\(country.code)")
                     }

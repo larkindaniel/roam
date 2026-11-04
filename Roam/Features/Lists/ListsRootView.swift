@@ -194,7 +194,7 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
-    private static let addBarHeight: CGFloat = 50
+    private static let addBarHeight: CGFloat = RoamTabBar.height
 
     /// Anywhere you've been or want to go: log a place, or just mark a city as visited.
     @ViewBuilder private var addMenu: some View {
@@ -209,7 +209,7 @@ struct MyPlacesRootView: View {
     }
 
     var body: some View {
-        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + Self.addBarHeight + 28 : 0,
+        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.sideMargin, floatingSideMargin: RoamTabBar.sideMargin,
@@ -272,7 +272,7 @@ struct MyPlacesRootView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            // Fully up, the bubble's Add a place becomes a full-width bar just above the tab bar.
+            // Fully up, the bubble's Add a place becomes a full-width bar where the tab bar would be.
             if detent == .full {
                 Menu { addMenu } label: {
                     Label("Add a place", systemImage: "plus")
@@ -285,7 +285,7 @@ struct MyPlacesRootView: View {
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
                 .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, RoamTabBar.margin + RoamTabBar.height + 10)
+                .padding(.bottom, RoamTabBar.margin)
                 .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("log-place")
@@ -294,11 +294,11 @@ struct MyPlacesRootView: View {
         .animation(.spring(duration: 0.35), value: detent)
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
-        // The tab bar comes back only once the card is fully up; over the globe the card has the bottom to itself.
-        .roamTabBar(hidden: detent != .full)
+        // The card has the bottom to itself: the bubble when minimised, the Add a place bar when fully up.
+        .roamTabBar(hidden: true)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            // Back to Discover at every height; fully up, adding a place moves to the bar above the tab bar.
+            // Back to Discover at every height; fully up, adding a place is the bar along the bottom.
             ToolbarItem(placement: .topBarLeading) {
                 Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
                     .accessibilityLabel("Back to Discover")
