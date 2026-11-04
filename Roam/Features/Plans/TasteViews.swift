@@ -71,7 +71,7 @@ struct ResearchBriefSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        Image(systemName: "sparkles").font(.title).foregroundStyle(PlaceState.planned.markerColor).accessibilityHidden(true)
+                        Image(systemName: "sparkles").font(.title).foregroundStyle(Color.pink).accessibilityHidden(true)
                         Text("Plan \(destination.name) with AI").font(.roamTitle()).accessibilityAddTraits(.isHeader)
                         Text("We wrote a prompt from your tastes and the places you've loved. Paste it into ChatGPT or Claude for an itinerary, neighbourhoods to stay in and places to try. Then save the ones you like to your wishlist here.")
                             .font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -119,7 +119,7 @@ struct ResearchBriefSheet: View {
         } label: {
             PillLabel(title: title, systemImage: "arrow.up.right")
         }
-        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+        .buttonStyle(PillButtonStyle(tint: Color.pink))
         .accessibilityLabel("Open \(title)")
         .accessibilityHint("Copies the prompt, then opens the assistant")
     }
