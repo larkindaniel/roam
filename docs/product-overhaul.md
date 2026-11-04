@@ -144,7 +144,9 @@ App
 │
 ├── Trip page  (TripDetailView): cities, dates, places by country then city, add from wishlist, add a city
 ├── City page  (CityPageView, shared by Discover, My Places, friends' passports, and every map button)
-│   ├── Full-screen map: your spots green, suggestions red; tapping a pin opens the place
+│   ├── Full-screen map: your spots green, suggestions red; Apple Maps–style icons from Apple's place types
+│   ├── Opening a place stays on this one map (Apple Maps style): the map glides to it, the card stays put and its
+│   │   content switches to the place, always halfway up; back returns the city card. No new screen, no slide.
 │   ├── Bubble (minimised, in the tab bar's spot): "Search <city>", results limited to the city and around it
 │   ├── Half / full: search at the top, then name · Set as home · Plan (trip or Plan with AI) on one line,
 │   │   Wikipedia photo and blurb, your spots, places we think you'd enjoy; searching swaps in results
