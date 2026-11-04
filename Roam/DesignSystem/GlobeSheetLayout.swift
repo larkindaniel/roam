@@ -173,7 +173,14 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
-        .background { SheetGlass(shape: shape, tint: Roam.paper.opacity(glassOpacity), solid: detent == .full && dragOffset == 0) }
+        .background {
+            // Lowered with no tint asked for, it's exactly the glass of the floating buttons over the map.
+            if floating && peekOpacity == 0 {
+                Color.clear.floatingBubble(shape)
+            } else {
+                SheetGlass(shape: shape, tint: Roam.paper.opacity(glassOpacity), solid: detent == .full && dragOffset == 0)
+            }
+        }
         .padding(.horizontal, sideMargin)
         .padding(.bottom, bottomMargin)
         .animation(.spring(duration: 0.35), value: detent)
@@ -229,10 +236,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         Group {
             if isFloating, let floatingHeight {
                 // A slim bubble: the row centred in it, the grabber tucked into the top edge.
-                // The row sits a touch below centre, leaving room above it for the grabber.
                 header()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 6)
                     .overlay(alignment: .top) { Capsule().fill(Roam.rule).frame(width: 36, height: 4).padding(.top, 5) }
                     .frame(height: floatingHeight)
             } else {

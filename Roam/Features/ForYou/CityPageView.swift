@@ -134,7 +134,7 @@ struct CityPageView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
                          floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height + 12, headerTapToggles: detent != .peek ) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek ) {
             cityMap
         } header: {
             // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
