@@ -57,7 +57,10 @@ final class RatingFlowModel {
     private var generation = 0
 
     var draftName: String { "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)" }
-    var categoryLocked: Bool { request.mode != .firstLog || request.categoryLocked }
+    /// What the place already is, from Roam or from Apple's place type.
+    private var knownCategory: ExperienceCategory? { request.experience.category ?? request.suggestedCategory }
+    /// A place that's already categorised isn't asked again; only one with no category gets the picker.
+    var categoryLocked: Bool { request.mode != .firstLog || request.categoryLocked || knownCategory != nil }
     var isBusy: Bool { step == .saving || step == .loading }
     var hasPendingSave: Bool { pendingRating != nil || pendingVisit != nil }
     var canEdit: Bool { !isBusy && !hasPendingSave && completion == nil }
@@ -97,7 +100,8 @@ final class RatingFlowModel {
            draft.accountID == accountID, draft.experienceID == request.experience.id, draft.mode == request.mode.rawValue,
            now().timeIntervalSince(draft.updatedAt) <= 30 * 86_400 {
             operationID = draft.operationID
-            category = (request.mode != .firstLog || request.categoryLocked) ? request.experience.category : draft.category
+            let known = request.experience.category ?? request.suggestedCategory
+            category = (request.mode != .firstLog || request.categoryLocked || known != nil) ? known : draft.category
             sentiment = draft.sentiment
             visit = draft.visit
             initialVisit = draft.initialVisit
