@@ -156,6 +156,9 @@ struct FollowListView: View {
         .navigationTitle(segment.title)
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search by name or handle")
+        // Type as you like: no capitalising or correcting.
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
         .task(id: "\(segment.rawValue)|\(query)") {
             if model == nil { model = FollowListModel(userID: userID, segment: segment, service: services.social) }
             model?.segment = segment

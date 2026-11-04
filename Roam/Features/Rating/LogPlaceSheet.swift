@@ -28,6 +28,9 @@ struct LogPlaceSheet: View {
                         .scrollContentBackground(.hidden)
                         .background(Roam.paper)
                         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "A place or a city")
+                        // Type as you like: no capitalising or correcting.
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                         .navigationTitle("Add a place")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {

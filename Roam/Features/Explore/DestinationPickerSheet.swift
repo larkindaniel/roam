@@ -72,6 +72,9 @@ struct DestinationPickerSheet: View {
             .listRowBackground(Roam.paperRaised)
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "City or town")
+            // Type as you like: no capitalising or correcting.
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
             .navigationTitle(title ?? (purpose == .homeCity ? "Home city" : "Choose destination"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

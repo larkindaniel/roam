@@ -35,6 +35,9 @@ struct FilterSheet: View {
                 Section("City") {
                     if cities.count > 6 {
                         TextField("Search cities", text: $citySearch)
+                            // Type as you like: no capitalising or correcting.
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
                     }
                     if cities.isEmpty { Text("No cities yet").foregroundStyle(Theme.secondaryText) }
                     ForEach(cities.filter { citySearch.isEmpty || $0.title.localizedCaseInsensitiveContains(citySearch) }) { option in

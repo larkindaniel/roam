@@ -118,13 +118,7 @@ struct ForYouRootView: View {
                 roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
             }
             searchField
-            // While searching, a round × to the right of the search bar ends it.
-            if searchActive {
-                roundButton("xmark", label: "Cancel search", identifier: "discover-search-cancel") {
-                    query = ""
-                    searchFocused = false
-                }
-            } else {
+            if !searchActive {
                 // Your profile on the far right, the same on every tab.
                 ProfileAvatarButton()
                     .frame(width: 48, height: 48)
@@ -138,13 +132,21 @@ struct ForYouRootView: View {
         HStack(spacing: Theme.Spacing.s) {
             Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             TextField("Search", text: $query, prompt: Text(searchActive ? "A city, neighbourhood or place" : "Search"))
+                // Type as you like: no capitalising or correcting.
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
                 .focused($searchFocused)
                 .submitLabel(.search)
                 .accessibilityIdentifier("discover-search")
-            if hasQuery {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+            // The field's own × ends the search: clears it and puts the keyboard away.
+            if searchActive {
+                Button {
+                    query = ""
+                    searchFocused = false
+                } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
+                    .accessibilityLabel("Cancel search")
+                    .accessibilityIdentifier("discover-search-cancel")
             }
         }
         .padding(.horizontal, Theme.Spacing.m)
@@ -165,7 +167,9 @@ struct ForYouRootView: View {
     }
 
     var body: some View {
-        Group {
+        // A ZStack, not a Group: a Group would re-run onAppear when the results list replaces the page on the first
+        // typed letter, and the bar toggling there took the keyboard away.
+        ZStack {
             if hasQuery {
                 List { searchResults }
                     .listStyle(.insetGrouped)
