@@ -387,6 +387,8 @@ struct CityPageView: View {
     private func setHome(_ present: Bool) async {
         if present {
             homes = (try? await services.plans.setHomeCity(destination, present: true)) ?? homes
+            // A home counts as somewhere you've been (the server marks it too).
+            markedVisited = true
         } else {
             for stored in matchingHomes { homes = (try? await services.plans.setHomeCity(stored, present: false)) ?? homes }
         }
