@@ -154,7 +154,8 @@ struct MyPlacesRootView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
     @State private var showsCoachmark = false
-    @State private var detent = GlobeSheetDetent.half
+    // Opens minimised, showing the globe.
+    @State private var detent = GlobeSheetDetent.peek
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
     @State private var tab = MyPlacesTab.been
