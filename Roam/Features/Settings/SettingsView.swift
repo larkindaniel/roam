@@ -16,8 +16,22 @@ struct SettingsView: View {
 
     var body: some View {
         List { Group {
-            // Photo, name and handle edit right here.
-            InlineProfileSection()
+            Section("Profile") {
+                Button { router.push(.editProfile) } label: {
+                    HStack(spacing: Theme.Spacing.m) {
+                        if let profile = session.profile {
+                            AvatarView(member: profile.summary, size: 44)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(profile.displayName).font(.headline).foregroundStyle(Color.primary)
+                                Text("@\(profile.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
+                            }
+                        }
+                        Spacer()
+                        Text("Edit").foregroundStyle(Theme.accent)
+                    }
+                }
+                .accessibilityIdentifier("settings-edit-profile")
+            }
             // Kept to the essentials for now; preferences, notifications and safety come back later.
             accountSection
             Section("About") {
@@ -31,6 +45,8 @@ struct SettingsView: View {
         .listRowBackground(Roam.paperRaised)
         }
         .navigationTitle("Settings")
+        // Just the back button here, no tab bar.
+        .roamTabBar(hidden: true)
         .safeAreaInset(edge: .bottom) {
             if let error = settings.saveError {
                 HStack(alignment: .top, spacing: Theme.Spacing.m) {

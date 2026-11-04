@@ -145,8 +145,8 @@ struct CityPageView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     searchField
                         .padding(.horizontal, Theme.Spacing.m)
-                        .background(Capsule().fill(.ultraThinMaterial))
-                        .overlay(Capsule().fill(Roam.ink.opacity(0.05)).allowsHitTesting(false))
+                        // A darker grey field inside the card, the same as My Places' search.
+                        .background(Capsule().fill(Roam.ink.opacity(0.12)))
                     cityHeader(showsPhoto: false)
                 }
             }
