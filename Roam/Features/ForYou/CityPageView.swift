@@ -557,8 +557,17 @@ struct CityHeader: View {
                     .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
                     .accessibilityIdentifier("city-toggle-home")
                 }
-                // One Plan menu: add the city to a trip (only cities are planned), start one, or plan it with AI.
-                if trips != nil || showsPlanWithAI {
+                // A home city isn't somewhere to take a trip: the button is just Plan with AI.
+                if trips == nil, showsPlanWithAI {
+                    Button { router.sheet = .researchBrief(destination) } label: {
+                        if compact { Image(systemName: "sparkles") } else { Label("Plan with AI", systemImage: "sparkles") }
+                    }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                    .accessibilityLabel("Plan with AI")
+                    .accessibilityIdentifier("foryou-research-open")
+                }
+                // Otherwise one Plan menu: add the city to a trip (only cities are planned), start one, or plan it with AI.
+                if trips != nil {
                     Menu {
                         if let trips {
                             ForEach(trips) { trip in Button("Add to \(trip.name)", systemImage: "airplane") { onAddToTrip(trip) } }
