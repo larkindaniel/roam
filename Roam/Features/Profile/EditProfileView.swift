@@ -35,7 +35,8 @@ final class EditProfileModel {
     static let draftName = "profile-edit-draft"
 
     let original: Draft
-    var draft: Draft { didSet { persist() } }
+    /// Unsaved changes live only on this screen; nothing is kept as a draft.
+    var draft: Draft
     private(set) var restoredDraft = false
     private(set) var handleState: HandleState = .unchanged
     private(set) var avatarBusy = false
@@ -50,12 +51,8 @@ final class EditProfileModel {
         self.services = services
         userID = profile.id
         original = Draft(profile)
-        if let saved = services.storage.read(Draft.self, name: Self.draftName, userID: profile.id), saved != Draft(profile) {
-            draft = saved
-            restoredDraft = true
-        } else {
-            draft = Draft(profile)
-        }
+        services.storage.remove(name: Self.draftName, userID: profile.id)
+        draft = Draft(profile)
         if draft.handle != original.handle { handleState = .checking }
     }
 
@@ -164,6 +161,7 @@ struct EditProfileView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showsHomePicker = false
     @State private var homes: [Destination] = []
+    @State private var confirmingDiscard = false
 
     var body: some View {
         Group {
@@ -180,8 +178,8 @@ struct EditProfileView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
-                    model?.discard()
-                    dismiss()
+                    // Unsaved changes ask before they're thrown away.
+                    if model?.hasChanges == true { confirmingDiscard = true } else { dismiss() }
                 }
                 .accessibilityIdentifier("edit-profile-cancel")
             }
@@ -196,6 +194,10 @@ struct EditProfileView: View {
             }
         }
         .sheet(isPresented: $showsHomePicker) { DestinationPickerSheet(purpose: .homeCity) }
+        .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+            Button("Discard changes", role: .destructive) { model?.discard(); dismiss() }
+            Button("Keep editing", role: .cancel) {}
+        }
         .onChange(of: destinations.pickedHomeCity) { _, picked in
             guard let picked else { return }
             destinations.pickedHomeCity = nil
