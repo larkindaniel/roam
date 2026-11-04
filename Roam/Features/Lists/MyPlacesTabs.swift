@@ -71,7 +71,6 @@ struct MyPlacesTabPicker: View {
 /// Where you've been: the passport, your home spots, then past trips.
 struct BeenTab: View {
     let model: MyPlacesModel
-    var onMarkCity: () -> Void
     var onAddHome: () -> Void
 
     @Environment(AppRouter.self) private var router
@@ -80,6 +79,7 @@ struct BeenTab: View {
         let countries = model.passport
         let cityCount = countries.map(\.cities.count).reduce(0, +)
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+            HomeCitiesCard(model: model, onAdd: onAddHome)
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(countries.count)").font(.roamTitle()).monospacedDigit()
@@ -89,52 +89,53 @@ struct BeenTab: View {
                     Text(cityCount == 1 ? "city" : "cities").foregroundStyle(Roam.inkMuted)
                 }
                 .accessibilityElement(children: .combine)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: Theme.Spacing.s) {
-                        ForEach(countries) { country in
-                            Button { router.push(.passportCountry(ownerID: model.ownerIDValue, country: country)) } label: { stamp(country) }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("passport-\(country.code)")
-                        }
-                        Button(action: onMarkCity) {
-                            VStack(spacing: Theme.Spacing.xs) {
-                                Image(systemName: "plus").font(.title3.weight(.semibold))
-                                Text("Add a city").font(.caption)
-                            }
-                            .foregroundStyle(PlaceState.visited.markerColor)
-                            // The same size as a stamp, padding included.
-                            .frame(width: 96 + Theme.Spacing.m * 2, height: 104 + Theme.Spacing.m * 2)
-                            .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(PlaceState.visited.markerColor.opacity(0.12)))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add a city you've been to")
-                        .accessibilityIdentifier("mark-city")
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
+                          spacing: Theme.Spacing.m) {
+                    ForEach(countries) { country in
+                        Button { router.push(.passportCountry(ownerID: model.ownerIDValue, country: country)) } label: { tile(country) }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("passport-\(country.code)")
                     }
                 }
-                .scrollClipDisabled()
             }
-            home
             TripsTimelineSection(model: model, part: .past)
         }
     }
 
-    private func stamp(_ country: PassportCountry) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(TripTitle.flag(country.code) ?? "🌐").font(.system(size: 30))
-            Spacer(minLength: 0)
-            Text(country.name).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
-            Text("\(country.cities.count) \(country.cities.count == 1 ? "city" : "cities")").font(.caption).foregroundStyle(Roam.inkMuted)
+    private static let tileHeight: CGFloat = 150
+
+    /// A country you've been to, pictured by the Wikipedia photo of the city you've been to most there (a country's own
+    /// article leads with its flag). Away-from-home cities come first, so a home country shows somewhere you travelled.
+    private func tile(_ country: PassportCountry) -> some View {
+        let cover = country.cities.sorted { ($0.isHome ? 1 : 0, -$0.placeCount) < ($1.isHome ? 1 : 0, -$1.placeCount) }.first?.city
+        return ZStack(alignment: .bottomLeading) {
+            WikipediaPhoto(name: cover?.name ?? country.name, region: cover?.region, country: cover?.countryName ?? country.name,
+                           coordinate: cover?.coordinate ?? CLLocationCoordinate2D(), symbol: "globe", height: Self.tileHeight)
+            LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
+                .allowsHitTesting(false)
+            Text("\(country.name) \(TripTitle.flag(country.code) ?? "")").font(.headline).foregroundStyle(.white).lineLimit(1)
+                .padding(Theme.Spacing.m)
         }
-        .frame(width: 96, height: 104, alignment: .leading)
-        .roamCard(padding: Theme.Spacing.m)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
+}
 
-    @ViewBuilder private var home: some View {
+/// Your home cities, each opening its spots. Shown at the top of Been and Saved.
+struct HomeCitiesCard: View {
+    let model: MyPlacesModel
+    var onAdd: (() -> Void)?
+
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
         if model.homeCities.isEmpty {
-            Button(action: onAddHome) { PillLabel(title: "Set your home city", systemImage: "house") }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
-                .accessibilityIdentifier("add-home-city")
+            if let onAdd {
+                Button(action: onAdd) { PillLabel(title: "Set your home city", systemImage: "house") }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .accessibilityIdentifier("add-home-city")
+            }
         } else {
             VStack(spacing: 0) {
                 ForEach(model.homeCities) { city in
@@ -268,6 +269,7 @@ struct SavedTab: View {
     var body: some View {
         let countries = PlaceGroups(model.travelWishlist).countries
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            HomeCitiesCard(model: model)
             if countries.isEmpty {
                 Text("Save places you want to go. When you're ready, plan a trip from them.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             } else {

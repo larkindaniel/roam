@@ -194,6 +194,14 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
+    private static let addBarHeight: CGFloat = 50
+
+    /// Anywhere you've been or want to go: log a place, or just mark a city as visited.
+    @ViewBuilder private var addMenu: some View {
+        Button { router.sheet = .logPlace } label: { Label("A place", systemImage: "mappin") }
+        Button { sheet = .markCity } label: { Label("A city I've been to", systemImage: "building.2") }
+    }
+
     private func showWorld() {
         focusRegion = nil
         recenterToken += 1
@@ -201,7 +209,7 @@ struct MyPlacesRootView: View {
     }
 
     var body: some View {
-        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
+        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + Self.addBarHeight + 28 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.sideMargin, floatingSideMargin: RoamTabBar.sideMargin,
@@ -214,7 +222,7 @@ struct MyPlacesRootView: View {
                     Text(focusedCountry.map(countryTitle) ?? "My Places").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
-                    Button { router.sheet = .logPlace } label: {
+                    Menu { addMenu } label: {
                         Label("Add a place", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Roam.ink)
@@ -242,7 +250,7 @@ struct MyPlacesRootView: View {
                     CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
                 } else {
                     switch tab {
-                    case .been: BeenTab(model: model, onMarkCity: { sheet = .markCity }, onAddHome: { sheet = .homeCity })
+                    case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
                     case .going: GoingTab(model: model) { sheet = .newTrip }
                     case .saved: SavedTab(model: model)
                     }
@@ -263,28 +271,46 @@ struct MyPlacesRootView: View {
                 TripEditorSheet(draft: TripDraft()) { _ in Task { await model?.load() } }.presentationBackground(Roam.paper)
             }
         }
+        .overlay(alignment: .bottom) {
+            // Fully up, the bubble's Add a place becomes a full-width bar just above the tab bar.
+            if detent == .full {
+                Menu { addMenu } label: {
+                    Label("Add a place", systemImage: "plus")
+                        .font(.headline)
+                        .foregroundStyle(Roam.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: Self.addBarHeight)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Capsule())
+                .padding(.horizontal, RoamTabBar.sideMargin)
+                .padding(.bottom, RoamTabBar.margin + RoamTabBar.height + 10)
+                .ignoresSafeArea(edges: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityIdentifier("log-place")
+            }
+        }
+        .animation(.spring(duration: 0.35), value: detent)
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
         // The tab bar comes back only once the card is fully up; over the globe the card has the bottom to itself.
         .roamTabBar(hidden: detent != .full)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            // Fully up: log a place, with the tab bar below. Lower down, back to Discover takes its place.
+            // Back to Discover at every height; fully up, adding a place moves to the bar above the tab bar.
             ToolbarItem(placement: .topBarLeading) {
-                if detent == .full {
-                    Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Log a place")
-                        .accessibilityIdentifier("log-place")
-                } else {
-                    Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Back to Discover")
-                        .accessibilityIdentifier("myplaces-back")
-                }
+                Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
+                    .accessibilityLabel("Back to Discover")
+                    .accessibilityIdentifier("myplaces-back")
             }
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showWorld() } label: { Image(systemName: "scope") }
-                    .accessibilityLabel("Recenter globe")
-                    .accessibilityIdentifier("recenter-globe")
+            // Recentring only matters while the globe is in view.
+            if detent != .full {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showWorld() } label: { Image(systemName: "scope") }
+                        .accessibilityLabel("Recenter globe")
+                        .accessibilityIdentifier("recenter-globe")
+                }
             }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) {

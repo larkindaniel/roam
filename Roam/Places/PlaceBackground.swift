@@ -271,12 +271,44 @@ struct CityGuide: Hashable {
             guard let summary = await fetch(title), summary.type == "standard", let at = summary.coordinates,
                   CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < within else { continue }
             // Wikimedia serves any width of a thumbnail by changing the size in its path.
-            let photo = summary.thumbnail.flatMap { URL(string: $0.source.absoluteString.replacingOccurrences(of: #"/\d+px-"#, with: "/960px-", options: .regularExpression)) }
+            var photo = summary.thumbnail.flatMap { URL(string: $0.source.absoluteString.replacingOccurrences(of: #"/\d+px-"#, with: "/960px-", options: .regularExpression)) }
+            // A city-state's article (Singapore, Hong Kong) leads with its flag; its tourism article usually leads with a
+            // view of the place, and failing that the article's first real photo.
+            if let lead = photo, !isPhotograph(lead.lastPathComponent) {
+                if let tourism = await fetch("Tourism in \(summary.title)")?.thumbnail?.source, isPhotograph(tourism.lastPathComponent) {
+                    photo = URL(string: tourism.absoluteString.replacingOccurrences(of: #"/\d+px-"#, with: "/960px-", options: .regularExpression))
+                } else {
+                    photo = await firstPhoto(in: summary.title)
+                }
+            }
             let guide = CityGuide(title: summary.title, extract: summary.extract, photoURL: photo, pageURL: summary.content_urls?.mobile?.page)
             cache[key] = guide
             return guide
         }
         return nil
+    }
+
+    /// Flags, coats of arms, maps and drawings aren't photos of a place.
+    private static func isPhotograph(_ file: String) -> Bool {
+        let name = file.lowercased()
+        return !(name.contains(".svg") || ["flag_of", "coat_of_arms", "emblem", "seal_of", "map", "locator", "location"].contains { name.contains($0) })
+    }
+
+    private static func firstPhoto(in title: String) async -> URL? {
+        struct MediaList: Decodable {
+            struct Item: Decodable { struct Source: Decodable { var src: String }; var title: String; var type: String; var srcset: [Source]? }
+            var items: [Item]
+        }
+        let path = title.replacingOccurrences(of: " ", with: "_").addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/")))
+        guard let path, let url = URL(string: "https://en.wikipedia.org/api/rest_v1/page/media-list/\(path)") else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue("Roam/1.0 (iOS travel app)", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let list = try? JSONDecoder().decode(MediaList.self, from: data),
+              let item = list.items.first(where: { $0.type == "image" && isPhotograph($0.title) }),
+              let src = item.srcset?.last?.src else { return nil }
+        return URL(string: src.hasPrefix("//") ? "https:\(src)" : src)
     }
 
     private static func fetch(_ title: String) async -> Summary? {
