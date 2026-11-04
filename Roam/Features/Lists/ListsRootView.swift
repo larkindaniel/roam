@@ -46,6 +46,8 @@ final class MyPlacesModel {
     private(set) var trips: [TripSummary] = []
     private(set) var tripDetails: [UUID: TripDetail] = [:]
     private(set) var homeCities: [Destination] = []
+    /// Cities on your wishlist, saved as a whole.
+    private(set) var savedCities: [Destination] = []
     private(set) var passport: [PassportCountry] = []
     private(set) var lists: [PlaceList] = []
     private(set) var timeline: [TimelineEntry] = []
@@ -76,6 +78,7 @@ final class MyPlacesModel {
             for trip in trips { details[trip.id] = try? await services.plans.trip(id: trip.id) }
             let planned = details.values.flatMap { $0.places.filter(\.isPlanned).map(\.experience) }
             homeCities = HomeCities.distinct((try? await services.plans.homeCities()) ?? homeCities)
+            savedCities = (try? await services.plans.savedCities()) ?? savedCities
             passport = (try? await services.plans.passport(ownerID: ownerID)) ?? passport
             lists = (try? await services.plans.myLists()) ?? lists
             self.trips = trips

@@ -132,6 +132,10 @@ extension FixtureBackend: PlanService {
         if present { fixtureVisitedCities[me, default: []].append(city) }
     }
 
+    func savedCities() async throws -> [Destination] { [] }
+
+    func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination] { [] }
+
     func passport(ownerID: UUID) async throws -> [PassportCountry] {
         _ = try await authenticatedActor()
         let cities = (fixtureVisitedCities[ownerID] ?? []) + (fixtureHomeCities[ownerID] ?? [])

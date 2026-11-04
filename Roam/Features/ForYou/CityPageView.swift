@@ -26,6 +26,7 @@ struct CityPageView: View {
     @State private var mySpotCount = 0
     @State private var loadedSpots = false
     @State private var homes: [Destination] = []
+    @State private var saved: [Destination] = []
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -44,6 +45,10 @@ struct CityPageView: View {
         homes.filter { $0.countryCode?.uppercased() == destination.countryCode?.uppercased() && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
     }
     private var isHome: Bool { !matchingHomes.isEmpty }
+    private var matchingSaved: [Destination] {
+        saved.filter { $0.countryCode?.uppercased() == destination.countryCode?.uppercased() && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
+    }
+    private var isSaved: Bool { !matchingSaved.isEmpty }
 
     /// Places others loved that aren't already among your spots.
     private var recommended: [DiscoverPlace] {
@@ -329,7 +334,19 @@ struct CityPageView: View {
                    onAddToTrip: { trip in Task { await add(to: trip) } },
                    onNewTrip: { planningNewTrip = true },
                    onMarkVisited: { Task { try? await services.plans.setCityVisited(destination, present: true); library.noteChanged() } },
+                   isSaved: isSaved,
+                   onToggleSaved: { Task { await setSaved(!isSaved) } },
                    showsPhoto: showsPhoto)
+    }
+
+    /// A whole city on your wishlist; it shows on My Places' Saved tab.
+    private func setSaved(_ present: Bool) async {
+        if present {
+            saved = (try? await services.plans.setCitySaved(destination, present: true)) ?? saved
+        } else {
+            for stored in matchingSaved { saved = (try? await services.plans.setCitySaved(stored, present: false)) ?? saved }
+        }
+        library.noteChanged()
     }
 
     private func refreshMine() async {
@@ -348,6 +365,7 @@ struct CityPageView: View {
         if isOwn {
             homes = (try? await services.plans.homeCities()) ?? []
             trips = (try? await services.plans.myTrips()) ?? []
+            saved = (try? await services.plans.savedCities()) ?? []
         }
         if model == nil { model = ForYouModel(plans: services.plans) }
         await model?.load(destination)
@@ -501,6 +519,8 @@ struct CityHeader: View {
     var onAddToTrip: (TripSummary) -> Void = { _ in }
     var onNewTrip: () -> Void = {}
     var onMarkVisited: () -> Void = {}
+    var isSaved = false
+    var onToggleSaved: () -> Void = {}
     var showsPhoto = true
 
     @Environment(AppRouter.self) private var router
@@ -555,6 +575,7 @@ struct CityHeader: View {
                             ForEach(trips) { trip in Button("Add to \(trip.name)", systemImage: "airplane") { onAddToTrip(trip) } }
                             Button("New trip", systemImage: "plus") { onNewTrip() }
                             Button("I've been here", systemImage: "checkmark") { onMarkVisited() }
+                            Button(isSaved ? "Remove from wishlist" : "Save to wishlist", systemImage: isSaved ? "bookmark.slash" : "bookmark") { onToggleSaved() }
                         }
                         if showsPlanWithAI {
                             Button("Plan with AI", systemImage: "sparkles") { router.sheet = .researchBrief(destination) }

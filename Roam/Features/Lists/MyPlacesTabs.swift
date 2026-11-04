@@ -262,7 +262,8 @@ struct SavedTab: View {
 
     // Saved places by country, for now; custom lists are set aside.
     var body: some View {
-        let countries = PlaceGroups(model.travelWishlist).countries
+        // Saved places and whole saved cities, by country.
+        let countries = PlaceGroups(model.travelWishlist, extraCities: model.savedCities).countries
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
             HomeCitiesCard(model: model)
             if countries.isEmpty {
@@ -278,13 +279,20 @@ struct SavedTab: View {
 
     private func tile(_ country: PlaceGroups.Country) -> some View {
         let cover = country.cities.flatMap(\.items).first { $0.experience.photoURL != nil }?.experience ?? country.cities.first?.items.first?.experience
-        return Button { router.push(.wishlistCountry(code: country.code, title: country.title)) } label: {
+        // A country you've only saved a city in opens that city's page.
+        let savedOnly = country.cities.allSatisfy(\.items.isEmpty)
+        let savedCity = model.savedCities.first { $0.countryCode?.uppercased() == country.code.uppercased() && $0.name == country.cities.first?.name }
+        return Button {
+            if savedOnly, let savedCity { router.push(.city(savedCity)) }
+            else { router.push(.wishlistCountry(code: country.code, title: country.title)) }
+        } label: {
             ZStack(alignment: .bottomLeading) {
                 // Pictured by the Wikipedia photo of the city you've saved most in (a country's own article leads with its flag).
                 let mainCity = country.cities.first
                 let anchor = mainCity?.items.first?.experience
-                WikipediaPhoto(name: mainCity?.name ?? country.title, region: anchor?.region, country: anchor?.countryName,
-                               coordinate: anchor?.coordinate ?? CLLocationCoordinate2D(), fallbackURL: cover?.photoURL,
+                WikipediaPhoto(name: mainCity?.name ?? country.title, region: anchor?.region ?? savedCity?.region,
+                               country: anchor?.countryName ?? savedCity?.countryName,
+                               coordinate: anchor?.coordinate ?? savedCity?.coordinate ?? CLLocationCoordinate2D(), fallbackURL: cover?.photoURL,
                                symbol: "bookmark", height: 150)
                 LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
                     .allowsHitTesting(false)
