@@ -229,11 +229,10 @@ struct MyPlacesRootView: View {
                     .accessibilityLabel("Cancel search")
             }
         }
-        .padding(.horizontal, Theme.Spacing.m)
-        .frame(height: overGlobe ? 44 : 40)
-        // A darker field inside the bubble or card, at every height.
-        .background { Capsule().fill(overGlobe ? Color.black.opacity(0.35) : Roam.ink.opacity(0.12)) }
-        .padding(.horizontal, overGlobe ? -(Theme.Spacing.m - 2) : 0)
+        .padding(.horizontal, overGlobe ? 0 : Theme.Spacing.m)
+        .frame(height: 40)
+        // In the card, a darker field; lowered, just the glass bubble itself (one tone), with white text.
+        .background { if !overGlobe { Capsule().fill(Roam.ink.opacity(0.12)) } }
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
             // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
