@@ -556,7 +556,8 @@ struct CityHeader: View {
     /// Round actions with a caption under each, laid out like a place's: been here (green), wishlist (yellow), add to a
     /// trip (blue), send (indigo) and plan with AI (pink). A home city keeps just send and AI.
     private var actionRow: some View {
-        HStack(spacing: Theme.Spacing.m) {
+        // Spread evenly across the card's width.
+        HStack(spacing: 0) {
             if trips != nil {
                 circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
                        caption: beenHere ? "Been here" : "Log", identifier: "city-log") { if !beenHere { markedNow = true; onMarkVisited() } }
@@ -579,7 +580,6 @@ struct CityHeader: View {
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {
                 router.sheet = .researchBrief(destination)
             }
-            Spacer(minLength: 0)
         }
     }
 
@@ -600,7 +600,7 @@ struct CityHeader: View {
                 .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
             Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
         }
-        .frame(minWidth: 52)
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
 
