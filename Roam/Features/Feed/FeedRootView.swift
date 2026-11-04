@@ -66,7 +66,15 @@ struct FeedRootView: View {
     private func load() async {
         if cards.value == nil { cards = .loading }
         do {
-            cards = .loaded(try await services.plans.countryFeed().filter { !$0.isOwn })
+            // Newest trip first, by when they were there (not when they posted); undated ones last.
+            cards = .loaded(try await services.plans.countryFeed().filter { !$0.isOwn }.sorted { left, right in
+                switch (left.lastVisit, right.lastVisit) {
+                case let (l?, r?): return l > r
+                case (nil, nil): return left.latestAt > right.latestAt
+                case (nil, _): return false
+                case (_, nil): return true
+                }
+            })
         } catch {
             if cards.value == nil { cards = .failed(session.handle(error)) }
         }
@@ -87,7 +95,7 @@ struct CountryFeedCardView: View {
                     AvatarView(member: card.author, size: 36)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(card.isOwn ? "You" : card.author.displayName).font(.subheadline.weight(.semibold))
-                        Text("Updated \(card.latestAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(Roam.inkMuted)
+                        Text(MyTimeline.range(card.firstVisit, card.lastVisit) ?? "Updated \(card.latestAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(Roam.inkMuted)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)

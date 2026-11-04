@@ -369,6 +369,9 @@ struct CountryFeedCard: Codable, Hashable, Identifiable, Sendable {
 
     var id: String { "\(author.id.uuidString)-\(countryCode ?? "none")" }
     var title: String { CountryTitle.text(name: countryName, code: countryCode) }
+    /// When they were there: the span of their visit dates here.
+    var firstVisit: LocalDate? { entries.compactMap(\.visitDate.date).min() }
+    var lastVisit: LocalDate? { entries.compactMap(\.visitDate.date).max() }
 }
 
 enum CountryTitle {

@@ -11,6 +11,8 @@ struct LogPlaceSheet: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: ExperienceSearchModel?
     @State private var cities: [Destination] = []
+    /// A city picked from the results, asking when you were there.
+    @State private var datingCity: Destination?
     @State private var query = ""
     @State private var request: LogRequest?
     @State private var opening: String?
@@ -54,6 +56,9 @@ struct LogPlaceSheet: View {
             onRoam = (try? await known) ?? []
             cities = Array(((try? await foundCities) ?? []).prefix(3))
         }
+        .sheet(item: $datingCity) { city in
+            CityVisitDatesSheet(city: city) { library.noteChanged(); dismiss() }
+        }
         .sheet(isPresented: $addingPlace) {
             AddCustomPlaceSheet(initialName: query) { place in Task { await choose(place) } }
                 .presentationBackground(Roam.paper)
@@ -66,7 +71,7 @@ struct LogPlaceSheet: View {
             if let error { Text(error).foregroundStyle(Roam.signal).listRowBackground(Roam.paperRaised) }
             // Cities first: choosing one marks it as somewhere you've been, no place needed.
             ForEach(cities) { city in
-                Button { Task { await markVisited(city) } } label: {
+                Button { datingCity = city } label: {
                     HStack(spacing: Theme.Spacing.m) {
                         Image(systemName: "building.2").foregroundStyle(PlaceState.visited.markerColor).frame(width: 24).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
@@ -137,16 +142,6 @@ struct LogPlaceSheet: View {
                     .accessibilityIdentifier("log-place-add-custom")
             }
         }
-    }
-
-    private func markVisited(_ city: Destination) async {
-        opening = city.id
-        defer { opening = nil }
-        do {
-            try await services.plans.setCityVisited(city, present: true)
-            library.noteChanged()
-            dismiss()
-        } catch { self.error = error.roamMessage }
     }
 
     private func choose(_ place: ExperienceSummary) async {

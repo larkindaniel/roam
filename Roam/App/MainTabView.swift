@@ -146,7 +146,8 @@ struct RouteDestinationView: View {
         case .search:
             SearchRootView()
         case .ownProfile:
-            ProfileRootView()
+            // For now your profile is just settings: no stats or passport.
+            SettingsView()
         case .trip(let id):
             TripDetailView(tripID: id)
         case .countryUpdates(let ownerID, let countryCode, let title, let byline):

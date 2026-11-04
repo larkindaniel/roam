@@ -305,6 +305,8 @@ protocol PlanService: AnyObject, Sendable {
     func homeCities() async throws -> [Destination]
     func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination]
     func setCityVisited(_ city: Destination, present: Bool) async throws
+    /// Marks a city as been, with when you were there (either date optional).
+    func markCityVisited(_ city: Destination, start: LocalDate?, end: LocalDate?) async throws
     /// Cities on your wishlist, saved as a whole.
     func savedCities() async throws -> [Destination]
     func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination]

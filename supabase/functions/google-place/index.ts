@@ -8,8 +8,16 @@ const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
 const googleKey = Deno.env.get("GOOGLE_PLACES_KEY");
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/// A Google result further than this from our place is a different place with the same name.
+/// A Google result further than this from our place is a different place with the same name...
 const matchMeters = 750;
+/// ...unless its name matches ours: parks, mountains and other big places have centres kilometres from our pin.
+const sameNameMeters = 25_000;
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function sameName(ours: string, theirs: string | undefined) {
+  if (!theirs) return false;
+  const a = normalize(ours), b = normalize(theirs);
+  return a === b || a.includes(b) || b.includes(a);
+}
 
 type Target = { experienceID: string; name: string; locality: string | null; latitude: number; longitude: number; fresh: boolean };
 type Lookup = { googlePlaceID: string | null; rating: number | null; ratingCount: number | null; photoURL: string | null; photoCredit: string | null };
@@ -30,23 +38,39 @@ async function rpc(name: string, body: unknown) {
   return response.status === 204 ? null : await response.json();
 }
 
-async function lookUp(target: Target): Promise<Lookup> {
+/// The best Google match for the place: by name and town first, then by name alone (the town can steer Google to
+/// something else, like a viewpoint named after it).
+async function find(target: Target) {
+  for (const query of [[target.name, target.locality].filter(Boolean).join(", "), target.name]) {
+    const place = await search(target, query);
+    const distance = place?.location ? metersBetween(target, place.location) : Infinity;
+    if (place && (distance <= matchMeters || (distance <= sameNameMeters && sameName(target.name, place.displayName?.text)))) return place;
+    if (!target.locality) break;
+  }
+  return null;
+}
+
+async function search(target: Target, query: string) {
   const search = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: {
       "Content-Type": "application/json", "X-Goog-Api-Key": googleKey!,
-      "X-Goog-FieldMask": "places.id,places.location,places.rating,places.userRatingCount,places.photos",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.photos",
     },
     body: JSON.stringify({
-      textQuery: [target.name, target.locality].filter(Boolean).join(", "),
+      textQuery: query,
       pageSize: 1,
       locationBias: { circle: { center: { latitude: target.latitude, longitude: target.longitude }, radius: 500 } },
     }),
     signal: AbortSignal.timeout(15_000),
   });
   if (!search.ok) throw new Error(`Google search failed: ${search.status} ${await search.text()}`);
-  const place = (await search.json()).places?.[0];
-  if (!place || !place.location || metersBetween(target, place.location) > matchMeters) {
+  return (await search.json()).places?.[0] ?? null;
+}
+
+async function lookUp(target: Target): Promise<Lookup> {
+  const place = await find(target);
+  if (!place) {
     return { googlePlaceID: null, rating: null, ratingCount: null, photoURL: null, photoCredit: null };
   }
   let photoURL: string | null = null, photoCredit: string | null = null;

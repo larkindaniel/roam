@@ -132,6 +132,10 @@ extension FixtureBackend: PlanService {
         if present { fixtureVisitedCities[me, default: []].append(city) }
     }
 
+    func markCityVisited(_ city: Destination, start: LocalDate?, end: LocalDate?) async throws {
+        try await setCityVisited(city, present: true)
+    }
+
     func savedCities() async throws -> [Destination] { [] }
 
     func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination] { [] }

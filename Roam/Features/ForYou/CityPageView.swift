@@ -38,6 +38,7 @@ struct CityPageView: View {
     @State private var saved: [Destination] = []
     /// Marked as been without logging a place there.
     @State private var markedVisited = false
+    @State private var askingDates = false
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -118,6 +119,9 @@ struct CityPageView: View {
             guard !Task.isCancelled else { return }
             if search == nil { search = ExperienceSearchModel(services: services) }
             await search?.search(query, near: destination)
+        }
+        .sheet(isPresented: $askingDates) {
+            CityVisitDatesSheet(city: destination) { markedVisited = true; library.noteChanged() }
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -377,7 +381,11 @@ struct CityPageView: View {
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
                    onAddToTrip: { trip in Task { await add(to: trip) } },
                    onNewTrip: { planningNewTrip = true },
-                   onMarkVisited: { present in Task { try? await services.plans.setCityVisited(destination, present: present); markedVisited = present; library.noteChanged() } },
+                   // Marking it been asks when you were there; unmarking just removes it.
+                   onMarkVisited: { present in
+                       if present { askingDates = true }
+                       else { Task { try? await services.plans.setCityVisited(destination, present: false); markedVisited = false; library.noteChanged() } }
+                   },
                    isSaved: isSaved,
                    onToggleSaved: { Task { await setSaved(!isSaved) } },
                    showsPhoto: showsPhoto)
@@ -622,7 +630,7 @@ struct CityHeader: View {
                 circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
                        caption: beenHere ? "Been" : "Log", identifier: "city-log") {
                     // Tapping again asks before taking it back off where you've been.
-                    if beenHere { confirmingUnbeen = true } else { markedNow = true; onMarkVisited(true) }
+                    if beenHere { confirmingUnbeen = true } else { onMarkVisited(true) }
                 }
                 .alert(spotCount > 0 ? "You've logged \(spotCount) \(spotCount == 1 ? "spot" : "spots") here" : "Remove from places you've been?",
                        isPresented: $confirmingUnbeen) {
@@ -723,5 +731,56 @@ struct CityPhoto: View {
         .task(id: destination.id) {
             guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
         }
+    }
+}
+
+/// When you were in a city you're marking as been. Both dates are optional.
+struct CityVisitDatesSheet: View {
+    let city: Destination
+    var onSaved: () -> Void
+
+    @Environment(AppServices.self) private var services
+    @Environment(\.dismiss) private var dismiss
+    @State private var start: Date?
+    @State private var end: Date?
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TripDatesRow(start: $start, end: $end)
+                } header: {
+                    Text("When were you there?")
+                } footer: {
+                    Text("Optional. Dates put \(city.name) in order on your timeline and in friends' feeds.")
+                }
+                .listRowBackground(Roam.paperRaised)
+                if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Roam.paper)
+            .navigationTitle(city.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { Task { await save() } }.disabled(saving).accessibilityIdentifier("city-dates-save")
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func save() async {
+        saving = true
+        defer { saving = false }
+        do {
+            try await services.plans.markCityVisited(city, start: start.map { LocalDate(date: $0, timeZone: .current) },
+                                                     end: end.map { LocalDate(date: $0, timeZone: .current) })
+            onSaved()
+            dismiss()
+        } catch { self.error = error.roamMessage }
     }
 }

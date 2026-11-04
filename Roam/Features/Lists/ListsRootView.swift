@@ -89,6 +89,13 @@ final class MyPlacesModel {
             timeline = MyTimeline.past(been: beenEntries, trips: trips, details: details, homes: homeCities, today: MyTimeline.today())
             hasLoaded = true
             error = nil
+            // Saved places with no photo yet ask Google in the background, then refresh once.
+            let missing = wishlistEntries.filter { $0.experience.photoURL == nil }.map(\.id)
+            if !missing.isEmpty, await services.plans.refreshGoogleDetails(experienceIDs: Array(missing.prefix(20))),
+               let refreshed = try? await services.lists.want(ownerID: ownerID) {
+                pins = PlaceMapItem.items(been: beenEntries.map(\.experience), planned: planned, wishlist: refreshed.map(\.experience))
+                countries = MyPlacesCountry.countries(pins)
+            }
         } catch {
             self.error = error.roamMessage
         }
