@@ -165,7 +165,6 @@ struct HomeCitiesCard: View {
 /// What's ahead: the next trip large, the rest below it.
 struct GoingTab: View {
     let model: MyPlacesModel
-    var onNewTrip: () -> Void
 
     @Environment(AppRouter.self) private var router
 
@@ -199,9 +198,6 @@ struct GoingTab: View {
             } else {
                 Text("No trips yet. Plan one from your saved places, or start fresh.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             }
-            Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                .accessibilityIdentifier("new-trip")
         }
     }
 

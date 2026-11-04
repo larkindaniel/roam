@@ -13,17 +13,24 @@ struct CityPageView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
     @Environment(DestinationStore.self) private var destinations
+    @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
     @State private var spots: [ListEntry] = []
     @State private var mySpotCount = 0
     @State private var loadedSpots = false
+    @State private var homes: [Destination] = []
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
+    /// Home cities can be stored under more than one region spelling, so they match by country and name.
+    private var matchingHomes: [Destination] {
+        homes.filter { $0.countryCode == destination.countryCode && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
+    }
+    private var isHome: Bool { !matchingHomes.isEmpty }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                CityHeader(destination: destination, showsPlanWithAI: loadedSpots && mySpotCount == 0)
+                CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0)
                 CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                               coordinate: destination.coordinate, showsPhoto: false)
                 if !spots.isEmpty {
@@ -46,6 +53,20 @@ struct CityPageView: View {
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if isOwn {
+                // Anywhere within 100 km of a home city counts as home and stays off your travel timeline.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if isHome {
+                            Button("Remove as home", systemImage: "house.slash", role: .destructive) { Task { await setHome(false) } }
+                        } else {
+                            Button("Set as home", systemImage: "house") { Task { await setHome(true) } }
+                        }
+                    } label: { Image(systemName: "ellipsis") }
+                        .accessibilityLabel("More")
+                        .accessibilityIdentifier("city-more")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 // The map opens on this city.
                 Button {
@@ -63,6 +84,7 @@ struct CityPageView: View {
             mySpotCount = own.count
             spots = isOwn ? own : await theirs
             loadedSpots = true
+            if isOwn { homes = (try? await services.plans.homeCities()) ?? [] }
             if model == nil { model = ForYouModel(plans: services.plans) }
             await model?.load(destination)
         }
@@ -96,6 +118,16 @@ struct CityPageView: View {
                 .accessibilityIdentifier("discover-places")
             }
         }
+    }
+
+    private func setHome(_ present: Bool) async {
+        if present {
+            homes = (try? await services.plans.setHomeCity(destination, present: true)) ?? homes
+        } else {
+            for stored in matchingHomes { homes = (try? await services.plans.setHomeCity(stored, present: false)) ?? homes }
+        }
+        // My Places reloads its home cities.
+        library.noteChanged()
     }
 
     private func loadSpots(of owner: UUID?) async -> [ListEntry] {
@@ -173,6 +205,7 @@ struct CityPhotoCard: View {
 /// The city heads its page: name and where it is, Plan with AI when you haven't been, then its Wikipedia photo.
 struct CityHeader: View {
     let destination: Destination
+    var isHome = false
     var showsPlanWithAI = true
 
     @Environment(AppRouter.self) private var router
@@ -182,7 +215,12 @@ struct CityHeader: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             HStack(alignment: .center, spacing: Theme.Spacing.m) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+                    HStack(spacing: Theme.Spacing.s) {
+                        Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+                        if isHome {
+                            Image(systemName: "house.fill").font(.title3).foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home")
+                        }
+                    }
                     if !destination.subtitle.isEmpty {
                         Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
                     }

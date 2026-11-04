@@ -194,6 +194,15 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
+    /// On Going it starts a trip; elsewhere it adds a place (or a city you've been to).
+    @ViewBuilder private func addButton<L: View>(@ViewBuilder label: (String) -> L) -> some View {
+        if tab == .going && focusedCountry == nil {
+            Button { sheet = .newTrip } label: { label("New trip") }
+        } else {
+            Menu { addMenu } label: { label("Add a place") }
+        }
+    }
+
     /// Anywhere you've been or want to go: log a place, or just mark a city as visited.
     @ViewBuilder private var addMenu: some View {
         Button { router.sheet = .logPlace } label: { Label("A place", systemImage: "mappin") }
@@ -220,8 +229,8 @@ struct MyPlacesRootView: View {
                     Text(focusedCountry.map(countryTitle) ?? "My Places").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
-                    Menu { addMenu } label: {
-                        Label("Add a place", systemImage: "plus")
+                    addButton { title in
+                        Label(title, systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Roam.ink)
                             .padding(.horizontal, 14)
@@ -249,7 +258,7 @@ struct MyPlacesRootView: View {
                 } else {
                     switch tab {
                     case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
-                    case .going: GoingTab(model: model) { sheet = .newTrip }
+                    case .going: GoingTab(model: model)
                     case .saved: SavedTab(model: model)
                     }
                 }
@@ -275,8 +284,8 @@ struct MyPlacesRootView: View {
                 // Measured from the bottom edge of the screen, like the tab bar, not from above the home indicator.
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                Menu { addMenu } label: {
-                    Label("Add a place", systemImage: "plus")
+                addButton { title in
+                    Label(title, systemImage: "plus")
                         .font(.headline)
                         .foregroundStyle(Roam.ink)
                         .frame(maxWidth: .infinity)
