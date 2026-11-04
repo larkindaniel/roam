@@ -492,7 +492,7 @@ struct CityPhotoCard: View {
             // The credit sits snug under the name.
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: Theme.Spacing.s) {
-                    if isHome { Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home") }
+                    if isHome { Image(systemName: "house.fill").foregroundStyle(Roam.home).accessibilityLabel("Home") }
                     Text(destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
                     Spacer(minLength: 0)
                 }
@@ -540,13 +540,13 @@ struct CityHeader: View {
         }
     }
 
-    /// Set as home, on the title row; a home city shows as a solid green house.
+    /// Set as home, on the title row; a home city shows as a solid indigo house.
     @ViewBuilder private var homePill: some View {
         if let onToggleHome {
             Button(action: onToggleHome) {
                 if isHome { Image(systemName: "house.fill") } else { Label("Set as home", systemImage: "house") }
             }
-            .buttonStyle(PillButtonStyle(isSelected: isHome, tint: PlaceState.visited.markerColor))
+            .buttonStyle(PillButtonStyle(isSelected: isHome, tint: Roam.home))
             .accessibilityLabel(isHome ? "Home" : "Set as home")
             .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
             .accessibilityIdentifier("city-toggle-home")
@@ -610,9 +610,16 @@ struct CityHeader: View {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 title.layoutPriority(-1)
                 Spacer(minLength: Theme.Spacing.xs)
+                // A home city needs no row of actions: just its house and Plan, beside the name.
+                if isHome {
+                    Button { router.sheet = .researchBrief(destination) } label: { Label("Plan", systemImage: "sparkles") }
+                        .buttonStyle(PillButtonStyle(tint: .pink))
+                        .accessibilityLabel("Plan with AI")
+                        .accessibilityIdentifier("foryou-research-open")
+                }
                 homePill
             }
-            actionRow
+            if !isHome { actionRow }
             // Credited once, under the blurb that follows.
             if showsPhoto { CityPhoto(destination: destination) }
         }

@@ -418,7 +418,7 @@ struct HomeCitiesSection: View {
                 .roamCard(padding: Theme.Spacing.m)
             }
             Button(action: onAddHome) { PillLabel(title: "Add a home city", systemImage: "house") }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                .buttonStyle(PillButtonStyle(tint: Roam.home))
                 .accessibilityIdentifier("add-home-city")
         }
     }

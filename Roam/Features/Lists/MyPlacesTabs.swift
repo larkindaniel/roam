@@ -133,7 +133,7 @@ struct HomeCitiesCard: View {
         if model.homeCities.isEmpty {
             if let onAdd {
                 Button(action: onAdd) { PillLabel(title: "Set your home city", systemImage: "house") }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .buttonStyle(PillButtonStyle(tint: Roam.home))
                     .accessibilityIdentifier("add-home-city")
             }
         } else {
@@ -141,7 +141,7 @@ struct HomeCitiesCard: View {
                 ForEach(model.homeCities) { city in
                     Button { router.push(.city(city)) } label: {
                         HStack(spacing: Theme.Spacing.m) {
-                            Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).frame(width: 24)
+                            Image(systemName: "house.fill").foregroundStyle(Roam.home).frame(width: 24)
                             Text(city.name).font(.headline).foregroundStyle(Roam.ink)
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
