@@ -37,7 +37,7 @@ struct CityPageView: View {
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     /// Home cities can be stored under more than one region spelling, so they match by country and name.
     private var matchingHomes: [Destination] {
-        homes.filter { $0.countryCode == destination.countryCode && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
+        homes.filter { $0.countryCode?.uppercased() == destination.countryCode?.uppercased() && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
     }
     private var isHome: Bool { !matchingHomes.isEmpty }
 
