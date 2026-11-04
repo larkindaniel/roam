@@ -176,7 +176,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .background {
             // Lowered with no tint asked for, it's exactly the glass of the floating buttons over the map.
             if floating && peekOpacity == 0 {
-                Color.clear.floatingBubble(shape)
+                // Dark, like the toolbar buttons that sit over the globe.
+                Color.clear.floatingBubble(shape).environment(\.colorScheme, .dark)
             } else {
                 SheetGlass(shape: shape, tint: Roam.paper.opacity(glassOpacity), solid: detent == .full && dragOffset == 0)
             }
