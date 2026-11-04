@@ -39,8 +39,8 @@ struct MainTabView: View {
 
     @ViewBuilder private func stack(_ tab: AppTab) -> some View {
         switch tab {
-        case .forYou: stack(.forYou) { ForYouRootView().tabSwipe(left: nil, right: .friends) }
-        case .friends: stack(.friends) { FeedRootView().tabSwipe(left: .forYou, right: .myPlaces) }
+        case .forYou: stack(.forYou) { ForYouRootView() }
+        case .friends: stack(.friends) { FeedRootView() }
         case .myPlaces: stack(.myPlaces) { MyPlacesRootView() }
         }
     }
@@ -241,30 +241,4 @@ struct SheetContent: View {
             LogPlaceSheet { request, completion in saved(request, completion) }
         }
     }
-}
-
-private struct TabSwipe: ViewModifier {
-    let left: AppTab?
-    let right: AppTab?
-    @Environment(AppRouter.self) private var router
-
-    func body(content: Content) -> some View {
-        content.simultaneousGesture(
-            DragGesture(minimumDistance: 30)
-                .onEnded { value in
-                    let dx = value.translation.width, dy = value.translation.height
-                    // A clear sideways swipe, not a scroll.
-                    guard abs(dx) > 80, abs(dx) > abs(dy) * 2 else { return }
-                    if let target = dx < 0 ? right : left {
-                        withAnimation(.snappy(duration: 0.25)) { router.selectedTab = target }
-                    }
-                }
-        )
-    }
-}
-
-extension View {
-    /// Swiping sideways on a tab's main screen moves to the tab beside it (Discover ⇄ Friends ⇄ My Places; My Places'
-    /// globe keeps its own drags, so it doesn't swipe back).
-    func tabSwipe(left: AppTab?, right: AppTab?) -> some View { modifier(TabSwipe(left: left, right: right)) }
 }
