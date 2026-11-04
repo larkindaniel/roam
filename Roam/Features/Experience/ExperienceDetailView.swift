@@ -69,6 +69,12 @@ struct ExperienceDetailView: View {
     var onOpenPlace: ((UUID) -> Void)? = nil
     /// Shown over another screen's map (a city's): only the card, the map behind it is that screen's.
     var overMap = false
+    /// Over a city's map: the card's height to start at (the city card's), and a call once the place has loaded, so
+    /// the city's card can hand over without a gap.
+    var startDetent: GlobeSheetDetent? = nil
+    var onLoaded: (() -> Void)? = nil
+    /// Over a city's map: what's known already, shown on the card at once while the rest loads.
+    var preview: ExperienceSummary? = nil
     @State private var mapCamera: MapCameraPosition = .automatic
     @State private var cameraPlaced = false
 
@@ -103,7 +109,27 @@ struct ExperienceDetailView: View {
             switch model?.phase ?? .idle {
             case .idle, .loading:
                 if overMap {
-                    Color.clear.allowsHitTesting(false)
+                    // The card is there at once with the name and area; the rest fills in when it loads.
+                    GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: preview?.name ?? "",
+                                     headerIdentifier: "detail-sheet-header", floatsWhenPeeking: true, collapsesHeaderOnScroll: true,
+                                     seeThrough: true) {
+                        Color.clear.allowsHitTesting(false)
+                    } header: {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(preview?.name ?? "").font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
+                            if sheetDetent != .peek, let preview {
+                                Text([preview.category?.title, preview.areaLine.isEmpty ? nil : preview.areaLine].compactMap { $0 }.joined(separator: " · "))
+                                    .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1).padding(.top, -4)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } content: {
+                        SkeletonList(rows: 4)
+                    }
+                    .onAppear {
+                        if let startDetent { sheetDetent = startDetent }
+                        onLoaded?()
+                    }
                 } else if let center = Self.handoff[experienceID] {
                     // Arriving from a city's map: show the same map while the place loads, so nothing jumps.
                     Map(initialPosition: .region(MKCoordinateRegion(center: center, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan)))
@@ -123,7 +149,14 @@ struct ExperienceDetailView: View {
                 content(detail)
                     .onAppear {
                         guard !cardRisen else { return }
-                        withAnimation(.snappy(duration: 0.32)) { cardRisen = true }
+                        if overMap {
+                            // Over a city's map the card is already there: only what's in it changes.
+                            if preview == nil, let startDetent { sheetDetent = startDetent }
+                            cardRisen = true
+                            onLoaded?()
+                        } else {
+                            withAnimation(.snappy(duration: 0.32)) { cardRisen = true }
+                        }
                     }
             }
         }
@@ -135,17 +168,7 @@ struct ExperienceDetailView: View {
         .toolbar {
             // The card over the map names the place; the bar stays clear so the map shows through.
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            if let detail = model?.detail {
-                ToolbarItem(placement: .topBarTrailing) {
-                    // Native text share: public values, an Apple Maps link and only your own current score.
-                    ShareLink(item: ShareText.experience(detail.summary, ownRating: detail.myRating)) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .accessibilityLabel("Share \(detail.summary.name)")
-                    .accessibilityIdentifier("share-experience")
-                }
-                ToolbarItem(placement: .topBarTrailing) { overflowMenu(detail) }
-            }
+            // No share or more buttons over the map: Send is on the card.
         }
         .sheet(item: $reportTarget) { target in
             ReportSheet(target: target, title: reportTitle(target), suggestedReason: reportReason)

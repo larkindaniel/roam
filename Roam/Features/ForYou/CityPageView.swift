@@ -33,6 +33,10 @@ struct CityPageView: View {
     /// The place open over this map, as in Apple Maps: one map, the card swaps.
     @State private var openPlace: UUID?
     @State private var cityDetent = GlobeSheetDetent.half
+    /// The open place's card has loaded and taken over from the city's.
+    @State private var placeShown = false
+    /// What's already known about the open place, so its card shows straight away while the rest loads.
+    @State private var openPreview: ExperienceSummary?
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -51,38 +55,8 @@ struct CityPageView: View {
 
     var body: some View {
         ZStack {
-        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
-                         headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
-                         floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek,
-                         cardHidden: openPlace != nil) {
-            cityMap
-        } header: {
-            // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
-            // and both give way to the city's name, small and white; scroll back up and they come back down.
-            if detent == .peek {
-                searchField
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    searchField
-                        .padding(.horizontal, Theme.Spacing.m)
-                        .background(Capsule().fill(.ultraThinMaterial))
-                        .overlay(Capsule().fill(Roam.ink.opacity(0.05)).allowsHitTesting(false))
-                    cityHeader(showsPhoto: false)
-                }
-            }
-        } content: {
-            if hasQuery {
-                searchResults
-            } else {
-                cityInfo
-            }
-        }
-            if let openPlace {
-                ExperienceDetailView(experienceID: openPlace, onOpenPlace: { fly(toID: $0) }, overMap: true)
-                    .id(openPlace)
-                    .transition(.identity)
-            }
+            cityLayout
+            placeCard
         }
         // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
         .roamTabBar(hidden: openPlace != nil || detent != .full)
@@ -130,6 +104,46 @@ struct CityPageView: View {
         .screenIdentifier("city-page")
     }
 
+    private var cityLayout: some View {
+        GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
+                         headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
+                         floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek,
+                         cardHidden: placeShown) {
+            cityMap
+        } header: {
+            // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
+            // and both give way to the city's name, small and white; scroll back up and they come back down.
+            if detent == .peek {
+                searchField
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    searchField
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .background(Capsule().fill(.ultraThinMaterial))
+                        .overlay(Capsule().fill(Roam.ink.opacity(0.05)).allowsHitTesting(false))
+                    cityHeader(showsPhoto: false)
+                }
+            }
+        } content: {
+            if hasQuery {
+                searchResults
+            } else {
+                cityInfo
+            }
+        }
+    }
+
+    @ViewBuilder private var placeCard: some View {
+            if let openPlace {
+                ExperienceDetailView(experienceID: openPlace, onOpenPlace: { fly(toID: $0) }, overMap: true,
+                                     startDetent: .half,
+                                     onLoaded: { placeShown = true }, preview: openPreview)
+                    .id(openPlace)
+                    .transition(.identity)
+            }
+    }
+
     // MARK: Map
 
     /// The city, with your spots in green and the places we'd suggest in red; tapping one opens it.
@@ -146,22 +160,23 @@ struct CityPageView: View {
         withAnimation(.snappy(duration: 0.35)) {
             camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
                                                 longitudinalMeters: ExperienceDetailView.placeSpan))
-            openPlace = place.id
         }
+        // The city's card stays until the place's is ready, then the place's information simply replaces it.
+        openPreview = place
+        openPlace = place.id
     }
 
     /// A place picked on the map while another is open (its card already knows only the id).
     private func fly(toID id: UUID) {
         if let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) { fly(to: place) }
-        else { withAnimation(.snappy(duration: 0.35)) { openPlace = id } }
+        else { placeShown = false; openPlace = id }
     }
 
     private func closePlace() {
-        withAnimation(.snappy(duration: 0.35)) {
-            openPlace = nil
-            camera = .region(cityRegion)
-            detent = cityDetent
-        }
+        openPlace = nil
+        placeShown = false
+        detent = cityDetent
+        withAnimation(.snappy(duration: 0.35)) { camera = .region(cityRegion) }
     }
 
     private var cityMap: some View {
