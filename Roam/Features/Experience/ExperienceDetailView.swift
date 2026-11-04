@@ -119,7 +119,7 @@ struct ExperienceDetailView: View {
                 content(detail)
                     .onAppear {
                         guard !cardRisen else { return }
-                        withAnimation(.spring(duration: 0.45, bounce: 0.12)) { cardRisen = true }
+                        withAnimation(.snappy(duration: 0.32)) { cardRisen = true }
                     }
             }
         }
@@ -330,11 +330,11 @@ struct ExperienceDetailView: View {
                       let place = try? await services.experiences.resolve(candidate), place.id != experienceID else { return }
                 // Like Apple Maps: the map moves over to the new place and this card drops away, then the new place's
                 // card rises on the same map.
-                withAnimation(.easeInOut(duration: 0.7)) {
+                withAnimation(.snappy(duration: 0.4)) {
                     mapCamera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan))
                     cardRisen = false
                 }
-                try? await Task.sleep(for: .milliseconds(720))
+                try? await Task.sleep(for: .milliseconds(380))
                 Self.handoff[place.id] = place.coordinate
                 if let onOpenPlace { onOpenPlace(place.id) } else { router.push(.experience(place.id)) }
             }

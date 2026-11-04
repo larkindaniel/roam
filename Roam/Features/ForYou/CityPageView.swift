@@ -108,7 +108,7 @@ struct CityPageView: View {
         .onAppear {
             guard flying else { return }
             flying = false
-            withAnimation(.easeInOut(duration: 0.6)) { camera = .region(cityRegion) }
+            withAnimation(.snappy(duration: 0.4)) { camera = .region(cityRegion) }
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -130,13 +130,13 @@ struct CityPageView: View {
     private func fly(to place: ExperienceSummary) {
         searching = false
         flying = true
-        withAnimation(.easeInOut(duration: 0.8)) {
+        withAnimation(.snappy(duration: 0.4)) {
             camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
                                                 longitudinalMeters: ExperienceDetailView.placeSpan))
             detent = .peek
         }
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(850))
+            try? await Task.sleep(for: .milliseconds(380))
             ExperienceDetailView.handoff[place.id] = place.coordinate
             // The navigation push itself is instant (the map already moved); a SwiftUI transaction alone doesn't stop
             // the stack's slide, so UIKit animations pause for the hand-over.
@@ -476,9 +476,6 @@ struct CityHeader: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Theme.Spacing.s) {
                 Text(destination.name).font(.roamDisplay(.title)).lineLimit(1).minimumScaleFactor(0.6).accessibilityAddTraits(.isHeader)
-                if isHome {
-                    Image(systemName: "house.fill").font(.title3).foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home")
-                }
             }
             if !destination.subtitle.isEmpty {
                 Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -499,11 +496,12 @@ struct CityHeader: View {
     private func actionPills(compact: Bool) -> some View {
             HStack(spacing: Theme.Spacing.s) {
                 if let onToggleHome {
+                    // Once it's home, the pill shrinks to a solid green house.
                     Button(action: onToggleHome) {
-                        if compact { Image(systemName: isHome ? "house.fill" : "house") }
-                        else { Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house") }
+                        if compact || isHome { Image(systemName: isHome ? "house.fill" : "house") }
+                        else { Label("Set as home", systemImage: "house") }
                     }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .buttonStyle(PillButtonStyle(isSelected: isHome, tint: PlaceState.visited.markerColor))
                     .accessibilityLabel(isHome ? "Home" : "Set as home")
                     .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
                     .accessibilityIdentifier("city-toggle-home")
