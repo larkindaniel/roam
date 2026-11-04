@@ -158,7 +158,6 @@ struct MyPlacesRootView: View {
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
     @State private var tab = MyPlacesTab.been
-    @State private var choosingAdd = false
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
     @State private var focusRegion: MKCoordinateRegion?
@@ -211,8 +210,8 @@ struct MyPlacesRootView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
-                         floatingBottomMargin: RoamTabBar.sideMargin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, hidesWhenPeeking: true) {
+                         floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height) {
             globe
         } header: {
             if detent == .peek {
@@ -271,20 +270,25 @@ struct MyPlacesRootView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            // In the tab bar's place and style: minimised, My Places (swipe or tap to raise) and Add a place; fully up,
-            // just Add a place. Halfway, the card has the bottom to itself.
-            if detent != .half {
-                TabBarStyleBar(items: (detent == .peek ? [TabBarStyleBar.Item(symbol: AppTab.myPlaces.symbolName, title: "My Places", highlighted: true,
-                                                                                   identifier: "myplaces-raise") { detent = .half }] : [])
-                               + [TabBarStyleBar.Item(symbol: "plus", title: "Add a place", identifier: "log-place") { choosingAdd = true }])
-                    .gesture(DragGesture(minimumDistance: 12).onEnded { value in
-                        if detent == .peek, value.translation.height < -20 { detent = .half }
-                    })
-                    .ignoresSafeArea(edges: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            // Fully up, the bubble's Add a place becomes a full-width bar where the tab bar would be.
+            if detent == .full {
+                Menu { addMenu } label: {
+                    Label("Add a place", systemImage: "plus")
+                        .font(.headline)
+                        .foregroundStyle(Roam.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: RoamTabBar.height)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Capsule())
+                .padding(.horizontal, RoamTabBar.sideMargin)
+                .padding(.bottom, RoamTabBar.margin)
+                .ignoresSafeArea(edges: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityIdentifier("log-place")
             }
         }
-        .confirmationDialog("Add", isPresented: $choosingAdd) { addMenu }
         .animation(.spring(duration: 0.35), value: detent)
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)

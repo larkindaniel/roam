@@ -38,8 +38,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var mapTrailingAccessory: AnyView? = nil
     /// Scrolled, the header gives way to a dark fade with just the name (used for a place's card).
     var collapsesHeaderOnScroll = false
-    /// Minimised, the card steps aside entirely so the screen can show its own bar in its place.
-    var hidesWhenPeeking = false
+    /// Minimised, a fixed bubble height (the tab bar's, on My Places) with the row centred in it.
+    var floatingHeight: CGFloat? = nil
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -73,9 +73,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .transition(.opacity)
                     }
-                    if !(hidesWhenPeeking && detent == .peek && dragOffset == 0) {
-                        card(height: height, available: available).transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+                    card(height: height, available: available)
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
@@ -121,9 +119,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     private func card(height: CGFloat, available: CGFloat) -> some View {
         let floating = isFloating
         // Rounded like the screen itself: the bubble is pill-shaped, the card's top corners echo the display's.
-        let top: CGFloat = floating ? 32 : 38
+        let pill = floatingHeight.map { $0 / 2 } ?? 32
+        let top: CGFloat = floating ? pill : 38
         // Down at the bottom of the screen, the lower corners follow the display's own rounded corners.
-        let bottom: CGFloat = floating ? 32 : max(displayCornerRadius - bottomMargin, 0)
+        let bottom: CGFloat = floating ? pill : max(displayCornerRadius - bottomMargin, 0)
         let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom,
                                            bottomTrailingRadius: bottom, topTrailingRadius: top, style: .continuous)
         return Group {
@@ -216,16 +215,26 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private func handle(available: CGFloat) -> some View {
         // As a floating bubble it's just the header, snug around it; as a card it has a grabber on top.
-        VStack(spacing: 2) {
-            // The grabber shows even on the bubble, so it's clear it swipes up.
-            grabber
-            header()
+        Group {
+            if isFloating, let floatingHeight {
+                // A slim bubble: the row centred in it, the grabber tucked into the top edge.
+                header()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .top) { Capsule().fill(Roam.rule).frame(width: 36, height: 4).padding(.top, 5) }
+                    .frame(height: floatingHeight)
+            } else {
+                VStack(spacing: 2) {
+                    // The grabber shows even on the bubble, so it's clear it swipes up.
+                    grabber
+                    header()
+                }
+                // As a bubble, the same room below the header as the grabber takes above it, so the row sits centred.
+                .padding(.bottom, isFloating ? 13 : Theme.Spacing.s)
+            }
         }
         .frame(maxWidth: .infinity)
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
-        // As a bubble, the same room below the header as the grabber takes above it, so the row sits centred.
-        .padding(.bottom, isFloating ? 13 : Theme.Spacing.s)
         // The minimised height is measured while the header sits here.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
         .contentShape(Rectangle())
