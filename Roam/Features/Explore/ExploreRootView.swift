@@ -185,6 +185,7 @@ struct ExploreRootView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
     @State private var model: ExploreModel?
+    @State private var navigationBarHidden = true
     @State private var actionError: String?
     @State private var pendingSaves: Set<String> = []
     @State private var pendingLogs: Set<String> = []
@@ -213,7 +214,13 @@ struct ExploreRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.groupedCanvas)
         .navigationTitle(countryTitle ?? "Explore")
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
+        // As on Discover: coming back from a pushed page can leave the system bar showing, empty, over the floating
+        // row and swallowing its taps; hiding it again on every return keeps the row tappable.
+        .onAppear {
+            navigationBarHidden = false
+            Task { @MainActor in navigationBarHidden = true }
+        }
         .task {
             if model == nil {
                 model = ExploreModel(services: services)
@@ -253,7 +260,8 @@ struct ExploreRootView: View {
                 .overlay(alignment: .top) {
                     VStack(spacing: Theme.Spacing.s) {
                         HStack(spacing: Theme.Spacing.s) {
-                            Button { dismiss() } label: {
+                            // Pops the route itself: with the system bar hidden, dismiss() doesn't always reach the stack.
+                            Button { if !router.pop() { dismiss() } } label: {
                                 Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
                             }
                             .buttonStyle(.plain)

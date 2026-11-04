@@ -161,7 +161,17 @@ final class AppRouter {
 
     func push(_ route: AppRoute, on tab: AppTab? = nil) {
         let target = tab ?? selectedTab
+        // A double tap shouldn't stack the same screen twice (back would then seem to do nothing).
+        guard paths[target]?.last != route else { return }
         paths[target, default: []].append(route)
+    }
+
+    /// Steps back one screen; false when there's nothing to go back to.
+    @discardableResult func pop(_ tab: AppTab? = nil) -> Bool {
+        let target = tab ?? selectedTab
+        guard paths[target]?.isEmpty == false else { return false }
+        paths[target]?.removeLast()
+        return true
     }
 
     func popToRoot(_ tab: AppTab? = nil) {
