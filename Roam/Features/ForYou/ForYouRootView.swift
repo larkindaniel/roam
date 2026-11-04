@@ -118,8 +118,9 @@ struct ForYouRootView: View {
             searchField
             if !searchActive {
                 // Your profile on the far right, the same on every tab.
+                // The same glass circle the system toolbar gives the cog on Friends and My Places.
                 ProfileAvatarButton()
-                    .frame(width: 48, height: 48)
+                    .frame(width: 44, height: 44)
                     .floatingBubble(Circle())
             }
         }

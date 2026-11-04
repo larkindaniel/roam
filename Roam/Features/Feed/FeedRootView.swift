@@ -28,7 +28,7 @@ struct FeedRootView: View {
                     .accessibilityLabel(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications")
                     .accessibilityIdentifier("open-notifications")
                 }
-                ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
+                SettingsToolbarItem()
             }
             .navigationBarTitleDisplayMode(.large)
             .task { await load() }

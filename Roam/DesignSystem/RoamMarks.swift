@@ -86,6 +86,17 @@ struct ProfileAvatarButton: View {
     }
 }
 
+/// The settings cog at the top right of each tab, always in a glass circle of its own (on iOS 26 a spacer keeps it out
+/// of any group of buttons beside it), so it looks the same on Discover, Friends and My Places.
+struct SettingsToolbarItem: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+        }
+        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
+    }
+}
+
 /// Log a place, at the top left of each tab's main screen.
 struct LogPlaceToolbarButton: ToolbarContent {
     @Environment(AppRouter.self) private var router
