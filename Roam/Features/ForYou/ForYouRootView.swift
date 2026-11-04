@@ -114,32 +114,21 @@ struct ForYouRootView: View {
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
-            if !searchActive {
-                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
-            }
-            searchField
+            // While searching, a round × to the left of the search bar ends it; otherwise + logs a place.
             if searchActive {
-                Button("Cancel") {
+                roundButton("xmark", label: "Cancel search", identifier: "discover-search-cancel") {
                     query = ""
                     searchFocused = false
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Roam.ink)
-                .accessibilityIdentifier("discover-search-cancel")
             } else {
-                // The map, then your profile on the far right, the same on every tab.
-                HStack(spacing: Theme.Spacing.xs) {
-                    Button { router.openExplore() } label: {
-                        Image(systemName: "map").font(.system(size: 20, weight: .regular)).foregroundStyle(Roam.ink).frame(width: 40, height: 40)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Explore the map")
-                    .accessibilityIdentifier("open-explore")
-                    ProfileAvatarButton()
-                }
-                .padding(.horizontal, 6)
-                .frame(height: 48)
-                .floatingBubble(Capsule())
+                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
+            }
+            searchField
+            if !searchActive {
+                // Your profile on the far right, the same on every tab.
+                ProfileAvatarButton()
+                    .frame(width: 48, height: 48)
+                    .floatingBubble(Circle())
             }
         }
         .animation(.spring(duration: 0.3), value: searchActive)
