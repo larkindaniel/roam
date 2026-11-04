@@ -59,6 +59,8 @@ struct PlaceBrowserView: View {
     @State private var placed = false
     @State private var selection: MapSelection<UUID>?
     @State private var mine: [(place: ExperienceSummary, tint: Color)] = []
+    @State private var viewRegion: MKCoordinateRegion?
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
         let id = current ?? startID
@@ -110,7 +112,8 @@ struct PlaceBrowserView: View {
             }
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
-        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
+        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest && $0.kind != .territory }
+        .onMapCameraChange(frequency: .onEnd) { viewRegion = $0.region }
         .ignoresSafeArea()
         .accessibilityLabel("Map")
         .accessibilityIdentifier("detail-map")
@@ -131,6 +134,16 @@ struct PlaceBrowserView: View {
     }
 
     private func open(_ feature: MapFeature) async {
+        // A city on the map opens as a city, on the same view, without a slide.
+        if feature.kind == .territory {
+            guard let city = try? await services.places.destination(for: feature.coordinate) else { return }
+            CityPageView.handoffRegion[city.id] = viewRegion
+            CityPageView.handoffDetent[city.id] = .half
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { router.push(.city(city)) }
+            return
+        }
         guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
               let candidate = MapKitPlaceSearchProvider.candidate(from: item),
               let place = try? await services.experiences.resolve(candidate) else { return }
