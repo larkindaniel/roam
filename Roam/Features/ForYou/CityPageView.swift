@@ -30,7 +30,8 @@ struct CityPageView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0)
+                CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
+                           onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil)
                 CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                               coordinate: destination.coordinate, showsPhoto: false)
                 if !spots.isEmpty {
@@ -53,20 +54,6 @@ struct CityPageView: View {
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isOwn {
-                // Anywhere within 100 km of a home city counts as home and stays off your travel timeline.
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        if isHome {
-                            Button("Remove as home", systemImage: "house.slash", role: .destructive) { Task { await setHome(false) } }
-                        } else {
-                            Button("Set as home", systemImage: "house") { Task { await setHome(true) } }
-                        }
-                    } label: { Image(systemName: "ellipsis") }
-                        .accessibilityLabel("More")
-                        .accessibilityIdentifier("city-more")
-                }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 // The map opens on this city.
                 Button {
@@ -207,6 +194,9 @@ struct CityHeader: View {
     let destination: Destination
     var isHome = false
     var showsPlanWithAI = true
+    /// Set (or unset) the city as home; nil when it isn't yours to change. Anywhere within 100 km of a home city counts
+    /// as home and stays off your travel timeline.
+    var onToggleHome: (() -> Void)?
 
     @Environment(AppRouter.self) private var router
     @State private var guide: CityGuide?
@@ -226,12 +216,24 @@ struct CityHeader: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if showsPlanWithAI {
-                    Button { router.sheet = .researchBrief(destination) } label: {
-                        Label("Plan with AI", systemImage: "sparkles").font(.subheadline.weight(.semibold))
+            }
+            if showsPlanWithAI || onToggleHome != nil {
+                HStack(spacing: Theme.Spacing.s) {
+                    if showsPlanWithAI {
+                        Button { router.sheet = .researchBrief(destination) } label: {
+                            Label("Plan with AI", systemImage: "sparkles").font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                        .accessibilityIdentifier("foryou-research-open")
                     }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("foryou-research-open")
+                    if let onToggleHome {
+                        Button(action: onToggleHome) {
+                            Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house").font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                        .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
+                        .accessibilityIdentifier("city-toggle-home")
+                    }
                 }
             }
             // Credited once, under the blurb that follows.
