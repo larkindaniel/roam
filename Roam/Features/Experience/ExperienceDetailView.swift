@@ -293,7 +293,8 @@ struct ExperienceDetailView: View {
         let visited = rated || detail.summary.viewer.hasVisits
         let planned = !visited && !plannedTrips.isEmpty
         let saved = !visited && !planned && library.isBookmarked(id)
-        let anyState = visited || planned || saved
+        // Only cities are planned; a place is saved, then shows up on any trip to its city.
+        let anyState = visited || saved
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.m) {
                 if visited || !anyState {
@@ -302,13 +303,6 @@ struct ExperienceDetailView: View {
                         Task { await openLog(rated ? .addVisit : .firstLog) }
                     }
                     .disabled(deleting || failedDeletion != nil)
-                }
-                if planned || !anyState {
-                    circleAction("airplane", tint: PlaceState.planned.markerColor, filled: planned,
-                                 caption: planned ? "Planned" : "Plan", label: planned ? "On \(plannedTrips.joined(separator: ", "))" : "Add to a trip",
-                                 identifier: "detail-plan") {
-                        router.sheet = .addToTrip(experienceID: id, name: detail.summary.name)
-                    }
                 }
                 if saved || !anyState {
                     circleAction(saved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: saved,

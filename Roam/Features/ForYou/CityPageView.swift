@@ -19,6 +19,8 @@ struct CityPageView: View {
     @State private var mySpotCount = 0
     @State private var loadedSpots = false
     @State private var homes: [Destination] = []
+    @State private var trips: [TripSummary] = []
+    @State private var planningNewTrip = false
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     /// Home cities can be stored under more than one region spelling, so they match by country and name.
@@ -31,7 +33,10 @@ struct CityPageView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
-                           onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil)
+                           onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
+                           trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
+                           onAddToTrip: { trip in Task { await add(to: trip) } },
+                           onNewTrip: { planningNewTrip = true })
                 CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                               coordinate: destination.coordinate, showsPhoto: false)
                 if !spots.isEmpty {
@@ -71,9 +76,16 @@ struct CityPageView: View {
             mySpotCount = own.count
             spots = isOwn ? own : await theirs
             loadedSpots = true
-            if isOwn { homes = (try? await services.plans.homeCities()) ?? [] }
+            if isOwn {
+                homes = (try? await services.plans.homeCities()) ?? []
+                trips = (try? await services.plans.myTrips()) ?? []
+            }
             if model == nil { model = ForYouModel(plans: services.plans) }
             await model?.load(destination)
+        }
+        .sheet(isPresented: $planningNewTrip) {
+            TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
+                .presentationBackground(Roam.paper)
         }
         .screenIdentifier("city-page")
     }
@@ -105,6 +117,13 @@ struct CityPageView: View {
                 .accessibilityIdentifier("discover-places")
             }
         }
+    }
+
+    /// Only cities are planned: the city joins the trip, and places you've saved here show up on it.
+    private func add(to trip: TripSummary) async {
+        try? await services.plans.setTripCity(tripID: trip.id, city: destination, present: true)
+        library.noteChanged()
+        router.push(.trip(trip.id))
     }
 
     private func setHome(_ present: Bool) async {
@@ -197,6 +216,10 @@ struct CityHeader: View {
     /// Set (or unset) the city as home; nil when it isn't yours to change. Anywhere within 100 km of a home city counts
     /// as home and stays off your travel timeline.
     var onToggleHome: (() -> Void)?
+    /// Your trips that haven't happened yet, to add this city to; nil when it isn't yours to plan.
+    var trips: [TripSummary]?
+    var onAddToTrip: (TripSummary) -> Void = { _ in }
+    var onNewTrip: () -> Void = {}
 
     @Environment(AppRouter.self) private var router
     @State private var guide: CityGuide?
@@ -216,7 +239,7 @@ struct CityHeader: View {
     }
 
     @ViewBuilder private var actions: some View {
-        if showsPlanWithAI || onToggleHome != nil {
+        if showsPlanWithAI || onToggleHome != nil || trips != nil {
             HStack(spacing: Theme.Spacing.s) {
                 if let onToggleHome {
                     Button(action: onToggleHome) {
@@ -226,12 +249,21 @@ struct CityHeader: View {
                     .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
                     .accessibilityIdentifier("city-toggle-home")
                 }
-                if showsPlanWithAI {
-                    Button { router.sheet = .researchBrief(destination) } label: {
-                        Label("Plan with AI", systemImage: "sparkles")
+                // One Plan menu: add the city to a trip (only cities are planned), start one, or plan it with AI.
+                if trips != nil || showsPlanWithAI {
+                    Menu {
+                        if let trips {
+                            ForEach(trips) { trip in Button("Add to \(trip.name)", systemImage: "airplane") { onAddToTrip(trip) } }
+                            Button("New trip", systemImage: "plus") { onNewTrip() }
+                        }
+                        if showsPlanWithAI {
+                            Button("Plan with AI", systemImage: "sparkles") { router.sheet = .researchBrief(destination) }
+                        }
+                    } label: {
+                        Label("Plan", systemImage: "airplane")
                     }
                     .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("foryou-research-open")
+                    .accessibilityIdentifier("city-plan")
                 }
             }
         }
@@ -249,7 +281,7 @@ struct CityHeader: View {
                 }
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     title
-                    actions
+                    ScrollView(.horizontal, showsIndicators: false) { actions }.scrollClipDisabled()
                 }
             }
             // Credited once, under the blurb that follows.

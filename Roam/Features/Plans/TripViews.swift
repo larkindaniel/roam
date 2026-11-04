@@ -215,8 +215,11 @@ struct TripDetailView: View {
         return trip.phase(today: today) == .now ? "\(dates) · Happening now" : dates
     }
 
+    /// The trip's places: what's already on it, plus everything you've saved in its cities (saved places show up on
+    /// their own; only cities are planned).
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         let items = value.places.map { PlaceMapItem(experience: $0.experience, state: $0.state) }
+            + wishlist.map { PlaceMapItem(experience: $0, state: .wishlist) }
         if !items.isEmpty {
             PlaceMapView(items: items) { router.push(.experience($0)) }
                 .id(items.map(\.id))
@@ -225,19 +228,12 @@ struct TripDetailView: View {
                 .accessibilityIdentifier("trip-map")
         }
         if value.summary.isOwn {
-            HStack(spacing: Theme.Spacing.s) {
-                if !wishlist.isEmpty {
-                    Button { addingFromWishlist = true } label: { PillLabel(title: "Add from wishlist", systemImage: "bookmark") }
-                        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                        .accessibilityIdentifier("trip-add-from-wishlist")
-                }
-                Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
-                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("trip-add-city")
-            }
+            Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
+                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                .accessibilityIdentifier("trip-add-city")
         }
         if items.isEmpty && value.summary.cities.isEmpty {
-            Text("No places yet. Add some from your wishlist, or open a place and choose Add to trip.")
+            Text("Add a city. Places you've saved there show up here.")
                 .font(.subheadline).foregroundStyle(Roam.inkMuted)
                 .accessibilityIdentifier("trip-places-empty")
         } else {
@@ -265,11 +261,10 @@ struct TripDetailView: View {
             detail = .loaded(loaded)
             entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
             if loaded.summary.isOwn, let me = session.userID {
-                let countries = Set(loaded.summary.cities.compactMap { $0.countryCode?.uppercased() } + loaded.places.compactMap { $0.experience.countryCode?.uppercased() })
                 let onTrip = Set(loaded.places.map(\.id))
                 let saved = (try? await services.lists.want(ownerID: me)) ?? []
-                wishlist = saved.map(\.experience).filter {
-                    !onTrip.contains($0.id) && !$0.viewer.hasVisits && (countries.isEmpty || countries.contains($0.countryCode?.uppercased() ?? ""))
+                wishlist = saved.map(\.experience).filter { place in
+                    !onTrip.contains(place.id) && loaded.summary.cities.contains { CityMatch.same(place, $0) }
                 }
             }
         }
@@ -283,6 +278,8 @@ extension TripDraft: Identifiable {
 /// Names and dates a trip. A new trip also takes its cities here; its status follows its dates.
 struct TripEditorSheet: View {
     @State var draft: TripDraft
+    /// Cities a new trip starts with (planning from a city's page).
+    var initialCities: [Destination] = []
     var onSaved: (TripSummary) -> Void
 
     @Environment(AppServices.self) private var services
@@ -322,6 +319,7 @@ struct TripEditorSheet: View {
             .listRowBackground(Roam.paperRaised)
             }
             .scrollContentBackground(.hidden)
+            .onAppear { if cities.isEmpty { cities = initialCities } }
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
