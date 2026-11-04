@@ -282,6 +282,37 @@ struct CityPageView: View {
     }
 }
 
+/// Finds the city at a point (or where you are) and shows its page; failing that, your home city or the last city you
+/// looked at.
+struct CityAtView: View {
+    var coordinate: CLLocationCoordinate2D?
+
+    @Environment(AppServices.self) private var services
+    @Environment(DestinationStore.self) private var destinations
+    @State private var city: Destination?
+    @State private var lookedUp = false
+
+    var body: some View {
+        Group {
+            if let city {
+                CityPageView(destination: city)
+            } else if lookedUp {
+                EmptyStateView(systemImage: "map", title: "No city found", message: "Search for a city on Discover to explore it.")
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .task {
+            guard city == nil else { return }
+            var point = coordinate
+            if point == nil, case .located(let here, _) = await services.location.currentLocation(timeout: .seconds(5)) { point = here }
+            if let point, let found = try? await services.places.destination(for: point) { city = found }
+            if city == nil { city = (try? await services.plans.homeCities())?.first ?? destinations.lastSelected }
+            lookedUp = true
+        }
+    }
+}
+
 /// A place's card: its photo, or a map of where it is when there's none, then who's been and the score.
 struct DiscoverPlaceCard: View {
     let experience: ExperienceSummary

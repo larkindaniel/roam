@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 /// Three tabs, each with its own navigation stack, under one floating glass tab bar. Tab views stay alive, so
@@ -144,22 +145,20 @@ struct RouteDestinationView: View {
         switch route {
         case .search:
             SearchRootView()
-        case .explore:
-            ExploreRootView()
         case .ownProfile:
             ProfileRootView()
         case .trip(let id):
             TripDetailView(tripID: id)
         case .countryUpdates(let ownerID, let countryCode, let title, let byline):
             CountryUpdatesView(ownerID: ownerID, countryCode: countryCode, title: title, byline: byline)
-        case .myCountry(let code, let title):
-            ExploreRootView(countryCode: code, countryTitle: title)
         case .placeGroup(let title, let subtitle, let ids):
             PlaceGroupView(title: title, subtitle: subtitle, ids: ids)
         case .homeCity(let city):
             HomeCityView(city: city)
         case .city(let destination, let ownerID):
             CityPageView(destination: destination, ownerID: ownerID)
+        case .cityAt(let latitude, let longitude):
+            CityAtView(coordinate: latitude.flatMap { lat in longitude.map { CLLocationCoordinate2D(latitude: lat, longitude: $0) } })
         case .wishlistCountry(let code, let title):
             WishlistCountryView(code: code, title: title)
         case .passport(let ownerID, let name):

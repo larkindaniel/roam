@@ -203,6 +203,18 @@ struct MyPlacesRootView: View {
         }
     }
 
+    private var mapRoute: AppRoute {
+        guard let focusedCountry, let model else { return .cityAt(latitude: nil, longitude: nil) }
+        if let country = model.passport.first(where: { $0.code.uppercased() == focusedCountry.uppercased() }),
+           let city = country.cities.sorted(by: { ($0.isHome ? 1 : 0, -$0.placeCount) < ($1.isHome ? 1 : 0, -$1.placeCount) }).first {
+            return .city(city.city)
+        }
+        if let pin = model.pins.first(where: { $0.experience.countryCode?.uppercased() == focusedCountry.uppercased() }) {
+            return .cityAt(latitude: pin.experience.latitude, longitude: pin.experience.longitude)
+        }
+        return .cityAt(latitude: nil, longitude: nil)
+    }
+
     private func showWorld() {
         focusRegion = nil
         recenterToken += 1
@@ -319,11 +331,10 @@ struct MyPlacesRootView: View {
             }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
             ToolbarItem(placement: .topBarTrailing) {
-                // The globe stays satellite; the street map opens on its own, on the country you're looking at.
-                Button {
-                    if let focusedCountry { router.push(.myCountry(code: focusedCountry, title: countryTitle(focusedCountry))) } else { router.push(.explore) }
-                } label: { Image(systemName: "map") }
-                    .accessibilityLabel(focusedCountry.map { "Map of \(countryTitle($0))" } ?? "Explore the map")
+                // The globe stays satellite; the street map is a city's page: the main city of the country you're
+                // looking at, or the city you're in.
+                Button { router.push(mapRoute) } label: { Image(systemName: "map") }
+                    .accessibilityLabel(focusedCountry.map { "Map of \(countryTitle($0))" } ?? "Map of where you are")
                     .accessibilityIdentifier("myplaces-open-map")
             }
             ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }

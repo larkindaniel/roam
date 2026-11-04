@@ -43,15 +43,15 @@ enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
 enum AppRoute: Hashable, Sendable {
     case experience(UUID)
     case search
-    case explore
     case ownProfile
     case trip(UUID)
     case countryUpdates(ownerID: UUID, countryCode: String?, title: String, byline: String?)
-    case myCountry(code: String, title: String)
     case placeGroup(title: String, subtitle: String?, ids: [UUID])
     case homeCity(Destination)
     /// A city's page, shared by Discover and My Places; `ownerID` is whose spots it shows (nil for yours).
     case city(Destination, ownerID: UUID? = nil)
+    /// The city page for whatever city is at a point; nil for wherever you are now.
+    case cityAt(latitude: Double?, longitude: Double?)
     case wishlistCountry(code: String, title: String)
     case passport(ownerID: UUID, name: String)
     case passportCountry(ownerID: UUID, country: PassportCountry)
@@ -186,7 +186,8 @@ final class AppRouter {
     /// Search and Explore are screens within a tab, not tabs of their own.
     func openSearch() { push(.search) }
 
-    func openExplore() { push(.explore) }
+    /// The map is a city's page: the one you're in.
+    func openExplore() { push(.cityAt(latitude: nil, longitude: nil)) }
 
     func reset(initialTab: AppTab) {
         paths = [:]

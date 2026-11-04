@@ -74,6 +74,7 @@ only server-side for place photos and star ratings.
 
 - **Place → city → country.** Grouping by city and country is automatic.
 - **Place states:** been (a logged visit), going (on an upcoming trip), saved (bookmarked).
+- **Planning is by city:** only cities go on trips; places are saved, and a trip shows what you've saved in its cities.
 - **Trips** cover one or more cities and take their status from their dates: planning (no dates), upcoming,
   now, or past. Trips without dates sort after dated ones. Places on a trip are planned. Logging a visit can
   attach it to a trip.
@@ -116,11 +117,7 @@ App
 │   │   ├── Tapping Search hides the other buttons; results list cities, Roam places and Apple Maps places
 │   │   └── The row tucks away when you scroll down and returns when you scroll up
 │   ├── "Places we think you'd enjoy": suggested city cards with Wikipedia photos and "Dhyan has been"
-│   └── City page (selected inside Discover; + becomes a back button)
-│       ├── Name · country, with a "✨ Plan with AI" pill
-│       │   └── Plan with AI sheet: an editable prompt; ChatGPT · Claude pills (copy and open) · copy
-│       ├── Wikipedia photo and blurb
-│       └── One list of big place cards (friends' places first; photo, else map; friend and Google scores)
+│   └── → City page (below)
 │
 ├── Friends  (FeedRootView)
 │   ├── Country cards per friend  →  Country updates (that friend's places in that country)
@@ -146,8 +143,13 @@ App
 │       friends' visits; You / Friends / Google scores; private note; memories
 │
 ├── Trip page  (TripDetailView): cities, dates, places by country then city, add from wishlist, add a city
-├── Explore  (ExploreRootView): full-screen Apple map; glass top row [back · search · location];
-│   results card drops down; places load as you move; a country's places come up when opened for one
+├── City page  (CityPageView, shared by Discover, My Places, friends' passports, and every map button)
+│   ├── Full-screen map: your spots green, suggestions red; tapping a pin opens the place
+│   ├── Bubble (minimised, in the tab bar's spot): "Search <city>", results limited to the city and around it
+│   ├── Half / full: search at the top, then name · Set as home · Plan (trip or Plan with AI) on one line,
+│   │   Wikipedia photo and blurb, your spots, places we think you'd enjoy; searching swaps in results
+│   ├── Tab bar only when the card is fully up; back button top left
+│   └── Map buttons open the city you're in (Discover) or the country-in-view's main city (My Places)
 └── Sheets: Log a place → rating flow ("Part of": home or trip), Add to trip, Destination picker,
     New trip (optional side-by-side start and end dates), Share, Plan with AI
 ```
@@ -162,6 +164,7 @@ App
 | Globe | `Roam/Features/Globe/GlobeMapView.swift`, `Roam/Geography/CountryGeometry.swift` |
 | My Places | `Roam/Features/Lists/ListsRootView.swift` (model and root), `MyPlacesTabs.swift`, `MyPlacesSections.swift` |
 | Discover | `Roam/Features/ForYou/ForYouRootView.swift` |
+| City page (the app's explorer) | `Roam/Features/ForYou/CityPageView.swift` |
 | Place page | `Roam/Features/Experience/ExperienceDetailView.swift` |
 | Photos and Wikipedia | `Roam/Places/PlaceBackground.swift` |
 | Trips | `Roam/Features/Plans/TripViews.swift` |
