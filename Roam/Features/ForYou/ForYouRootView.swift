@@ -114,17 +114,17 @@ struct ForYouRootView: View {
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
-            // While searching, a round × to the left of the search bar ends it; otherwise + logs a place.
+            if !searchActive {
+                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
+            }
+            searchField
+            // While searching, a round × to the right of the search bar ends it.
             if searchActive {
                 roundButton("xmark", label: "Cancel search", identifier: "discover-search-cancel") {
                     query = ""
                     searchFocused = false
                 }
             } else {
-                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
-            }
-            searchField
-            if !searchActive {
                 // Your profile on the far right, the same on every tab.
                 ProfileAvatarButton()
                     .frame(width: 48, height: 48)
