@@ -92,6 +92,8 @@ struct CityPageView: View {
             camera = .region(cityRegion)
             await reload()
         }
+        // Saving or logging the open place recolours its pin.
+        .onChange(of: library.revision) { _, _ in Task { await reload() } }
         .task(id: query) {
             guard hasQuery else { search?.query = ""; return }
             try? await Task.sleep(for: Limits.searchDebounce)
@@ -185,9 +187,10 @@ struct CityPageView: View {
         detent = cityDetent
     }
 
-    /// Every pin on the city's map: your spots green, suggestions red.
+    /// Every pin on the city's map, each in its place's own colour: green where you've been, yellow if saved, red
+    /// otherwise. Opening one keeps its colour.
     private var mapPins: [(place: ExperienceSummary, tint: Color)] {
-        spots.map { ($0.experience, PlaceState.visited.markerColor) } + recommended.map { ($0.experience, Color.red) }
+        spots.map { ($0.experience, PlaceState.visited.markerColor) } + recommended.map { ($0.experience, $0.experience.pinTint) }
     }
 
     private var cityMap: some View {
