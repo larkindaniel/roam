@@ -150,7 +150,10 @@ struct ForYouRootView: View {
         }
         .padding(.horizontal, Theme.Spacing.m)
         .frame(maxWidth: .infinity)
-        .frame(height: 48)
+        .frame(height: 38)
+        // A darker field inside the glass bubble, like the search bars in the cards.
+        .background(Capsule().fill(Roam.ink.opacity(0.12)))
+        .padding(5)
         .floatingBubble(Capsule())
     }
 

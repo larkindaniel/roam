@@ -226,9 +226,11 @@ struct MyPlacesRootView: View {
                     .accessibilityLabel("Cancel search")
             }
         }
-        .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
+        .padding(.horizontal, Theme.Spacing.m)
         .frame(height: 40)
-        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.12)) } }
+        // A darker field inside the bubble or card, at every height.
+        .background { Capsule().fill(Roam.ink.opacity(0.12)) }
+        .padding(.horizontal, detent == .peek ? -Theme.Spacing.s : 0)
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
             // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
