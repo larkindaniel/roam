@@ -67,6 +67,8 @@ struct ExperienceDetailView: View {
     let experienceID: UUID
     /// Opens another place on this same map; nil pushes it as its own page.
     var onOpenPlace: ((UUID) -> Void)? = nil
+    /// Shown over another screen's map (a city's): only the card, the map behind it is that screen's.
+    var overMap = false
     @State private var mapCamera: MapCameraPosition = .automatic
     @State private var cameraPlaced = false
 
@@ -100,7 +102,9 @@ struct ExperienceDetailView: View {
         Group {
             switch model?.phase ?? .idle {
             case .idle, .loading:
-                if let center = Self.handoff[experienceID] {
+                if overMap {
+                    Color.clear.allowsHitTesting(false)
+                } else if let center = Self.handoff[experienceID] {
                     // Arriving from a city's map: show the same map while the place loads, so nothing jumps.
                     Map(initialPosition: .region(MKCoordinateRegion(center: center, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan)))
                         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
@@ -123,7 +127,7 @@ struct ExperienceDetailView: View {
                     }
             }
         }
-        .background(Theme.groupedCanvas)
+        .background(overMap ? Color.clear : Theme.groupedCanvas)
         // The place's card takes the tab bar's spot and runs to the bottom of the screen.
         .roamTabBar(hidden: true)
         .navigationTitle(model?.detail?.summary.name ?? "")
@@ -191,8 +195,8 @@ struct ExperienceDetailView: View {
         return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: summary.name,
                                 headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
                                 mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }, collapsesHeaderOnScroll: true,
-                                cardHidden: !cardRisen) {
-            placeMap(detail)
+                                cardHidden: !cardRisen, seeThrough: overMap) {
+            if overMap { Color.clear.allowsHitTesting(false) } else { placeMap(detail) }
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
             HStack(alignment: .center, spacing: Theme.Spacing.s) {

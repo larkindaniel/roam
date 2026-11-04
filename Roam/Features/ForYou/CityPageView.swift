@@ -30,8 +30,9 @@ struct CityPageView: View {
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
     @State private var camera: MapCameraPosition = .automatic
-    /// Set while the map flies to a place before its card comes up.
-    @State private var flying = false
+    /// The place open over this map, as in Apple Maps: one map, the card swaps.
+    @State private var openPlace: UUID?
+    @State private var cityDetent = GlobeSheetDetent.half
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -49,10 +50,12 @@ struct CityPageView: View {
     }
 
     var body: some View {
+        ZStack {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
                          floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek,
+                         cardHidden: openPlace != nil) {
             cityMap
         } header: {
             // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
@@ -75,8 +78,24 @@ struct CityPageView: View {
                 cityInfo
             }
         }
+            if let openPlace {
+                ExperienceDetailView(experienceID: openPlace, onOpenPlace: { fly(toID: $0) }, overMap: true)
+                    .id(openPlace)
+                    .transition(.identity)
+            }
+        }
         // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
-        .roamTabBar(hidden: detent != .full)
+        .roamTabBar(hidden: openPlace != nil || detent != .full)
+        // Back from a place returns to the city on the same map.
+        .navigationBarBackButtonHidden(openPlace != nil)
+        .toolbar {
+            if openPlace != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { closePlace() } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("Back to \(destination.name)")
+                }
+            }
+        }
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -104,12 +123,6 @@ struct CityPageView: View {
             if search == nil { search = ExperienceSearchModel(services: services) }
             await search?.search(query, near: destination)
         }
-        // Coming back from a place, the map returns to the city and the card to where it was.
-        .onAppear {
-            guard flying else { return }
-            flying = false
-            withAnimation(.snappy(duration: 0.4)) { camera = .region(cityRegion) }
-        }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
                 .presentationBackground(Roam.paper)
@@ -125,27 +138,29 @@ struct CityPageView: View {
         return MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)
     }
 
-    /// Like Apple Maps: the map flies over to the place and the city's card steps down, then the place's own page takes
-    /// over without a slide, its map already where this one landed and its card rising from the bottom.
+    /// Like Apple Maps: the map glides over to the place, the city's card steps down and the place's card rises, all
+    /// on this one map.
     private func fly(to place: ExperienceSummary) {
         searching = false
-        flying = true
-        withAnimation(.snappy(duration: 0.4)) {
+        if openPlace == nil { cityDetent = detent }
+        withAnimation(.snappy(duration: 0.35)) {
             camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
                                                 longitudinalMeters: ExperienceDetailView.placeSpan))
-            detent = .peek
+            openPlace = place.id
         }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(380))
-            ExperienceDetailView.handoff[place.id] = place.coordinate
-            // The navigation push itself is instant (the map already moved); a SwiftUI transaction alone doesn't stop
-            // the stack's slide, so UIKit animations pause for the hand-over.
-            UIView.setAnimationsEnabled(false)
-            var instant = Transaction()
-            instant.disablesAnimations = true
-            withTransaction(instant) { router.push(.experience(place.id)) }
-            try? await Task.sleep(for: .milliseconds(120))
-            UIView.setAnimationsEnabled(true)
+    }
+
+    /// A place picked on the map while another is open (its card already knows only the id).
+    private func fly(toID id: UUID) {
+        if let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) { fly(to: place) }
+        else { withAnimation(.snappy(duration: 0.35)) { openPlace = id } }
+    }
+
+    private func closePlace() {
+        withAnimation(.snappy(duration: 0.35)) {
+            openPlace = nil
+            camera = .region(cityRegion)
+            detent = cityDetent
         }
     }
 
@@ -314,9 +329,10 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
+        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
-                   trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
+                   // No trips to your own home; Plan offers AI planning there instead.
+                   trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
                    onAddToTrip: { trip in Task { await add(to: trip) } },
                    onNewTrip: { planningNewTrip = true }, showsPhoto: showsPhoto)
     }

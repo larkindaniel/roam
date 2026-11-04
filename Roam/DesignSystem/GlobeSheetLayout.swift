@@ -44,6 +44,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var headerTapToggles = true
     /// Pushes the card below the screen (for bringing it up from the bottom as the screen appears).
     var cardHidden = false
+    /// Sits over a map that belongs to the screen underneath (a place's card over its city's map): no backdrop of its own.
+    var seeThrough = false
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -83,7 +85,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(Color.black.opacity(seeThrough ? 0 : 1).ignoresSafeArea())
         // With no tab bar below, the card runs down to the bottom of the screen.
         .ignoresSafeArea(edges: .bottom)
     }
