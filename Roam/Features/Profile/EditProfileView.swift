@@ -325,3 +325,91 @@ struct EditProfileView: View {
         }
     }
 }
+
+/// Your photo, name and handle, edited right on the Settings page. Save appears once something's changed.
+struct InlineProfileSection: View {
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
+    @State private var model: EditProfileModel?
+    @State private var photoItem: PhotosPickerItem?
+
+    var body: some View {
+        Section {
+            if let model { fields(model) } else { ProgressView() }
+        } header: {
+            Text("Profile")
+        }
+        .task {
+            if model == nil, let profile = session.profile { model = EditProfileModel(services: services, profile: profile) }
+        }
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { await model?.pickAvatar(data) }
+                photoItem = nil
+            }
+        }
+    }
+
+    @ViewBuilder private func fields(_ model: EditProfileModel) -> some View {
+        @Bindable var model = model
+        HStack(spacing: Theme.Spacing.m) {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                ZStack {
+                    AvatarView(member: MemberSummary(id: model.userID, handle: model.draft.handle, displayName: model.draft.displayName,
+                                                     avatarPath: model.draft.avatarPath), size: 56)
+                    if model.avatarBusy { ProgressView() }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(model.avatarBusy)
+            .accessibilityLabel(model.draft.avatarPath == nil ? "Add photo" : "Change photo")
+            .accessibilityIdentifier("edit-profile-photo")
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("Name", text: $model.draft.displayName)
+                    .font(.headline)
+                    .textContentType(.name)
+                    .accessibilityIdentifier("edit-profile-name")
+                HStack(spacing: 2) {
+                    Text("@").foregroundStyle(Theme.secondaryText)
+                    TextField("handle", text: Binding(get: { model.draft.handle },
+                                                      set: { model.draft.handle = $0.lowercased().filter { !$0.isWhitespace } }))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .foregroundStyle(Theme.secondaryText)
+                        .accessibilityIdentifier("edit-profile-handle")
+                }
+                .font(.subheadline)
+            }
+        }
+        .task(id: model.draft.handle) { await model.checkHandle() }
+        if let message = model.nameIssue ?? model.handleIssue ?? model.error ?? model.avatarError {
+            Text(message).font(.footnote).foregroundStyle(Theme.disliked)
+        } else if case .unavailable(let message) = model.handleState {
+            Text(message).font(.footnote).foregroundStyle(Theme.disliked)
+        }
+        if model.draft != model.original {
+            HStack {
+                Button("Cancel") {
+                    model.discard()
+                    if let profile = session.profile { self.model = EditProfileModel(services: services, profile: profile) }
+                }
+                    .foregroundStyle(Theme.secondaryText)
+                Spacer()
+                Button {
+                    Task {
+                        guard let saved = await model.save() else { return }
+                        session.profileUpdated(saved)
+                        // Start fresh from what was saved, so Save goes away.
+                        self.model = EditProfileModel(services: services, profile: saved)
+                    }
+                } label: {
+                    if model.saving { ProgressView() } else { Text("Save").bold() }
+                }
+                .disabled(!model.canSave)
+                .accessibilityIdentifier("edit-profile-save")
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+}
