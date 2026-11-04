@@ -130,13 +130,8 @@ struct HomeCitiesCard: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        if model.homeCities.isEmpty {
-            if let onAdd {
-                Button(action: onAdd) { PillLabel(title: "Set your home city", systemImage: "house") }
-                    .buttonStyle(PillButtonStyle(tint: Roam.home))
-                    .accessibilityIdentifier("add-home-city")
-            }
-        } else {
+        // No prompt to set a home here; it's set from a city's page.
+        if !model.homeCities.isEmpty {
             VStack(spacing: 0) {
                 ForEach(model.homeCities) { city in
                     Button { router.push(.city(city)) } label: {
