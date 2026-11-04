@@ -272,6 +272,9 @@ struct MyPlacesRootView: View {
         .overlay(alignment: .bottom) {
             // Fully up, the bubble's Add a place becomes a full-width bar where the tab bar would be.
             if detent == .full {
+                // Measured from the bottom edge of the screen, like the tab bar, not from above the home indicator.
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
                 Menu { addMenu } label: {
                     Label("Add a place", systemImage: "plus")
                         .font(.headline)
@@ -283,7 +286,8 @@ struct MyPlacesRootView: View {
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
                 .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, 6)
+                .padding(.bottom, 14)
+                }
                 .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("log-place")
