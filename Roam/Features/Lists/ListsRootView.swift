@@ -217,10 +217,11 @@ struct MyPlacesRootView: View {
                     Button { router.sheet = .logPlace } label: {
                         Label("Add a place", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Roam.ink)
                             .padding(.horizontal, 12)
                             .frame(height: 32)
-                            .background(Capsule().fill(Roam.ink))
+                            // A soft grey fill, like the search field in Apple Maps.
+                            .background(Capsule().fill(Color(.tertiarySystemFill)))
                     }
                     .buttonStyle(.plain)
                         .accessibilityIdentifier("myplaces-add-place")
