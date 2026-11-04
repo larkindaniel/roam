@@ -49,12 +49,104 @@ final class ExperienceDetailModel {
 /// rather than opening a new screen.
 struct PlaceBrowserView: View {
     let startID: UUID
+
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
+    @Environment(LibraryStore.self) private var library
     @State private var current: UUID?
+    @State private var currentPlace: ExperienceSummary?
+    @State private var camera: MapCameraPosition = .automatic
+    @State private var placed = false
+    @State private var selection: MapSelection<UUID>?
+    @State private var mine: [(place: ExperienceSummary, tint: Color)] = []
 
     var body: some View {
         let id = current ?? startID
-        ExperienceDetailView(experienceID: id, onOpenPlace: { current = $0 })
-            .id(id)
+        ZStack {
+            map
+            // Only the card changes between places; the map underneath stays where it is.
+            ExperienceDetailView(experienceID: id, overMap: true, startDetent: .half,
+                                 onLoaded: { place in placeOnMap(place) },
+                                 preview: currentPlace?.id == id ? currentPlace : mine.first { $0.place.id == id }?.place)
+                .id(id)
+        }
+        .background(Color.black.ignoresSafeArea())
+        .roamTabBar(hidden: true)
+        .navigationTitle(currentPlace?.name ?? "")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
+        .task { await loadMine() }
+        .onChange(of: library.revision) { _, _ in Task { await loadMine() } }
+        .onChange(of: selection) { _, picked in
+            guard let picked else { return }
+            selection = nil
+            if let id = picked.value, id != current ?? startID { show(id) }
+            else if let feature = picked.feature { Task { await open(feature) } }
+        }
+    }
+
+    /// Like pinned places in Apple Maps: your been (green) and saved (yellow) places are always dots on the map, and
+    /// the place you're looking at is the one big pin.
+    private var map: some View {
+        let id = current ?? startID
+        return Map(position: $camera, selection: $selection) {
+            ForEach(mine.filter { $0.place.id != id }, id: \.place.id) { pin in
+                Annotation(pin.place.name, coordinate: pin.place.coordinate) {
+                    Circle().fill(pin.tint).frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+                        // A finger-sized target around the small dot.
+                        .frame(width: 36, height: 36)
+                        .contentShape(Circle())
+                        .onTapGesture { show(pin.place.id) }
+                        .accessibilityAddTraits(.isButton)
+                }
+                .annotationTitles(.hidden)
+            }
+            if let place = currentPlace, place.id == id {
+                Marker(place.name, systemImage: place.iconName, coordinate: place.coordinate)
+                    .tint(mine.first { $0.place.id == id }?.tint ?? place.pinTint)
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
+        .ignoresSafeArea()
+        .accessibilityLabel("Map")
+        .accessibilityIdentifier("detail-map")
+    }
+
+    private func show(_ id: UUID) {
+        if let known = mine.first(where: { $0.place.id == id })?.place { currentPlace = known }
+        current = id
+    }
+
+    private func placeOnMap(_ place: ExperienceSummary) {
+        currentPlace = place
+        guard !placed else { return }
+        placed = true
+        // Opened from another map, it keeps that view; otherwise the place sits in the middle of the visible map.
+        camera = .region(ExperienceDetailView.handoffRegion.removeValue(forKey: place.id)
+                         ?? ExperienceDetailView.visibleCentered(place.coordinate, span: ExperienceDetailView.placeSpan))
+    }
+
+    private func open(_ feature: MapFeature) async {
+        guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
+              let candidate = MapKitPlaceSearchProvider.candidate(from: item),
+              let place = try? await services.experiences.resolve(candidate) else { return }
+        currentPlace = place
+        current = place.id
+    }
+
+    private func loadMine() async {
+        guard let me = session.userID else { return }
+        async let been = services.lists.been(ownerID: me)
+        async let saved = services.lists.want(ownerID: me)
+        let beenList = (try? await been) ?? []
+        let savedList = (try? await saved) ?? []
+        let beenIDs = Set(beenList.map(\.id))
+        mine = beenList.map { ($0.experience, PlaceState.visited.markerColor) }
+            + savedList.filter { !beenIDs.contains($0.id) }.map { ($0.experience, PlaceState.wishlist.markerColor) }
     }
 }
 
@@ -72,7 +164,7 @@ struct ExperienceDetailView: View {
     /// Over a city's map: the card's height to start at (the city card's), and a call once the place has loaded, so
     /// the city's card can hand over without a gap.
     var startDetent: GlobeSheetDetent? = nil
-    var onLoaded: (() -> Void)? = nil
+    var onLoaded: ((ExperienceSummary) -> Void)? = nil
     /// Over a city's map: what's known already, shown on the card at once while the rest loads.
     var preview: ExperienceSummary? = nil
     @State private var mapCamera: MapCameraPosition = .automatic
@@ -142,7 +234,6 @@ struct ExperienceDetailView: View {
                     }
                     .onAppear {
                         if let startDetent { sheetDetent = startDetent }
-                        onLoaded?()
                     }
                 } else if let center = Self.handoff[experienceID] {
                     // Arriving from a city's map: show the same map while the place loads, so nothing jumps.
@@ -167,7 +258,7 @@ struct ExperienceDetailView: View {
                             // Over a city's map the card is already there: only what's in it changes.
                             if preview == nil, let startDetent { sheetDetent = startDetent }
                             cardRisen = true
-                            onLoaded?()
+                            onLoaded?(detail.summary)
                         } else {
                             Self.handoff.removeValue(forKey: experienceID)
                             withAnimation(.snappy(duration: 0.32)) { cardRisen = true }
