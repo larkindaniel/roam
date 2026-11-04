@@ -6,6 +6,7 @@ struct RatingFlowView: View {
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var account
     @Environment(\.dismiss) private var dismiss
+    @State private var feeling: Sentiment?
     @State private var model: RatingFlowModel?
     @State private var showsCancel = false
     @State private var showsNote = false
@@ -182,17 +183,14 @@ struct RatingFlowView: View {
                 }
                 .roamCard(padding: Theme.Spacing.m)
             }
-            Text("How did you feel about it?").font(.title2.weight(.semibold))
-            ForEach(Sentiment.allCases) { sentiment in
-                Button { model.selectSentiment(sentiment) } label: {
-                    Label(sentiment.title, systemImage: sentiment.symbolName)
-                        .foregroundStyle(Theme.color(for: sentiment))
-                        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
-                        .padding(12).background(Theme.fill(for: sentiment), in: RoundedRectangle(cornerRadius: 12))
+            Text("How was it?").font(.title2.weight(.semibold))
+            // A three-stop slider. Roam works out the score itself from how this place compares with your others, so
+            // all it needs here is which way you lean.
+            FeelingSlider(selection: $feeling, enabled: model.category != nil) { picked in
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(250))
+                    model.selectSentiment(picked)
                 }
-                .buttonStyle(.plain)
-                .disabled(model.category == nil)
-                .accessibilityIdentifier("rating-sentiment-\(sentiment.rawValue)")
             }
             if request.mode == .firstLog {
                 Button("Skip ranking") { model.logWithoutRanking() }
@@ -404,5 +402,74 @@ private struct RatingDateEditor: View {
             }
         }
         .roamSheetStyle()
+    }
+}
+
+/// Didn't like · Neutral · Liked it, as a track with a knob that slides to the stop you tap or drag to.
+private struct FeelingSlider: View {
+    @Binding var selection: Sentiment?
+    var enabled: Bool
+    var onPick: (Sentiment) -> Void
+
+    private let stops: [Sentiment] = [.disliked, .fine, .liked]
+
+    private func label(_ feeling: Sentiment) -> String {
+        switch feeling {
+        case .disliked: return "Didn't like"
+        case .fine: return "Neutral"
+        case .liked: return "Liked it"
+        }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let segment = width / CGFloat(stops.count)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Roam.ink.opacity(0.06))
+                if let selection, let index = stops.firstIndex(of: selection) {
+                    Capsule().fill(Theme.fill(for: selection))
+                        .overlay(Capsule().stroke(Theme.color(for: selection).opacity(0.5), lineWidth: 1.5))
+                        .frame(width: segment - 8)
+                        .offset(x: segment * CGFloat(index) + 4)
+                        .animation(.snappy(duration: 0.25), value: selection)
+                }
+                HStack(spacing: 0) {
+                    ForEach(stops, id: \.self) { feeling in
+                        VStack(spacing: 4) {
+                            Image(systemName: feeling.symbolName).font(.title3)
+                            Text(label(feeling)).font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(selection == feeling ? Theme.color(for: feeling) : Roam.inkMuted)
+                        .frame(width: segment)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAddTraits(selection == feeling ? .isSelected : [])
+                        .accessibilityAction { pick(feeling) }
+                    }
+                }
+            }
+            .contentShape(Capsule())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let index = min(max(Int(value.location.x / segment), 0), stops.count - 1)
+                        if selection != stops[index] { selection = stops[index] }
+                    }
+                    .onEnded { value in
+                        let index = min(max(Int(value.location.x / segment), 0), stops.count - 1)
+                        pick(stops[index])
+                    }
+            )
+            .opacity(enabled ? 1 : 0.4)
+            .allowsHitTesting(enabled)
+        }
+        .frame(height: 76)
+        .accessibilityIdentifier("rating-feeling-slider")
+    }
+
+    private func pick(_ feeling: Sentiment) {
+        selection = feeling
+        onPick(feeling)
     }
 }
