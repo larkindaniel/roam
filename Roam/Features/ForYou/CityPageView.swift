@@ -201,39 +201,55 @@ struct CityHeader: View {
     @Environment(AppRouter.self) private var router
     @State private var guide: CityGuide?
 
+    private var title: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: Theme.Spacing.s) {
+                Text(destination.name).font(.roamDisplay(.title)).lineLimit(1).fixedSize().accessibilityAddTraits(.isHeader)
+                if isHome {
+                    Image(systemName: "house.fill").font(.title3).foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home")
+                }
+            }
+            if !destination.subtitle.isEmpty {
+                Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+            }
+        }
+    }
+
+    @ViewBuilder private var actions: some View {
+        if showsPlanWithAI || onToggleHome != nil {
+            HStack(spacing: Theme.Spacing.s) {
+                if let onToggleHome {
+                    Button(action: onToggleHome) {
+                        Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house")
+                    }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
+                    .accessibilityIdentifier("city-toggle-home")
+                }
+                if showsPlanWithAI {
+                    Button { router.sheet = .researchBrief(destination) } label: {
+                        Label("Plan with AI", systemImage: "sparkles")
+                    }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
+                    .accessibilityIdentifier("foryou-research-open")
+                }
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(alignment: .center, spacing: Theme.Spacing.m) {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: Theme.Spacing.s) {
-                        Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                        if isHome {
-                            Image(systemName: "house.fill").font(.title3).foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home")
-                        }
-                    }
-                    if !destination.subtitle.isEmpty {
-                        Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    }
+            // The actions sit level with the name (home on the left, Plan with AI on the right); a long name pushes
+            // them onto their own row.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    title
+                    Spacer(minLength: Theme.Spacing.s)
+                    actions
                 }
-                Spacer(minLength: 0)
-            }
-            if showsPlanWithAI || onToggleHome != nil {
-                HStack(spacing: Theme.Spacing.s) {
-                    if showsPlanWithAI {
-                        Button { router.sheet = .researchBrief(destination) } label: {
-                            Label("Plan with AI", systemImage: "sparkles").font(.subheadline.weight(.semibold))
-                        }
-                        .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                        .accessibilityIdentifier("foryou-research-open")
-                    }
-                    if let onToggleHome {
-                        Button(action: onToggleHome) {
-                            Label(isHome ? "Home" : "Set as home", systemImage: isHome ? "house.fill" : "house").font(.subheadline.weight(.semibold))
-                        }
-                        .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
-                        .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
-                        .accessibilityIdentifier("city-toggle-home")
-                    }
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    title
+                    actions
                 }
             }
             // Credited once, under the blurb that follows.

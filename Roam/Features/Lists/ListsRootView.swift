@@ -194,19 +194,13 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
-    /// On Going it starts a trip; elsewhere it adds a place (or a city you've been to).
+    /// On Going it starts a trip; elsewhere it adds a place or a city you've been to (one search finds both).
     @ViewBuilder private func addButton<L: View>(@ViewBuilder label: (String) -> L) -> some View {
         if tab == .going && focusedCountry == nil {
             Button { sheet = .newTrip } label: { label("New trip") }
         } else {
-            Menu { addMenu } label: { label("Add a place") }
+            Button { router.sheet = .logPlace } label: { label("Add a place") }
         }
-    }
-
-    /// Anywhere you've been or want to go: log a place, or just mark a city as visited.
-    @ViewBuilder private var addMenu: some View {
-        Button { router.sheet = .logPlace } label: { Label("A place", systemImage: "mappin") }
-        Button { sheet = .markCity } label: { Label("A city I've been to", systemImage: "building.2") }
     }
 
     private func showWorld() {
