@@ -277,13 +277,13 @@ struct MyPlacesRootView: View {
                         .font(.headline)
                         .foregroundStyle(Roam.ink)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 44)
+                        .frame(height: 50)
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .modifier(GreyGlass())
+                .floatingBubble(Capsule())
                 .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, 10)
+                .padding(.bottom, 6)
                 .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("log-place")
@@ -374,17 +374,6 @@ struct MyPlacesRootView: View {
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {
             Color.black
-        }
-    }
-}
-
-/// Grey, see-through glass for My Places' Add a place bar.
-private struct GreyGlass: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.tint(Color.gray.opacity(0.3)).interactive(), in: Capsule())
-        } else {
-            content.background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(Color.gray.opacity(0.25))))
         }
     }
 }
