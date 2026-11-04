@@ -203,13 +203,6 @@ struct MyPlacesRootView: View {
         if detent == .full { detent = .half }
     }
 
-    /// On Going it starts a trip; elsewhere it adds a place or a city you've been to (one search finds both).
-    @ViewBuilder private func addButton<L: View>(@ViewBuilder label: (String) -> L) -> some View {
-        if tab == .going && focusedCountry == nil {
-            Button { sheet = .newTrip } label: { label("New trip") }
-        } else {
-            Button { router.sheet = .logPlace } label: { label("Add a place") }
-        }
     }
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -340,35 +333,11 @@ struct MyPlacesRootView: View {
                 TripEditorSheet(draft: TripDraft()) { _ in Task { await model?.load() } }.presentationBackground(Roam.paper)
             }
         }
-        .overlay(alignment: .bottom) {
-            // Fully up, the bubble's Add a place becomes a full-width bar where the tab bar would be.
-            if detent == .full {
-                // Measured from the bottom edge of the screen, like the tab bar, not from above the home indicator.
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                addButton { title in
-                    Label(title, systemImage: "plus")
-                        .font(.headline)
-                        .foregroundStyle(Roam.ink)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .floatingBubble(Capsule())
-                .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, 22)
-                }
-                .ignoresSafeArea(edges: .bottom)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .accessibilityIdentifier("log-place")
-            }
-        }
         .animation(.spring(duration: 0.35), value: detent)
         .navigationTitle("My Places")
         .navigationBarTitleDisplayMode(.inline)
-        // The card has the bottom to itself: the bubble when minimised, the Add a place bar when fully up.
-        .roamTabBar(hidden: true)
+        // Fully up, the standard tab bar is at the bottom; lower down the search bubble takes its place.
+        .roamTabBar(hidden: detent != .full)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             // Back to Discover at every height; fully up, adding a place is the bar along the bottom.
