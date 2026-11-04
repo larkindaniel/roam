@@ -85,7 +85,7 @@ only server-side for place photos and star ratings.
 - **Passport:** every country and city you've been to. A friend sees your whole passport but can only open the
   places you've shared with friends; private ones show as "Kept private".
 - **Friends** are two-way friend requests. The Friends feed is grouped by country.
-- **Lists:** custom lists of places, alongside the wishlist.
+- **Lists:** custom lists exist in the backend but are hidden from My Places for now; saved places are grouped by country.
 - **Scores:** each place card shows three sources separately, never blended: You, Friends (the average of
   your friends' scores), and Google (★ out of 5 with a review count, when Google has the place).
 - **Photos:**
@@ -132,7 +132,7 @@ App
 │   │   ├── Been (green): "N countries · N cities", passport stamps (→ passport country → city),
 │   │   │   "Add a city", home cities (→ home city spots), past timeline (trips and journeys by country)
 │   │   ├── Going (blue): next trip as a large photo card with a countdown, other trips, New trip
-│   │   └── Saved (yellow): country photo tiles (→ wishlist country with "Plan a trip"), your lists, +
+│   │   └── Saved (yellow): home cities, then country photo tiles (→ wishlist country). Custom lists are set aside for now.
 │   └── Tapping or panning to a country you have places in flies there; the card switches to that country
 │
 ├── Place page  (ExperienceDetailView: full-screen map with a swipe-up card, tab bar hidden)

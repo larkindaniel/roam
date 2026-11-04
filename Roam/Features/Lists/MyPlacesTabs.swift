@@ -259,9 +259,8 @@ struct SavedTab: View {
     let model: MyPlacesModel
 
     @Environment(AppRouter.self) private var router
-    @State private var creatingList = false
-    @State private var newTitle = ""
 
+    // Saved places by country, for now; custom lists are set aside.
     var body: some View {
         let countries = PlaceGroups(model.travelWishlist).countries
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
@@ -274,35 +273,6 @@ struct SavedTab: View {
                     ForEach(countries) { country in tile(country) }
                 }
             }
-            HStack(spacing: Theme.Spacing.m) {
-                Button { router.push(.lists) } label: {
-                    HStack {
-                        Image(systemName: "list.bullet").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-                        Text("Your lists").font(.headline).foregroundStyle(Roam.ink)
-                        Spacer()
-                        Text("\(model.lists.count)").foregroundStyle(Roam.inkMuted).monospacedDigit()
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-                    }
-                    .frame(minHeight: Theme.minimumHitTarget)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("open-lists")
-                Button { newTitle = ""; creatingList = true } label: { Image(systemName: "plus").font(.headline) }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(PlaceState.wishlist.markerColor)
-                    .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                    .accessibilityLabel("New list")
-                    .accessibilityIdentifier("saved-new-list")
-            }
-            .roamCard(padding: Theme.Spacing.m)
-        }
-        .alert("New list", isPresented: $creatingList) {
-            TextField("Title", text: $newTitle)
-            Button("Create") { Task { if let list = await model.createList(title: newTitle) { router.push(.list(list.id)) } } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Like date-night spots or ramen to try.")
         }
     }
 
