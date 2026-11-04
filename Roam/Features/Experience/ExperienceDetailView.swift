@@ -102,6 +102,18 @@ struct ExperienceDetailView: View {
     static let placeSpan: CLLocationDistance = 1_500
     /// Where a city's map left off for a place it's opening.
     @MainActor static var handoff: [UUID: CLLocationCoordinate2D] = [:]
+    /// The exact view a place should open on (the map you were just looking at), so nothing moves.
+    @MainActor static var handoffRegion: [UUID: MKCoordinateRegion] = [:]
+    @State private var mapRegion: MKCoordinateRegion?
+
+    /// A region with the point in the middle of the map you can see above the card at half height (not the middle of
+    /// the screen).
+    static func visibleCentered(_ point: CLLocationCoordinate2D, span: CLLocationDistance) -> MKCoordinateRegion {
+        let latitudeDelta = span / 111_000
+        // The card covers roughly the lower 45%; the visible map's middle sits about 22% of a screen above centre.
+        let center = CLLocationCoordinate2D(latitude: point.latitude - latitudeDelta * 0.22, longitude: point.longitude)
+        return MKCoordinateRegion(center: center, latitudinalMeters: span, longitudinalMeters: span)
+    }
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -132,7 +144,7 @@ struct ExperienceDetailView: View {
                     }
                 } else if let center = Self.handoff[experienceID] {
                     // Arriving from a city's map: show the same map while the place loads, so nothing jumps.
-                    Map(initialPosition: .region(MKCoordinateRegion(center: center, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan)))
+                    Map(initialPosition: .region(Self.handoffRegion[experienceID] ?? Self.visibleCentered(center, span: Self.placeSpan)))
                         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
                         .ignoresSafeArea()
                         .accessibilityIdentifier("experience-loading")
@@ -155,6 +167,7 @@ struct ExperienceDetailView: View {
                             cardRisen = true
                             onLoaded?()
                         } else {
+                            Self.handoff.removeValue(forKey: experienceID)
                             withAnimation(.snappy(duration: 0.32)) { cardRisen = true }
                         }
                     }
@@ -162,14 +175,7 @@ struct ExperienceDetailView: View {
         }
         .background(overMap ? Color.clear : Theme.groupedCanvas)
         // The place's card takes the tab bar's spot and runs to the bottom of the screen.
-        .roamTabBar(hidden: true)
-        .navigationTitle(model?.detail?.summary.name ?? "")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            // The card over the map names the place; the bar stays clear so the map shows through.
-            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
-            // No share or more buttons over the map: Send is on the card.
-        }
+        .modifier(PlacePageChrome(enabled: !overMap, title: model?.detail?.summary.name ?? ""))
         .sheet(item: $reportTarget) { target in
             ReportSheet(target: target, title: reportTitle(target), suggestedReason: reportReason)
         }
@@ -240,17 +246,17 @@ struct ExperienceDetailView: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Button { choosingMapsApp = true } label: {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(PlaceState.planned.markerColor))
-                        .contentShape(Circle().inset(by: -4))
-                }
+                Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(PlaceState.planned.markerColor))
+                    .contentShape(Circle().inset(by: -4))
+                    .onTapGesture { choosingMapsApp = true }
                 // Sit in the bubble's rounded end: the same gap on the right as above and below.
                 .padding(.trailing, sheetDetent == .peek ? -(Theme.Spacing.l - Theme.Spacing.s) : 0)
-                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { choosingMapsApp = true }
                 .accessibilityLabel("Directions to \(summary.name)")
                 .accessibilityIdentifier("detail-directions")
                 .confirmationDialog("Directions", isPresented: $choosingMapsApp, titleVisibility: .hidden) {
@@ -259,8 +265,12 @@ struct ExperienceDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Log, Save and Send sit in the card's fixed header, under the name, as in Apple Maps (buttons in the
+            // scrolling part weren't reliably receiving taps).
+            if sheetDetent != .peek {
+                actionRow(detail).padding(.top, Theme.Spacing.s)
+            }
         } content: {
-                actionRow(detail)
                 if !galleryItems(summary).isEmpty {
                     PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                 }
@@ -355,21 +365,18 @@ struct ExperienceDetailView: View {
                 guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
                       let candidate = MapKitPlaceSearchProvider.candidate(from: item),
                       let place = try? await services.experiences.resolve(candidate), place.id != experienceID else { return }
-                // Like Apple Maps: the map moves over to the new place and this card drops away, then the new place's
-                // card rises on the same map.
-                withAnimation(.snappy(duration: 0.4)) {
-                    mapCamera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan))
-                    cardRisen = false
-                }
-                try? await Task.sleep(for: .milliseconds(380))
+                // The tapped place is already on screen, so the map stays exactly where it is; only the card changes.
                 Self.handoff[place.id] = place.coordinate
+                if let mapRegion { Self.handoffRegion[place.id] = mapRegion }
                 if let onOpenPlace { onOpenPlace(place.id) } else { router.push(.experience(place.id)) }
             }
         }
+        .onMapCameraChange(frequency: .onEnd) { mapRegion = $0.region }
         .onAppear {
             guard !cameraPlaced else { return }
             cameraPlaced = true
-            mapCamera = .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span))
+            // Opened from another map, it keeps that view; otherwise the place sits in the middle of the visible map.
+            mapCamera = .region(Self.handoffRegion.removeValue(forKey: experienceID) ?? Self.visibleCentered(coordinate, span: span))
         }
         .accessibilityLabel("Map showing \(detail.summary.name)")
         .accessibilityIdentifier("detail-map")
@@ -416,66 +423,35 @@ struct ExperienceDetailView: View {
     /// A round icon button: filled in its colour when on (or always, for the main action), tinted outline otherwise.
     private func circleAction(_ symbol: String, tint: Color, filled: Bool, caption: String, label: String, identifier: String,
                               action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.headline)
-                    .foregroundStyle(filled ? .white : tint)
-                    // The same size as the directions button.
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
-                Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
-            }
-            .frame(minWidth: 52)
+        // A tap handler rather than a Button: on a place's card over a city's map, Buttons never received their taps.
+        VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(filled ? .white : tint)
+                // The same size as the directions button.
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
+            Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
         }
-        .buttonStyle(.plain)
+        .frame(minWidth: 52)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { action() }
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
     }
 
 
-    private func scores(_ detail: ExperienceDetail) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-        HStack(alignment: .top, spacing: Theme.Spacing.l) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("You").font(.headline)
-                HStack(spacing: Theme.Spacing.m) {
-                    ScoreBadge(score: detail.myRating?.score, source: .you, size: 52, showsLabel: false)
-                    if let rating = detail.myRating {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("#\(rating.rank) of \(rating.categoryCount) in \(rating.category.title)").font(.subheadline.weight(.semibold))
-                            if rating.groupSize > 1 { Text("Tied with \(rating.groupSize - 1) other\(rating.groupSize == 2 ? "" : "s")").font(.caption).foregroundStyle(Theme.secondaryText) }
-                            SentimentTag(sentiment: rating.sentiment)
-                        }
-                    } else {
-                        Text(detail.myVisits.isEmpty ? "Not rated" : "Unranked memory").font(.subheadline).foregroundStyle(Theme.secondaryText)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("detail-your-score")
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Friends").font(.headline)
-                HStack(spacing: Theme.Spacing.m) {
-                    ScoreBadge(score: detail.summary.followingScore, source: .following(count: detail.summary.followingCount), size: 52, showsLabel: false)
-                    Text(detail.summary.followingCount == 0 ? "No friend ratings"
-                         : "\(detail.summary.followingCount) \(detail.summary.followingCount == 1 ? "friend" : "friends") rated this")
-                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("detail-following-score")
+    /// For now only Google's rating is shown; Roam's own scores are set aside.
+    @ViewBuilder private func scores(_ detail: ExperienceDetail) -> some View {
+        if detail.summary.googleRating != nil {
+            GoogleRatingLine(experience: detail.summary).font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .roamCard()
+                .accessibilityIdentifier("detail-google-rating")
         }
-            // Google's stars sit apart from Roam's scores, never blended in.
-            if detail.summary.googleRating != nil {
-                Divider()
-                GoogleRatingLine(experience: detail.summary).font(.subheadline)
-                    .accessibilityIdentifier("detail-google-rating")
-            }
-        }
-        .roamCard()
     }
 
     @ViewBuilder private func memories(_ detail: ExperienceDetail) -> some View {
@@ -688,5 +664,28 @@ enum PlannedPlaces {
             }
         }
         return names
+    }
+}
+
+/// A place page's navigation-bar setup. Over a city's map the city page owns the bar, so the card adds none (a second
+/// title and toolbar from the card stopped every button in it from receiving taps).
+private struct PlacePageChrome: ViewModifier {
+    let enabled: Bool
+    let title: String
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                // The place's card takes the tab bar's spot and runs to the bottom of the screen.
+                .roamTabBar(hidden: true)
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    // The card over the map names the place; the bar stays clear so the map shows through.
+                    ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+                }
+        } else {
+            content
+        }
     }
 }

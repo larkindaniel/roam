@@ -79,8 +79,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .transition(.opacity)
                     }
-                    card(height: height, available: available)
-                        .offset(y: cardHidden ? height + 40 : 0)
+                    // Hidden, the card is taken out entirely (an offset card's scroll view could still catch touches).
+                    if !cardHidden {
+                        card(height: height, available: available)
+                    }
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)

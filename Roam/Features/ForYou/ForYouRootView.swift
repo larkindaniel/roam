@@ -114,9 +114,7 @@ struct ForYouRootView: View {
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
-            if !searchActive {
-                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
-            }
+            // No + here: places are logged from their own card.
             searchField
             if !searchActive {
                 // Your profile on the far right, the same on every tab.

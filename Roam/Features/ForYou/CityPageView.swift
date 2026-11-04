@@ -32,11 +32,8 @@ struct CityPageView: View {
     @State private var camera: MapCameraPosition = .automatic
     /// The place open over this map, as in Apple Maps: one map, the card swaps.
     @State private var openPlace: UUID?
-    @State private var cityDetent = GlobeSheetDetent.half
-    /// The open place's card has loaded and taken over from the city's.
-    @State private var placeShown = false
-    /// What's already known about the open place, so its card shows straight away while the rest loads.
-    @State private var openPreview: ExperienceSummary?
+    /// What the city's map is showing now, for opening a place on the same view.
+    @State private var cityViewRegion: MKCoordinateRegion?
     @State private var spotsCollapsed = false
     @State private var suggestionsCollapsed = false
 
@@ -56,22 +53,9 @@ struct CityPageView: View {
     }
 
     var body: some View {
-        ZStack {
-            cityLayout
-            placeCard
-        }
+        cityLayout
         // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
-        .roamTabBar(hidden: openPlace != nil || detent != .full)
-        // Back from a place returns to the city on the same map.
-        .navigationBarBackButtonHidden(openPlace != nil)
-        .toolbar {
-            if openPlace != nil {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { closePlace() } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Back to \(destination.name)")
-                }
-            }
-        }
+        .roamTabBar(hidden: detent != .full)
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -93,7 +77,8 @@ struct CityPageView: View {
             await reload()
         }
         // Saving or logging the open place recolours its pin.
-        .onChange(of: library.revision) { _, _ in Task { await reload() } }
+        // Saving, logging or a home change refreshes your spots and home without reloading the suggestions.
+        .onChange(of: library.revision) { _, _ in Task { await refreshMine() } }
         .task(id: query) {
             guard hasQuery else { search?.query = ""; return }
             try? await Task.sleep(for: Limits.searchDebounce)
@@ -112,8 +97,7 @@ struct CityPageView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
                          floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek,
-                         cardHidden: placeShown) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek ) {
             cityMap
         } header: {
             // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
@@ -138,53 +122,26 @@ struct CityPageView: View {
         }
     }
 
-    @ViewBuilder private var placeCard: some View {
-            if let openPlace {
-                ExperienceDetailView(experienceID: openPlace, onOpenPlace: { fly(toID: $0) }, overMap: true,
-                                     startDetent: .half,
-                                     onLoaded: { placeShown = true }, preview: openPreview)
-                    .id(openPlace)
-                    .transition(.identity)
-            }
-    }
-
     // MARK: Map
 
     /// The city, with your spots in green and the places we'd suggest in red; tapping one opens it.
+    /// The city in the middle of the map you can see above the card, not the middle of the screen.
     private var cityRegion: MKCoordinateRegion {
-        let span = max(destination.radiusMeters * 2.2, 6_000)
-        return MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)
+        ExperienceDetailView.visibleCentered(destination.coordinate, span: max(destination.radiusMeters * 2.2, 6_000))
     }
 
-    /// Like Apple Maps: the map glides over to the place, the city's card steps down and the place's card rises, all
-    /// on this one map.
-    /// Tapped on the map, the place is already in view: its pin just grows and the map stays put. From a card or
-    /// search result the map glides over to it.
+    /// Opens the place's page straight over this one, with no slide: its map starts on the view you were looking at
+    /// (a pin tapped on the map is already on screen) or with the place in the middle of the visible map (from a card
+    /// or search result), and its card is already halfway up.
     private func fly(to place: ExperienceSummary, moveMap: Bool = true) {
         searching = false
-        if openPlace == nil { cityDetent = detent }
-        if moveMap {
-            withAnimation(.snappy(duration: 0.35)) {
-                camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
-                                                    longitudinalMeters: ExperienceDetailView.placeSpan))
-            }
-        }
-        // The city's card stays until the place's is ready, then the place's information simply replaces it.
-        openPreview = place
-        openPlace = place.id
-    }
-
-    /// A place picked on the map while another is open (its card already knows only the id).
-    private func fly(toID id: UUID) {
-        if let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) { fly(to: place) }
-        else { placeShown = false; openPlace = id }
-    }
-
-    private func closePlace() {
-        openPlace = nil
-        placeShown = false
-        // The map stays where you left it.
-        detent = cityDetent
+        ExperienceDetailView.handoff[place.id] = place.coordinate
+        ExperienceDetailView.handoffRegion[place.id] = moveMap || cityViewRegion == nil
+            ? ExperienceDetailView.visibleCentered(place.coordinate, span: ExperienceDetailView.placeSpan)
+            : cityViewRegion
+        var instant = Transaction()
+        instant.disablesAnimations = true
+        withTransaction(instant) { router.push(.experience(place.id)) }
     }
 
     /// Every pin on the city's map, each in its place's own colour: green where you've been, yellow if saved, red
@@ -211,15 +168,10 @@ struct CityPageView: View {
                     .tag(MapSelection(pin.place.id))
                 }
             }
-            // A place opened from Apple's map or search, which isn't one of the pins above, still gets its pin.
-            if let open = openPreview, open.id == openPlace, !mapPins.contains(where: { $0.place.id == open.id }) {
-                Marker(open.name, systemImage: open.iconName, coordinate: open.coordinate)
-                    .tint(open.pinTint)
-                    .tag(MapSelection(open.id))
-            }
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
         .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
+        .onMapCameraChange(frequency: .onEnd) { cityViewRegion = $0.region }
         .accessibilityLabel("Map of \(destination.name)")
         .accessibilityIdentifier("city-map")
     }
@@ -375,7 +327,15 @@ struct CityPageView: View {
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
                    onAddToTrip: { trip in Task { await add(to: trip) } },
-                   onNewTrip: { planningNewTrip = true }, showsPhoto: showsPhoto)
+                   onNewTrip: { planningNewTrip = true },
+                   onMarkVisited: { Task { try? await services.plans.setCityVisited(destination, present: true); library.noteChanged() } },
+                   showsPhoto: showsPhoto)
+    }
+
+    private func refreshMine() async {
+        let own = await loadSpots(of: session.userID)
+        mySpotCount = own.count
+        if isOwn { spots = own; homes = (try? await services.plans.homeCities()) ?? homes }
     }
 
     private func reload() async {
@@ -492,9 +452,6 @@ struct DiscoverPlaceCard: View {
                         GoogleRatingLine(experience: experience)
                     }
                     Spacer(minLength: Theme.Spacing.s)
-                    if let score {
-                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                    }
                 }
             }
             .contentShape(Rectangle())
@@ -543,6 +500,7 @@ struct CityHeader: View {
     var trips: [TripSummary]?
     var onAddToTrip: (TripSummary) -> Void = { _ in }
     var onNewTrip: () -> Void = {}
+    var onMarkVisited: () -> Void = {}
     var showsPhoto = true
 
     @Environment(AppRouter.self) private var router
@@ -596,6 +554,7 @@ struct CityHeader: View {
                         if let trips {
                             ForEach(trips) { trip in Button("Add to \(trip.name)", systemImage: "airplane") { onAddToTrip(trip) } }
                             Button("New trip", systemImage: "plus") { onNewTrip() }
+                            Button("I've been here", systemImage: "checkmark") { onMarkVisited() }
                         }
                         if showsPlanWithAI {
                             Button("Plan with AI", systemImage: "sparkles") { router.sheet = .researchBrief(destination) }
