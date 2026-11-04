@@ -876,12 +876,9 @@ struct PassportView: View {
 }
 
 extension PassportCountry {
-    /// A country with just one city goes straight to that city's page.
+    /// A country always opens its own page, listing its cities, even when there's just one.
     static func route(ownerID: UUID, country: PassportCountry) -> AppRoute {
-        if country.cities.count == 1, country.otherPlaceCount == 0, let city = country.cities.first {
-            return .city(city.city, ownerID: ownerID)
-        }
-        return .passportCountry(ownerID: ownerID, country: country)
+        .passportCountry(ownerID: ownerID, country: country)
     }
 }
 

@@ -253,6 +253,13 @@ struct MyPlacesRootView: View {
     @ViewBuilder private var searchResults: some View {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         let mine = (model?.pins ?? []).filter { $0.experience.name.lowercased().contains(needle) }.uniqued { $0.id }
+        let others = (search?.hits ?? []).filter { hit in !mine.contains { $0.id == hit.experience?.id } }
+        // No empty card while nothing has matched: just a line once the search has finished.
+        if mine.isEmpty && cityHits.isEmpty && others.isEmpty {
+            if search?.phase == .noResults || search?.phase == .results {
+                Text("No places match \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            }
+        } else {
         VStack(spacing: 0) {
             ForEach(mine.prefix(8)) { item in
                 resultRow(symbol: item.experience.iconName, tint: item.state.markerColor, title: item.experience.name,
@@ -261,7 +268,7 @@ struct MyPlacesRootView: View {
             ForEach(cityHits) { city in
                 resultRow(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
             }
-            ForEach((search?.hits ?? []).filter { hit in !mine.contains { $0.id == hit.experience?.id } }) { hit in
+            ForEach(others) { hit in
                 resultRow(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
                           subtitle: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.joined(separator: ", ")) {
                     Task {
@@ -273,6 +280,7 @@ struct MyPlacesRootView: View {
             }
         }
         .roamCard(padding: Theme.Spacing.m)
+        }
     }
 
     private func resultRow(symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {

@@ -70,13 +70,15 @@ struct StatusMark: View {
 
 /// The signed-in member's avatar, opening their profile from any tab's navigation bar.
 struct ProfileAvatarButton: View {
+    /// The cog's size; the system toolbar draws its glyphs larger, so its copy passes a smaller one to match Discover's.
+    var glyphSize: CGFloat = 18
     @Environment(AppRouter.self) private var router
 
     var body: some View {
         // A settings cog: for now your profile is just settings.
         Button { router.push(.ownProfile) } label: {
             Image(systemName: "gearshape")
-                .font(.system(size: 18, weight: .regular))
+                .font(.system(size: glyphSize, weight: .regular))
                 .foregroundStyle(Roam.ink)
                 .frame(width: 34, height: 34)
         }
@@ -93,7 +95,7 @@ struct SettingsToolbarItem: ToolbarContent {
         if #available(iOS 26.0, *) {
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
-        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
+        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(glyphSize: 15) }
     }
 }
 
