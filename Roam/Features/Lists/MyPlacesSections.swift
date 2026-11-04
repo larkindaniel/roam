@@ -131,7 +131,7 @@ struct PlaceRow: View {
             HStack(spacing: Theme.Spacing.m) {
                 ZStack(alignment: .bottomTrailing) {
                     PlaceThumbnail(id: item.id.uuidString, url: item.experience.photoURL, coordinate: item.experience.coordinate,
-                                   symbol: item.experience.category?.symbolName ?? "mappin", size: 48)
+                                   symbol: item.experience.iconName, size: 48)
                     StatusMark(state: item.state).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -376,7 +376,7 @@ struct TripsTimelineSection: View {
                 Spacer(minLength: 0)
                 if let cover = entry.places.first {
                     PlaceThumbnail(id: cover.id.uuidString, url: cover.photoURL, coordinate: cover.coordinate,
-                                   symbol: cover.category?.symbolName ?? "mappin", size: 56)
+                                   symbol: cover.iconName, size: 56)
                         .padding(.vertical, Theme.Spacing.xs)
                 }
             }

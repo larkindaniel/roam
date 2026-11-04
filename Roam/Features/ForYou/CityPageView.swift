@@ -28,7 +28,7 @@ struct CityPageView: View {
     @State private var homes: [Destination] = []
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
-    @State private var selectedPin: UUID?
+    @State private var selection: MapSelection<UUID>?
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -68,10 +68,15 @@ struct CityPageView: View {
         .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
         // Searching wants room for the results.
         .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
-        .onChange(of: selectedPin) { _, id in
-            guard let id else { return }
-            router.push(.experience(id))
-            selectedPin = nil
+        // Tapping a pin, or any place Apple shows on the map, opens that place's page.
+        .onChange(of: selection) { _, picked in
+            guard let picked else { return }
+            selection = nil
+            if let id = picked.value {
+                router.push(.experience(id))
+            } else if let feature = picked.feature {
+                Task { await open(feature) }
+            }
         }
         .task(id: destination.id) { await reload() }
         .task(id: query) {
@@ -94,19 +99,20 @@ struct CityPageView: View {
     private var cityMap: some View {
         let span = max(destination.radiusMeters * 2.2, 6_000)
         return Map(initialPosition: .region(MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)),
-                   selection: $selectedPin) {
+                   selection: $selection) {
             ForEach(spots) { entry in
-                Marker(entry.experience.name, systemImage: entry.experience.category?.symbolName ?? "mappin", coordinate: entry.experience.coordinate)
+                Marker(entry.experience.name, systemImage: entry.experience.iconName, coordinate: entry.experience.coordinate)
                     .tint(PlaceState.visited.markerColor)
-                    .tag(entry.id)
+                    .tag(MapSelection(entry.id))
             }
             ForEach(recommended) { place in
-                Marker(place.experience.name, systemImage: place.experience.category?.symbolName ?? "mappin", coordinate: place.experience.coordinate)
+                Marker(place.experience.name, systemImage: place.experience.iconName, coordinate: place.experience.coordinate)
                     .tint(.red)
-                    .tag(place.id)
+                    .tag(MapSelection(place.id))
             }
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+        .mapFeatureSelectionDisabled { $0.kind != .pointOfInterest }
         .accessibilityLabel("Map of \(destination.name)")
         .accessibilityIdentifier("city-map")
     }
@@ -164,7 +170,7 @@ struct CityPageView: View {
                     ForEach(nearbyHits) { hit in
                         Button { Task { await open(hit) } } label: {
                             HStack(spacing: Theme.Spacing.m) {
-                                Image(systemName: hit.category?.symbolName ?? "mappin").foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
+                                Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
                                     Text(shortAddress(hit.candidate)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
@@ -191,10 +197,20 @@ struct CityPageView: View {
     private func shortAddress(_ place: PlaceCandidate) -> String {
         guard let address = place.address, !address.isEmpty else { return place.locality ?? "" }
         let parts = address.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        var kept = Array(parts.prefix(2))
         if let city = place.locality, let index = parts.firstIndex(where: { $0.localizedCaseInsensitiveContains(city) }) {
-            return parts[...index].joined(separator: ", ")
+            kept = Array(parts[...index])
+            // "Supía 178020" → "Supía": the city itself, not the postal code beside it.
+            kept[kept.count - 1] = city
         }
-        return parts.prefix(2).joined(separator: ", ")
+        return kept.joined(separator: ", ")
+    }
+
+    private func open(_ feature: MapFeature) async {
+        guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
+              let candidate = MapKitPlaceSearchProvider.candidate(from: item),
+              let place = try? await services.experiences.resolve(candidate) else { return }
+        router.push(.experience(place.id))
     }
 
     private func open(_ hit: SearchHit) async {
@@ -338,7 +354,7 @@ struct DiscoverPlaceCard: View {
     var body: some View {
         Button(action: action) {
             PhotoCard(path: path, url: experience.photoURL, credit: experience.photoCredit,
-                      label: "Photo of \(experience.name)", placeholderSymbol: experience.category?.symbolName ?? "mappin",
+                      label: "Photo of \(experience.name)", placeholderSymbol: experience.iconName,
                       height: 190, location: experience.coordinate) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
                     VStack(alignment: .leading, spacing: 2) {

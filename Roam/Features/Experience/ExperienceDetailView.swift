@@ -276,7 +276,7 @@ struct ExperienceDetailView: View {
         let coordinate = detail.summary.coordinate
         let span: CLLocationDistance = detail.isLocality ? 20_000 : 1_500
         return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span))) {
-            Marker(detail.summary.name, systemImage: (detail.myRating?.category ?? detail.summary.category)?.symbolName ?? "mappin",
+            Marker(detail.summary.name, systemImage: PlaceIcon.symbol(appleType: detail.summary.providerCategory, category: detail.myRating?.category ?? detail.summary.category),
                    coordinate: coordinate)
                 .tint(.red)
         }
