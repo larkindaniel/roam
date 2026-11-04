@@ -119,6 +119,9 @@ struct CityPageView: View {
             TextField("Search \(destination.name)", text: $query)
                 .focused($searching)
                 .submitLabel(.search)
+                // Type as you like: no capitalising or correcting.
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
                 .accessibilityIdentifier("city-search")
             if hasQuery || searching {
                 Button {
@@ -162,14 +165,15 @@ struct CityPageView: View {
                         Button { Task { await open(hit) } } label: {
                             HStack(spacing: Theme.Spacing.m) {
                                 Image(systemName: hit.category?.symbolName ?? "mappin").foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: 3) {
                                     Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                                    Text(hit.candidate.address ?? hit.candidate.locality ?? "").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                                    Text(shortAddress(hit.candidate)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
                                 }
                                 Spacer(minLength: Theme.Spacing.s)
                                 if opening == hit.id { ProgressView() }
                             }
                             .frame(minHeight: Theme.minimumHitTarget)
+                            .padding(.vertical, Theme.Spacing.s)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -181,6 +185,16 @@ struct CityPageView: View {
                 .roamCard(padding: Theme.Spacing.m)
             }
         }
+    }
+
+    /// The street and the city, stopping there: no province, postal code or country.
+    private func shortAddress(_ place: PlaceCandidate) -> String {
+        guard let address = place.address, !address.isEmpty else { return place.locality ?? "" }
+        let parts = address.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        if let city = place.locality, let index = parts.firstIndex(where: { $0.localizedCaseInsensitiveContains(city) }) {
+            return parts[...index].joined(separator: ", ")
+        }
+        return parts.prefix(2).joined(separator: ", ")
     }
 
     private func open(_ hit: SearchHit) async {
