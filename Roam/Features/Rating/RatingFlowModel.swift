@@ -146,7 +146,8 @@ final class RatingFlowModel {
             initialVisit = initial
             step = request.mode == .addVisit ? .details : .sentiment
         }
-        if request.startsWithDetails, request.mode == .firstLog, step == .sentiment { step = .details }
+        // One screen: the feeling slider sits with the details, so logging and ranking both open there.
+        if step == .sentiment { step = .details }
         // A visit with no feeling chosen is an unranked log, including one restored from a draft.
         skipsRanking = request.mode == .firstLog && step == .details && sentiment == nil
     }
@@ -176,6 +177,17 @@ final class RatingFlowModel {
         category = value
         session = nil
         ranking = nil
+        persist()
+    }
+
+    /// The slider on the details screen: choosing a feeling means saving will rank the place; with none, it's just logged.
+    func setFeeling(_ value: Sentiment) {
+        guard canEdit, category != nil, request.mode != .addVisit else { return }
+        sentiment = value
+        skipsRanking = false
+        session = nil
+        ranking = nil
+        message = nil
         persist()
     }
 

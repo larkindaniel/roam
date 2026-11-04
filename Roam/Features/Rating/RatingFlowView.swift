@@ -24,8 +24,8 @@ struct RatingFlowView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         guard let model else { dismiss(); return }
                         if model.completion != nil { dismiss() }
                         else if model.hasNonemptyDraft { showsCancel = true }
@@ -33,6 +33,8 @@ struct RatingFlowView: View {
                             Task { await model.photos?.discard(); model.discardDraft(); dismiss() }
                         }
                     }
+                    label: { Image(systemName: "xmark") }
+                    .accessibilityLabel("Close")
                     .disabled(model?.isBusy == true)
                     .accessibilityIdentifier("rating-close")
                 }
@@ -69,6 +71,13 @@ struct RatingFlowView: View {
         .screenIdentifier("rating-flow")
     }
 
+    /// A town or city logged as somewhere you've been, rather than a place within one.
+    private var isCity: Bool {
+        let place = request.experience
+        return place.category == .dayTrips || request.suggestedCategory == .dayTrips
+            || GeographyKey.normalize(place.name) == GeographyKey.normalize(place.locality ?? "")
+    }
+
     private var title: String {
         switch request.mode {
         case .firstLog: return "Log a place"
@@ -80,18 +89,13 @@ struct RatingFlowView: View {
     private func content(_ model: RatingFlowModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
-                Text(request.experience.areaLine).font(.subheadline).foregroundStyle(Theme.secondaryText)
-                if let category = model.category, model.categoryLocked {
-                    Label(category.title, systemImage: category.symbolName).font(.headline)
-                        .accessibilityIdentifier("rating-category")
+                // The name, with where it is right under it as one block: a city's country, or a place's city and country.
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
+                    Text(isCity ? (request.experience.countryName ?? "") : request.experience.areaLine)
+                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
                 }
-                if let sentiment = model.sentiment {
-                    Label(sentiment.title, systemImage: sentiment.symbolName).font(.subheadline)
-                        .foregroundStyle(Theme.color(for: sentiment))
-                        .padding(8).background(Theme.fill(for: sentiment), in: RoundedRectangle(cornerRadius: 8))
-                        .accessibilityIdentifier("rating-sentiment")
-                }
+                .accessibilityElement(children: .combine)
                 if let error = model.persistenceError ?? model.message {
                     Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-message")
                 }
@@ -113,6 +117,18 @@ struct RatingFlowView: View {
             .padding(Theme.Spacing.l)
         }
         .accessibilityIdentifier("rating-scroll")
+        // Save sits at the bottom of the screen while you fill things in.
+        .safeAreaInset(edge: .bottom) {
+            if model.step == .details {
+                Button("Save") { Task { await model.okay() } }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(model.photos?.canCommit == false || model.category == nil)
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.vertical, Theme.Spacing.s)
+                    .background(Roam.paper.opacity(0.95))
+                    .accessibilityIdentifier("rating-okay")
+            }
+        }
         .roamHaptic(.selection, trigger: model.comparison?.id)
         .roamHaptic(.success, trigger: model.step == .result)
         .onChange(of: model.completion) { _, completion in if let completion { onSaved(completion) } }
@@ -203,8 +219,14 @@ struct RatingFlowView: View {
 
     private func details(_ model: RatingFlowModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            // How it was, always first. Picking a feeling ranks the place when you save; leaving it logs it unranked.
+            if request.mode != .addVisit {
+                FeelingSlider(selection: Binding(get: { model.sentiment }, set: { _ in }), enabled: model.category != nil) { picked in
+                    model.setFeeling(picked)
+                }
+            }
             VStack(spacing: 0) {
-                if model.skipsRanking && !model.categoryLocked {
+                if !model.categoryLocked {
                     pickerRow("Category", symbol: model.category?.symbolName ?? "square.grid.2x2") {
                         Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
                             Text("Choose").tag(ExperienceCategory?.none)
@@ -251,16 +273,6 @@ struct RatingFlowView: View {
                     Text("This covers the whole entry, including its note and photos.")
                         .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-publication-disclosure")
                 }
-            }
-            Button(model.skipsRanking ? "Save" : "Okay") { Task { await model.okay() } }
-                .buttonStyle(PrimaryButtonStyle()).disabled(model.photos?.canCommit == false || (model.skipsRanking && model.category == nil)).accessibilityIdentifier("rating-okay")
-            if model.skipsRanking {
-                Button("Rank this place") { model.backToSentiment() }
-                    .buttonStyle(QuietButtonStyle()).accessibilityIdentifier("rating-start-ranking")
-            }
-            if request.mode != .addVisit && !model.skipsRanking {
-                Button("Change how you felt") { model.backToSentiment() }
-                    .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-change-sentiment")
             }
         }
         .screenIdentifier("rating-details")
@@ -436,9 +448,9 @@ private struct FeelingSlider: View {
                 }
                 HStack(spacing: 0) {
                     ForEach(stops, id: \.self) { feeling in
-                        VStack(spacing: 4) {
-                            Image(systemName: feeling.symbolName).font(.title3)
-                            Text(label(feeling)).font(.subheadline.weight(.semibold))
+                        HStack(spacing: 5) {
+                            Image(systemName: feeling.symbolName).font(.footnote)
+                            Text(label(feeling)).font(.footnote.weight(.semibold))
                         }
                         .foregroundStyle(selection == feeling ? Theme.color(for: feeling) : Roam.inkMuted)
                         .frame(width: segment)
@@ -464,7 +476,7 @@ private struct FeelingSlider: View {
             .opacity(enabled ? 1 : 0.4)
             .allowsHitTesting(enabled)
         }
-        .frame(height: 76)
+        .frame(height: 44)
         .accessibilityIdentifier("rating-feeling-slider")
     }
 
