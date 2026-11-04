@@ -172,7 +172,7 @@ struct CityPageView: View {
     /// otherwise. Opening one keeps its colour.
     private var mapPins: [(place: ExperienceSummary, tint: Color, symbol: String)] {
         // Only your own places go on the map: where you've been, then what you've saved here. Suggestions stay in the list.
-        // A green check where you've been, a yellow bookmark for what you've saved.
+        // The place's own icon, green where you've been and yellow for what you've saved.
         spots.map { ($0.experience, PlaceState.visited.markerColor, "checkmark") }
             + wishlist.filter { item in !spots.contains { $0.id == item.id } }.map { ($0.experience, PlaceState.wishlist.markerColor, "bookmark.fill") }
     }
@@ -182,7 +182,7 @@ struct CityPageView: View {
             // With a place open, only it keeps the full pin; the rest shrink to dots so it stands out.
             ForEach(mapPins, id: \.place.id) { pin in
                 if openPlace == nil || openPlace == pin.place.id {
-                    Marker(pin.place.name, systemImage: pin.symbol, coordinate: pin.place.coordinate)
+                    Marker(pin.place.name, systemImage: pin.place.iconName, coordinate: pin.place.coordinate)
                         .tint(pin.tint)
                         .tag(MapSelection(pin.place.id))
                 } else {
