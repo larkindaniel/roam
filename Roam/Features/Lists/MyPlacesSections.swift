@@ -858,34 +858,35 @@ struct PassportView: View {
 }
 
 extension PassportCountry {
-    /// A country with just one city you can open goes straight to that city.
+    /// A country with just one city goes straight to that city's page.
     static func route(ownerID: UUID, country: PassportCountry) -> AppRoute {
-        if country.cities.count == 1, country.otherPlaceCount == 0, let city = country.cities.first, city.visibleCount > 0 {
-            return .passportCity(ownerID: ownerID, city: city)
+        if country.cities.count == 1, country.otherPlaceCount == 0, let city = country.cities.first {
+            return .city(city.city, ownerID: ownerID)
         }
         return .passportCountry(ownerID: ownerID, country: country)
     }
 }
 
-/// The cities in one country of someone's passport.
+/// The cities in one country of someone's passport, as photo cards: homes first, then the places travelled to.
+/// Each opens the city's page.
 struct PassportCountryView: View {
     let ownerID: UUID
     let country: PassportCountry
 
-    @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
-    @State private var expanded: Set<String> = []
-    @State private var entries: [ListEntry] = []
 
     var body: some View {
+        let cities = country.cities.filter(\.isHome) + country.cities.filter { !$0.isHome }
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                // Your homes in one card, the places you travelled to in another.
-                let homes = country.cities.filter(\.isHome)
-                let away = country.cities.filter { !$0.isHome }
-                if !homes.isEmpty { card(homes) }
-                if !away.isEmpty { card(away) }
+            LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                ForEach(cities) { city in
+                    Button { router.push(.city(city.city, ownerID: ownerID)) } label: {
+                        CityPhotoCard(destination: city.city, isHome: city.isHome).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("passport-city-\(city.city.name)")
+                }
                 if country.otherPlaceCount > 0 {
                     Text("Plus \(country.otherPlaceCount) \(country.otherPlaceCount == 1 ? "place" : "places") outside a city.").font(.footnote).foregroundStyle(Roam.inkMuted)
                 }
@@ -896,95 +897,9 @@ struct PassportCountryView: View {
         .navigationTitle(country.title)
         .navigationBarTitleDisplayMode(.inline)
         .screenIdentifier("passport-country")
-        .task { entries = (try? await services.lists.been(ownerID: ownerID)) ?? [] }
-    }
-
-    private func card(_ cities: [PassportCity]) -> some View {
-        VStack(spacing: 0) {
-            ForEach(cities) { city in
-                let opens = city.visibleCount > 0
-                let isOpen = expanded.contains(city.id)
-                // A city opens in place to show its spots.
-                Button {
-                    withAnimation(.snappy) { if isOpen { expanded.remove(city.id) } else { expanded.insert(city.id) } }
-                } label: { row(city, opens: opens, isOpen: isOpen) }
-                    .buttonStyle(.plain)
-                    .allowsHitTesting(opens)
-                    .accessibilityIdentifier("passport-city-\(city.city.name)")
-                if isOpen { spots(in: city) }
-                // Every separator starts under the names, so the lines run the same between each row.
-                if city.id != cities.last?.id { Divider().padding(.leading, Self.iconWidth + Theme.Spacing.m) }
-            }
-        }
-        .roamCard(padding: Theme.Spacing.m)
-    }
-
-    @ViewBuilder private func spots(in city: PassportCity) -> some View {
-        let items = entries.filter { CityMatch.same($0.experience, city.city) }
-            .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
-        // The same photo cards as Discover; each opens the place's page.
-        VStack(spacing: Theme.Spacing.m) {
-            ForEach(items) { entry in
-                let place = entry.experience
-                Button { router.push(.experience(entry.id)) } label: {
-                    PhotoCard(path: nil, url: place.photoURL, credit: place.photoCredit, label: "Photo of \(place.name)",
-                              placeholderSymbol: place.category?.symbolName ?? "mappin", height: 160, location: place.coordinate) {
-                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(place.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
-                                if let category = place.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
-                                GoogleRatingLine(experience: place)
-                            }
-                            Spacer(minLength: Theme.Spacing.s)
-                            if let score = entry.ownerScore {
-                                Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                            }
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("passport-place-\(place.name)")
-            }
-            if city.placeCount > items.count, session.userID != ownerID {
-                Text("\(city.placeCount - items.count) more kept private.").font(.footnote).foregroundStyle(Roam.inkMuted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(.top, Theme.Spacing.xs)
-        .padding(.bottom, Theme.Spacing.m)
-        .transition(.opacity)
-    }
-
-    private static let iconWidth: CGFloat = 24
-
-    private func row(_ city: PassportCity, opens: Bool, isOpen: Bool) -> some View {
-        HStack(spacing: Theme.Spacing.m) {
-            Image(systemName: city.isHome ? "house.fill" : "mappin.circle.fill").foregroundStyle(PlaceState.visited.markerColor)
-                .frame(width: Self.iconWidth).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(city.city.name).font(.headline).foregroundStyle(Roam.ink)
-                if let detail = detail(city) { Text(detail).font(.footnote).foregroundStyle(Roam.inkMuted) }
-            }
-            Spacer(minLength: 0)
-            if opens {
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
-                    .rotationEffect(.degrees(isOpen ? 90 : 0)).accessibilityHidden(true)
-            }
-        }
-        .frame(minHeight: Theme.minimumHitTarget)
-        .padding(.vertical, Theme.Spacing.xs)
-        .contentShape(Rectangle())
-    }
-
-    /// Just the name, so the spots have room; on a friend's passport, a note when they've kept places private.
-    private func detail(_ city: PassportCity) -> String? {
-        guard session.userID != ownerID, city.placeCount > 0, city.visibleCount < city.placeCount else { return nil }
-        return city.visibleCount == 0 ? "Kept private" : "Some kept private"
     }
 }
 
-/// The places someone has been in one city that they've shared with you.
 struct PassportCityView: View {
     let ownerID: UUID
     let city: PassportCity

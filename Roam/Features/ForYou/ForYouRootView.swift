@@ -104,7 +104,6 @@ struct ForYouRootView: View {
     @State private var query = ""
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
-    @State private var selected: Destination?
     @State private var barsHidden = false
     @State private var navigationBarHidden = true
     @FocusState private var searchFocused: Bool
@@ -116,17 +115,9 @@ struct ForYouRootView: View {
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
             if !searchActive {
-                if selected != nil {
-                    roundButton("chevron.left", label: "All cities", identifier: "discover-all-cities") { selected = nil }
-                } else {
-                    roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
-                }
+                roundButton("plus", label: "Log a place", identifier: "log-place") { router.sheet = .logPlace }
             }
-            if selected == nil {
-                searchField
-            } else {
-                Spacer(minLength: 0)
-            }
+            searchField
             if searchActive {
                 Button("Cancel") {
                     query = ""
@@ -138,11 +129,7 @@ struct ForYouRootView: View {
             } else {
                 // The map, then your profile on the far right, the same on every tab.
                 HStack(spacing: Theme.Spacing.xs) {
-                    Button {
-                        // On a city's page the map opens on that city.
-                        if let selected { destinations.select(selected, for: .explore) }
-                        router.openExplore()
-                    } label: {
+                    Button { router.openExplore() } label: {
                         Image(systemName: "map").font(.system(size: 20, weight: .regular)).foregroundStyle(Roam.ink).frame(width: 40, height: 40)
                     }
                     .buttonStyle(.plain)
@@ -228,10 +215,10 @@ struct ForYouRootView: View {
             guard !Task.isCancelled else { return }
             await search(query)
         }
-        .task(id: selected?.id) {
+        .task {
             if model == nil { model = ForYouModel(plans: services.plans) }
             await model?.loadPicks()
-            await model?.load(selected)
+            await model?.load(nil)
         }
         .screenIdentifier("foryou-root")
     }
@@ -323,38 +310,17 @@ struct ForYouRootView: View {
 
     private var landing: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            if let selected { cityHeader(selected) }
             if let model, !model.picks.isEmpty { picksSection(model.picks) }
             switch model?.phase ?? .loading {
             case .idle, .loading:
                 SkeletonList(rows: 3)
             case .failed(let message):
-                InlineRetryView(message: message) { Task { await model?.load(selected) } }
-            case .loaded where selected == nil:
+                InlineRetryView(message: message) { Task { await model?.load(nil) } }
+            case .loaded:
                 citiesSection(model?.cities ?? [])
-            case .loaded(let sections):
-                if let selected { cityDetail(selected, sections) }
             }
         }
         .padding(.top, Theme.Spacing.s)
-    }
-
-    /// What's known about one city: its Wikipedia summary, then friends' finds and highly rated places.
-    @ViewBuilder private func cityDetail(_ destination: Destination, _ sections: ForYouSections) -> some View {
-        CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate, showsPhoto: false)
-        // One list: friends' places first, then the best rated, then the rest. Each card says who's been.
-        let places = (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
-        if !places.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                sectionTitle("Places we think you'd enjoy")
-                // Lazy, so only the cards on screen build their maps.
-                LazyVStack(spacing: Theme.Spacing.l) {
-                    ForEach(places) { place in placeCard(place) }
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("discover-places")
-        }
     }
 
     @ViewBuilder private func citiesSection(_ cities: [DiscoverCity]) -> some View {
@@ -395,11 +361,6 @@ struct ForYouRootView: View {
         return parts.joined(separator: " · ")
     }
 
-    /// The chosen city heads the page: its Wikipedia photo, then its name and where it is.
-    private func cityHeader(_ destination: Destination) -> some View {
-        CityHeader(destination: destination)
-    }
-
     private func picksSection(_ picks: [DirectShare]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             sectionTitle("Picked for you")
@@ -434,35 +395,9 @@ struct ForYouRootView: View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
     }
 
-    /// A place's card: its photo, or a map of where it is when there's none, then who's been and the score.
-    private func placeCard(_ place: DiscoverPlace) -> some View {
-        Button { router.push(.experience(place.id)) } label: {
-            PhotoCard(path: place.coverPath, url: place.experience.photoURL, credit: place.experience.photoCredit,
-                      label: "Photo of \(place.experience.name)", placeholderSymbol: place.experience.category?.symbolName ?? "mappin",
-                      height: 190, location: place.experience.coordinate) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(place.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
-                        Text([place.experience.category?.title, place.experience.locality].compactMap { $0 }.joined(separator: " · "))
-                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                        if let evidence = place.friendEvidence { Text(evidence).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(1) }
-                        GoogleRatingLine(experience: place.experience)
-                    }
-                    Spacer(minLength: Theme.Spacing.s)
-                    if let score = (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore {
-                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                    }
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("foryou-place-\(place.experience.name)")
-    }
-
     private func choose(_ destination: Destination) {
-        selected = destination
         destinations.select(destination, for: .search)
+        router.push(.city(destination))
         query = ""
         searchFocused = false
     }
@@ -472,7 +407,7 @@ struct ForYouRootView: View {
         results = .loading
         do {
             async let foundDestinations = services.places.searchDestinations(query: text)
-            async let foundPlaces = services.places.searchPlaces(query: text, around: selected)
+            async let foundPlaces = services.places.searchPlaces(query: text, around: nil)
             async let foundOnRoam = services.plans.searchRoamPlaces(query: text)
             let (destinationList, candidates) = try await (foundDestinations, foundPlaces)
             let onRoam = (try? await foundOnRoam) ?? []
@@ -525,40 +460,3 @@ private struct CityCoverCard<Content: View>: View {
         }
     }
 }
-
-private struct CityHeader: View {
-    let destination: Destination
-
-    @Environment(AppRouter.self) private var router
-    @State private var guide: CityGuide?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(alignment: .center, spacing: Theme.Spacing.m) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(destination.name).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                    if !destination.subtitle.isEmpty {
-                        Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    }
-                }
-                Spacer(minLength: 0)
-                Button { router.sheet = .researchBrief(destination) } label: {
-                    Label("Plan with AI", systemImage: "sparkles").font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                .accessibilityIdentifier("foryou-research-open")
-            }
-            // Credited once, under the blurb that follows.
-            if let photo = guide?.photoURL {
-                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220, showsCredit: false)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("discover-city-header")
-        .task(id: destination.id) {
-            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
-        }
-    }
-}
-

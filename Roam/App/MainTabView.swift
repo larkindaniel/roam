@@ -136,6 +136,45 @@ struct RoamTabBar: View {
     }
 }
 
+/// A bar in the tab bar's exact style and place, with other buttons in it (My Places' bubble and Add a place).
+struct TabBarStyleBar: View {
+    struct Item: Identifiable {
+        var symbol: String
+        var title: String
+        var highlighted = false
+        var identifier: String
+        var action: () -> Void
+        var id: String { identifier }
+    }
+
+    let items: [Item]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items) { item in
+                Button(action: item.action) {
+                    VStack(spacing: 1) {
+                        Image(systemName: item.symbol).font(.system(size: 17, weight: .semibold)).frame(height: 21)
+                        Text(item.title).font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Roam.ink)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background { if item.highlighted { Capsule().fill(Roam.ink.opacity(0.08)) } }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.title)
+                .accessibilityIdentifier(item.identifier)
+            }
+        }
+        .padding(4)
+        .frame(height: RoamTabBar.height)
+        .floatingBubble(Capsule())
+        .padding(.horizontal, RoamTabBar.sideMargin)
+        .padding(.bottom, RoamTabBar.margin)
+    }
+}
+
 /// Resolves stable-ID routes to screens.
 struct RouteDestinationView: View {
     let route: AppRoute
@@ -158,6 +197,8 @@ struct RouteDestinationView: View {
             PlaceGroupView(title: title, subtitle: subtitle, ids: ids)
         case .homeCity(let city):
             HomeCityView(city: city)
+        case .city(let destination, let ownerID):
+            CityPageView(destination: destination, ownerID: ownerID)
         case .wishlistCountry(let code, let title):
             WishlistCountryView(code: code, title: title)
         case .passport(let ownerID, let name):

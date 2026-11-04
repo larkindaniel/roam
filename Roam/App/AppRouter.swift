@@ -50,6 +50,8 @@ enum AppRoute: Hashable, Sendable {
     case myCountry(code: String, title: String)
     case placeGroup(title: String, subtitle: String?, ids: [UUID])
     case homeCity(Destination)
+    /// A city's page, shared by Discover and My Places; `ownerID` is whose spots it shows (nil for yours).
+    case city(Destination, ownerID: UUID? = nil)
     case wishlistCountry(code: String, title: String)
     case passport(ownerID: UUID, name: String)
     case passportCountry(ownerID: UUID, country: PassportCountry)

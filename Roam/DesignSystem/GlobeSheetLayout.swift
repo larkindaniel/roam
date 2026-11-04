@@ -38,6 +38,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var mapTrailingAccessory: AnyView? = nil
     /// Scrolled, the header gives way to a dark fade with just the name (used for a place's card).
     var collapsesHeaderOnScroll = false
+    /// Minimised, the card steps aside entirely so the screen can show its own bar in its place.
+    var hidesWhenPeeking = false
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -71,7 +73,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .transition(.opacity)
                     }
-                    card(height: height, available: available)
+                    if !(hidesWhenPeeking && detent == .peek && dragOffset == 0) {
+                        card(height: height, available: available).transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
