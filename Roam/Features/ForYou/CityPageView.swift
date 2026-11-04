@@ -83,9 +83,9 @@ struct CityPageView: View {
             guard let picked else { return }
             selection = nil
             if let id = picked.value, let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) {
-                fly(to: place)
+                fly(to: place, moveMap: false)
             } else if let feature = picked.feature {
-                Task { await open(feature) }
+                Task { await open(feature, moveMap: false) }
             }
         }
         .task(id: destination.id) {
@@ -156,12 +156,16 @@ struct CityPageView: View {
 
     /// Like Apple Maps: the map glides over to the place, the city's card steps down and the place's card rises, all
     /// on this one map.
-    private func fly(to place: ExperienceSummary) {
+    /// Tapped on the map, the place is already in view: its pin just grows and the map stays put. From a card or
+    /// search result the map glides over to it.
+    private func fly(to place: ExperienceSummary, moveMap: Bool = true) {
         searching = false
         if openPlace == nil { cityDetent = detent }
-        withAnimation(.snappy(duration: 0.35)) {
-            camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
-                                                longitudinalMeters: ExperienceDetailView.placeSpan))
+        if moveMap {
+            withAnimation(.snappy(duration: 0.35)) {
+                camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
+                                                    longitudinalMeters: ExperienceDetailView.placeSpan))
+            }
         }
         // The city's card stays until the place's is ready, then the place's information simply replaces it.
         openPreview = place
@@ -177,8 +181,8 @@ struct CityPageView: View {
     private func closePlace() {
         openPlace = nil
         placeShown = false
+        // The map stays where you left it.
         detent = cityDetent
-        withAnimation(.snappy(duration: 0.35)) { camera = .region(cityRegion) }
     }
 
     /// Every pin on the city's map: your spots green, suggestions red.
@@ -303,11 +307,11 @@ struct CityPageView: View {
         return kept.joined(separator: ", ")
     }
 
-    private func open(_ feature: MapFeature) async {
+    private func open(_ feature: MapFeature, moveMap: Bool = true) async {
         guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
               let candidate = MapKitPlaceSearchProvider.candidate(from: item),
               let place = try? await services.experiences.resolve(candidate) else { return }
-        fly(to: place)
+        fly(to: place, moveMap: moveMap)
     }
 
     private func open(_ hit: SearchHit) async {
