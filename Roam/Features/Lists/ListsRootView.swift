@@ -212,9 +212,12 @@ struct MyPlacesRootView: View {
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private var searchField: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            TextField("Search places", text: $query)
+        // Lowered over the dark globe it's plain glass like the buttons there, with a more solid field and white text.
+        let overGlobe = detent == .peek
+        return HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(overGlobe ? Color.white.opacity(0.85) : Roam.inkMuted).accessibilityHidden(true)
+            TextField("", text: $query, prompt: Text("Search places").foregroundStyle(overGlobe ? Color.white.opacity(0.75) : Roam.inkMuted))
+                .foregroundStyle(overGlobe ? Color.white : Roam.ink)
                 .focused($searching)
                 .submitLabel(.search)
                 .textInputAutocapitalization(.never)
@@ -227,10 +230,10 @@ struct MyPlacesRootView: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.m)
-        .frame(height: 40)
+        .frame(height: overGlobe ? 44 : 40)
         // A darker field inside the bubble or card, at every height.
-        .background { Capsule().fill(Roam.ink.opacity(0.12)) }
-        .padding(.horizontal, detent == .peek ? -Theme.Spacing.s : 0)
+        .background { Capsule().fill(overGlobe ? Color.black.opacity(0.35) : Roam.ink.opacity(0.12)) }
+        .padding(.horizontal, overGlobe ? -(Theme.Spacing.m - 2) : 0)
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
             // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
@@ -313,7 +316,7 @@ struct MyPlacesRootView: View {
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height + 12, peekOpacity: 0.85,
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height + 12, peekOpacity: 0,
                          headerTapToggles: false) {
             globe
         } header: {
