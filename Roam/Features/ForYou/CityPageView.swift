@@ -207,7 +207,7 @@ struct CityPageView: View {
             // A place opened from Apple's map or search, which isn't one of the pins above, still gets its pin.
             if let open = openPreview, open.id == openPlace, !mapPins.contains(where: { $0.place.id == open.id }) {
                 Marker(open.name, systemImage: open.iconName, coordinate: open.coordinate)
-                    .tint(.red)
+                    .tint(open.pinTint)
                     .tag(MapSelection(open.id))
             }
         }

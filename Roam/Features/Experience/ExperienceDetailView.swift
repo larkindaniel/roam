@@ -343,7 +343,7 @@ struct ExperienceDetailView: View {
         return Map(position: $mapCamera, selection: $nearbyFeature) {
             Marker(detail.summary.name, systemImage: PlaceIcon.symbol(appleType: detail.summary.providerCategory, category: detail.myRating?.category ?? detail.summary.category),
                    coordinate: coordinate)
-                .tint(.red)
+                .tint(detail.myRating != nil ? PlaceState.visited.markerColor : detail.summary.pinTint)
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
         // Tapping a nearby place Apple shows on the map opens that place's page.

@@ -36,6 +36,17 @@ extension ExperienceSummary {
     var iconName: String { PlaceIcon.symbol(appleType: providerCategory, category: category) }
 }
 
+import SwiftUI
+
+extension ExperienceSummary {
+    /// A pin's colour follows the place: green where you've been, yellow if saved, red for anywhere else.
+    var pinTint: Color {
+        if viewer.hasVisits || viewer.myRatingCategory != nil { return PlaceState.visited.markerColor }
+        if viewer.isBookmarked { return PlaceState.wishlist.markerColor }
+        return .red
+    }
+}
+
 extension PlaceCandidate {
     var iconName: String { PlaceIcon.symbol(appleType: providerCategory, category: suggestedCategory) }
 }
