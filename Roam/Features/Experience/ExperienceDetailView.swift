@@ -392,20 +392,21 @@ struct ExperienceDetailView: View {
         let saved = !visited && !planned && library.isBookmarked(id)
         // Only cities are planned; a place is saved, then shows up on any trip to its city.
         let anyState = visited || saved
+        // A place is either somewhere you've been or somewhere you want to go: once you've been, Save greys out.
+        // A saved place can still be logged, which moves it to been.
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.m) {
-                if visited || !anyState {
+                do {
                     circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
                                  label: visited ? "Been here. Add another visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
                         Task { await openLog(rated ? .addVisit : .firstLog) }
                     }
                     .disabled(deleting || failedDeletion != nil)
                 }
-                if saved || !anyState {
-                    circleAction(saved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: saved,
-                                 caption: saved ? "Saved" : "Save", label: saved ? "Saved. Tap to remove" : "Save", identifier: "detail-save") {
-                        Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
-                    }
+                circleAction(saved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: saved,
+                             caption: saved ? "Saved" : "Save", label: saved ? "Saved. Tap to remove" : "Save", identifier: "detail-save",
+                             inactive: visited) {
+                    Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
                 circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Recommend to a friend", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
@@ -421,21 +422,23 @@ struct ExperienceDetailView: View {
     }
 
     /// A round icon button: filled in its colour when on (or always, for the main action), tinted outline otherwise.
+    /// `inactive` greys the button out and ignores taps.
     private func circleAction(_ symbol: String, tint: Color, filled: Bool, caption: String, label: String, identifier: String,
-                              action: @escaping () -> Void) -> some View {
+                              inactive: Bool = false, action: @escaping () -> Void) -> some View {
+        let color = inactive ? Roam.inkFaint : tint
         // A tap handler rather than a Button: on a place's card over a city's map, Buttons never received their taps.
-        VStack(spacing: 6) {
+        return VStack(spacing: 6) {
             Image(systemName: symbol)
                 .font(.headline)
-                .foregroundStyle(filled ? .white : tint)
+                .foregroundStyle(filled && !inactive ? .white : color)
                 // The same size as the directions button.
                 .frame(width: 38, height: 38)
-                .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
-            Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
+                .background(Circle().fill(filled && !inactive ? color : color.opacity(0.15)))
+            Text(caption).font(.caption2).foregroundStyle(inactive ? Roam.inkFaint : Roam.ink).lineLimit(1).fixedSize()
         }
         .frame(minWidth: 52)
         .contentShape(Rectangle())
-        .onTapGesture(perform: action)
+        .onTapGesture { if !inactive { action() } }
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { action() }

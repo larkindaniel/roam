@@ -561,8 +561,11 @@ struct CityHeader: View {
             if trips != nil {
                 circle(beenHere ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: beenHere,
                        caption: beenHere ? "Been here" : "Log", identifier: "city-log") { if !beenHere { markedNow = true; onMarkVisited() } }
-                circle(isSaved ? "bookmark.fill" : "bookmark", tint: PlaceState.wishlist.markerColor, filled: isSaved,
-                       caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") { onToggleSaved() }
+                // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.
+                circle(isSaved ? "bookmark.fill" : "bookmark", tint: beenHere ? Roam.inkFaint : PlaceState.wishlist.markerColor,
+                       filled: isSaved && !beenHere, caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") {
+                    if !beenHere { onToggleSaved() }
+                }
                 Menu {
                     ForEach(trips ?? []) { trip in Button(trip.name) { onAddToTrip(trip) } }
                     Button("New trip", systemImage: "plus") { onNewTrip() }
