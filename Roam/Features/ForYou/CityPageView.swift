@@ -29,9 +29,9 @@ struct CityPageView: View {
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
-    /// The place opened from here: it zooms open out of what you tapped instead of sliding in from the side.
-    @State private var openPlace: UUID?
-    @Namespace private var placeZoom
+    @State private var camera: MapCameraPosition = .automatic
+    /// Set while the map flies to a place before its card comes up.
+    @State private var flying = false
 
     private var isOwn: Bool { ownerID == nil || ownerID == session.userID }
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -52,10 +52,22 @@ struct CityPageView: View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: destination.name, headerIdentifier: "city-sheet-header", onRefresh: { await reload() },
                          floatsWhenPeeking: true, floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         floatingHeight: RoamTabBar.height, headerTapToggles: false) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: detent != .peek) {
             cityMap
         } header: {
-            searchField
+            // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
+            // and both give way to the city's name, small and white; scroll back up and they come back down.
+            if detent == .peek {
+                searchField
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    searchField
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .background(Capsule().fill(.ultraThinMaterial))
+                        .overlay(Capsule().fill(Roam.ink.opacity(0.05)).allowsHitTesting(false))
+                    cityHeader(showsPhoto: false)
+                }
+            }
         } content: {
             if hasQuery {
                 searchResults
@@ -75,13 +87,16 @@ struct CityPageView: View {
         .onChange(of: selection) { _, picked in
             guard let picked else { return }
             selection = nil
-            if let id = picked.value {
-                openPlace = id
+            if let id = picked.value, let place = (spots.map(\.experience) + recommended.map(\.experience)).first(where: { $0.id == id }) {
+                fly(to: place)
             } else if let feature = picked.feature {
                 Task { await open(feature) }
             }
         }
-        .task(id: destination.id) { await reload() }
+        .task(id: destination.id) {
+            camera = .region(cityRegion)
+            await reload()
+        }
         .task(id: query) {
             guard hasQuery else { search?.query = ""; return }
             try? await Task.sleep(for: Limits.searchDebounce)
@@ -89,9 +104,11 @@ struct CityPageView: View {
             if search == nil { search = ExperienceSearchModel(services: services) }
             await search?.search(query, near: destination)
         }
-        .navigationDestination(item: $openPlace) { id in
-            ExperienceDetailView(experienceID: id)
-                .navigationTransition(.zoom(sourceID: id, in: placeZoom))
+        // Coming back from a place, the map returns to the city and the card to where it was.
+        .onAppear {
+            guard flying else { return }
+            flying = false
+            withAnimation(.easeInOut(duration: 0.6)) { camera = .region(cityRegion) }
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -103,10 +120,37 @@ struct CityPageView: View {
     // MARK: Map
 
     /// The city, with your spots in green and the places we'd suggest in red; tapping one opens it.
-    private var cityMap: some View {
+    private var cityRegion: MKCoordinateRegion {
         let span = max(destination.radiusMeters * 2.2, 6_000)
-        return Map(initialPosition: .region(MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)),
-                   selection: $selection) {
+        return MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: span, longitudinalMeters: span)
+    }
+
+    /// Like Apple Maps: the map flies over to the place and the city's card steps down, then the place's own page takes
+    /// over without a slide, its map already where this one landed and its card rising from the bottom.
+    private func fly(to place: ExperienceSummary) {
+        searching = false
+        flying = true
+        withAnimation(.easeInOut(duration: 0.8)) {
+            camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: ExperienceDetailView.placeSpan,
+                                                longitudinalMeters: ExperienceDetailView.placeSpan))
+            detent = .peek
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(850))
+            ExperienceDetailView.handoff[place.id] = place.coordinate
+            // The navigation push itself is instant (the map already moved); a SwiftUI transaction alone doesn't stop
+            // the stack's slide, so UIKit animations pause for the hand-over.
+            UIView.setAnimationsEnabled(false)
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { router.push(.experience(place.id)) }
+            try? await Task.sleep(for: .milliseconds(120))
+            UIView.setAnimationsEnabled(true)
+        }
+    }
+
+    private var cityMap: some View {
+        Map(position: $camera, selection: $selection) {
             ForEach(spots) { entry in
                 Marker(entry.experience.name, systemImage: entry.experience.iconName, coordinate: entry.experience.coordinate)
                     .tint(PlaceState.visited.markerColor)
@@ -146,10 +190,7 @@ struct CityPageView: View {
             }
         }
         .font(.body)
-        .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
         .frame(height: 40)
-        // Minimised the bubble is the search bar; opened up it's a grey field at the top of the card, as in Maps.
-        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.07)) } }
         .frame(maxWidth: .infinity)
     }
 
@@ -217,7 +258,7 @@ struct CityPageView: View {
         guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
               let candidate = MapKitPlaceSearchProvider.candidate(from: item),
               let place = try? await services.experiences.resolve(candidate) else { return }
-        openPlace = place.id
+        fly(to: place)
     }
 
     private func open(_ hit: SearchHit) async {
@@ -227,18 +268,14 @@ struct CityPageView: View {
             guard let search else { return }
             let place = try await search.resolve(hit)
             openError = nil
-            openPlace = place.id
+            fly(to: place)
         } catch { openError = error.roamMessage }
     }
 
     // MARK: City
 
     @ViewBuilder private var cityInfo: some View {
-        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
-                   onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
-                   trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
-                   onAddToTrip: { trip in Task { await add(to: trip) } },
-                   onNewTrip: { planningNewTrip = true })
+        CityPhoto(destination: destination)
         CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                       coordinate: destination.coordinate, showsPhoto: false)
         if !spots.isEmpty {
@@ -246,8 +283,7 @@ struct CityPageView: View {
                 sectionTitle(isOwn ? "Your spots" : "Their spots")
                 LazyVStack(spacing: Theme.Spacing.l) {
                     ForEach(spots) { entry in
-                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { openPlace = entry.id }
-                            .matchedTransitionSource(id: entry.id, in: placeZoom)
+                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { fly(to: entry.experience) }
                     }
                 }
             }
@@ -266,9 +302,8 @@ struct CityPageView: View {
                         ForEach(recommended) { place in
                             DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
                                               score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
-                                openPlace = place.id
+                                fly(to: place.experience)
                             }
-                            .matchedTransitionSource(id: place.id, in: placeZoom)
                         }
                     }
                 }
@@ -276,6 +311,14 @@ struct CityPageView: View {
                 .accessibilityIdentifier("discover-places")
             }
         }
+    }
+
+    private func cityHeader(showsPhoto: Bool) -> some View {
+        CityHeader(destination: destination, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && mySpotCount == 0,
+                   onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
+                   trips: isOwn ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
+                   onAddToTrip: { trip in Task { await add(to: trip) } },
+                   onNewTrip: { planningNewTrip = true }, showsPhoto: showsPhoto)
     }
 
     private func reload() async {
@@ -425,9 +468,9 @@ struct CityHeader: View {
     var trips: [TripSummary]?
     var onAddToTrip: (TripSummary) -> Void = { _ in }
     var onNewTrip: () -> Void = {}
+    var showsPhoto = true
 
     @Environment(AppRouter.self) private var router
-    @State private var guide: CityGuide?
 
     private var title: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -493,13 +536,26 @@ struct CityHeader: View {
                 actions
             }
             // Credited once, under the blurb that follows.
-            if let photo = guide?.photoURL {
-                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220, showsCredit: false)
-            }
+            if showsPhoto { CityPhoto(destination: destination) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("discover-city-header")
+    }
+}
+
+/// A city's Wikipedia lead photo; credited once, under the blurb that follows it.
+struct CityPhoto: View {
+    let destination: Destination
+    @State private var guide: CityGuide?
+
+    var body: some View {
+        // A ZStack always has a view to host `.task`; an empty Group would never run it.
+        ZStack {
+            if let photo = guide?.photoURL {
+                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220, showsCredit: false)
+            }
+        }
         .task(id: destination.id) {
             guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
         }

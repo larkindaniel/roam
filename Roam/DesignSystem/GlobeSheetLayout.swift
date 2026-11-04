@@ -42,6 +42,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var floatingHeight: CGFloat? = nil
     /// Tapping the header raises or lowers the card; off when the header holds a search field.
     var headerTapToggles = true
+    /// Pushes the card below the screen (for bringing it up from the bottom as the screen appears).
+    var cardHidden = false
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -76,6 +78,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                         .transition(.opacity)
                     }
                     card(height: height, available: available)
+                        .offset(y: cardHidden ? height + 40 : 0)
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)

@@ -45,6 +45,19 @@ final class ExperienceDetailModel {
 }
 
 /// S06 experience detail.
+/// A place's page that can move to another place on the same map: tapping a nearby place swaps the card in place
+/// rather than opening a new screen.
+struct PlaceBrowserView: View {
+    let startID: UUID
+    @State private var current: UUID?
+
+    var body: some View {
+        let id = current ?? startID
+        ExperienceDetailView(experienceID: id, onOpenPlace: { current = $0 })
+            .id(id)
+    }
+}
+
 struct ExperienceDetailView: View {
     @State private var plannedTrips: [String] = []
     @State private var choosingMapsApp = false
@@ -52,6 +65,10 @@ struct ExperienceDetailView: View {
     @State private var showsLookAround = false
     @State private var lookAround: MKLookAroundScene?
     let experienceID: UUID
+    /// Opens another place on this same map; nil pushes it as its own page.
+    var onOpenPlace: ((UUID) -> Void)? = nil
+    @State private var mapCamera: MapCameraPosition = .automatic
+    @State private var cameraPlaced = false
 
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
@@ -70,14 +87,29 @@ struct ExperienceDetailView: View {
     @State private var actionError: String?
     @State private var deleting = false
     @State private var nearbyFeature: MapFeature?
+    /// The card rises from the bottom once the page is up, as in Apple Maps.
+    @State private var cardRisen = false
+
+    /// How much of the map a place shows; a city page flies to this before opening one, so the maps line up.
+    static let placeSpan: CLLocationDistance = 1_500
+    /// Where a city's map left off for a place it's opening.
+    @MainActor static var handoff: [UUID: CLLocationCoordinate2D] = [:]
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Group {
             switch model?.phase ?? .idle {
             case .idle, .loading:
-                ScrollView { SkeletonList(rows: 6).padding() }
-                    .accessibilityIdentifier("experience-loading")
+                if let center = Self.handoff[experienceID] {
+                    // Arriving from a city's map: show the same map while the place loads, so nothing jumps.
+                    Map(initialPosition: .region(MKCoordinateRegion(center: center, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan)))
+                        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
+                        .ignoresSafeArea()
+                        .accessibilityIdentifier("experience-loading")
+                } else {
+                    ScrollView { SkeletonList(rows: 6).padding() }
+                        .accessibilityIdentifier("experience-loading")
+                }
             case .failed(let message):
                 ScrollView {
                     EmptyStateView(systemImage: "exclamationmark.triangle", title: "Couldn't load this place", message: message,
@@ -85,6 +117,10 @@ struct ExperienceDetailView: View {
                 }
             case .loaded(let detail):
                 content(detail)
+                    .onAppear {
+                        guard !cardRisen else { return }
+                        withAnimation(.spring(duration: 0.45, bounce: 0.12)) { cardRisen = true }
+                    }
             }
         }
         .background(Theme.groupedCanvas)
@@ -154,7 +190,8 @@ struct ExperienceDetailView: View {
         let summary = detail.summary
         return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: summary.name,
                                 headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
-                                mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }, collapsesHeaderOnScroll: true) {
+                                mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }, collapsesHeaderOnScroll: true,
+                                cardHidden: !cardRisen) {
             placeMap(detail)
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
@@ -275,9 +312,8 @@ struct ExperienceDetailView: View {
     /// The place on a map that fills the screen behind the card; pan and zoom freely.
     private func placeMap(_ detail: ExperienceDetail) -> some View {
         let coordinate = detail.summary.coordinate
-        let span: CLLocationDistance = detail.isLocality ? 20_000 : 1_500
-        return Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span)),
-                   selection: $nearbyFeature) {
+        let span: CLLocationDistance = detail.isLocality ? 20_000 : Self.placeSpan
+        return Map(position: $mapCamera, selection: $nearbyFeature) {
             Marker(detail.summary.name, systemImage: PlaceIcon.symbol(appleType: detail.summary.providerCategory, category: detail.myRating?.category ?? detail.summary.category),
                    coordinate: coordinate)
                 .tint(.red)
@@ -292,8 +328,21 @@ struct ExperienceDetailView: View {
                 guard let item = try? await MKMapItemRequest(feature: feature).mapItem,
                       let candidate = MapKitPlaceSearchProvider.candidate(from: item),
                       let place = try? await services.experiences.resolve(candidate), place.id != experienceID else { return }
-                router.push(.experience(place.id))
+                // Like Apple Maps: the map moves over to the new place and this card drops away, then the new place's
+                // card rises on the same map.
+                withAnimation(.easeInOut(duration: 0.7)) {
+                    mapCamera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: Self.placeSpan, longitudinalMeters: Self.placeSpan))
+                    cardRisen = false
+                }
+                try? await Task.sleep(for: .milliseconds(720))
+                Self.handoff[place.id] = place.coordinate
+                if let onOpenPlace { onOpenPlace(place.id) } else { router.push(.experience(place.id)) }
             }
+        }
+        .onAppear {
+            guard !cameraPlaced else { return }
+            cameraPlaced = true
+            mapCamera = .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span))
         }
         .accessibilityLabel("Map showing \(detail.summary.name)")
         .accessibilityIdentifier("detail-map")

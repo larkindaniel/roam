@@ -192,7 +192,7 @@ struct RouteDestinationView: View {
         case .deleteAccount:
             DeleteAccountView()
         case .experience(let id):
-            ExperienceDetailView(experienceID: id)
+            PlaceBrowserView(startID: id)
         case .member(let id):
             ProfileView(userID: id)
         case .memberList(let id, let kind):
