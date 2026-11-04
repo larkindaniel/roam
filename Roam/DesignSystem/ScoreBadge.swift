@@ -26,6 +26,10 @@ struct ScoreBadge: View {
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
 
     var body: some View {
+        if Score.isShown { badge }
+    }
+
+    private var badge: some View {
         VStack(spacing: 3) {
             Group {
                 if let score {

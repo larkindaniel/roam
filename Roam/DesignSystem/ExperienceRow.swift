@@ -104,7 +104,7 @@ struct ExperienceRow: View {
     }
 
     private var titleText: Text {
-        if let rank { return Text("\(rank). ").monospacedDigit() + Text(name) }
+        if Score.isShown, let rank { return Text("\(rank). ").monospacedDigit() + Text(name) }
         return Text(name)
     }
 

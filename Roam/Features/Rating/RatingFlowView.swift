@@ -335,7 +335,8 @@ struct RatingFlowView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 switch completion {
                 case .rating(let result):
-                    Text("Rating saved").font(.title2.weight(.semibold))
+                    Text("Saved").font(.title2.weight(.semibold))
+                    if Score.isShown {
                     Text(result.score.formatted).font(.system(.largeTitle, design: .rounded).bold())
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel("Your score \(result.score.formatted)").accessibilityIdentifier("rating-result-score")
@@ -343,6 +344,7 @@ struct RatingFlowView: View {
                         .accessibilityIdentifier("rating-result-position")
                     if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "place" : "places").") }
                     Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(Theme.secondaryText)
+                    }
                 case .visit:
                     Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
                     Text(request.mode == .addVisit ? "Your existing ranking stays the same." : "You can rank this place whenever you like.").foregroundStyle(Theme.secondaryText)

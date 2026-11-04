@@ -181,7 +181,7 @@ struct TripDetailView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(entry.experience.name).font(.headline).foregroundStyle(Roam.ink)
                     Spacer(minLength: Theme.Spacing.s)
-                    if let score = entry.score {
+                    if Score.isShown, let score = entry.score {
                         Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
                     }
                 }

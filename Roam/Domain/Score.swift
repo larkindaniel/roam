@@ -2,6 +2,9 @@ import Foundation
 
 /// A Roam score stored exactly in tenths (0...100) so client and server rounding agree.
 struct Score: Hashable, Comparable, Sendable, Codable, CustomStringConvertible {
+    /// Roam's own scores and rankings are kept and computed but not shown anywhere for now.
+    static let isShown = false
+
     let tenths: Int
 
     init(tenths: Int) {

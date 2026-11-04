@@ -167,7 +167,7 @@ struct CountryUpdatesView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(entry.experience.name).font(.headline).multilineTextAlignment(.leading)
                     Spacer(minLength: Theme.Spacing.s)
-                    if let score = entry.score {
+                    if Score.isShown, let score = entry.score {
                         Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit()
                     }
                 }

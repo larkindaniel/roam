@@ -186,7 +186,7 @@ struct PublicMemoryCard: View {
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
                 .accessibilityHint("Opens the profile")
                 Spacer(minLength: 0)
-                if let score = memory.score {
+                if Score.isShown, let score = memory.score {
                     Text(score.formatted)
                         .font(.system(.body, design: .rounded).bold())
                         .monospacedDigit()

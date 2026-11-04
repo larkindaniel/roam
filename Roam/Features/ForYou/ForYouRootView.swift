@@ -283,7 +283,7 @@ struct ForYouRootView: View {
                 }
             }
             Spacer(minLength: Theme.Spacing.s)
-            if let score = experience?.followingScore {
+            if Score.isShown, let score = experience?.followingScore {
                 Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
             }
         }

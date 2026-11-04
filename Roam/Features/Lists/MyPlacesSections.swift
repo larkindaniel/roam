@@ -139,7 +139,7 @@ struct PlaceRow: View {
                     Text(item.experience.category?.title ?? item.state.markerTitle).font(.footnote).foregroundStyle(Roam.inkMuted)
                 }
                 Spacer(minLength: 0)
-                if let score {
+                if Score.isShown, let score {
                     Text(score.formatted).font(.system(.headline, design: .rounded)).monospacedDigit().foregroundStyle(Roam.ink)
                 }
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
@@ -189,7 +189,11 @@ enum MyTimeline {
             onTrips.formUnion(visited.map(\.id))
             guard trip.phase(today: today) == .past else { continue }
             let dates = visited.compactMap { visitDates[$0.id] ?? nil }
-            entries.append(TimelineEntry(id: trip.id.uuidString, kind: .trip(trip.id), title: trip.name, placeLine: trip.placeLine,
+            // Titled like a journey: the trip's name with the flag of each country it covers.
+            let codes = (trip.cities.compactMap(\.countryCode) + visited.compactMap(\.countryCode)).map { $0.uppercased() }.uniqued()
+            let flags = codes.compactMap { TripTitle.flag($0) }.joined(separator: " ")
+            entries.append(TimelineEntry(id: trip.id.uuidString, kind: .trip(trip.id), title: [trip.name, flags.isEmpty ? nil : flags].compactMap { $0 }.joined(separator: " "),
+                                         placeLine: trip.placeLine,
                                          start: trip.startDate ?? dates.min(), end: trip.endDate ?? dates.max(), places: visited,
                                          bestScore: visited.compactMap { scores[$0.id] }.max()))
         }
@@ -365,11 +369,10 @@ struct TripsTimelineSection: View {
                     Text(MyTimeline.range(entry.start, entry.end) ?? "Date unknown").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(entry.title).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
-                        if case .trip = entry.kind { Image(systemName: "airplane").font(.caption).foregroundStyle(PlaceState.planned.markerColor) }
                     }
                     if !entry.placeLine.isEmpty { Text(entry.placeLine).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(2) }
                     HStack(spacing: Theme.Spacing.s) {
-                        if let best = entry.bestScore { Text("Best \(best.formatted)") }
+                        if Score.isShown, let best = entry.bestScore { Text("Best \(best.formatted)") }
                     }
                     .font(.footnote).foregroundStyle(Roam.inkMuted)
                 }
