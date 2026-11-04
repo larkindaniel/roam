@@ -231,7 +231,7 @@ struct MyPlacesRootView: View {
         }
         .padding(.horizontal, detent == .peek ? 0 : Theme.Spacing.m)
         .frame(height: 40)
-        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.07)) } }
+        .background { if detent != .peek { Capsule().fill(Roam.ink.opacity(0.12)) } }
         .onChange(of: searching) { _, focused in if focused && detent != .full { detent = .full } }
         .task(id: query) {
             guard hasQuery else { search?.query = ""; cityHits = []; return }
