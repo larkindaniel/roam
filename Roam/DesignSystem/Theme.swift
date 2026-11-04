@@ -4,8 +4,8 @@ import UIKit
 /// Roam design tokens: ink on Apple's neutral greys (the grouped background with white cards, as in Maps and
 /// Settings). Photos and place-state colours are the only colour.
 enum Roam {
-    /// Home cities: indigo, apart from the green, blue and yellow of been, going and saved.
-    static let home = Color.indigo
+    /// Home cities: black (ink), apart from the green, blue and yellow of been, going and saved.
+    static var home: Color { ink }
     static let paper = dynamic(light: 0xF2F2F7, dark: 0x000000)
     static let paperRaised = dynamic(light: 0xFCFCFD, dark: 0x1C1C1E)
     static let ink = dynamic(light: 0x111111, dark: 0xF2F2F7)

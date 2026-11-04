@@ -540,7 +540,7 @@ struct CityHeader: View {
         }
     }
 
-    /// Set as home, on the title row; a home city shows as a solid indigo house.
+    /// Set as home, on the title row; a home city shows as a solid black house.
     @ViewBuilder private var homePill: some View {
         if let onToggleHome {
             Button(action: onToggleHome) {
@@ -554,7 +554,7 @@ struct CityHeader: View {
     }
 
     /// Round actions with a caption under each, laid out like a place's: been here (green), wishlist (yellow), add to a
-    /// trip (blue), send (black) and plan with AI (pink). A home city keeps just send and AI.
+    /// trip (blue), send (indigo) and plan with AI (pink). A home city keeps just send and AI.
     private var actionRow: some View {
         HStack(spacing: Theme.Spacing.m) {
             if trips != nil {
@@ -572,7 +572,7 @@ struct CityHeader: View {
                 .accessibilityIdentifier("city-trip")
             }
             ShareLink(item: "\(destination.name)\(destination.countryName.map { ", \($0)" } ?? "") on Roam") {
-                circleLabel("paperplane", tint: Roam.ink, filled: false, caption: "Send")
+                circleLabel("paperplane", tint: .indigo, filled: false, caption: "Send")
             }
             .accessibilityLabel("Send to a friend")
             .accessibilityIdentifier("city-send")
@@ -610,14 +610,14 @@ struct CityHeader: View {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 title.layoutPriority(-1)
                 Spacer(minLength: Theme.Spacing.xs)
-                // A home city needs no row of actions: just its house and Plan, beside the name.
+                // A home city needs no row of actions: just its house, then Plan, beside the name.
+                homePill
                 if isHome {
                     Button { router.sheet = .researchBrief(destination) } label: { Label("Plan", systemImage: "sparkles") }
                         .buttonStyle(PillButtonStyle(tint: .pink))
                         .accessibilityLabel("Plan with AI")
                         .accessibilityIdentifier("foryou-research-open")
                 }
-                homePill
             }
             if !isHome { actionRow }
             // Credited once, under the blurb that follows.
