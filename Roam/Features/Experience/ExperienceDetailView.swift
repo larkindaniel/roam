@@ -253,7 +253,7 @@ struct ExperienceDetailView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Directions to \(summary.name)")
                 .accessibilityIdentifier("detail-directions")
-                .confirmationDialog("Get directions", isPresented: $choosingMapsApp, titleVisibility: .visible) {
+                .confirmationDialog("Directions", isPresented: $choosingMapsApp, titleVisibility: .hidden) {
                     Button("Apple Maps") { openInMaps(detail) }
                     Button("Google Maps") { openInGoogleMaps(detail) }
                 }

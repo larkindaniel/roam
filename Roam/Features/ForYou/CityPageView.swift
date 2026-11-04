@@ -181,17 +181,34 @@ struct CityPageView: View {
         withAnimation(.snappy(duration: 0.35)) { camera = .region(cityRegion) }
     }
 
+    /// Every pin on the city's map: your spots green, suggestions red.
+    private var mapPins: [(place: ExperienceSummary, tint: Color)] {
+        spots.map { ($0.experience, PlaceState.visited.markerColor) } + recommended.map { ($0.experience, Color.red) }
+    }
+
     private var cityMap: some View {
         Map(position: $camera, selection: $selection) {
-            ForEach(spots) { entry in
-                Marker(entry.experience.name, systemImage: entry.experience.iconName, coordinate: entry.experience.coordinate)
-                    .tint(PlaceState.visited.markerColor)
-                    .tag(MapSelection(entry.id))
+            // With a place open, only it keeps the full pin; the rest shrink to dots so it stands out.
+            ForEach(mapPins, id: \.place.id) { pin in
+                if openPlace == nil || openPlace == pin.place.id {
+                    Marker(pin.place.name, systemImage: pin.place.iconName, coordinate: pin.place.coordinate)
+                        .tint(pin.tint)
+                        .tag(MapSelection(pin.place.id))
+                } else {
+                    Annotation(pin.place.name, coordinate: pin.place.coordinate) {
+                        Circle().fill(pin.tint).frame(width: 12, height: 12)
+                            .overlay(Circle().stroke(.white, lineWidth: 2))
+                            .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+                    }
+                    .annotationTitles(.hidden)
+                    .tag(MapSelection(pin.place.id))
+                }
             }
-            ForEach(recommended) { place in
-                Marker(place.experience.name, systemImage: place.experience.iconName, coordinate: place.experience.coordinate)
+            // A place opened from Apple's map or search, which isn't one of the pins above, still gets its pin.
+            if let open = openPreview, open.id == openPlace, !mapPins.contains(where: { $0.place.id == open.id }) {
+                Marker(open.name, systemImage: open.iconName, coordinate: open.coordinate)
                     .tint(.red)
-                    .tag(MapSelection(place.id))
+                    .tag(MapSelection(open.id))
             }
         }
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .all))
