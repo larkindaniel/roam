@@ -40,6 +40,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var collapsesHeaderOnScroll = false
     /// Minimised, a fixed bubble height (the tab bar's, on My Places) with the row centred in it.
     var floatingHeight: CGFloat? = nil
+    /// How opaque the minimised bubble's glass is (raise it over a dark map, like the globe).
+    var peekOpacity: Double = 0.35
     /// Tapping the header raises or lowers the card; off when the header holds a search field.
     var headerTapToggles = true
     /// Pushes the card below the screen (for bringing it up from the bottom as the screen appears).
@@ -119,7 +121,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private var glassOpacity: Double {
         switch detent {
-        case .peek: return 0.35
+        case .peek: return peekOpacity
         case .half: return 0.55
         case .full: return 1
         }

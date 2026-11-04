@@ -157,8 +157,7 @@ struct MyPlacesRootView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
     @State private var showsCoachmark = false
-    // Opens minimised, showing the globe.
-    @State private var detent = GlobeSheetDetent.peek
+    @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
     @State private var tab = MyPlacesTab.been
@@ -292,12 +291,13 @@ struct MyPlacesRootView: View {
         focusedCountry = nil
     }
 
-    var body: some View {
+    private var sheetLayout: some View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, headerTapToggles: false) {
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, peekOpacity: 0.85,
+                         headerTapToggles: false) {
             globe
         } header: {
             // A search bar for every place, there at every height; opened up, your places sit under it.
@@ -329,6 +329,10 @@ struct MyPlacesRootView: View {
                 SkeletonList(rows: 4)
             }
         }
+    }
+
+    var body: some View {
+        sheetLayout
         .sheet(item: $sheet) { which in
             switch which {
             case .homeCity:

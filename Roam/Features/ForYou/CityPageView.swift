@@ -11,6 +11,15 @@ struct CityPageView: View {
     /// Whose spots to show; nil for your own.
     var ownerID: UUID?
 
+    init(destination: Destination, ownerID: UUID? = nil) {
+        self.destination = destination
+        self.ownerID = ownerID
+        // Opened from another map, the map starts on that same view and the card at that height, so nothing flashes.
+        let kept = Self.handoffRegion[destination.id]
+        _camera = State(initialValue: kept.map { .region($0) } ?? .automatic)
+        _detent = State(initialValue: Self.handoffDetent[destination.id] ?? .half)
+    }
+
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
@@ -96,8 +105,8 @@ struct CityPageView: View {
             }
         }
         .task(id: destination.id) {
-            camera = .region(Self.handoffRegion.removeValue(forKey: destination.id) ?? cityRegion)
-            if let kept = Self.handoffDetent.removeValue(forKey: destination.id) { detent = kept }
+            if Self.handoffRegion.removeValue(forKey: destination.id) == nil { camera = .region(cityRegion) }
+            Self.handoffDetent.removeValue(forKey: destination.id)
             await reload()
         }
         // Saving or logging the open place recolours its pin.
