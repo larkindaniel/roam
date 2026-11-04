@@ -229,8 +229,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         Group {
             if isFloating, let floatingHeight {
                 // A slim bubble: the row centred in it, the grabber tucked into the top edge.
+                // The row sits a touch below centre, leaving room above it for the grabber.
                 header()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 6)
                     .overlay(alignment: .top) { Capsule().fill(Roam.rule).frame(width: 36, height: 4).padding(.top, 5) }
                     .frame(height: floatingHeight)
             } else {

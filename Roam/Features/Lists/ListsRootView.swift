@@ -313,7 +313,7 @@ struct MyPlacesRootView: View {
                          headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
-                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, peekOpacity: 0.85,
+                         collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height + 12, peekOpacity: 0.85,
                          headerTapToggles: false) {
             globe
         } header: {

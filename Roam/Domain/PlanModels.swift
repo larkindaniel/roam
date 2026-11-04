@@ -170,7 +170,8 @@ struct TripPlace: Codable, Hashable, Identifiable, Sendable {
     var isVisited: Bool
 
     var id: UUID { experience.id }
-    var state: PlaceState { isVisited ? .visited : .planned }
+    /// Places aren't planned any more: one on a trip that you haven't been to yet reads as saved.
+    var state: PlaceState { isVisited ? .visited : .wishlist }
 }
 
 struct TripDetail: Codable, Hashable, Sendable {
