@@ -163,6 +163,7 @@ struct EditProfileView: View {
     @State private var model: EditProfileModel?
     @State private var photoItem: PhotosPickerItem?
     @State private var showsHomePicker = false
+    @State private var homes: [Destination] = []
 
     var body: some View {
         Group {
@@ -196,7 +197,9 @@ struct EditProfileView: View {
         }
         .sheet(isPresented: $showsHomePicker) { DestinationPickerSheet(purpose: .homeCity) }
         .onChange(of: destinations.pickedHomeCity) { _, picked in
-            if let picked { model?.draft.homeCity = picked; destinations.pickedHomeCity = nil }
+            guard let picked else { return }
+            destinations.pickedHomeCity = nil
+            Task { homes = (try? await services.plans.setHomeCity(picked, present: true)) ?? homes }
         }
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
@@ -207,6 +210,7 @@ struct EditProfileView: View {
         }
         .task {
             if model == nil, let profile = session.profile { model = EditProfileModel(services: services, profile: profile) }
+            homes = HomeCities.distinct((try? await services.plans.homeCities()) ?? [])
         }
         .screenIdentifier("edit-profile")
     }
@@ -259,8 +263,6 @@ struct EditProfileView: View {
                 if let avatarError = model.avatarError {
                     Text(avatarError).font(.footnote).foregroundStyle(Theme.disliked)
                 }
-            } footer: {
-                Text("Photos are resized and their location data removed before upload.")
             }
             Section {
                 TextField("Name", text: $model.draft.displayName)
@@ -281,6 +283,7 @@ struct EditProfileView: View {
             } header: { Text("Handle") }
             Section {
                 TextField("A line about how you travel", text: $model.draft.bio, axis: .vertical)
+                    .textInputAutocapitalization(.never)
                     .lineLimit(2...5)
                     .accessibilityIdentifier("edit-profile-bio")
                 issue(model.bioIssue)
@@ -289,17 +292,21 @@ struct EditProfileView: View {
             } footer: {
                 Text("\(model.draft.bio.count)/\(Limits.bioMax)")
             }
-            Section {
-                Button { showsHomePicker = true } label: {
-                    LabeledContent("Home city", value: model.draft.homeCity?.displayName ?? "Not set")
+            // Your home cities: as many as you like, each saved straight away.
+            Section("Home cities") {
+                ForEach(homes) { city in
+                    HStack {
+                        Image(systemName: "house.fill").foregroundStyle(Roam.home)
+                        Text(city.name)
+                        Spacer()
+                        Text(city.countryName ?? "").foregroundStyle(Theme.secondaryText)
+                    }
+                    .swipeActions {
+                        Button("Remove", role: .destructive) { Task { homes = (try? await services.plans.setHomeCity(city, present: false)) ?? homes } }
+                    }
                 }
-                .accessibilityIdentifier("edit-profile-home")
-                if model.draft.homeCity != nil {
-                    Button { model.draft.homeCity = nil } label: { Text("Remove home city").foregroundStyle(Theme.disliked) }
-                        .accessibilityIdentifier("edit-profile-remove-home")
-                }
-            } footer: {
-                Text("Your home city shows on your profile. It never counts as a place you've visited.")
+                Button { showsHomePicker = true } label: { Label("Add a home city", systemImage: "plus") }
+                    .accessibilityIdentifier("edit-profile-add-home")
             }
         }
         .listRowBackground(Roam.paperRaised)
