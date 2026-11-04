@@ -426,7 +426,7 @@ struct HomeCitiesSection: View {
     private func row(_ city: Destination) -> some View {
         let been = model.pins.filter { $0.state == .visited && CityMatch.inHome($0.experience, city, homes: model.homeCities) }
         let top = been.max { (model.scores[$0.id]?.tenths ?? 0) < (model.scores[$1.id]?.tenths ?? 0) }
-        return Button { router.push(.homeCity(city)) } label: {
+        return Button { router.push(.city(city)) } label: {
             HStack(spacing: Theme.Spacing.m) {
                 if let cover = top?.experience {
                     PlaceThumbnail(id: cover.id.uuidString, url: cover.photoURL, coordinate: cover.coordinate, symbol: "house", size: 56)

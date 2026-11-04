@@ -151,12 +151,16 @@ struct CityPhotoCard: View {
     @State private var guide: CityGuide?
 
     var body: some View {
-        PhotoCard(url: guide?.photoURL, credit: guide == nil ? nil : "Wikipedia", label: "Photo of \(destination.name)",
+        PhotoCard(url: guide?.photoURL, label: "Photo of \(destination.name)",
                   placeholderSymbol: "building.2", height: 160, location: destination.coordinate) {
-            HStack(spacing: Theme.Spacing.s) {
-                if isHome { Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home") }
-                Text(destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
-                Spacer(minLength: 0)
+            // The credit sits snug under the name.
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: Theme.Spacing.s) {
+                    if isHome { Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).accessibilityLabel("Home") }
+                    Text(destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
+                    Spacer(minLength: 0)
+                }
+                if guide?.photoURL != nil { Text("Photo: Wikipedia").font(.caption2).foregroundStyle(Roam.inkMuted) }
             }
         }
         .task(id: destination.id) {

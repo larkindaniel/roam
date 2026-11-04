@@ -286,7 +286,7 @@ struct MyPlacesRootView: View {
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
                 .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, 14)
+                .padding(.bottom, 22)
                 }
                 .ignoresSafeArea(edges: .bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

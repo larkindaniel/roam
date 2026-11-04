@@ -266,8 +266,17 @@ struct CityGuide: Hashable {
         let key = "\(name)|\(region ?? "")|\(country ?? "")"
         if let cached = cache[key] { return cached }
         let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        // "New York" is the state's article, so "New York City" is tried too.
-        for title in [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }, "\(name) City"].compactMap({ $0 }) {
+        // "New York" is the state's article, so "New York City" is tried too; failing all of those, the article near the
+        // city whose title is its name ("Waterloo, Ontario").
+        var titles = [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }, "\(name) City"].compactMap({ $0 })
+        var triedNearby = false
+        while !titles.isEmpty || !triedNearby {
+            if titles.isEmpty {
+                triedNearby = true
+                titles = await nearbyTitles(named: name, at: coordinate)
+                continue
+            }
+            let title = titles.removeFirst()
             guard let summary = await fetch(title), summary.type == "standard", let at = summary.coordinates,
                   CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < within else { continue }
             // Wikimedia serves any width of a thumbnail by changing the size in its path.
@@ -286,6 +295,15 @@ struct CityGuide: Hashable {
             return guide
         }
         return nil
+    }
+
+    private static func nearbyTitles(named name: String, at coordinate: CLLocationCoordinate2D) async -> [String] {
+        struct Geo: Decodable { struct Query: Decodable { struct Page: Decodable { var title: String }; var geosearch: [Page] }; var query: Query }
+        guard let url = URL(string: "https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=\(coordinate.latitude)%7C\(coordinate.longitude)&gsradius=10000&gslimit=50&format=json") else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Roam/1.0 (iOS travel app)", forHTTPHeaderField: "User-Agent")
+        guard let (data, _) = try? await URLSession.shared.data(for: request), let geo = try? JSONDecoder().decode(Geo.self, from: data) else { return [] }
+        return geo.query.geosearch.map(\.title).filter { $0 == name || $0.hasPrefix("\(name), ") }
     }
 
     /// Flags, coats of arms, maps and drawings aren't photos of a place.

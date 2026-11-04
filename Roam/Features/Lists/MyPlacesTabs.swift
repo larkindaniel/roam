@@ -139,7 +139,7 @@ struct HomeCitiesCard: View {
         } else {
             VStack(spacing: 0) {
                 ForEach(model.homeCities) { city in
-                    Button { router.push(.homeCity(city)) } label: {
+                    Button { router.push(.city(city)) } label: {
                         HStack(spacing: Theme.Spacing.m) {
                             Image(systemName: "house.fill").foregroundStyle(PlaceState.visited.markerColor).frame(width: 24)
                             Text(city.name).font(.headline).foregroundStyle(Roam.ink)
