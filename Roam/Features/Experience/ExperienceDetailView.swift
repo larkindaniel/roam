@@ -297,7 +297,7 @@ struct ExperienceDetailView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(spacing: Theme.Spacing.m) {
                 if visited || !anyState {
-                    circleAction("plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
+                    circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been here" : "Log",
                                  label: visited ? "Been here. Add another visit" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
                         Task { await openLog(rated ? .addVisit : .firstLog) }
                     }

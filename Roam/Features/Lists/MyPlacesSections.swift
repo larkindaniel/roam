@@ -922,21 +922,37 @@ struct PassportCountryView: View {
     @ViewBuilder private func spots(in city: PassportCity) -> some View {
         let items = entries.filter { CityMatch.same($0.experience, city.city) }
             .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
-        VStack(spacing: 0) {
+        // The same photo cards as Discover; each opens the place's page.
+        VStack(spacing: Theme.Spacing.m) {
             ForEach(items) { entry in
-                Divider()
-                PlaceRow(item: PlaceMapItem(experience: entry.experience, state: .visited), score: entry.ownerScore) {
-                    router.push(.experience(entry.id))
+                let place = entry.experience
+                Button { router.push(.experience(entry.id)) } label: {
+                    PhotoCard(path: nil, url: place.photoURL, credit: place.photoCredit, label: "Photo of \(place.name)",
+                              placeholderSymbol: place.category?.symbolName ?? "mappin", height: 160, location: place.coordinate) {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(place.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
+                                if let category = place.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
+                                GoogleRatingLine(experience: place)
+                            }
+                            Spacer(minLength: Theme.Spacing.s)
+                            if let score = entry.ownerScore {
+                                Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
+                            }
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("passport-place-\(place.name)")
             }
             if city.placeCount > items.count, session.userID != ownerID {
                 Text("\(city.placeCount - items.count) more kept private.").font(.footnote).foregroundStyle(Roam.inkMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, Theme.Spacing.s)
             }
         }
-        .padding(.leading, Self.iconWidth + Theme.Spacing.m)
-        .padding(.bottom, Theme.Spacing.xs)
+        .padding(.top, Theme.Spacing.xs)
+        .padding(.bottom, Theme.Spacing.m)
         .transition(.opacity)
     }
 
