@@ -197,7 +197,7 @@ struct GoingTab: View {
                     VStack(spacing: 0) {
                         ForEach(trips.dropFirst()) { trip in
                             TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                            if trip.id != trips.last?.id { Divider() }
+                            if trip.id != trips.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
                         }
                     }
                     .roamCard(padding: Theme.Spacing.m)

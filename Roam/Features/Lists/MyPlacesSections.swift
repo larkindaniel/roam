@@ -152,10 +152,15 @@ struct PlaceRow: View {
     }
 }
 
-/// The line between rows in a card: one hairline in one colour, starting after the row's photo.
+/// The line between rows in a card, starting after the row's photo. iOS's solid separator colour, exactly one pixel
+/// tall: a see-through line takes on whatever is behind a glass card, and a half-point one smears unevenly across pixels.
 struct RowSeparator: View {
+    /// Where the line starts: past a place row's photo by default; a trip row's is a little bigger.
+    var inset: CGFloat = 48 + Theme.Spacing.m
+    @Environment(\.displayScale) private var displayScale
+
     var body: some View {
-        Rectangle().fill(Roam.ink.opacity(0.1)).frame(height: 0.5).padding(.leading, 48 + Theme.Spacing.m)
+        Rectangle().fill(Color(uiColor: .opaqueSeparator)).frame(height: 1 / displayScale).padding(.leading, inset)
             .accessibilityHidden(true)
     }
 }
@@ -392,7 +397,7 @@ struct TripsTimelineSection: View {
             VStack(spacing: 0) {
                 ForEach(trips) { trip in
                     TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                    if trip.id != trips.last?.id { Divider() }
+                    if trip.id != trips.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
                 }
             }
             .roamCard(padding: Theme.Spacing.m)
@@ -542,7 +547,7 @@ struct HomeCityView: View {
                 VStack(spacing: 0) {
                     ForEach(items) { item in
                         PlaceRow(item: item, score: scores[item.id]) { router.push(.experience(item.id)) }
-                        if item.id != items.last?.id { Divider() }
+                        if item.id != items.last?.id { RowSeparator() }
                     }
                 }
                 .roamCard(padding: Theme.Spacing.m)
@@ -670,7 +675,7 @@ struct WishlistCountryView: View {
                         VStack(spacing: 0) {
                             ForEach(trips) { trip in
                                 TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                                if trip.id != trips.last?.id { Divider() }
+                                if trip.id != trips.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
                             }
                         }
                         .roamCard(padding: Theme.Spacing.m)
@@ -982,7 +987,7 @@ struct PassportCityView: View {
                                 PlaceRow(item: PlaceMapItem(experience: entry.experience, state: .visited), score: entry.ownerScore) {
                                     router.push(.experience(entry.id))
                                 }
-                                if entry.id != items.last?.id { Divider() }
+                                if entry.id != items.last?.id { RowSeparator() }
                             }
                         }
                         .roamCard(padding: Theme.Spacing.m)

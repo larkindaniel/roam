@@ -348,7 +348,7 @@ struct CountryPageView: View {
         VStack(spacing: 0) {
             ForEach(list) { trip in
                 TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                if trip.id != list.last?.id { Divider() }
+                if trip.id != list.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
             }
         }
         .roamCard(padding: Theme.Spacing.m)
