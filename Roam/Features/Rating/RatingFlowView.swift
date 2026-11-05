@@ -116,15 +116,33 @@ struct RatingFlowView: View {
             .padding(Theme.Spacing.l)
         }
         .accessibilityIdentifier("rating-scroll")
-        // Save sits at the bottom of the screen while you fill things in.
-        .safeAreaInset(edge: .bottom) {
+        // Save sits where the other bottom buttons do: the tab bar's width and height, the same low gap from the bottom of
+        // the screen, with room left above it for the content.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.step == .details { Color.clear.frame(height: RoamTabBar.reservedHeight) }
+        }
+        .overlay {
             if model.step == .details {
-                Button("Save") { Task { await model.okay() } }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(model.photos?.canCommit == false || model.category == nil)
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.vertical, Theme.Spacing.s)
+                let canSave = model.photos?.canCommit != false && model.category != nil
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Button { Task { await model.okay() } } label: {
+                        Text("Save")
+                            .font(.headline)
+                            .foregroundStyle(Roam.onInk)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: RoamTabBar.height)
+                            .background(Capsule().fill(Roam.ink))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(canSave ? 1 : 0.35)
+                    .disabled(!canSave)
+                    .padding(.horizontal, RoamTabBar.sideMargin)
+                    .padding(.bottom, RoamTabBar.margin + 6)
                     .accessibilityIdentifier("rating-okay")
+                }
+                .ignoresSafeArea(edges: .bottom)
             }
         }
         .roamHaptic(.selection, trigger: model.comparison?.id)
@@ -152,21 +170,18 @@ struct RatingFlowView: View {
         }
     }
 
-    private func detailRow(_ title: String, symbol: String, value: String, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Theme.Spacing.m) {
-                Image(systemName: symbol).frame(width: 24).accessibilityHidden(true)
-                Text(title)
-                Spacer(minLength: Theme.Spacing.m)
-                Text(value).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+    /// One bubble's contents: an icon, its value, and optionally a hint it opens something.
+    private func bubbleLabel(symbol: String, text: String, trailing: String? = nil) -> some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: symbol).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            Text(text).foregroundStyle(Roam.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            if let trailing {
+                Image(systemName: trailing).font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             }
-            .foregroundStyle(Roam.ink)
-            .frame(minHeight: Theme.minimumHitTarget)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier)
+        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget - 12, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private func pickerRow<Control: View>(_ title: String, symbol: String, @ViewBuilder control: () -> Control) -> some View {
@@ -218,38 +233,51 @@ struct RatingFlowView: View {
                     model.setFeeling(picked)
                 }
             }
-            VStack(spacing: 0) {
-                if !model.categoryLocked {
-                    pickerRow("Category", symbol: model.category?.symbolName ?? "square.grid.2x2") {
-                        Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
-                            Text("Choose").tag(ExperienceCategory?.none)
-                            ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
-                        }
-                        .labelsHidden()
-                        .accessibilityIdentifier("rating-details-category")
+            // The category, when it isn't known yet, as its own bubble.
+            if !model.categoryLocked {
+                pickerRow("Category", symbol: model.category?.symbolName ?? "square.grid.2x2") {
+                    Picker("Category", selection: Binding(get: { model.category }, set: { if let category = $0 { model.selectCategory(category) } })) {
+                        Text("Choose").tag(ExperienceCategory?.none)
+                        ForEach(ExperienceCategory.allCases) { Text($0.title).tag(Optional($0)) }
                     }
-                    Divider()
+                    .labelsHidden()
+                    .accessibilityIdentifier("rating-details-category")
                 }
-                // Date, then which trip it was part of, then photos; the note is its own box below.
-                detailRow("Date", symbol: "calendar", value: model.visit.date?.displayString ?? "Unknown", identifier: "rating-edit-date") { showsDate = true }
+                .roamCard(padding: Theme.Spacing.m)
+            }
+            // Three rows: the date beside which trip it was part of, then photos across the width, then the note.
+            HStack(spacing: Theme.Spacing.m) {
+                Button { showsDate = true } label: {
+                    bubbleLabel(symbol: "calendar", text: model.visit.date?.displayString ?? "Date")
+                }
+                .buttonStyle(.plain)
+                .roamCard(padding: Theme.Spacing.m)
+                .accessibilityIdentifier("rating-edit-date")
                 if request.mode != .rerank {
-                    Divider()
-                    pickerRow("Part of", symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane") {
+                    Menu {
                         Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
                             Text(home.map { "Home · \($0.name)" } ?? "No trip").tag(UUID?.none)
                             ForEach(trips) { Text($0.name).tag(Optional($0.id)) }
                         }
-                        .labelsHidden()
-                        .accessibilityIdentifier("rating-part-of")
+                    } label: {
+                        bubbleLabel(symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane",
+                                    text: trips.first { $0.id == model.visit.tripID }?.name ?? home.map { "Home · \($0.name)" } ?? "No trip",
+                                    trailing: "chevron.up.chevron.down")
                     }
+                    .roamCard(padding: Theme.Spacing.m)
+                    .accessibilityIdentifier("rating-part-of")
                     .task(id: request.experience.id) { await loadPlacement(model) }
                 }
-                if let photos = model.photos {
-                    Divider()
-                    detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
-                }
             }
-            .roamCard(padding: Theme.Spacing.m)
+            if let photos = model.photos {
+                Button { showsPhotos = true } label: {
+                    bubbleLabel(symbol: "photo.on.rectangle", text: photos.assets.isEmpty ? "Add photos" : "\(photos.assets.count) \(photos.assets.count == 1 ? "photo" : "photos")",
+                                trailing: "chevron.right")
+                }
+                .buttonStyle(.plain)
+                .roamCard(padding: Theme.Spacing.m)
+                .accessibilityIdentifier("rating-edit-photos")
+            }
             // The note, typed right here in a roomy box of its own.
             TextField("Add a note", text: Binding(get: { model.visit.publicNote },
                                                   set: { _ = model.updateDetails(note: $0, date: model.visit.date) }),
@@ -403,6 +431,15 @@ struct FeelingSlider: View {
 
     private let stops: [Sentiment] = [.disliked, .fine, .liked]
 
+    /// Didn't like red, Neutral yellow, Liked it green.
+    private func tint(_ feeling: Sentiment) -> Color {
+        switch feeling {
+        case .disliked: return .red
+        case .fine: return PlaceState.wishlist.markerColor
+        case .liked: return PlaceState.visited.markerColor
+        }
+    }
+
     private func label(_ feeling: Sentiment) -> String {
         switch feeling {
         case .disliked: return "Didn't like"
@@ -421,7 +458,7 @@ struct FeelingSlider: View {
                 if let selection, let index = stops.firstIndex(of: selection) {
                     // Right up to the track's edge.
                     Color.clear
-                        .floatingBubble(Capsule(), tint: Theme.color(for: selection).opacity(0.15))
+                        .floatingBubble(Capsule(), tint: tint(selection).opacity(0.18))
                         .frame(width: segment)
                         .offset(x: segment * CGFloat(index))
                         .animation(.snappy(duration: 0.25), value: selection)
@@ -433,7 +470,7 @@ struct FeelingSlider: View {
                             Image(systemName: feeling.symbolName).font(.footnote)
                             Text(label(feeling)).font(.footnote.weight(.semibold))
                         }
-                        .foregroundStyle(selection == feeling ? Theme.color(for: feeling) : Roam.inkMuted)
+                        .foregroundStyle(selection == feeling ? tint(feeling) : Roam.inkMuted)
                         .frame(width: segment)
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(.isButton)
