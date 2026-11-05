@@ -342,9 +342,8 @@ struct TripEditorSheet: View {
                             .accessibilityIdentifier("trip-name")
                         TextField("Description (optional)", text: $draft.description, axis: .vertical)
                             .textInputAutocapitalization(.never)
-                    }
-                    // Both required, on one row: Start → End, each opening a calendar; the end never before the start.
-                    Section("Dates") {
+                        // Both dates needed, on one row under the name: Start → End, each opening a calendar; the end
+                        // never before the start.
                         HStack(spacing: Theme.Spacing.s) {
                             dateButton("Start", date: $start, from: nil)
                             Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
@@ -352,8 +351,8 @@ struct TripEditorSheet: View {
                             dateButton("End", date: $end, from: start)
                         }
                         .frame(maxWidth: .infinity)
+                        .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
                     }
-                    .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
