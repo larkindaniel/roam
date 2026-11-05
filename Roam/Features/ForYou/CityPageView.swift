@@ -347,7 +347,7 @@ struct CityPageView: View {
         VStack(spacing: 0) {
             ForEach(items) { item in
                 PlaceRow(item: item) { fly(to: item.experience) }
-                if item.id != items.last?.id { Divider() }
+                if item.id != items.last?.id { RowSeparator() }
             }
         }
         .roamCard(padding: Theme.Spacing.m)

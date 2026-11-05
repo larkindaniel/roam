@@ -25,8 +25,6 @@ struct CountryPageView: View {
     @State private var confirmingBeen = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
     @State private var scrolledPastTitle = false
-    /// Sections folded away, by title.
-    @State private var collapsed: Set<String> = []
     @State private var planningNewTrip = false
     @State private var explainingSaved = false
 
@@ -283,68 +281,9 @@ struct CountryPageView: View {
             if !pastTrips.isEmpty {
                 section("Past trips") { tripList(pastTrips, model: model) }
             }
-            if !wishlistCities.isEmpty || !wishlistPlaces.isEmpty || !wishlistRegions.isEmpty {
-                section("Your wishlist") {
-                    if !wishlistRegions.isEmpty {
-                        VStack(spacing: 0) {
-                            ForEach(wishlistRegions) { saved in
-                                Button { if let area = saved.destination { router.push(.region(area)) } } label: {
-                                    HStack(spacing: Theme.Spacing.m) {
-                                        Image(systemName: "map").foregroundStyle(PlaceState.wishlist.markerColor).frame(width: 24)
-                                            .accessibilityHidden(true)
-                                        Text(saved.name).font(.headline).foregroundStyle(Roam.ink)
-                                        Spacer(minLength: 0)
-                                        if saved.destination != nil {
-                                            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkFaint)
-                                        }
-                                    }
-                                    .frame(minHeight: Theme.minimumHitTarget)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("country-saved-region-\(saved.region)")
-                                if saved.id != wishlistRegions.last?.id { Divider() }
-                            }
-                        }
-                        .roamCard(padding: Theme.Spacing.m)
-                    }
-                    // One level down: the cities you want to go to here, each a row (saved whole, or where you've
-                    // saved places); a saved place with no town stays a place.
-                    let rows = wishlistCityRows
-                    let loose = wishlistPlaces.filter { ($0.experience.locality ?? "").isEmpty }
-                    if !rows.isEmpty || !loose.isEmpty {
-                        VStack(spacing: 0) {
-                            ForEach(rows, id: \.city.id) { row in
-                                CityRow(city: row.city, state: .wishlist,
-                                        subtitle: row.places == 0 ? "Saved" : (row.places == 1 ? "1 place saved" : "\(row.places) places saved")) {
-                                    router.push(.city(row.city))
-                                }
-                                if row.city.id != rows.last?.city.id || !loose.isEmpty { Divider() }
-                            }
-                            ForEach(loose) { item in
-                                PlaceRow(item: item) { router.push(.experience(item.id)) }
-                                if item.id != loose.last?.id { Divider() }
-                            }
-                        }
-                        .roamCard(padding: Theme.Spacing.m)
-                    }
-                }
-            }
-            // Homes have their own link at the top, so they aren't repeated here.
-            if case let cities = beenCities.filter({ !$0.isHome }), !cities.isEmpty {
-                section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
-                    VStack(spacing: 0) {
-                        ForEach(cities) { city in
-                            CityRow(city: city.city, state: .visited,
-                                    subtitle: city.placeCount == 0 ? "Been" : (city.placeCount == 1 ? "1 place" : "\(city.placeCount) places")) {
-                                router.push(.city(city.city))
-                            }
-                            if city.id != cities.last?.id { Divider() }
-                        }
-                    }
-                    .roamCard(padding: Theme.Spacing.m)
-                }
-            }
+            // No titles: the marks on the rows say which is which. Where you want to go, then where you've been.
+            wishlistCard
+            beenCard
         } else {
             SkeletonList(rows: 3)
         }
@@ -357,7 +296,7 @@ struct CountryPageView: View {
             // A level down from a country or state: cities, not places.
             let cities = DiscoverCity.cities(from: recommended)
             if !cities.isEmpty {
-                section("Cities we think you'd enjoy") {
+                section("Places we think you'd enjoy") {
                     LazyVStack(spacing: Theme.Spacing.l) {
                         ForEach(cities) { city in
                             Button { router.push(.city(city.destination)) } label: {
@@ -423,28 +362,74 @@ struct CountryPageView: View {
         .accessibilityIdentifier("country-city-\(city.name)")
     }
 
-    /// A section whose title, with a chevron, folds it away and back, as on a city.
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        let isCollapsed = collapsed.contains(title)
-        return VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            Button {
-                withAnimation(.snappy(duration: 0.25)) {
-                    if isCollapsed { collapsed.remove(title) } else { collapsed.insert(title) }
-                }
-            } label: {
-                HStack {
-                    Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
-                    Spacer(minLength: Theme.Spacing.s)
-                    Image(systemName: "chevron.down").font(.headline).foregroundStyle(Roam.inkMuted)
-                        .rotationEffect(.degrees(isCollapsed ? -90 : 0))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityHint(isCollapsed ? "Shows the list" : "Hides the list")
-            if !isCollapsed { content() }
+        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+            content()
         }
+    }
+
+    /// The cities you've been to here, as rows (homes have their own link at the top).
+    @ViewBuilder private var beenCard: some View {
+        let cities = beenCities.filter { !$0.isHome }
+        if !cities.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(cities) { city in
+                    CityRow(city: city.city, state: .visited,
+                            subtitle: city.placeCount == 0 ? "Been" : (city.placeCount == 1 ? "1 place" : "\(city.placeCount) places")) {
+                        router.push(.city(city.city))
+                    }
+                    if city.id != cities.last?.id { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+        }
+    }
+
+    /// Where you want to go here, one level down: states you've saved (on a country), then cities saved whole or where
+    /// you've saved places; a saved place with no town stays a place.
+    @ViewBuilder private var wishlistCard: some View {
+        let rows = wishlistCityRows
+        let loose = wishlistPlaces.filter { ($0.experience.locality ?? "").isEmpty }
+        let total = wishlistRegions.count + rows.count + loose.count
+        if total > 0 {
+            VStack(spacing: 0) {
+                ForEach(Array(wishlistRegions.enumerated()), id: \.element.id) { index, saved in
+                    regionRow(saved)
+                    if index < total - 1 { RowSeparator() }
+                }
+                ForEach(Array(rows.enumerated()), id: \.element.city.id) { index, row in
+                    CityRow(city: row.city, state: .wishlist,
+                            subtitle: row.places == 0 ? "Saved" : (row.places == 1 ? "1 place saved" : "\(row.places) places saved")) {
+                        router.push(.city(row.city))
+                    }
+                    if wishlistRegions.count + index < total - 1 { RowSeparator() }
+                }
+                ForEach(Array(loose.enumerated()), id: \.element.id) { index, item in
+                    PlaceRow(item: item) { router.push(.experience(item.id)) }
+                    if wishlistRegions.count + rows.count + index < total - 1 { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+        }
+    }
+
+    private func regionRow(_ saved: SavedRegion) -> some View {
+        Button { if let area = saved.destination { router.push(.region(area)) } } label: {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: "map").foregroundStyle(PlaceState.wishlist.markerColor).frame(width: 48)
+                    .accessibilityHidden(true)
+                Text(saved.name).font(.headline).foregroundStyle(Roam.ink)
+                Spacer(minLength: 0)
+                if saved.destination != nil {
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                }
+            }
+            .padding(.vertical, Theme.Spacing.s)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("country-saved-region-\(saved.region)")
     }
 
     // MARK: Loading

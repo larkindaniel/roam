@@ -152,6 +152,14 @@ struct PlaceRow: View {
     }
 }
 
+/// The line between rows in a card: one hairline in one colour, starting after the row's photo.
+struct RowSeparator: View {
+    var body: some View {
+        Rectangle().fill(Roam.ink.opacity(0.1)).frame(height: 0.5).padding(.leading, 48 + Theme.Spacing.m)
+            .accessibilityHidden(true)
+    }
+}
+
 /// A city as one row, like a place's: its photo square with a been (green) or saved (yellow) mark, its name and a line.
 struct CityRow: View {
     let city: Destination
