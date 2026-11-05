@@ -15,6 +15,7 @@ struct DestinationPickerSheet: View {
     @State private var results: LoadPhase<[Destination]> = .idle
     @State private var locationMessage: String?
     @State private var locating = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -71,20 +72,36 @@ struct DestinationPickerSheet: View {
             }
             .listRowBackground(Roam.paperRaised)
             }
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "City or town")
-            // Type as you like: no capitalising or correcting.
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .navigationTitle(title ?? (purpose == .homeCity ? "Home city" : "Choose destination"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // A round × at the top right, like the search bar's when it's in focus.
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Close")
-                        .accessibilityIdentifier("close-destination-picker")
+            // Just a search bar with an × beside it that closes the sheet; no title bar.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: Theme.Spacing.s) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                        TextField(title ?? "City or town", text: $query)
+                            .focused($searchFocused)
+                            .submitLabel(.search)
+                            // Type as you like: no capitalising or correcting.
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("destination-search")
+                    }
+                    .padding(.horizontal, Theme.Spacing.m)
+                    .frame(height: 44)
+                    .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .floatingBubble(Circle())
+                    .accessibilityLabel("Close")
+                    .accessibilityIdentifier("close-destination-picker")
                 }
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.l)
+                .padding(.bottom, Theme.Spacing.s)
             }
+            .toolbar(.hidden, for: .navigationBar)
+            .onAppear { searchFocused = true }
             .task(id: query) {
                 // 300 ms debounce; a newer query cancels this task, so stale results never land.
                 let current = query

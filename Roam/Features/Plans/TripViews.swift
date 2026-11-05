@@ -347,7 +347,6 @@ struct TripEditorSheet: View {
             .sheet(isPresented: $pickingCity) {
                 DestinationPickerSheet(purpose: .homeCity, title: "Add a city") { city in
                     if !cities.contains(city) { cities.append(city) }
-                    if draft.name.isEmpty { draft.name = city.name }
                 }
             }
             .onAppear {

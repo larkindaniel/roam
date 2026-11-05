@@ -124,7 +124,7 @@ struct CityPageView: View {
             CityVisitDatesSheet(city: destination) { markedVisited = true; library.noteChanged() }
         }
         .sheet(isPresented: $planningNewTrip) {
-            TripEditorSheet(draft: TripDraft(name: destination.name), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
+            TripEditorSheet(draft: TripDraft(), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
                 .presentationBackground(Roam.paper)
         }
         .screenIdentifier("city-page")
