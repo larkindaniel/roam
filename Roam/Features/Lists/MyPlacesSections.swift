@@ -124,6 +124,8 @@ struct PlaceBreakdown: View {
 struct PlaceRow: View {
     let item: PlaceMapItem
     var score: Score?
+    /// The category line under the name; off where rows are just names (a city's wishlist and been lists).
+    var showsDetail = true
     var action: () -> Void
 
     var body: some View {
@@ -136,7 +138,9 @@ struct PlaceRow: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
-                    Text(item.experience.category?.title ?? item.state.markerTitle).font(.footnote).foregroundStyle(Roam.inkMuted)
+                    if showsDetail {
+                        Text(item.experience.category?.title ?? item.state.markerTitle).font(.footnote).foregroundStyle(Roam.inkMuted)
+                    }
                 }
                 Spacer(minLength: 0)
                 if Score.isShown, let score {

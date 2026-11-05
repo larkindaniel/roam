@@ -47,11 +47,8 @@ struct CityPageView: View {
     @State private var openPlace: UUID?
     /// What the city's map is showing now, for opening a place on the same view.
     @State private var cityViewRegion: MKCoordinateRegion?
-    @State private var spotsCollapsed = false
     /// Places you've saved in this city (yours, or the friend's whose passport you're in).
     @State private var wishlist: [ListEntry] = []
-    @State private var suggestionsCollapsed = false
-    @State private var wishlistCollapsed = false
     @State private var explainingSaved = false
 
     /// The view and card height a city opened from another city's map keeps.
@@ -346,7 +343,7 @@ struct CityPageView: View {
     private func placeRows(_ items: [PlaceMapItem]) -> some View {
         VStack(spacing: 0) {
             ForEach(items) { item in
-                PlaceRow(item: item) { fly(to: item.experience) }
+                PlaceRow(item: item, showsDetail: false) { fly(to: item.experience) }
                 if item.id != items.last?.id { RowSeparator() }
             }
         }
@@ -357,20 +354,11 @@ struct CityPageView: View {
         CityPhoto(destination: destination)
         CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                       coordinate: destination.coordinate, showsPhoto: false)
-        // One level down, as rows like a place's: what you want to do here, then where you've been.
+        // One level down, as on a country's page: what you want to do here, then where you've been. No titles: the marks
+        // on the rows say which is which.
         let saved = wishlist.filter { item in !spots.contains { $0.id == item.id } }
-        if !saved.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                collapsibleTitle(isOwn ? "Your wishlist" : "Their wishlist", collapsed: $wishlistCollapsed)
-                if !wishlistCollapsed { placeRows(saved.map { PlaceMapItem(experience: $0.experience, state: .wishlist) }) }
-            }
-        }
-        if !spots.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                collapsibleTitle(isOwn ? "Places you've been" : "Places they've been", collapsed: $spotsCollapsed)
-                if !spotsCollapsed { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
-            }
-        }
+        if !saved.isEmpty { placeRows(saved.map { PlaceMapItem(experience: $0.experience, state: .wishlist) }) }
+        if !spots.isEmpty { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
         switch model?.phase ?? .loading {
         case .idle, .loading:
             SkeletonList(rows: 3)
@@ -379,16 +367,16 @@ struct CityPageView: View {
         case .loaded:
             if !recommended.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    collapsibleTitle("Places we think you'd enjoy", collapsed: $suggestionsCollapsed)
+                    sectionTitle("Places we think you'd enjoy")
                     // Lazy, so only the cards on screen build their maps.
-                    if !suggestionsCollapsed { LazyVStack(spacing: Theme.Spacing.l) {
+                    LazyVStack(spacing: Theme.Spacing.l) {
                         ForEach(recommended) { place in
                             DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
                                               score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
                                 fly(to: place.experience)
                             }
                         }
-                    } }
+                    }
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("discover-places")
@@ -482,24 +470,6 @@ struct CityPageView: View {
         guard let owner, let been = try? await services.lists.been(ownerID: owner) else { return [] }
         return been.filter { CityMatch.same($0.experience, destination) }
             .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
-    }
-
-    /// A section heading with a chevron that folds the list away and back.
-    private func collapsibleTitle(_ title: String, collapsed: Binding<Bool>) -> some View {
-        Button {
-            withAnimation(.snappy(duration: 0.25)) { collapsed.wrappedValue.toggle() }
-        } label: {
-            HStack {
-                Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
-                Spacer(minLength: Theme.Spacing.s)
-                Image(systemName: "chevron.down").font(.headline).foregroundStyle(Roam.inkMuted)
-                    .rotationEffect(.degrees(collapsed.wrappedValue ? -90 : 0))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityHint(collapsed.wrappedValue ? "Shows the list" : "Hides the list")
     }
 
     private func sectionTitle(_ title: String) -> some View {
