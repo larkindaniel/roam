@@ -51,6 +51,7 @@ struct CityPageView: View {
     /// Places you've saved in this city (yours, or the friend's whose passport you're in).
     @State private var wishlist: [ListEntry] = []
     @State private var suggestionsCollapsed = false
+    @State private var wishlistCollapsed = false
     @State private var explainingSaved = false
 
     /// The view and card height a city opened from another city's map keeps.
@@ -343,18 +344,32 @@ struct CityPageView: View {
 
     // MARK: City
 
+    private func placeRows(_ items: [PlaceMapItem]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(items) { item in
+                PlaceRow(item: item) { fly(to: item.experience) }
+                if item.id != items.last?.id { Divider() }
+            }
+        }
+        .roamCard(padding: Theme.Spacing.m)
+    }
+
     @ViewBuilder private var cityInfo: some View {
         CityPhoto(destination: destination)
         CityGuideCard(name: destination.name, region: destination.region, country: destination.countryName,
                       coordinate: destination.coordinate, showsPhoto: false)
+        // One level down, as rows like a place's: what you want to do here, then where you've been.
+        let saved = wishlist.filter { item in !spots.contains { $0.id == item.id } }
+        if !saved.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                collapsibleTitle(isOwn ? "Your wishlist" : "Their wishlist", collapsed: $wishlistCollapsed)
+                if !wishlistCollapsed { placeRows(saved.map { PlaceMapItem(experience: $0.experience, state: .wishlist) }) }
+            }
+        }
         if !spots.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                collapsibleTitle(isOwn ? "Your spots" : "Their spots", collapsed: $spotsCollapsed)
-                if !spotsCollapsed { LazyVStack(spacing: Theme.Spacing.l) {
-                    ForEach(spots) { entry in
-                        DiscoverPlaceCard(experience: entry.experience, score: entry.ownerScore) { fly(to: entry.experience) }
-                    }
-                } }
+                collapsibleTitle(isOwn ? "Places you've been" : "Places they've been", collapsed: $spotsCollapsed)
+                if !spotsCollapsed { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
             }
         }
         switch model?.phase ?? .loading {

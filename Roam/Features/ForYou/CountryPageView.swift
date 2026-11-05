@@ -77,6 +77,24 @@ struct CountryPageView: View {
     }
     private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter(isHere) }
     private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
+    /// The cities on your wishlist here: saved whole, or where you've saved places, with how many places.
+    private var wishlistCityRows: [(city: Destination, places: Int)] {
+        var rows: [(city: Destination, places: Int)] = wishlistCities.map { city in
+            (city, wishlistPlaces.filter { CityMatch.same($0.experience, city) }.count)
+        }
+        let byTown = Dictionary(grouping: wishlistPlaces.filter { !($0.experience.locality ?? "").isEmpty }) {
+            GeographyKey.normalize($0.experience.locality ?? "")
+        }
+        for (_, items) in byTown.sorted(by: { $0.key < $1.key }) {
+            guard let first = items.first?.experience, !rows.contains(where: { CityMatch.same(first, $0.city) }) else { continue }
+            let latitude = items.map(\.experience.latitude).reduce(0, +) / Double(items.count)
+            let longitude = items.map(\.experience.longitude).reduce(0, +) / Double(items.count)
+            rows.append((Destination(name: first.locality ?? "", region: first.region, countryCode: first.countryCode,
+                                     countryName: first.countryName, latitude: latitude, longitude: longitude, radiusMeters: 12_000), items.count))
+        }
+        return rows
+    }
+
     /// States you've saved in this country (on a country's page only).
     private var wishlistRegions: [SavedRegion] {
         region == nil ? (model?.savedRegions ?? []).filter { $0.countryCode.uppercased() == code } : []
@@ -290,12 +308,22 @@ struct CountryPageView: View {
                         }
                         .roamCard(padding: Theme.Spacing.m)
                     }
-                    ForEach(wishlistCities) { city in cityCard(city, isHome: false) }
-                    if !wishlistPlaces.isEmpty {
+                    // One level down: the cities you want to go to here, each a row (saved whole, or where you've
+                    // saved places); a saved place with no town stays a place.
+                    let rows = wishlistCityRows
+                    let loose = wishlistPlaces.filter { ($0.experience.locality ?? "").isEmpty }
+                    if !rows.isEmpty || !loose.isEmpty {
                         VStack(spacing: 0) {
-                            ForEach(wishlistPlaces) { item in
+                            ForEach(rows, id: \.city.id) { row in
+                                CityRow(city: row.city, state: .wishlist,
+                                        subtitle: row.places == 0 ? "Saved" : (row.places == 1 ? "1 place saved" : "\(row.places) places saved")) {
+                                    router.push(.city(row.city))
+                                }
+                                if row.city.id != rows.last?.city.id || !loose.isEmpty { Divider() }
+                            }
+                            ForEach(loose) { item in
                                 PlaceRow(item: item) { router.push(.experience(item.id)) }
-                                if item.id != wishlistPlaces.last?.id { Divider() }
+                                if item.id != loose.last?.id { Divider() }
                             }
                         }
                         .roamCard(padding: Theme.Spacing.m)
@@ -305,7 +333,16 @@ struct CountryPageView: View {
             // Homes have their own link at the top, so they aren't repeated here.
             if case let cities = beenCities.filter({ !$0.isHome }), !cities.isEmpty {
                 section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
-                    ForEach(cities) { city in cityCard(city.city, isHome: false) }
+                    VStack(spacing: 0) {
+                        ForEach(cities) { city in
+                            CityRow(city: city.city, state: .visited,
+                                    subtitle: city.placeCount == 0 ? "Been" : (city.placeCount == 1 ? "1 place" : "\(city.placeCount) places")) {
+                                router.push(.city(city.city))
+                            }
+                            if city.id != cities.last?.id { Divider() }
+                        }
+                    }
+                    .roamCard(padding: Theme.Spacing.m)
                 }
             }
         } else {
@@ -317,19 +354,29 @@ struct CountryPageView: View {
         case .failed(let message):
             InlineRetryView(message: message) { Task { await suggestions?.load(destination) } }
         case .loaded:
-            if !recommended.isEmpty {
-                section("Places we think you'd enjoy") {
+            // A level down from a country or state: cities, not places.
+            let cities = DiscoverCity.cities(from: recommended)
+            if !cities.isEmpty {
+                section("Cities we think you'd enjoy") {
                     LazyVStack(spacing: Theme.Spacing.l) {
-                        ForEach(recommended) { place in
-                            DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
-                                              score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
-                                router.push(.experience(place.id))
+                        ForEach(cities) { city in
+                            Button { router.push(.city(city.destination)) } label: {
+                                CityHeroCard(city: city.destination, subtitle: suggestionLine(city))
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("country-suggested-\(city.destination.name)")
                         }
                     }
                 }
             }
         }
+    }
+
+    /// "Dhyan has been", or where it is when no friend has.
+    private func suggestionLine(_ city: DiscoverCity) -> String {
+        let names = city.friendNames.compactMap { $0.split(separator: " ").first.map(String.init) }
+        guard let first = names.first else { return city.destination.region ?? "" }
+        return names.count == 1 ? "\(first) has been" : (names.count == 2 ? "\(first) and \(names[1]) have been" : "\(first) and \(names.count - 1) others have been")
     }
 
     /// Your home here first, as a plain link to its page.

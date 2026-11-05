@@ -152,6 +152,41 @@ struct PlaceRow: View {
     }
 }
 
+/// A city as one row, like a place's: its photo square with a been (green) or saved (yellow) mark, its name and a line.
+struct CityRow: View {
+    let city: Destination
+    let state: PlaceState
+    var subtitle = ""
+    var action: () -> Void
+
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.m) {
+                ZStack(alignment: .bottomTrailing) {
+                    PlaceThumbnail(id: "city-\(city.id)", url: photo?.url, coordinate: city.coordinate, symbol: "signpost.right.and.left", size: 48)
+                    StatusMark(state: state).scaleEffect(0.75).offset(x: 6, y: 6)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(city.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                    if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted) }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
+            .padding(.vertical, Theme.Spacing.s)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("city-row-\(city.name)")
+        .task(id: city.id) {
+            photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
+        }
+    }
+}
+
 // MARK: - Timeline
 
 /// One stop on your travel timeline: a trip, or visits away from home that weren't logged to a trip,
