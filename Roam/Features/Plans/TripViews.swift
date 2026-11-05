@@ -271,13 +271,13 @@ struct TripDetailView: View {
         }
     }
 
-    /// One country on a trip to several: its photo big at the top (opening its page), then its cities as rows with the
-    /// trip mark, all one card.
+    /// One country on a trip to several: a white card holding the country's photo as its own rounded picture (opening
+    /// its page), then its cities as rows with the trip mark.
     private func countryGroup(_ code: String, cities: [Destination]) -> some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Theme.Spacing.s) {
             Button { router.push(.country(code)) } label: {
                 CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code),
-                                 subtitle: cities.isEmpty ? "Pick cities and places as you go" : "", cornerRadius: 0)
+                                 subtitle: cities.isEmpty ? "Pick cities and places as you go" : "")
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("trip-country-\(code)")
@@ -288,13 +288,9 @@ struct TripDetailView: View {
                         if city.id != cities.last?.id { RowSeparator() }
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.m)
-                .padding(.vertical, Theme.Spacing.xs)
             }
         }
-        .background(Roam.paperRaised)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-        .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
+        .roamCard(padding: Theme.Spacing.m)
     }
 
     private func draft(_ summary: TripSummary) -> TripDraft {
