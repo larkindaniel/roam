@@ -316,6 +316,8 @@ struct TripEditorSheet: View {
     @State private var error: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
+    /// Which date's calendar is open ("Start" or "End").
+    @State private var pickingDate: String?
     /// What the sheet opened with, to tell whether closing loses anything.
     @State private var opened: (name: String, description: String, start: Date?, end: Date?, cities: [Destination], countries: [String])?
 
@@ -423,19 +425,30 @@ struct TripEditorSheet: View {
         .accessibilityIdentifier("trip-editor-add-city")
     }
 
-    /// A date row that starts empty: "Add" until it's picked, then the standard date picker.
-    @ViewBuilder private func dateRow(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
-        if let value = date.wrappedValue {
-            DatePicker(title, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
-                       in: (minimum ?? .distantPast)..., displayedComponents: .date)
-                .accessibilityIdentifier("trip-\(title.lowercased())")
-        } else {
-            HStack {
-                Text(title)
-                Spacer()
-                Button("Add") { date.wrappedValue = minimum ?? Calendar.current.startOfDay(for: Date()) }
-                    .accessibilityLabel("Add \(title.lowercased()) date")
-                    .accessibilityIdentifier("trip-\(title.lowercased())")
+    /// A date row: "Select" (or the date once picked) opens a calendar; nothing is set until you pick a day.
+    private func dateRow(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Button { pickingDate = title } label: {
+                Text(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Select")
+                    .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                    .background(Capsule().fill(Roam.fill))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
+            .accessibilityIdentifier("trip-\(title.lowercased())")
+            .popover(isPresented: Binding(get: { pickingDate == title }, set: { if !$0 { pickingDate = nil } })) {
+                DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
+                                                     set: { date.wrappedValue = $0; pickingDate = nil }),
+                           in: (minimum ?? .distantPast)..., displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding()
+                    .frame(width: 340)
+                    .presentationCompactAdaptation(.popover)
             }
         }
     }
