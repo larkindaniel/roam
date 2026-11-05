@@ -257,13 +257,15 @@ struct RatingFlowView: View {
                 .accessibilityIdentifier("rating-edit-date")
                 if request.mode != .rerank {
                     Menu {
+                        // Icons say which is which: a house for home, a plane for each trip.
                         Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
-                            Text(home.map { "Home · \($0.name)" } ?? "No trip").tag(UUID?.none)
-                            ForEach(trips) { Text($0.name).tag(Optional($0.id)) }
+                            if let home { Label(home.name, systemImage: "house").tag(UUID?.none) }
+                            else { Text("No trip").tag(UUID?.none) }
+                            ForEach(trips) { Label($0.name, systemImage: "airplane").tag(Optional($0.id)) }
                         }
                     } label: {
                         bubbleLabel(symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane",
-                                    text: trips.first { $0.id == model.visit.tripID }?.name ?? home.map { "Home · \($0.name)" } ?? "No trip",
+                                    text: trips.first { $0.id == model.visit.tripID }?.name ?? home?.name ?? "No trip",
                                     trailing: "chevron.up.chevron.down")
                     }
                     .roamCard(padding: 0)
