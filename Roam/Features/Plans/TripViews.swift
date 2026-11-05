@@ -103,7 +103,8 @@ struct TripDetailView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .listSectionSpacing(.compact)
+        // A small, even gap between the dates and the first card, and between cards.
+        .listSectionSpacing(Theme.Spacing.m)
         // As the page was: the name close under the top bar, and room at the bottom so the last card clears the tab bar.
         .contentMargins(.top, Theme.Spacing.s, for: .scrollContent)
         .contentMargins(.bottom, Theme.Spacing.xxl + RoamTabBar.reservedHeight, for: .scrollContent)
@@ -121,11 +122,12 @@ struct TripDetailView: View {
             // Add to trip (a blue bubble with words) beside a separate round Delete. The name, description and dates are
             // edited in place, so there's no Edit button.
             if let summary = detail.value?.summary, summary.isOwn {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { addingCity = true } label: { Label("Add to trip", systemImage: "plus").labelStyle(.titleAndIcon) }
-                        .tripBlueBubble()
-                        .accessibilityLabel("Add a city to the trip")
-                        .accessibilityIdentifier("trip-add-city")
+                if #available(iOS 26.0, *) {
+                    // Its own light blue glass, not the bar's shared glass behind it.
+                    ToolbarItem(placement: .topBarTrailing) { addCityBubble }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) { addCityBubble }
                 }
                 if #available(iOS 26.0, *) {
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -176,9 +178,26 @@ struct TripDetailView: View {
     @ViewBuilder private func content(_ value: TripDetail) -> some View {
         Section { header(value) }
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: Theme.Spacing.s, trailing: 4))
+            .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
         // Just the places; no timeline or top picks views.
         places(value)
+    }
+
+    /// Light blue glass with blue words: adds a city to the trip.
+    private var addCityBubble: some View {
+        Button { addingCity = true } label: {
+            Label("Add city", systemImage: "plus")
+                .font(.subheadline.weight(.semibold))
+                .imageScale(.small)
+                .foregroundStyle(PlaceState.planned.markerColor)
+                .padding(.horizontal, 14)
+                .frame(height: 36)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+        .accessibilityLabel("Add a city to the trip")
+        .accessibilityIdentifier("trip-add-city")
     }
 
     /// Takes a city off the trip (one named for it; a city that's there for a place logged on the trip stays).
@@ -743,14 +762,3 @@ extension View {
     }
 }
 
-
-private extension View {
-    /// A blue glass bubble in the top bar (Liquid Glass on iOS 26, a filled button before it).
-    @ViewBuilder func tripBlueBubble() -> some View {
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glassProminent).tint(PlaceState.planned.markerColor)
-        } else {
-            buttonStyle(.borderedProminent).tint(PlaceState.planned.markerColor)
-        }
-    }
-}
