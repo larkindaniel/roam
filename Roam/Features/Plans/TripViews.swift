@@ -173,8 +173,9 @@ struct TripDetailView: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
         // Just the places; no timeline or top picks views.
         places(value)
-        // Add to trip across the bottom, under all the places (the page leaves room for it above the tab bar).
-        if value.summary.isOwn {
+        // Add to trip across the bottom, under all the places (the page leaves room for it above the tab bar). On a trip to
+        // one country it's in the cards' own section, so it's as close as two cards are; across countries, as two countries.
+        if value.summary.isOwn, Self.countryCount(value) > 1 {
             Section { addCityBubble }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -303,6 +304,11 @@ struct TripDetailView: View {
 
     /// The trip's countries and cities, each a photo card (like My Places' and Discover's) that opens its page. No map
     /// and no list of spots: those are on each city's page.
+    /// How many countries the trip goes to: named for it, or where one of its cities is.
+    private static func countryCount(_ value: TripDetail) -> Int {
+        (value.summary.cities.compactMap { $0.countryCode?.uppercased() } + value.summary.countries.map { $0.uppercased() }).uniqued().count
+    }
+
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         let own = value.summary.isOwn
         let cities = value.summary.cities
@@ -357,6 +363,7 @@ struct TripDetailView: View {
                         .font(.subheadline).foregroundStyle(Roam.inkMuted)
                         .accessibilityIdentifier("trip-places-empty")
                 }
+                if own { addCityBubble }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
