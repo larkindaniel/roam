@@ -220,7 +220,7 @@ struct GlobeMapView: UIViewRepresentable {
             context.coordinator.lastFocusToken = focusToken
             if style == .globe, focusRegion == nil {
                 // Back to the starting view of the whole Earth.
-                map.setCamera(MKMapCamera(lookingAtCenter: globeCenter ?? Self.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0),
+                map.setCamera(MKMapCamera(lookingAtCenter: globeCenter ?? Self.startCenter, fromDistance: Self.wholeEarthDistance, pitch: 0, heading: 0),
                               animated: !UIAccessibility.isReduceMotionEnabled)
             } else if style == .globe, let focusRegion {
                 // On the globe a region is shown by flying the camera over it, high enough to take it all in.
@@ -234,6 +234,8 @@ struct GlobeMapView: UIViewRepresentable {
     }
 
     static let startCenter = CLLocationCoordinate2D(latitude: 25, longitude: 10)
+    /// Far enough out to see the whole Earth at once.
+    static let wholeEarthDistance: CLLocationDistance = 45_000_000
 
     /// A region that frames the pins (used by list and Shared Wishlist maps). A phone-sized flat map
     /// cannot zoom out far enough for places on opposite sides of the world, so a spread-out set
@@ -287,7 +289,7 @@ struct GlobeMapView: UIViewRepresentable {
             didApplyInitialCamera = true
             switch parent.style {
             case .globe:
-                map.camera = MKMapCamera(lookingAtCenter: parent.globeCenter ?? GlobeMapView.startCenter, fromDistance: 20_000_000, pitch: 0, heading: 0)
+                map.camera = MKMapCamera(lookingAtCenter: parent.globeCenter ?? GlobeMapView.startCenter, fromDistance: GlobeMapView.wholeEarthDistance, pitch: 0, heading: 0)
             case .standard:
                 if let region = parent.focusRegion { map.setRegion(region, animated: false) }
             }
