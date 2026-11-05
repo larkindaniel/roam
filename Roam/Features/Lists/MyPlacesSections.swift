@@ -1147,31 +1147,41 @@ struct PlacesMapScreen<Content: View>: View {
 struct DateRangeRow: View {
     @Binding var start: Date?
     @Binding var end: Date?
-    /// Colours the pills (green for when you were somewhere) and sizes them like the pill buttons beside them, Set as
-    /// home's size; nil keeps the larger grey pills of a form.
+    /// Colours the pills (green for when you were somewhere) and makes them small chips the size of a city's country
+    /// chip, as wide as their text; nil keeps the larger grey pills of a form, sharing the row's width.
     var tint: Color?
     @State private var picking: String?
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
             button("Start", date: $start, from: nil)
-            Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+            Image(systemName: "arrow.right").font(tint == nil ? .subheadline.weight(.semibold) : .caption.weight(.semibold))
+                .foregroundStyle(Roam.inkMuted)
                 .accessibilityHidden(true)
             button("End", date: $end, from: start)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: tint == nil ? .center : .leading)
         .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
     }
 
     private func button(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
         Button { picking = title } label: {
-            Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
-                .foregroundStyle(tint ?? (date.wrappedValue == nil ? Color.accentColor : Roam.ink))
-                .font(tint == nil ? .body.weight(.medium) : .subheadline.weight(.semibold))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .frame(height: tint == nil ? 42 : 36)
-                .background(Capsule().fill(tint.map { $0.opacity(0.15) } ?? Roam.fill))
+            Group {
+                if tint == nil {
+                    Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
+                        .font(.body.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                } else {
+                    Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                }
+            }
+            .foregroundStyle(tint ?? (date.wrappedValue == nil ? Color.accentColor : Roam.ink))
+            .lineLimit(1)
+            .background(Capsule().fill(tint.map { $0.opacity(0.15) } ?? Roam.fill))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")

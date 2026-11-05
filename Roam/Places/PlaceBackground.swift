@@ -266,19 +266,30 @@ struct CityGuide: Hashable {
         let key = "\(name)|\(region ?? "")|\(country ?? "")"
         if let cached = cache[key] { return cached }
         let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        // "New York" is the state's article, so "New York City" is tried too; failing all of those, the article near the
-        // city whose title is its name ("Waterloo, Ontario").
+        // Somewhere saved without its location can't be checked by distance; then the article's title has to be its name.
+        let located = CLLocationCoordinate2DIsValid(coordinate) && !(coordinate.latitude == 0 && coordinate.longitude == 0)
+        // "New York" is the state's article, so "New York City" is tried too; then the article near the place whose title
+        // is its name ("Waterloo, Ontario"); then what Wikipedia's own search finds for the name and where it is.
         var titles = [name, region.map { "\(name), \($0)" }, country.map { "\(name), \($0)" }, "\(name) City"].compactMap({ $0 })
-        var triedNearby = false
-        while !titles.isEmpty || !triedNearby {
+        var next: [() async -> [String]] = [
+            { located ? await nearbyTitles(named: name, at: coordinate) : [] },
+            { await searchTitles([name, region, country].compactMap { $0 }.joined(separator: " ")) },
+        ]
+        var tried = Set<String>()
+        while true {
             if titles.isEmpty {
-                triedNearby = true
-                titles = await nearbyTitles(named: name, at: coordinate)
+                guard !next.isEmpty else { break }
+                titles = await next.removeFirst()()
                 continue
             }
             let title = titles.removeFirst()
-            guard let summary = await fetch(title), summary.type == "standard", let at = summary.coordinates,
-                  CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < within else { continue }
+            guard tried.insert(title).inserted, let summary = await fetch(title), summary.type == "standard" else { continue }
+            if located {
+                guard let at = summary.coordinates, CLLocation(latitude: at.lat, longitude: at.lon).distance(from: target) < within else { continue }
+            } else {
+                let normalized = GeographyKey.normalize(summary.title)
+                guard normalized == GeographyKey.normalize(name) || normalized.hasPrefix(GeographyKey.normalize(name) + " ") else { continue }
+            }
             // Wikimedia serves any width of a thumbnail by changing the size in its path.
             var photo = summary.thumbnail.flatMap { URL(string: $0.source.absoluteString.replacingOccurrences(of: #"/\d+px-"#, with: "/960px-", options: .regularExpression)) }
             // A city-state's article (Singapore, Hong Kong) leads with its flag; its tourism article usually leads with a
@@ -304,6 +315,17 @@ struct CityGuide: Hashable {
         request.setValue("Roam/1.0 (iOS travel app)", forHTTPHeaderField: "User-Agent")
         guard let (data, _) = try? await URLSession.shared.data(for: request), let geo = try? JSONDecoder().decode(Geo.self, from: data) else { return [] }
         return geo.query.geosearch.map(\.title).filter { $0 == name || $0.hasPrefix("\(name), ") }
+    }
+
+    /// The top few articles Wikipedia's search finds for some words ("Kitchener ON Canada").
+    private static func searchTitles(_ words: String) async -> [String] {
+        struct Found: Decodable { struct Query: Decodable { struct Hit: Decodable { var title: String }; var search: [Hit] }; var query: Query }
+        guard let words = words.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=\(words)&srlimit=5&format=json") else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Roam/1.0 (iOS travel app)", forHTTPHeaderField: "User-Agent")
+        guard let (data, _) = try? await URLSession.shared.data(for: request), let found = try? JSONDecoder().decode(Found.self, from: data) else { return [] }
+        return found.query.search.map(\.title)
     }
 
     /// Flags, coats of arms, maps and drawings aren't photos of a place.

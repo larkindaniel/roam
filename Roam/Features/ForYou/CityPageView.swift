@@ -401,15 +401,14 @@ struct CityPageView: View {
 
     /// When you were there, right under the buttons.
     private var logDates: some View {
-        // Green, as where you've been is, and the size of Set as home.
+        // Green, as where you've been is, and the size of the country chip.
         DateRangeRow(start: $logStart, end: $logEnd, tint: PlaceState.visited.markerColor)
             .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
         // Log ticks straight away; it's saved once both dates are picked or you leave the page.
-        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited || loggingDates,
-                   beenSaved: mySpotCount > 0 || markedVisited, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited || loggingDates, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
@@ -596,8 +595,6 @@ struct CityHeader: View {
     let destination: Destination
     /// You've been: you have spots here (or just marked it).
     var hasBeen = false
-    /// Been and saved, not just ticked while its dates are still being filled in: only then does Wishlist grey out.
-    var beenSaved: Bool?
     /// How many places you've logged here; while there are any, the city stays been.
     var spotCount = 0
     @State private var confirmingUnbeen = false
@@ -689,10 +686,10 @@ struct CityHeader: View {
                     }
                 }
                 // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.
-                let locked = beenSaved ?? beenHere
-                circle(isSaved ? "bookmark.fill" : "bookmark", tint: locked ? Roam.inkFaint : PlaceState.wishlist.markerColor,
-                       filled: isSaved && !locked, caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") {
-                    if !locked { onToggleSaved() }
+                // Once you've been (Log ticked), Wishlist is unticked and greyed out.
+                circle(isSaved && !beenHere ? "bookmark.fill" : "bookmark", tint: beenHere ? Roam.inkFaint : PlaceState.wishlist.markerColor,
+                       filled: isSaved && !beenHere, caption: isSaved && !beenHere ? "Saved" : "Wishlist", identifier: "city-wishlist") {
+                    if !beenHere { onToggleSaved() }
                 }
                 Menu {
                     ForEach(trips ?? []) { trip in Button(trip.name) { onAddToTrip(trip) } }

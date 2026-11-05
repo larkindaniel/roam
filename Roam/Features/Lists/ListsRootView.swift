@@ -267,13 +267,13 @@ struct MyPlacesRootView: View {
         .task(id: query) { await placeSearch.run(query, services: services) }
         // Tapping My Places in the tab bar: back to its home page, the card halfway with its list at the top.
         .onChange(of: router.scrollToTopRequests[.myPlaces]) { _, _ in
-            query = ""; searching = false
+            query = ""; searching = false; tab = .saved
             withAnimation(.smooth(duration: 0.35)) { detent = .half }
         }
         // Leaving the tab puts it back on its home page: no search, the card halfway as it opens.
         .onChange(of: router.selectedTab) { _, tab in
             guard tab != .myPlaces else { return }
-            query = ""; searching = false; detent = .half
+            query = ""; searching = false; detent = .half; self.tab = .saved
         }
         .sheet(item: $sheet) { which in
             switch which {
