@@ -706,7 +706,18 @@ struct ExperienceDetailView: View {
     }
 
     /// The place's city page, found from where the place is.
+    /// Opens the town the chip names, not just whatever town is closest (Besseggen's chip says Vågå, but Tessand is nearer).
     private func openCity(_ place: ExperienceSummary) async {
+        if let town = place.locality, !town.isEmpty {
+            let query = [town, place.region].compactMap { $0 }.joined(separator: ", ")
+            let named = (try? await services.places.searchDestinations(query: query)) ?? []
+            let here = CLLocation(latitude: place.latitude, longitude: place.longitude)
+            func miles(_ city: Destination) -> CLLocationDistance { here.distance(from: CLLocation(latitude: city.latitude, longitude: city.longitude)) }
+            if let city = named.filter({ $0.name.localizedCaseInsensitiveCompare(town) == .orderedSame })
+                .min(by: { miles($0) < miles($1) }) {
+                router.push(.city(city)); return
+            }
+        }
         guard let city = try? await services.places.destination(for: place.coordinate) else { return }
         router.push(.city(city))
     }
