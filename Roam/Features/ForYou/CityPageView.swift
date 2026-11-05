@@ -748,7 +748,7 @@ struct CityPhoto: View {
     }
 }
 
-/// When you were in a city you're marking as been. Both dates are optional.
+/// When you were in a city you're marking as been: Start → End, both needed.
 struct CityVisitDatesSheet: View {
     let city: Destination
     var onSaved: () -> Void
@@ -763,14 +763,8 @@ struct CityVisitDatesSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TripDatesRow(start: $start, end: $end)
-                } header: {
-                    Text("When were you there?")
-                } footer: {
-                    Text("Optional. Dates put \(city.name) in order on your timeline and in friends' feeds.")
-                }
-                .listRowBackground(Roam.paperRaised)
+                Section { DateRangeRow(start: $start, end: $end) }
+                    .floatingFormRow()
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }
             .scrollContentBackground(.hidden)
@@ -778,9 +772,13 @@ struct CityVisitDatesSheet: View {
             .navigationTitle(city.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }.disabled(saving).accessibilityIdentifier("city-dates-save")
+                    Button("Save") { Task { await save() } }
+                        .disabled(saving || start == nil || end == nil)
+                        .accessibilityIdentifier("city-dates-save")
                 }
             }
         }

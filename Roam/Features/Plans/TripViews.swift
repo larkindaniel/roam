@@ -334,8 +334,6 @@ struct TripEditorSheet: View {
     @State private var error: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
-    /// Which date's calendar is open ("Start" or "End").
-    @State private var pickingDate: String?
     /// What the sheet opened with, to tell whether closing loses anything.
     @State private var opened: (name: String, description: String, start: Date?, end: Date?, cities: [Destination], countries: [String])?
 
@@ -363,18 +361,8 @@ struct TripEditorSheet: View {
                     }
                     // Both dates needed, on their own row just under the name card: Start → End, each opening a calendar;
                     // the end never before the start.
-                    Section {
-                        HStack(spacing: Theme.Spacing.s) {
-                            dateButton("Start", date: $start, from: nil)
-                            Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
-                                .accessibilityHidden(true)
-                            dateButton("End", date: $end, from: start)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                    Section { DateRangeRow(start: $start, end: $end) }
+                        .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
@@ -435,35 +423,6 @@ struct TripEditorSheet: View {
         .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-    }
-
-    /// "Start" or "End" (or the date once picked) with a calendar icon; it opens a calendar, and nothing is set until you
-    /// pick a day.
-    private func dateButton(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
-        HStack {
-            Button { pickingDate = title } label: {
-                Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
-                    .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
-                    .font(.body.weight(.medium))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 42)
-                    .background(Capsule().fill(Roam.paperRaised))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
-            .accessibilityIdentifier("trip-\(title.lowercased())")
-            .popover(isPresented: Binding(get: { pickingDate == title }, set: { if !$0 { pickingDate = nil } })) {
-                DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
-                                                     set: { date.wrappedValue = $0; pickingDate = nil }),
-                           in: (minimum ?? .distantPast)..., displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .labelsHidden()
-                    .padding()
-                    .frame(width: 340)
-                    .presentationCompactAdaptation(.popover)
-            }
-        }
     }
 
     private func save() async {

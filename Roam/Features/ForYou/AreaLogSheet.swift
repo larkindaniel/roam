@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Logging a country (or state) you've been to: "Where in Norway?" Search and add the cities and places you went to,
-/// alike, with when you were there. Places are logged as visits without a rating; rank them later from their pages.
+/// alike, with when you were there (Start → End, both needed). Places are logged as visits without a rating; rank them later from their pages.
 struct AreaLogSheet: View {
     /// "Norway", or "Ontario".
     let name: String
@@ -67,13 +67,8 @@ struct AreaLogSheet: View {
                     } header: {
                         Text("Where you went")
                     }
-                    Section {
-                        TripDatesRow(start: $start, end: $end)
-                    } header: {
-                        Text("When were you there?")
-                    } footer: {
-                        Text("Optional. You can rate places later from their pages.")
-                    }
+                    Section { DateRangeRow(start: $start, end: $end) }
+                        .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
             }
@@ -85,10 +80,12 @@ struct AreaLogSheet: View {
             .navigationTitle("Where in \(name)?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
-                        .disabled(saving || picks.isEmpty)
+                        .disabled(saving || picks.isEmpty || start == nil || end == nil)
                         .accessibilityIdentifier("area-log-save")
                 }
             }

@@ -1142,6 +1142,57 @@ struct PlacesMapScreen<Content: View>: View {
 }
 
 /// Optional start and end dates side by side. Each is blank until tapped, and can be cleared again.
+/// Start → End on one row of two pill buttons with calendar icons; each opens a calendar, nothing is set until you pick a
+/// day, and the end is never before the start. Used where dates are needed: trips, and logging somewhere you've been.
+struct DateRangeRow: View {
+    @Binding var start: Date?
+    @Binding var end: Date?
+    @State private var picking: String?
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            button("Start", date: $start, from: nil)
+            Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                .accessibilityHidden(true)
+            button("End", date: $end, from: start)
+        }
+        .frame(maxWidth: .infinity)
+        .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
+    }
+
+    private func button(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
+        Button { picking = title } label: {
+            Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
+                .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
+                .font(.body.weight(.medium))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+                .background(Capsule().fill(Roam.paperRaised))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
+        .accessibilityIdentifier("date-\(title.lowercased())")
+        .popover(isPresented: Binding(get: { picking == title }, set: { if !$0 { picking = nil } })) {
+            DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
+                                                 set: { date.wrappedValue = $0; picking = nil }),
+                       in: (minimum ?? .distantPast)..., displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .padding()
+                .frame(width: 340)
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
+extension View {
+    /// A form row with nothing behind it, for content that floats between the cards (the Start → End dates).
+    func floatingFormRow() -> some View {
+        listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+    }
+}
+
 struct TripDatesRow: View {
     @Binding var start: Date?
     @Binding var end: Date?
