@@ -271,6 +271,8 @@ struct TripEditorSheet: View {
     @State var draft: TripDraft
     /// Cities a new trip starts with (planning from a city's page).
     var initialCities: [Destination] = []
+    /// Whole countries a new trip starts with (planning from a country's page), before any cities are picked.
+    var initialCountries: [String] = []
     var onSaved: (TripSummary) -> Void
 
     @Environment(AppServices.self) private var services
@@ -278,6 +280,7 @@ struct TripEditorSheet: View {
     @State private var start = Calendar.current.startOfDay(for: Date())
     @State private var end = Calendar.current.date(byAdding: .day, value: 7, to: Calendar.current.startOfDay(for: Date())) ?? Date()
     @State private var cities: [Destination] = []
+    @State private var countries: [String] = []
     @State private var pickingCity = false
     @State private var error: String?
     @State private var saving = false
@@ -300,7 +303,15 @@ struct TripEditorSheet: View {
                 .onChange(of: start) { _, value in if end < value { end = value } }
                 if draft.id == nil {
                     // Like adding a phone number in Contacts: each city a row, then a green add row.
-                    Section("Cities") {
+                    Section(countries.isEmpty ? "Cities" : "Where") {
+                        ForEach(countries, id: \.self) { code in
+                            HStack {
+                                Text(CountryName.display(code: code))
+                                Spacer()
+                                Text(TripTitle.flag(code) ?? "")
+                            }
+                        }
+                        .onDelete { countries.remove(atOffsets: $0) }
                         ForEach(cities) { city in
                             HStack {
                                 Text(city.name)
@@ -324,7 +335,10 @@ struct TripEditorSheet: View {
             .listRowBackground(Roam.paperRaised)
             }
             .scrollContentBackground(.hidden)
-            .onAppear { if cities.isEmpty { cities = initialCities } }
+            .onAppear {
+                if cities.isEmpty { cities = initialCities }
+                if countries.isEmpty { countries = initialCountries }
+            }
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -361,6 +375,9 @@ struct TripEditorSheet: View {
         do {
             let saved = try await services.plans.saveTrip(value)
             for city in cities { try await services.plans.setTripCity(tripID: saved.id, city: city, present: true) }
+            for code in countries {
+                try await services.plans.setTripCountry(tripID: saved.id, code: code, name: CountryName.display(code: code), present: true)
+            }
             onSaved(saved)
             dismiss()
         } catch { self.error = error.roamMessage }

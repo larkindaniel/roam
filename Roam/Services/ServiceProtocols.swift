@@ -308,6 +308,8 @@ protocol PlanService: AnyObject, Sendable {
     func deleteTrip(id: UUID) async throws
     func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws
     func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws
+    /// Adds a whole country to a trip (or takes it off), before any of its cities are picked.
+    func setTripCountry(tripID: UUID, code: String, name: String, present: Bool) async throws
     func homeCities() async throws -> [Destination]
     func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination]
     func setCityVisited(_ city: Destination, present: Bool) async throws

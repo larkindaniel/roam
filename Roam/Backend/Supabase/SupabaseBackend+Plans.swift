@@ -25,6 +25,11 @@ extension SupabaseBackend: PlanService {
                                              "p_stop": RPC.string(stop), "p_present": RPC.bool(present)])
     }
 
+    func setTripCountry(tripID: UUID, code: String, name: String, present: Bool) async throws {
+        try await rpcVoid("set_trip_country", ["p_trip_id": RPC.uuid(tripID), "p_code": RPC.string(code), "p_name": RPC.string(name),
+                                               "p_present": RPC.bool(present)])
+    }
+
     func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws {
         try await rpcVoid("set_trip_city", ["p_trip_id": RPC.uuid(tripID), "p_city": try RPC.json(city), "p_present": RPC.bool(present)])
     }

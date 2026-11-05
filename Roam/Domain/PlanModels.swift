@@ -41,9 +41,16 @@ struct TripSummary: Codable, Hashable, Identifiable, Sendable {
     var stops: [String]
     /// The cities the trip covers: the ones named for it, then the cities of its places.
     var cities: [Destination] = []
+    /// Whole countries named for the trip, as ISO codes, before any of their cities are picked.
+    var countries: [String] = []
 
     private enum CodingKeys: String, CodingKey {
-        case id, owner, name, description, startDate, endDate, status, isOwn, plannedCount, visitedCount, stops, cities
+        case id, owner, name, description, startDate, endDate, status, isOwn, plannedCount, visitedCount, stops, cities, countries
+    }
+
+    /// Whether the trip goes to this country: named for it, or one of its cities is there.
+    func covers(country code: String) -> Bool {
+        countries.contains { $0.uppercased() == code.uppercased() } || cities.contains { $0.countryCode?.uppercased() == code.uppercased() }
     }
 }
 
@@ -62,6 +69,7 @@ extension TripSummary {
         visitedCount = try c.decode(Int.self, forKey: .visitedCount)
         stops = try c.decodeIfPresent([String].self, forKey: .stops) ?? []
         cities = try c.decodeIfPresent([Destination].self, forKey: .cities) ?? []
+        countries = try c.decodeIfPresent([String].self, forKey: .countries) ?? []
     }
 
     /// Where the trip sits on your timeline, from its dates when it has them.

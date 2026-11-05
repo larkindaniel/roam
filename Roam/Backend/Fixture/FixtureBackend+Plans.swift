@@ -107,6 +107,11 @@ extension FixtureBackend: PlanService {
         if present { trips[tripID]?.places.append((experienceID, stop)) }
     }
 
+    func setTripCountry(tripID: UUID, code: String, name: String, present: Bool) async throws {
+        let me = try await authenticatedActor()
+        guard trips[tripID]?.owner == me else { throw RoamError.notFound }
+    }
+
     func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws {
         let me = try await authenticatedActor()
         guard trips[tripID]?.owner == me else { throw RoamError.notFound }
