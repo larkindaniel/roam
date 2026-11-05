@@ -120,13 +120,23 @@ struct RatingFlowView: View {
         // Save sits at the bottom of the screen while you fill things in.
         .safeAreaInset(edge: .bottom) {
             if model.step == .details {
-                Button("Save") { Task { await model.okay() } }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(model.photos?.canCommit == false || model.category == nil)
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.vertical, Theme.Spacing.s)
-                    .background(Roam.paper.opacity(0.95))
-                    .accessibilityIdentifier("rating-okay")
+                // Green glass, where you've been's colour.
+                let canSave = model.photos?.canCommit != false && model.category != nil
+                Button { Task { await model.okay() } } label: {
+                    Text("Save")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor)
+                .opacity(canSave ? 1 : 0.45)
+                .disabled(!canSave)
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.vertical, Theme.Spacing.s)
+                .accessibilityIdentifier("rating-okay")
             }
         }
         .roamHaptic(.selection, trigger: model.comparison?.id)
@@ -443,11 +453,11 @@ private struct FeelingSlider: View {
                 Capsule().fill(Roam.ink.opacity(0.06))
                 // A glass bubble, lightly tinted in the feeling's colour, sits over the one picked and slides between them.
                 if let selection, let index = stops.firstIndex(of: selection) {
+                    // Right up to the track's edge.
                     Color.clear
                         .floatingBubble(Capsule(), tint: Theme.color(for: selection).opacity(0.15))
-                        .frame(width: segment - 6)
-                        .padding(.vertical, 3)
-                        .offset(x: segment * CGFloat(index) + 3)
+                        .frame(width: segment)
+                        .offset(x: segment * CGFloat(index))
                         .animation(.snappy(duration: 0.25), value: selection)
                         .allowsHitTesting(false)
                 }
