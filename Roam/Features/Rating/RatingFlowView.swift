@@ -9,7 +9,6 @@ struct RatingFlowView: View {
     @State private var feeling: Sentiment?
     @State private var model: RatingFlowModel?
     @State private var showsCancel = false
-    @State private var showsNote = false
     @State private var showsDate = false
     @State private var showsPhotos = false
     @State private var trips: [TripSummary] = []
@@ -120,23 +119,12 @@ struct RatingFlowView: View {
         // Save sits at the bottom of the screen while you fill things in.
         .safeAreaInset(edge: .bottom) {
             if model.step == .details {
-                // Green glass, where you've been's colour.
-                let canSave = model.photos?.canCommit != false && model.category != nil
-                Button { Task { await model.okay() } } label: {
-                    Text("Save")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor)
-                .opacity(canSave ? 1 : 0.45)
-                .disabled(!canSave)
-                .padding(.horizontal, Theme.Spacing.l)
-                .padding(.vertical, Theme.Spacing.s)
-                .accessibilityIdentifier("rating-okay")
+                Button("Save") { Task { await model.okay() } }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(model.photos?.canCommit == false || model.category == nil)
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.vertical, Theme.Spacing.s)
+                    .accessibilityIdentifier("rating-okay")
             }
         }
         .roamHaptic(.selection, trigger: model.comparison?.id)
@@ -155,11 +143,6 @@ struct RatingFlowView: View {
                         return model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: try photos.attachmentIDs())
                     } catch { return false }
                 }
-            }
-        }
-        .sheet(isPresented: $showsNote) {
-            RatingNoteEditor(note: model.visit.publicNote, failureMessage: { model.persistenceError ?? model.message }) { note in
-                model.updateDetails(note: note, date: model.visit.date)
             }
         }
         .sheet(isPresented: $showsDate) {
@@ -247,14 +230,8 @@ struct RatingFlowView: View {
                     }
                     Divider()
                 }
-                detailRow("Note", symbol: "text.alignleft", value: model.visit.publicNote.isEmpty ? "Optional" : model.visit.publicNote, identifier: "rating-edit-note") { showsNote = true }
-                Divider()
+                // Date, then which trip it was part of, then photos; the note is its own box below.
                 detailRow("Date", symbol: "calendar", value: model.visit.date?.displayString ?? "Unknown", identifier: "rating-edit-date") { showsDate = true }
-                if let photos = model.photos {
-                    Divider()
-                    detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
-                }
-                // Which trip it was part of, in the same card rather than a box of its own.
                 if request.mode != .rerank {
                     Divider()
                     pickerRow("Part of", symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane") {
@@ -267,8 +244,21 @@ struct RatingFlowView: View {
                     }
                     .task(id: request.experience.id) { await loadPlacement(model) }
                 }
+                if let photos = model.photos {
+                    Divider()
+                    detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
+                }
             }
             .roamCard(padding: Theme.Spacing.m)
+            // The note, typed right here in a roomy box of its own.
+            TextField("Add a note", text: Binding(get: { model.visit.publicNote },
+                                                  set: { _ = model.updateDetails(note: $0, date: model.visit.date) }),
+                      axis: .vertical)
+                .lineLimit(5...12)
+                .textInputAutocapitalization(.never)
+                .frame(minHeight: 110, alignment: .topLeading)
+                .roamCard(padding: Theme.Spacing.m)
+                .accessibilityIdentifier("rating-note")
             if let photos = model.photos, !photos.canCommit {
                 Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked)
             }
@@ -365,33 +355,6 @@ struct RatingFlowView: View {
                 Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
             }.screenIdentifier("rating-result")
         }
-    }
-}
-
-private struct RatingNoteEditor: View {
-    @State var note: String
-    @State private var error: String?
-    let failureMessage: () -> String?
-    let onDone: (String) -> Bool
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            Form { Group {
-                TextEditor(text: $note).textInputAutocapitalization(.never).frame(minHeight: 200).accessibilityIdentifier("rating-note-text")
-                Text("\(Validation.characterCount(note)) / 5,000 characters").foregroundStyle(Validation.characterCount(note) > 5_000 ? Color.red : Color.gray)
-                if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
-            }
-            .listRowBackground(Roam.paperRaised)
-            }.navigationTitle("Note").toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        if onDone(note) { dismiss() } else { error = failureMessage() ?? "Your changes couldn't be kept. Try again." }
-                    }.disabled(Validation.characterCount(note) > 5_000).accessibilityIdentifier("rating-editor-done")
-                }
-            }
-        }
-        .roamSheetStyle()
     }
 }
 
