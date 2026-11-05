@@ -38,28 +38,20 @@ struct CityLogSheet: View {
                     FeelingSlider(selection: $sentiment, enabled: true) { _ in }
                     DateRangeRow(start: $start, end: $end)
                     photoSection
-                    // The places you went here, as rows, then the button to add more (as on a trip's page).
-                    if !places.isEmpty {
+                    // The places you went here: rows with the add button as the last thing in the same card, like upcoming
+                    // trips on My Places; with none yet, just the button.
+                    if places.isEmpty {
+                        addPlacesButton
+                    } else {
                         VStack(spacing: 0) {
                             ForEach(places) { hit in
                                 placeRow(hit)
                                 if hit.id != places.last?.id { RowSeparator() }
                             }
+                            addPlacesButton.padding(.top, Theme.Spacing.s)
                         }
                         .roamCard(padding: Theme.Spacing.m)
                     }
-                    Button { addingPlaces = true } label: {
-                        Label(places.isEmpty ? "Add places" : "Add more places", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .imageScale(.small)
-                            .foregroundStyle(Roam.ink)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .background(Capsule().fill(Roam.fill))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("city-log-add-places")
                     TextField("Add a note", text: $note, axis: .vertical)
                         .lineLimit(5...12)
                         .textInputAutocapitalization(.never)
@@ -148,6 +140,21 @@ struct CityLogSheet: View {
                 }
             }
         }
+    }
+
+    private var addPlacesButton: some View {
+        Button { addingPlaces = true } label: {
+            Label(places.isEmpty ? "Add places" : "Add more places", systemImage: "plus")
+                .font(.subheadline.weight(.semibold))
+                .imageScale(.small)
+                .foregroundStyle(Roam.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Capsule().fill(Roam.fill))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("city-log-add-places")
     }
 
     /// A place you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.
