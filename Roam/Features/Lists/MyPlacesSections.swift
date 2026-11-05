@@ -156,14 +156,16 @@ struct PlaceRow: View {
     }
 }
 
-/// The line between rows in a card, starting after the row's photo: a solid light grey a full point tall. A see-through
-/// line takes on whatever is behind a glass card, and a one-pixel one flickers as the list scrolls between pixels.
+/// The line between rows in a card, starting after the row's photo: a solid grey a full point tall, darker on a
+/// see-through glass card (a swipe-up card short of fully up) so it doesn't wash out to white. A see-through line takes
+/// on whatever is behind the glass, and a one-pixel one flickers as the list scrolls between pixels.
 struct RowSeparator: View {
     /// Where the line starts: past a place row's photo by default; a trip row's is a little bigger.
     var inset: CGFloat = 48 + Theme.Spacing.m
+    @Environment(\.onGlass) private var onGlass
 
     var body: some View {
-        Rectangle().fill(Roam.fill).frame(height: 1).padding(.leading, inset)
+        Rectangle().fill(onGlass ? Roam.ruleOnGlass : Roam.fill).frame(height: 1).padding(.leading, inset)
             .accessibilityHidden(true)
     }
 }
