@@ -209,9 +209,20 @@ struct TripRow: View {
 /// A city as one row, like a place's: its photo square with a been (green) or saved (yellow) mark, its name and a line.
 struct CityRow: View {
     let city: Destination
-    let state: PlaceState
+    let mark: StatusMark
     var subtitle = ""
     var action: () -> Void
+
+    init(city: Destination, state: PlaceState, subtitle: String = "", action: @escaping () -> Void) {
+        self.init(city: city, mark: StatusMark(state: state), subtitle: subtitle, action: action)
+    }
+
+    init(city: Destination, mark: StatusMark, subtitle: String = "", action: @escaping () -> Void) {
+        self.city = city
+        self.mark = mark
+        self.subtitle = subtitle
+        self.action = action
+    }
 
     @Environment(AppServices.self) private var services
     @State private var photo: AreaPhotos.Photo?
@@ -221,7 +232,7 @@ struct CityRow: View {
             HStack(spacing: Theme.Spacing.m) {
                 ZStack(alignment: .bottomTrailing) {
                     PlaceThumbnail(id: "city-\(city.id)", url: photo?.url, coordinate: city.coordinate, symbol: "signpost.right.and.left", size: 48)
-                    StatusMark(state: state).scaleEffect(0.75).offset(x: 6, y: 6)
+                    mark.scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(city.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)

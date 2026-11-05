@@ -56,15 +56,29 @@ enum PlaceState: Hashable, Sendable {
 
 /// State is carried by shape: dotted, solid outline or filled circle.
 struct StatusMark: View {
-    let state: PlaceState
+    let symbol: String
+    let color: Color
+    let label: String
     var size: CGFloat = 24
 
+    init(state: PlaceState, size: CGFloat = 24) {
+        self.init(symbol: state.markerSymbol, color: state.markerColor, label: state.title, size: size)
+    }
+
+    /// A mark of its own, like a home's black house.
+    init(symbol: String, color: Color, label: String, size: CGFloat = 24) {
+        self.symbol = symbol
+        self.color = color
+        self.label = label
+        self.size = size
+    }
+
     var body: some View {
-        Circle().fill(state.markerColor)
-            .overlay(Image(systemName: state.markerSymbol).font(.system(size: size * 0.46, weight: .bold)).foregroundStyle(.white))
+        Circle().fill(color)
+            .overlay(Image(systemName: symbol).font(.system(size: size * 0.46, weight: .bold)).foregroundStyle(.white))
             .frame(width: size, height: size)
             .accessibilityElement()
-            .accessibilityLabel(state.title)
+            .accessibilityLabel(label)
     }
 }
 

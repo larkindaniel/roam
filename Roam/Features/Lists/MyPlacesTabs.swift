@@ -141,22 +141,13 @@ struct HomeCitiesCard: View {
     var body: some View {
         // No prompt to set a home here; it's set from a city's page.
         if !model.homeCities.isEmpty {
+            // The same rows as everywhere else: the city's photo with a black house mark, its name, the same lines.
             VStack(spacing: 0) {
                 ForEach(model.homeCities) { city in
-                    Button { router.push(.city(city)) } label: {
-                        HStack(spacing: Theme.Spacing.m) {
-                            Image(systemName: "house.fill").foregroundStyle(Roam.home).frame(width: 24)
-                            Text(city.name).font(.headline).foregroundStyle(Roam.ink)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-                        }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu { Button("Remove home city", role: .destructive) { Task { await model.setHome(city, present: false) } } }
-                    .accessibilityIdentifier("home-city-\(city.name)")
-                    if city.id != model.homeCities.last?.id { Divider() }
+                    CityRow(city: city, mark: StatusMark(symbol: "house.fill", color: Roam.home, label: "Home")) { router.push(.city(city)) }
+                        .contextMenu { Button("Remove home city", role: .destructive) { Task { await model.setHome(city, present: false) } } }
+                        .accessibilityIdentifier("home-city-\(city.name)")
+                    if city.id != model.homeCities.last?.id { RowSeparator() }
                 }
             }
             .roamCard(padding: Theme.Spacing.m)
@@ -183,41 +174,36 @@ struct UpcomingTripsCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(trips) { trip in
-                tripRow(trip)
-                Divider()
-            }
-            Button(action: onNewTrip) {
-                HStack(spacing: Theme.Spacing.m) {
-                    Image(systemName: "plus").fontWeight(.semibold).frame(width: 24).accessibilityHidden(true)
-                    Text("New trip").font(.headline)
-                    Spacer(minLength: 0)
+        if trips.isEmpty {
+            // No trips ahead: just the button.
+            newTripButton
+        } else {
+            // The same trip rows as a country's page, then + New trip across the bottom of the card.
+            VStack(spacing: 0) {
+                ForEach(trips) { trip in
+                    TripRow(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience,
+                            subtitle: MyTimeline.range(trip.startDate, trip.endDate) ?? "")
+                    RowSeparator()
                 }
-                .foregroundStyle(PlaceState.planned.markerColor)
-                .frame(minHeight: Theme.minimumHitTarget)
-                .contentShape(Rectangle())
+                newTripButton.padding(.top, Theme.Spacing.s)
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("upcoming-new-trip")
+            .roamCard(padding: Theme.Spacing.m)
         }
-        .roamCard(padding: Theme.Spacing.m)
     }
 
-    private func tripRow(_ trip: TripSummary) -> some View {
-        Button { router.push(.trip(trip.id)) } label: {
-            HStack(spacing: Theme.Spacing.m) {
-                Image(systemName: "airplane").foregroundStyle(PlaceState.planned.markerColor).frame(width: 24).accessibilityHidden(true)
-                Text(trip.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                Spacer(minLength: Theme.Spacing.s)
-                Text(MyTimeline.range(trip.startDate, trip.endDate) ?? "").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            }
-            .frame(minHeight: Theme.minimumHitTarget)
-            .contentShape(Rectangle())
+    /// A light blue bubble the full width, its label in the middle.
+    private var newTripButton: some View {
+        Button(action: onNewTrip) {
+            Label("New trip", systemImage: "plus")
+                .font(.headline)
+                .foregroundStyle(PlaceState.planned.markerColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("upcoming-trip-\(trip.name)")
+        .accessibilityIdentifier("upcoming-new-trip")
     }
 }
 
