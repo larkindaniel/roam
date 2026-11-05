@@ -102,7 +102,8 @@ final class RatingFlowModel {
             operationID = draft.operationID
             let known = request.experience.category ?? request.suggestedCategory
             category = (request.mode != .firstLog || request.categoryLocked || known != nil) ? known : draft.category
-            sentiment = draft.sentiment
+            // A first log always has a feeling: one saved without (from before Neutral was the default) starts at Neutral.
+            sentiment = draft.sentiment ?? (request.mode == .firstLog ? .fine : nil)
             visit = draft.visit
             initialVisit = draft.initialVisit
             ranking = draft.ranking
