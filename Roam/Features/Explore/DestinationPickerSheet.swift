@@ -78,8 +78,11 @@ struct DestinationPickerSheet: View {
             .navigationTitle(title ?? (purpose == .homeCity ? "Home city" : "Choose destination"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }.accessibilityIdentifier("close-destination-picker")
+                // A round × at the top right, like the search bar's when it's in focus.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
+                        .accessibilityIdentifier("close-destination-picker")
                 }
             }
             .task(id: query) {

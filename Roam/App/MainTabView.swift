@@ -101,6 +101,7 @@ extension View {
 /// The floating glass tab bar: the same gap from the sides of the screen as from its bottom.
 struct RoamTabBar: View {
     @Binding var selection: AppTab
+    @Environment(AppRouter.self) private var router
     static let margin: CGFloat = 18
     static let height: CGFloat = 54
     /// Wider at the sides than below: the screen's corners curve in, so this leaves the same gap at the corners.
@@ -112,7 +113,8 @@ struct RoamTabBar: View {
         HStack(spacing: 4) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let selected = tab == selection
-                Button { selection = tab } label: {
+                // Each tab always opens on its main page, like a back button to it.
+                Button { router.popToRoot(tab); selection = tab } label: {
                     VStack(spacing: 1) {
                         Image(systemName: tab.symbolName).font(.system(size: 17, weight: .semibold)).frame(height: 21)
                         Text(tab.title).font(.caption2.weight(.semibold))

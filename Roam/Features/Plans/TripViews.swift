@@ -284,8 +284,8 @@ struct TripEditorSheet: View {
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
-    @State private var start: Date?
-    @State private var end: Date?
+    @State private var start = Calendar.current.startOfDay(for: Date())
+    @State private var end = Calendar.current.date(byAdding: .day, value: 7, to: Calendar.current.startOfDay(for: Date())) ?? Date()
     @State private var cities: [Destination] = []
     @State private var pickingCity = false
     @State private var error: String?
@@ -297,22 +297,36 @@ struct TripEditorSheet: View {
                 Section {
                     TextField("Trip name", text: $draft.name).accessibilityIdentifier("trip-name")
                     TextField("Description (optional)", text: $draft.description, axis: .vertical)
+                        .textInputAutocapitalization(.never)
                 }
+                // Dates are required: the standard date rows, the end never before the start.
+                Section("Dates") {
+                    DatePicker("Start", selection: $start, displayedComponents: .date)
+                        .accessibilityIdentifier("trip-start")
+                    DatePicker("End", selection: $end, in: start..., displayedComponents: .date)
+                        .accessibilityIdentifier("trip-end")
+                }
+                .onChange(of: start) { _, value in if end < value { end = value } }
                 if draft.id == nil {
+                    // Like adding a phone number in Contacts: each city a row, then a green add row.
                     Section("Cities") {
                         ForEach(cities) { city in
                             HStack {
                                 Text(city.name)
                                 Spacer()
-                                Text(city.countryName ?? "").font(.footnote).foregroundStyle(Roam.inkMuted)
+                                Text(city.countryName ?? "").foregroundStyle(Roam.inkMuted)
                             }
                         }
                         .onDelete { cities.remove(atOffsets: $0) }
-                        Button("Add a city") { pickingCity = true }.accessibilityIdentifier("trip-editor-add-city")
+                        Button { pickingCity = true } label: {
+                            Label {
+                                Text("Add a city").foregroundStyle(Roam.ink)
+                            } icon: {
+                                Image(systemName: "plus.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, Color.green)
+                            }
+                        }
+                        .accessibilityIdentifier("trip-editor-add-city")
                     }
-                }
-                Section("Dates (optional)") {
-                    TripDatesRow(start: $start, end: $end)
                 }
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }
@@ -325,7 +339,9 @@ struct TripEditorSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }.disabled(saving).accessibilityIdentifier("trip-save")
+                    Button("Save") { Task { await save() } }
+                        .disabled(saving || draft.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("trip-save")
                 }
             }
             .sheet(isPresented: $pickingCity) {
@@ -335,18 +351,19 @@ struct TripEditorSheet: View {
                 }
             }
             .onAppear {
-                start = draft.startDate?.date()
-                end = draft.endDate?.date()
+                if let saved = draft.startDate?.date() { start = saved }
+                if let saved = draft.endDate?.date() { end = saved }
             }
         }
         .roamSheetStyle()
-        .presentationDetents([.medium, .large])
+        // Opens fully up.
+        .presentationDetents([.large])
     }
 
     private func save() async {
         var value = draft
-        value.startDate = start.map { LocalDate(date: $0, timeZone: .current) }
-        value.endDate = end.map { LocalDate(date: $0, timeZone: .current) }
+        value.startDate = LocalDate(date: start, timeZone: .current)
+        value.endDate = LocalDate(date: end, timeZone: .current)
         value.status = TripSummary.status(start: value.startDate, end: value.endDate, today: MyTimeline.today())
         if let message = value.validationMessage { error = message; return }
         saving = true
