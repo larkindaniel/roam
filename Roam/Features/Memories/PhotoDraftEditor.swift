@@ -193,13 +193,16 @@ enum PhotoImport {
     }
 }
 
-/// A visit's photos one at a time, swiping for the next, each with a way to take it off (and retry one that failed).
-struct PhotoCarousel: View {
+/// A visit's photos one at a time, swiping for the next. The ✕ (for the photo showing) and any accessory (adding more)
+/// sit on the frame itself, well inside it whatever shape the photo is.
+struct PhotoCarousel<Accessory: View>: View {
     let model: PhotoDraftModel
     var height: CGFloat = 240
+    @ViewBuilder var accessory: () -> Accessory
+    @State private var current: UUID?
 
     var body: some View {
-        TabView {
+        TabView(selection: $current) {
             ForEach(model.assets) { asset in
                 PhotoDraftImage(model: model, asset: asset)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -212,23 +215,33 @@ struct PhotoCarousel: View {
                             Button("Retry") { Task { await model.retry(assetID: asset.id) } }
                                 .font(.subheadline.weight(.semibold))
                                 .buttonStyle(.borderedProminent)
-                                .padding(Theme.Spacing.m)
+                                .padding(Theme.Spacing.l)
                         }
                     }
-                    .overlay(alignment: .topTrailing) {
-                        Button { Task { await model.remove(assetID: asset.id) } } label: {
-                            Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.white)
-                                .frame(width: 30, height: 30).background(Circle().fill(.black.opacity(0.45)))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(Theme.Spacing.s)
-                        .accessibilityLabel("Remove photo")
-                    }
+                    .tag(Optional(asset.id))
             }
         }
         .tabViewStyle(.page(indexDisplayMode: model.assets.count > 1 ? .always : .never))
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Button {
+                guard let id = current ?? model.assets.first?.id else { return }
+                Task { await model.remove(assetID: id) }
+            } label: {
+                Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.white)
+                    .frame(width: 32, height: 32).background(Circle().fill(.black.opacity(0.5)))
+            }
+            .buttonStyle(.plain)
+            .padding(Theme.Spacing.l)
+            .accessibilityLabel("Remove this photo")
+        }
+        .overlay(alignment: .bottomTrailing) { accessory().padding(Theme.Spacing.l) }
+        .onChange(of: model.assets.map(\.id)) { _, ids in
+            // After adding or removing, show a photo that's there.
+            if current.map({ !ids.contains($0) }) ?? true { current = ids.last }
+        }
+        .onAppear { current = current ?? model.assets.first?.id }
         .accessibilityIdentifier("photo-carousel")
     }
 }

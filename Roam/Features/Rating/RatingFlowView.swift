@@ -264,14 +264,30 @@ struct RatingFlowView: View {
             }
             // Photos: the system picker straight away; once there are some, they show one at a time, swiping for more.
             if let photos = model.photos {
-                if !photos.assets.isEmpty {
-                    PhotoCarousel(model: photos)
+                Group {
+                    if photos.assets.isEmpty {
+                        PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
+                            bubbleLabel(symbol: "photo.on.rectangle", text: "Add photos", trailing: "plus")
+                        }
+                        .buttonStyle(.plain)
+                        .roamCard(padding: Theme.Spacing.m)
+                    } else {
+                        // Adding more is a glass bubble on the photos themselves.
+                        PhotoCarousel(model: photos) {
+                            PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
+                                Label("Add more", systemImage: "plus")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 36)
+                                    .contentShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .floatingBubble(Capsule())
+                            .environment(\.colorScheme, .dark)
+                        }
+                    }
                 }
-                PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
-                    bubbleLabel(symbol: "photo.on.rectangle", text: photos.assets.isEmpty ? "Add photos" : "Add more photos", trailing: "plus")
-                }
-                .buttonStyle(.plain)
-                .roamCard(padding: Theme.Spacing.m)
                 .accessibilityIdentifier("rating-edit-photos")
                 .onChange(of: pickedPhotos) { _, items in
                     guard !items.isEmpty else { return }
