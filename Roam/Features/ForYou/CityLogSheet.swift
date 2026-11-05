@@ -68,11 +68,7 @@ struct CityLogSheet: View {
                     }
                     // Photos after the places, right above the note.
                     photoSection
-                    TextField("Add a note", text: $note, axis: .vertical)
-                        .lineLimit(5...12)
-                        .textInputAutocapitalization(.never)
-                        .frame(minHeight: 110, alignment: .topLeading)
-                        .roamCard(padding: Theme.Spacing.m)
+                    NoteBox(text: $note)
                         .accessibilityIdentifier("city-log-note")
                     if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
                 }

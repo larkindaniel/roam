@@ -265,3 +265,23 @@ struct MyPhotoCarousel: View {
         .accessibilityIdentifier("my-photos")
     }
 }
+
+/// A log's note: a roomy box where Return starts a new line, with "Add a note" until you type.
+struct NoteBox: View {
+    @Binding var text: String
+
+    var body: some View {
+        TextEditor(text: $text)
+            .scrollContentBackground(.hidden)
+            .textInputAutocapitalization(.never)
+            .frame(minHeight: 110)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text("Add a note").foregroundStyle(.tertiary)
+                        .padding(.top, 8).padding(.leading, 5)
+                        .allowsHitTesting(false)
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+    }
+}

@@ -309,17 +309,9 @@ struct RatingFlowView: View {
                 }
             }
             // The note, typed right here in a roomy box of its own.
-            TextField("Add a note", text: Binding(get: { model.visit.publicNote },
-                                                  set: { _ = model.updateDetails(note: $0, date: model.visit.date) }),
-                      axis: .vertical)
-                .lineLimit(5...12)
-                .textInputAutocapitalization(.never)
-                .frame(minHeight: 110, alignment: .topLeading)
-                .roamCard(padding: Theme.Spacing.m)
+            NoteBox(text: Binding(get: { model.visit.publicNote },
+                                  set: { _ = model.updateDetails(note: $0, date: model.visit.date) }))
                 .accessibilityIdentifier("rating-note")
-            if let photos = model.photos, !photos.canCommit {
-                Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked)
-            }
             if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
