@@ -73,7 +73,6 @@ struct PlaceBrowserView: View {
                 .id(id)
         }
         .background(Color.black.ignoresSafeArea())
-        .roamTabBar(hidden: true)
         .navigationTitle(currentPlace?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -229,7 +228,7 @@ struct ExperienceDetailView: View {
             case .idle, .loading:
                 if overMap {
                     // The card is there at once with the name and area; the rest fills in when it loads.
-                    GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: preview?.name ?? "",
+                    GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: sheetDetent == .full ? RoamTabBar.reservedHeight + 16 : 0, headerLabel: preview?.name ?? "",
                                      headerIdentifier: "detail-sheet-header", floatsWhenPeeking: true, collapsesHeaderOnScroll: true,
                                      seeThrough: true) {
                         Color.clear.allowsHitTesting(false)
@@ -282,6 +281,8 @@ struct ExperienceDetailView: View {
         .background(overMap ? Color.clear : Theme.groupedCanvas)
         // The place's card takes the tab bar's spot and runs to the bottom of the screen.
         .modifier(PlacePageChrome(enabled: !overMap, title: model?.detail?.summary.name ?? ""))
+        // Over the map, as on a city: fully up, Discover / Friends / My Places are at the bottom; lower down the card has it.
+        .roamTabBar(hidden: overMap && sheetDetent != .full)
         .sheet(item: $reportTarget) { target in
             ReportSheet(target: target, title: reportTitle(target), suggestedReason: reportReason)
         }
@@ -327,7 +328,7 @@ struct ExperienceDetailView: View {
     /// The place on a full-screen map you can move around, with everything about it on a card that swipes up over it.
     private func content(_ detail: ExperienceDetail) -> some View {
         let summary = detail.summary
-        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: 0, headerLabel: summary.name,
+        return GlobeSheetLayout(detent: $sheetDetent, peekHeight: 150, bottomOverlap: sheetDetent == .full ? RoamTabBar.reservedHeight + 16 : 0, headerLabel: summary.name,
                                 headerIdentifier: "detail-sheet-header", onRefresh: { await reload() }, floatsWhenPeeking: true,
                                 mapAccessory: lookAround.map { scene in AnyView(lookAroundButton(scene)) }, collapsesHeaderOnScroll: true,
                                 cardHidden: !cardRisen, seeThrough: overMap) {
