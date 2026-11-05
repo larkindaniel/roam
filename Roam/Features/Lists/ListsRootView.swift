@@ -341,9 +341,9 @@ struct MyPlacesRootView: View {
     /// The Earth, with your countries filled in and your places as dots. Spin and zoom it freely.
     @ViewBuilder private var globe: some View {
         if let model, model.hasLoaded {
-            // Minimised, the globe shows everything; with the card up it shows the chosen tab: green where you've been,
-            // blue where you're going, yellow what you've saved.
-            let pins = detent != .peek ? model.pins.filter { $0.state == tab.state } : model.pins
+            // The map is the same whichever tab is open: green where you've been, blue where you're going, yellow what
+            // you've saved.
+            let pins = model.pins
             GlobeMapView(pins: pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          // Countries always show everything, been (green) over going (blue) over saved (yellow),
                          // whichever tab is open.
