@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 /// Logging a city, laid out like logging a place: its name and where it is, how it was, when, a note and Save. The one
@@ -7,7 +8,10 @@ struct CityLogSheet: View {
     var onSaved: () -> Void
 
     @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var account
     @Environment(\.dismiss) private var dismiss
+    @State private var photos: PhotoDraftModel?
+    @State private var pickedPhotos: [PhotosPickerItem] = []
     @State private var sentiment: Sentiment? = .fine
     @State private var start: Date?
     @State private var end: Date?
@@ -18,7 +22,9 @@ struct CityLogSheet: View {
     @State private var error: String?
     @State private var confirmingDiscard = false
 
-    private var hasChanges: Bool { sentiment != .fine || start != nil || end != nil || !note.isEmpty || !places.isEmpty }
+    private var hasChanges: Bool {
+        sentiment != .fine || start != nil || end != nil || !note.isEmpty || !places.isEmpty || !(photos?.assets.isEmpty ?? true)
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,6 +37,7 @@ struct CityLogSheet: View {
                     .accessibilityElement(children: .combine)
                     FeelingSlider(selection: $sentiment, enabled: true) { _ in }
                     DateRangeRow(start: $start, end: $end)
+                    photoSection
                     // The places you went here, as rows, then the button to add more (as on a trip's page).
                     if !places.isEmpty {
                         VStack(spacing: 0) {
@@ -73,24 +80,74 @@ struct CityLogSheet: View {
                         .disabled(saving)
                         // Pops up from the ×.
                         .confirmationDialog("Discard this log?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
-                            Button("Discard", role: .destructive) { dismiss() }
+                            Button("Discard", role: .destructive) { Task { await photos?.discard(); dismiss() } }
                             Button("Keep editing", role: .cancel) {}
                         }
                 }
             }
             // Save where the place log's is: see-through glass in the bottom buttons' spot.
             .tabBarSpotButton(true, title: saving ? "Saving…" : "Save", identifier: "city-log-save", systemImage: nil, tint: nil,
-                              enabled: !saving) {
+                              enabled: !saving && photos?.canCommit != false) {
                 Task { await save() }
             }
             .sheet(isPresented: $addingPlaces) {
                 CityPlacePicker(city: city, picked: $places)
+            }
+            .task {
+                guard photos == nil, let userID = account.userID else { return }
+                photos = PhotoDraftModel(ownerID: userID, draftID: "city-log-\(city.id)-photos", existingMedia: [],
+                                         storage: services.storage, media: services.media, currentAccount: { account.userID })
             }
         }
         .roamSheetStyle()
         .presentationDetents([.large])
         .interactiveDismissDisabled(hasChanges)
         .screenIdentifier("city-log")
+    }
+
+    /// Photos as on a place's log: Add photos opens the picker; once there are some, they show one at a time.
+    @ViewBuilder private var photoSection: some View {
+        if let photos {
+            Group {
+                if photos.assets.isEmpty {
+                    PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "photo.on.rectangle").font(.footnote).foregroundStyle(Roam.inkMuted)
+                            Text("Add photos").font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink)
+                            Spacer(minLength: 0)
+                            Image(systemName: "plus").font(.caption2.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                        }
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .roamCard(padding: 0)
+                } else {
+                    PhotoCarousel(model: photos) {
+                        PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
+                            Label("Add more", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 14)
+                                .frame(height: 36)
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .floatingBubble(Capsule())
+                        .environment(\.colorScheme, .dark)
+                    }
+                }
+            }
+            .accessibilityIdentifier("city-log-photos")
+            .onChange(of: pickedPhotos) { _, items in
+                guard !items.isEmpty else { return }
+                Task {
+                    await PhotoImport.add(items, to: photos)
+                    pickedPhotos = []
+                }
+            }
+        }
     }
 
     private func placeRow(_ hit: SearchHit) -> some View {
@@ -115,7 +172,9 @@ struct CityLogSheet: View {
         let from = start.map { LocalDate(date: $0, timeZone: .current) }
         let to = end.map { LocalDate(date: $0, timeZone: .current) }
         do {
-            try await services.plans.logCity(city, start: from, end: to, sentiment: sentiment, note: note)
+            let mediaIDs = try photos?.attachmentIDs() ?? []
+            try await services.plans.logCity(city, start: from, end: to, sentiment: sentiment, note: note, mediaIDs: mediaIDs)
+            photos?.committed()
             for hit in places {
                 let place: ExperienceSummary
                 if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
