@@ -135,7 +135,10 @@ struct TripDetailView: View {
             }
         }
         .sheet(item: $editing) { draft in
-            TripEditorSheet(draft: draft) { _ in Task { await load() } }.presentationBackground(Roam.paper)
+            // The same sheet as a new trip, its cities and countries in it to add to or take off.
+            TripEditorSheet(draft: draft, initialCities: detail.value?.summary.cities ?? [],
+                            initialCountries: detail.value?.summary.countries ?? []) { _ in Task { await load() } }
+                .presentationBackground(Roam.paper)
         }
         .sheet(isPresented: $addingFromWishlist) {
             if let summary = detail.value?.summary {
@@ -151,9 +154,6 @@ struct TripDetailView: View {
                 }
             }
         }
-        // Your own trip: an "Add to trip" button takes the tab bar's spot and opens the city search.
-        .roamTabBar(hidden: detail.value?.summary.isOwn == true)
-        .tabBarSpotButton(detail.value?.summary.isOwn == true, title: "Add to trip", identifier: "trip-add-city") { addingCity = true }
         .task { await load() }
         .refreshable { await load() }
         .screenIdentifier("trip-detail")
@@ -346,7 +346,7 @@ struct TripEditorSheet: View {
     /// A name, both dates and, for a new trip, somewhere to go: a city, or a whole country planned from its page.
     private var canSave: Bool {
         !saving && !draft.name.trimmingCharacters(in: .whitespaces).isEmpty && start != nil && end != nil
-            && (draft.id != nil || !cities.isEmpty || !countries.isEmpty)
+            && (!cities.isEmpty || !countries.isEmpty)
     }
 
     var body: some View {
@@ -365,16 +365,16 @@ struct TripEditorSheet: View {
                     Section {
                         VStack(spacing: Theme.Spacing.l) {
                             DateRangeRow(start: $start, end: $end)
-                            if draft.id == nil, cities.isEmpty, countries.isEmpty { addCityButton }
+                            if cities.isEmpty, countries.isEmpty { addCityButton }
                         }
                     }
                     .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
-                if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
+                if !cities.isEmpty || !countries.isEmpty { destinations }
                 // Once there are cities, + Add a city goes right under the last one.
-                if draft.id == nil, !cities.isEmpty || !countries.isEmpty {
+                if !cities.isEmpty || !countries.isEmpty {
                     Section { addCityButton }
                         .floatingFormRow()
                 }
@@ -438,18 +438,45 @@ struct TripEditorSheet: View {
     }
 
     /// Where the trip goes, as the same photo cards its page shows; swipe one away to take it off.
-    private var destinations: some View {
-        Section {
-            ForEach(countries, id: \.self) { code in
-                CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
+    @ViewBuilder private var destinations: some View {
+        let allCountries = (cities.compactMap { $0.countryCode?.uppercased() } + countries.map { $0.uppercased() }).uniqued()
+        if allCountries.count > 1 {
+            // Several countries, as on the trip's page: each country's photo big, its cities as rows under it.
+            ForEach(allCountries, id: \.self) { code in
+                Section {
+                    CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code),
+                                     subtitle: cities.contains { $0.countryCode?.uppercased() == code } ? "" : "Pick cities and places as you go")
+                        .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .swipeActions {
+                            if countries.contains(where: { $0.uppercased() == code }) {
+                                Button("Remove", role: .destructive) { countries.removeAll { $0.uppercased() == code } }
+                            }
+                        }
+                    ForEach(cities.filter { $0.countryCode?.uppercased() == code }) { city in
+                        CityRow(city: city, state: .planned) {}
+                            .allowsHitTesting(false)
+                            .listRowBackground(Roam.paperRaised)
+                            .swipeActions {
+                                Button("Remove", role: .destructive) { cities.removeAll { $0.id == city.id } }
+                            }
+                    }
+                }
             }
-            .onDelete { countries.remove(atOffsets: $0) }
-            ForEach(cities) { city in CityHeroCard(city: city) }
-                .onDelete { cities.remove(atOffsets: $0) }
+        } else {
+            Section {
+                ForEach(countries, id: \.self) { code in
+                    CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
+                }
+                .onDelete { countries.remove(atOffsets: $0) }
+                ForEach(cities) { city in CityHeroCard(city: city) }
+                    .onDelete { cities.remove(atOffsets: $0) }
+            }
+            .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
-        .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     private func save() async {
@@ -463,9 +490,18 @@ struct TripEditorSheet: View {
         defer { saving = false }
         do {
             let saved = try await services.plans.saveTrip(value)
-            for city in cities { try await services.plans.setTripCity(tripID: saved.id, city: city, present: true) }
-            for code in countries {
+            let before = opened ?? (draft.name, draft.description, nil, nil, [], [])
+            for city in cities where !before.cities.contains(city) {
+                try await services.plans.setTripCity(tripID: saved.id, city: city, present: true)
+            }
+            for city in before.cities where !cities.contains(city) {
+                try await services.plans.setTripCity(tripID: saved.id, city: city, present: false)
+            }
+            for code in countries where !before.countries.contains(code) {
                 try await services.plans.setTripCountry(tripID: saved.id, code: code, name: CountryName.display(code: code), present: true)
+            }
+            for code in before.countries where !countries.contains(code) {
+                try await services.plans.setTripCountry(tripID: saved.id, code: code, name: CountryName.display(code: code), present: false)
             }
             onSaved(saved)
             dismiss()
