@@ -152,27 +152,7 @@ struct TripDetailView: View {
         }
         // Your own trip: an "Add to trip" button takes the tab bar's spot and opens the city search.
         .roamTabBar(hidden: detail.value?.summary.isOwn == true)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if detail.value?.summary.isOwn == true {
-                Button { addingCity = true } label: {
-                    HStack(spacing: Theme.Spacing.s) {
-                        Image(systemName: "plus").fontWeight(.semibold).accessibilityHidden(true)
-                        Text("Add to trip")
-                    }
-                    .font(.headline)
-                    .foregroundStyle(PlaceState.planned.markerColor)
-                    .padding(.horizontal, 22)
-                    .frame(height: 44)
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                // Light blue glass, the trip colour; sized to its label, centred.
-                .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
-                .padding(.horizontal, RoamTabBar.sideMargin)
-                .padding(.bottom, 4)
-                .accessibilityIdentifier("trip-add-city")
-            }
-        }
+        .tabBarSpotButton(detail.value?.summary.isOwn == true, title: "Add to trip", identifier: "trip-add-city") { addingCity = true }
         .task { await load() }
         .refreshable { await load() }
         .screenIdentifier("trip-detail")
@@ -288,9 +268,11 @@ struct TripDetailView: View {
                         if city.id != cities.last?.id { RowSeparator() }
                     }
                 }
+                // The rows keep the usual inset; only the photo sits closer to the card's edge.
+                .padding(.horizontal, Theme.Spacing.xs)
             }
         }
-        .roamCard(padding: Theme.Spacing.m)
+        .roamCard(padding: Theme.Spacing.s)
     }
 
     private func draft(_ summary: TripSummary) -> TripDraft {
@@ -393,10 +375,8 @@ struct TripEditorSheet: View {
                 if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
             }
             .scrollContentBackground(.hidden)
-            // Adding a city is the same light blue bubble as on a trip's page.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if draft.id == nil { addCityButton }
-            }
+            // Adding a city is the same light blue bubble as on a trip's page, where the tab bar would be.
+            .tabBarSpotButton(draft.id == nil, title: "Add a city", identifier: "trip-editor-add-city") { pickingCity = true }
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -449,22 +429,6 @@ struct TripEditorSheet: View {
         .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-    }
-
-    private var addCityButton: some View {
-        Button { pickingCity = true } label: {
-            Label("Add a city", systemImage: "plus")
-                .font(.headline)
-                .foregroundStyle(PlaceState.planned.markerColor)
-                .padding(.horizontal, 22)
-                .frame(height: 44)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
-        .padding(.horizontal, RoamTabBar.sideMargin)
-        .padding(.bottom, Theme.Spacing.s)
-        .accessibilityIdentifier("trip-editor-add-city")
     }
 
     /// "Start" or "End" (or the date once picked) with a calendar icon; it opens a calendar, and nothing is set until you
@@ -602,5 +566,34 @@ struct AddToTripSheet: View {
             library.noteChanged()
             await load()
         } catch { self.error = error.roamMessage }
+    }
+}
+
+
+extension View {
+    /// A light blue glass button in the tab bar's own spot: as wide and tall as it, the same gap from the bottom of the
+    /// screen, with room left above it for the content.
+    @ViewBuilder func tabBarSpotButton(_ shown: Bool, title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        if shown {
+            safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
+                .overlay(alignment: .bottom) {
+                    Button(action: action) {
+                        Label(title, systemImage: "plus")
+                            .font(.headline)
+                            .foregroundStyle(PlaceState.planned.markerColor)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: RoamTabBar.height)
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+                    .padding(.horizontal, RoamTabBar.sideMargin)
+                    .padding(.bottom, RoamTabBar.margin)
+                    .ignoresSafeArea(edges: .bottom)
+                    .accessibilityIdentifier(identifier)
+                }
+        } else {
+            self
+        }
     }
 }
