@@ -134,10 +134,11 @@ struct RatingFlowView: View {
                             .foregroundStyle(Roam.onInk)
                             .frame(maxWidth: .infinity)
                             .frame(height: RoamTabBar.height)
-                            .background(Capsule().fill(Roam.ink))
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    // Liquid Glass, tinted the dark ink it was.
+                    .floatingBubble(Capsule(), tint: Roam.ink)
                     .opacity(canSave ? 1 : 0.35)
                     .disabled(!canSave)
                     .padding(.horizontal, RoamTabBar.sideMargin)
