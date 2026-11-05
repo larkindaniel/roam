@@ -335,20 +335,12 @@ struct ExperienceDetailView: View {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 // Opened up, the city sits right under the name.
                 VStack(alignment: .leading, spacing: 0) {
-                    // The name with the place's icon just after it, on the same line.
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                        Text(summary.name)
-                            .font(.roamTitle())
-                            .foregroundStyle(Roam.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .accessibilityAddTraits(.isHeader)
-                        let category = detail.myRating?.category ?? summary.category
-                        Image(systemName: PlaceIcon.symbol(appleType: summary.providerCategory, category: category))
-                            .font(.title3)
-                            .foregroundStyle(Theme.secondaryText)
-                            .accessibilityLabel(category?.title ?? "Place")
-                    }
+                    Text(summary.name)
+                        .font(.roamTitle())
+                        .foregroundStyle(Roam.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .accessibilityAddTraits(.isHeader)
                     if sheetDetent != .peek {
                         // The city, as a slim grey chip that opens its page.
                         HStack(spacing: Theme.Spacing.s) {
