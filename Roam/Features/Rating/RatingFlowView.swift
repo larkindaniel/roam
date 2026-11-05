@@ -20,7 +20,7 @@ struct RatingFlowView: View {
         NavigationStack {
             Group {
                 if let model { content(model) }
-                else { ProgressView("Preparing your draft…") }
+                else { ProgressView("Loading…") }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -38,24 +38,25 @@ struct RatingFlowView: View {
                     .accessibilityLabel("Close")
                     .disabled(model?.isBusy == true)
                     .accessibilityIdentifier("rating-close")
-                }
-            }
-            .confirmationDialog("Keep your draft?", isPresented: $showsCancel, titleVisibility: .visible) {
-                Button("Keep draft") { model?.keepDraft(); dismiss() }
-                if model?.hasPendingSave != true {
-                    Button("Discard draft", role: .destructive) {
-                        Task {
-                            await model?.photos?.discard()
-                            model?.discardDraft()
-                            dismiss()
+                    // No drafts: closing with something filled in asks to discard it, popping up from the ×. Only a save
+                    // that was sent but not confirmed is kept, so it can be checked safely.
+                    .confirmationDialog("Discard this log?", isPresented: $showsCancel, titleVisibility: .visible) {
+                        if model?.hasPendingSave == true {
+                            Button("Keep it to check later") { model?.keepDraft(); dismiss() }
+                        } else {
+                            Button("Discard", role: .destructive) {
+                                Task {
+                                    await model?.photos?.discard()
+                                    model?.discardDraft()
+                                    dismiss()
+                                }
+                            }
                         }
+                        Button("Keep editing", role: .cancel) {}
+                    } message: {
+                        if model?.hasPendingSave == true { Text("Saving wasn't confirmed yet.") }
                     }
                 }
-                Button("Continue editing", role: .cancel) {}
-            } message: {
-                Text(model?.hasPendingSave == true
-                     ? "Saving wasn't confirmed. Keep this draft so the original save can be checked safely."
-                     : "Your draft is kept on this device. Nothing is published before saving finishes.")
             }
             .interactiveDismissDisabled(model?.completion == nil && (model?.hasNonemptyDraft == true || model?.isBusy == true))
             .task {

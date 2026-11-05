@@ -98,7 +98,9 @@ final class RatingFlowModel {
         storage.purgeExpired(userID: accountID, prefix: "rating-draft-", lifetime: 30 * 86_400, now: now())
         if let draft = storage.read(RatingFlowDraft.self, name: name, userID: accountID),
            draft.accountID == accountID, draft.experienceID == request.experience.id, draft.mode == request.mode.rawValue,
-           now().timeIntervalSince(draft.updatedAt) <= 30 * 86_400 {
+           now().timeIntervalSince(draft.updatedAt) <= 30 * 86_400,
+           // No drafts: a log always starts fresh, except one whose save was sent but not confirmed (checked safely).
+           draft.pendingRating != nil || draft.pendingVisit != nil {
             operationID = draft.operationID
             let known = request.experience.category ?? request.suggestedCategory
             category = (request.mode != .firstLog || request.categoryLocked || known != nil) ? known : draft.category
