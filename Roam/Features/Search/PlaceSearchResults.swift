@@ -11,17 +11,22 @@ final class PlaceSearch {
     private(set) var cities: [Destination] = []
     /// Countries whose name (or a word of it) starts with the search, as ISO codes.
     private(set) var countries: [String] = []
+    /// States and provinces (Ontario, Kerala).
+    private(set) var regions: [Destination] = []
 
     func run(_ query: String, services: AppServices) async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; countries = []; return }
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; countries = []; regions = []; return }
         try? await Task.sleep(for: Limits.searchDebounce)
         guard !Task.isCancelled else { return }
         if model == nil { model = ExperienceSearchModel(services: services) }
         async let found = services.places.searchDestinations(query: query)
+        async let areas = services.places.searchRegions(query: query)
         await model?.search(query, near: nil)
         let hits = Array(((try? await found) ?? []).prefix(3))
+        let regionHits = (try? await areas) ?? []
         guard !Task.isCancelled else { return }
         cities = hits
+        regions = regionHits
         countries = Self.countries(matching: query)
     }
 
@@ -45,8 +50,6 @@ struct PlaceSearchResults: View {
     let placeSearch: PlaceSearch
     /// Your places to match by name first (been, going, saved); empty where they aren't to hand.
     var mine: [PlaceMapItem] = []
-    /// Where a country opens; My Places sends one you've been to to its passport page.
-    var countryRoute: ((String) -> AppRoute)?
 
     @Environment(AppRouter.self) private var router
     private var search: ExperienceSearchModel? { placeSearch.model }
@@ -58,7 +61,7 @@ struct PlaceSearchResults: View {
         let others = (search?.hits ?? []).filter { hit in !matchedMine.contains { $0.id == hit.experience?.id } }
         Group {
             // No empty card while nothing has matched: just a line once the search has finished.
-            if matchedMine.isEmpty && placeSearch.countries.isEmpty && cityHits.isEmpty && others.isEmpty {
+            if matchedMine.isEmpty && placeSearch.countries.isEmpty && placeSearch.regions.isEmpty && cityHits.isEmpty && others.isEmpty {
                 if case .failed(let message) = search?.phase {
                     InlineRetryView(message: message) { Task { await search?.search(query, near: nil) } }
                 } else if search?.phase == .noResults || search?.phase == .results {
@@ -73,9 +76,12 @@ struct PlaceSearchResults: View {
                     }
                     ForEach(placeSearch.countries, id: \.self) { code in
                         let name = Locale.current.localizedString(forRegionCode: code) ?? code
-                        row(symbol: "flag", tint: Roam.inkMuted, title: CountryTitle.text(name: name, code: code), subtitle: "Country") {
-                            router.push(countryRoute?(code) ?? .wishlistCountry(code: code, title: CountryTitle.text(name: name, code: code)))
+                        row(flag: TripTitle.flag(code), symbol: "flag", tint: Roam.inkMuted, title: name, subtitle: "Country") {
+                            router.push(.country(code))
                         }
+                    }
+                    ForEach(placeSearch.regions) { area in
+                        row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: area.countryName ?? "") { router.push(.city(area)) }
                     }
                     ForEach(cityHits) { city in
                         row(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
@@ -92,10 +98,13 @@ struct PlaceSearchResults: View {
         }
     }
 
-    private func row(symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func row(flag: String? = nil, symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.m) {
-                Image(systemName: symbol).foregroundStyle(tint).frame(width: 24).accessibilityHidden(true)
+                Group {
+                    if let flag { Text(flag).font(.title3) } else { Image(systemName: symbol).foregroundStyle(tint) }
+                }
+                .frame(width: 24).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
                     if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }

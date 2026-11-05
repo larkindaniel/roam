@@ -347,6 +347,8 @@ struct CityGuideCard: View {
     var country: String?
     let coordinate: CLLocationCoordinate2D
     var showsPhoto = true
+    /// How far the article's own coordinates may be from here; a country's sit at its capital.
+    var within: CLLocationDistance = 80_000
 
     @State private var guide: CityGuide?
     @Environment(\.openURL) private var openURL
@@ -390,7 +392,7 @@ struct CityGuideCard: View {
             }
         }
         .task(id: "\(name)|\(region ?? "")|\(country ?? "")") {
-            guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate)
+            guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate, within: within)
         }
     }
 }

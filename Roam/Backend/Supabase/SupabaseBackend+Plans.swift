@@ -49,6 +49,12 @@ extension SupabaseBackend: PlanService {
         try await rpc("set_city_saved", ["p_city": try RPC.json(city), "p_present": RPC.bool(present)])
     }
 
+    func savedCountries() async throws -> [String] { try await rpc("my_saved_countries") }
+
+    func setCountrySaved(code: String, name: String, present: Bool) async throws -> [String] {
+        try await rpc("set_country_saved", ["p_code": RPC.string(code), "p_name": RPC.string(name), "p_present": RPC.bool(present)])
+    }
+
     func passport(ownerID: UUID) async throws -> [PassportCountry] {
         try await rpc("passport", ["p_owner": RPC.uuid(ownerID)])
     }

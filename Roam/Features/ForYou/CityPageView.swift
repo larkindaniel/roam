@@ -602,8 +602,29 @@ struct CityHeader: View {
             HStack(spacing: Theme.Spacing.s) {
                 Text(destination.name).font(.roamDisplay(.title)).lineLimit(1).minimumScaleFactor(0.6).accessibilityAddTraits(.isHeader)
             }
-            if !destination.subtitle.isEmpty {
-                Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+            // The country first, as a slim grey chip that opens its page (as a place's city does); then the region.
+            HStack(spacing: Theme.Spacing.s) {
+                if let code = destination.countryCode?.uppercased(), code.count == 2 {
+                    Button { router.push(.country(code)) } label: {
+                        HStack(spacing: 3) {
+                            Text(destination.countryName ?? Locale.current.localizedString(forRegionCode: code) ?? code).lineLimit(1)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Roam.ink)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("city-open-country")
+                    if let region = destination.region, !region.isEmpty, region != destination.name {
+                        Text(region).font(.subheadline).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                    }
+                } else if !destination.subtitle.isEmpty {
+                    Text(destination.subtitle).font(.subheadline).foregroundStyle(Roam.inkMuted)
+                }
             }
         }
     }

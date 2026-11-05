@@ -108,6 +108,12 @@ protocol PlaceSearchProviding: AnyObject, Sendable {
     func searchDestinations(query: String) async throws -> [Destination]
     func pointsOfInterest(in region: MKCoordinateRegion, category: ExperienceCategory?) async throws -> [PlaceCandidate]
     func destination(for coordinate: CLLocationCoordinate2D) async throws -> Destination?
+    /// States and provinces named like the search (Ontario, Kerala), framed to their whole area.
+    func searchRegions(query: String) async throws -> [Destination]
+}
+
+extension PlaceSearchProviding {
+    func searchRegions(query: String) async throws -> [Destination] { [] }
 }
 
 protocol ExperienceService: AnyObject, Sendable {
@@ -310,6 +316,9 @@ protocol PlanService: AnyObject, Sendable {
     /// Cities on your wishlist, saved as a whole.
     func savedCities() async throws -> [Destination]
     func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination]
+    /// Countries on your wishlist, as ISO codes.
+    func savedCountries() async throws -> [String]
+    func setCountrySaved(code: String, name: String, present: Bool) async throws -> [String]
     func passport(ownerID: UUID) async throws -> [PassportCountry]
     /// Looks places up on Google for a photo and star rating, at most about once a week each. True when any changed.
     func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool

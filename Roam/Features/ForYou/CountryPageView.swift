@@ -1,0 +1,256 @@
+import MapKit
+import SwiftUI
+
+/// One country, on a plain full-screen page (no map, unlike a city): its name and flag, Been / Wishlist / Plan, its
+/// Wikipedia photo and blurb, then the cities you've been to, your trips there, your wishlist there, and places we think
+/// you'd enjoy.
+struct CountryPageView: View {
+    let code: String
+
+    init(code: String) {
+        self.code = code.uppercased()
+    }
+
+    @Environment(AppServices.self) private var services
+    @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
+    @Environment(LibraryStore.self) private var library
+    @State private var model: MyPlacesModel?
+    @State private var suggestions: ForYouModel?
+    @State private var savedCodes: [String] = []
+    @State private var pickingCity = false
+    /// The city picked for Been, asked for its dates once the picker has gone.
+    @State private var pickedCity: Destination?
+    @State private var datesFor: Destination?
+    @State private var confirmingBeen = false
+
+    static func destination(for code: String) -> Destination {
+        CountryDestination.make(code: code)
+            ?? Destination(name: Locale.current.localizedString(forRegionCode: code) ?? code, region: nil, countryCode: code,
+                           countryName: nil, latitude: 20, longitude: 0, radiusMeters: 1_500_000)
+    }
+
+    private var destination: Destination { Self.destination(for: code) }
+    private var name: String { Locale.current.localizedString(forRegionCode: code) ?? code }
+    private func isHere(_ place: ExperienceSummary) -> Bool { place.countryCode?.uppercased() == code }
+
+    private var been: PassportCountry? { model?.passport.first { $0.code.uppercased() == code } }
+    private var hasBeen: Bool { been != nil }
+    private var isSaved: Bool { savedCodes.contains(code) }
+    private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
+    private var trips: [TripSummary] {
+        (model?.trips ?? []).filter { trip in
+            trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code }
+        }
+    }
+    private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter { $0.countryCode?.uppercased() == code } }
+    private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
+    /// Places others loved here that aren't already yours.
+    private var recommended: [DiscoverPlace] {
+        guard case .loaded(let sections) = suggestions?.phase else { return [] }
+        let mine = Set(pins.map(\.id))
+        return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
+            .filter { isHere($0.experience) && !mine.contains($0.id) }
+    }
+    /// Google's photo of a place here, for when Wikipedia has none.
+    private var fallbackPhoto: URL? {
+        (pins.map(\.experience) + recommended.map(\.experience)).lazy.compactMap(\.photoURL).first
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                header
+                countryInfo
+            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.top, Theme.Spacing.s)
+            .padding(.bottom, Theme.Spacing.xxl)
+        }
+        .background(Roam.paper)
+        .refreshable { await reload() }
+        .navigationTitle(name)
+        .navigationBarTitleDisplayMode(.inline)
+            .task(id: code) { await reload() }
+            .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
+            .sheet(isPresented: $pickingCity, onDismiss: {
+                if let pickedCity { datesFor = pickedCity; self.pickedCity = nil }
+            }) {
+                DestinationPickerSheet(purpose: .homeCity, title: "Which city in \(name)?") { city in pickedCity = city }
+            }
+            .sheet(item: $datesFor) { city in
+                CityVisitDatesSheet(city: city) { library.noteChanged(); Task { await model?.load() } }
+            }
+            .screenIdentifier("country-page")
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            Text(CountryTitle.text(name: name, code: code))
+                .font(.roamDisplay(.title)).lineLimit(1).minimumScaleFactor(0.6)
+                .accessibilityAddTraits(.isHeader)
+            actionRow
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Been (green), Wishlist (yellow, greyed once you've been) and Plan with AI (pink), as on a city.
+    private var actionRow: some View {
+        HStack(spacing: 0) {
+            circle(hasBeen ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: hasBeen,
+                   caption: hasBeen ? "Been" : "Log", identifier: "country-log") {
+                // Been comes from the cities you've been to, so logging asks which one.
+                if hasBeen { confirmingBeen = true } else { pickingCity = true }
+            }
+            .alert("You've been to \(name)", isPresented: $confirmingBeen) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("It counts as somewhere you've been while you have cities there. Remove them from their pages to take it off.")
+            }
+            circle(isSaved ? "bookmark.fill" : "bookmark", tint: hasBeen ? Roam.inkFaint : PlaceState.wishlist.markerColor,
+                   filled: isSaved && !hasBeen, caption: isSaved ? "Saved" : "Wishlist", identifier: "country-wishlist") {
+                if !hasBeen { Task { await setSaved(!isSaved) } }
+            }
+            circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "country-plan") {
+                router.sheet = .researchBrief(destination)
+            }
+        }
+    }
+
+    private func circle(_ symbol: String, tint: Color, filled: Bool, caption: String, identifier: String,
+                        action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.headline)
+                    .foregroundStyle(filled ? .white : tint)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(filled ? tint : tint.opacity(0.15)))
+                Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(caption)
+        .accessibilityIdentifier(identifier)
+    }
+
+    // MARK: Content
+
+    @ViewBuilder private var countryInfo: some View {
+        CountryPhoto(name: name, coordinate: destination.coordinate, fallback: fallbackPhoto)
+        CityGuideCard(name: name, coordinate: destination.coordinate, showsPhoto: false, within: 3_000_000)
+        if let model, model.hasLoaded {
+            if let been, !been.cities.isEmpty {
+                section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
+                    ForEach(been.cities.filter(\.isHome) + been.cities.filter { !$0.isHome }) { city in
+                        cityCard(city.city, isHome: city.isHome)
+                    }
+                }
+            }
+            if !trips.isEmpty {
+                section("Your trips here") {
+                    VStack(spacing: 0) {
+                        ForEach(trips) { trip in
+                            TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
+                            if trip.id != trips.last?.id { Divider() }
+                        }
+                    }
+                    .roamCard(padding: Theme.Spacing.m)
+                }
+            }
+            if !wishlistCities.isEmpty || !wishlistPlaces.isEmpty {
+                section("Your wishlist") {
+                    ForEach(wishlistCities) { city in cityCard(city, isHome: false) }
+                    if !wishlistPlaces.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(wishlistPlaces) { item in
+                                PlaceRow(item: item) { router.push(.experience(item.id)) }
+                                if item.id != wishlistPlaces.last?.id { Divider() }
+                            }
+                        }
+                        .roamCard(padding: Theme.Spacing.m)
+                    }
+                }
+            }
+        } else {
+            SkeletonList(rows: 3)
+        }
+        switch suggestions?.phase ?? .loading {
+        case .idle, .loading:
+            EmptyView()
+        case .failed(let message):
+            InlineRetryView(message: message) { Task { await suggestions?.load(destination) } }
+        case .loaded:
+            if !recommended.isEmpty {
+                section("Places we think you'd enjoy") {
+                    LazyVStack(spacing: Theme.Spacing.l) {
+                        ForEach(recommended) { place in
+                            DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
+                                              score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
+                                router.push(.experience(place.id))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func cityCard(_ city: Destination, isHome: Bool) -> some View {
+        Button { router.push(.city(city)) } label: {
+            CityPhotoCard(destination: city, isHome: isHome).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("country-city-\(city.name)")
+    }
+
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
+            content()
+        }
+    }
+
+    // MARK: Loading
+
+    private func reload() async {
+        if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
+        if suggestions == nil { suggestions = ForYouModel(plans: services.plans) }
+        async let mine: Void = model?.load() ?? ()
+        async let saved = services.plans.savedCountries()
+        savedCodes = (try? await saved) ?? savedCodes
+        await mine
+        await suggestions?.load(destination)
+    }
+
+    /// A whole country on your wishlist.
+    private func setSaved(_ present: Bool) async {
+        savedCodes = (try? await services.plans.setCountrySaved(code: code, name: name, present: present)) ?? savedCodes
+        library.noteChanged()
+    }
+}
+
+/// A country's Wikipedia photo (a view of it, not its flag), else Google's photo of a place there.
+struct CountryPhoto: View {
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    var fallback: URL?
+    @State private var guide: CityGuide?
+    @State private var looked = false
+
+    var body: some View {
+        ZStack {
+            if let photo = guide?.photoURL ?? (looked ? fallback : nil) {
+                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(name)", placeholderSymbol: "globe", height: 220, showsCredit: false)
+            }
+        }
+        .task(id: name) {
+            guide = await CityGuide.load(name: name, region: nil, country: nil, coordinate: coordinate, within: 3_000_000)
+            looked = true
+        }
+    }
+}

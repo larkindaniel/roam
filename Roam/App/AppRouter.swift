@@ -53,6 +53,7 @@ enum AppRoute: Hashable, Sendable {
     /// The city page for whatever city is at a point; nil for wherever you are now.
     case cityAt(latitude: Double?, longitude: Double?)
     case wishlistCountry(code: String, title: String)
+    case country(String)
     case passport(ownerID: UUID, name: String)
     case passportCountry(ownerID: UUID, country: PassportCountry)
     case passportCity(ownerID: UUID, city: PassportCity)

@@ -65,6 +65,29 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         return resolved.filter { seen.insert($0.id).inserted }
     }
 
+    func searchRegions(query: String) async throws -> [Destination] {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = query
+        request.resultTypes = .address
+        let response = try await withTaskCancellationHandler {
+            try await MKLocalSearch(request: request).start()
+        } onCancel: {}
+        // A state or province has a country but no town or municipality, and isn't the country itself.
+        let regions = response.mapItems.filter { item in
+            let placemark = item.placemark
+            return item.pointOfInterestCategory == nil && placemark.thoroughfare == nil && placemark.locality == nil
+                && placemark.subAdministrativeArea == nil && placemark.country != nil && item.name != placemark.country
+        }
+        let span = response.boundingRegion.span
+        let radius = regions.count == 1 ? min(max(span.latitudeDelta * 111_000 / 2, 50_000), 1_000_000) : 200_000
+        return regions.prefix(2).compactMap { item in
+            guard let name = item.name else { return nil }
+            let placemark = item.placemark
+            return Destination(name: name, region: nil, countryCode: placemark.isoCountryCode, countryName: placemark.country,
+                               latitude: placemark.coordinate.latitude, longitude: placemark.coordinate.longitude, radiusMeters: radius)
+        }
+    }
+
     func pointsOfInterest(in region: MKCoordinateRegion, category: ExperienceCategory?) async throws -> [PlaceCandidate] {
         let request = MKLocalPointsOfInterestRequest(coordinateRegion: region)
         if let category {

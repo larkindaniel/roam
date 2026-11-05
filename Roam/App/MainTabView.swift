@@ -164,6 +164,8 @@ struct RouteDestinationView: View {
             CityAtView(coordinate: latitude.flatMap { lat in longitude.map { CLLocationCoordinate2D(latitude: lat, longitude: $0) } })
         case .wishlistCountry(let code, let title):
             WishlistCountryView(code: code, title: title)
+        case .country(let code):
+            CountryPageView(code: code)
         case .passport(let ownerID, let name):
             PassportView(ownerID: ownerID, name: name)
         case .passportCountry(let ownerID, let country):

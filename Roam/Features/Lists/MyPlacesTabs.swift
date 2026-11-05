@@ -92,7 +92,7 @@ struct BeenTab: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
                           spacing: Theme.Spacing.m) {
                     ForEach(countries) { country in
-                        Button { router.push(PassportCountry.route(ownerID: model.ownerIDValue, country: country)) } label: { tile(country) }
+                        Button { router.push(.country(country.code)) } label: { tile(country) }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("passport-\(country.code)")
                     }
@@ -274,12 +274,10 @@ struct SavedTab: View {
 
     private func tile(_ country: PlaceGroups.Country) -> some View {
         let cover = country.cities.flatMap(\.items).first { $0.experience.photoURL != nil }?.experience ?? country.cities.first?.items.first?.experience
-        // A country you've only saved a city in opens that city's page.
-        let savedOnly = country.cities.allSatisfy(\.items.isEmpty)
+        // A city you've saved there pictures the tile when you've saved no places.
         let savedCity = model.savedCities.first { $0.countryCode?.uppercased() == country.code.uppercased() && $0.name == country.cities.first?.name }
         return Button {
-            if savedOnly, let savedCity { router.push(.city(savedCity)) }
-            else { router.push(.wishlistCountry(code: country.code, title: country.title)) }
+            router.push(.country(country.code))
         } label: {
             ZStack(alignment: .bottomLeading) {
                 // Pictured by the Wikipedia photo of the city you've saved most in (a country's own article leads with its flag).
