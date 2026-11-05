@@ -89,16 +89,21 @@ struct BeenTab: View {
                     Text(cityCount == 1 ? "city" : "cities").foregroundStyle(Roam.inkMuted)
                 }
                 .accessibilityElement(children: .combine)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
-                          spacing: Theme.Spacing.m) {
+                CountryCards(count: countries.count) {
                     ForEach(countries) { country in
-                        Button { router.push(.country(country.code)) } label: { tile(country) }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("passport-\(country.code)")
+                        Button { router.push(.country(country.code)) } label: {
+                            if countries.count < CountryCardsLayout.gridFrom {
+                                CountryCoverCard(code: country.code, title: country.title,
+                                                 subtitle: country.cities.count == 1 ? "1 city" : "\(country.cities.count) cities")
+                            } else {
+                                tile(country)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("passport-\(country.code)")
                     }
                 }
             }
-            TripsTimelineSection(model: model, part: .past)
         }
     }
 
@@ -265,12 +270,30 @@ struct SavedTab: View {
             if countries.isEmpty {
                 Text("Save places you want to go. When you're ready, plan a trip from them.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
-                          spacing: Theme.Spacing.m) {
-                    ForEach(countries) { country in tile(country) }
+                CountryCards(count: countries.count) {
+                    ForEach(countries) { country in
+                        if countries.count < CountryCardsLayout.gridFrom {
+                            Button { router.push(.country(country.code)) } label: {
+                                CountryCoverCard(code: country.code, title: country.title, subtitle: savedLine(country),
+                                                 fallbackURL: country.cities.flatMap(\.items).lazy.compactMap(\.experience.photoURL).first)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("wishlist-country-\(country.code)")
+                        } else {
+                            tile(country)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    /// "2 cities · 5 places" saved there.
+    private func savedLine(_ country: PlaceGroups.Country) -> String {
+        let places = country.cities.flatMap(\.items).count
+        let cities = country.cities.count
+        return [cities > 0 ? (cities == 1 ? "1 city" : "\(cities) cities") : nil,
+                places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil].compactMap { $0 }.joined(separator: " · ")
     }
 
     private func tile(_ country: PlaceGroups.Country) -> some View {
@@ -298,5 +321,53 @@ struct SavedTab: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("wishlist-country-\(country.code)")
+    }
+}
+
+
+enum CountryCardsLayout {
+    /// From this many countries, they go two across in a grid of smaller tiles.
+    static let gridFrom = 8
+}
+
+/// Countries on My Places: big photo cards, one under another, while there are a few; from eight, a two-across grid.
+struct CountryCards<Content: View>: View {
+    let count: Int
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if count < CountryCardsLayout.gridFrom {
+            LazyVStack(spacing: Theme.Spacing.l) { content() }
+        } else {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.m), GridItem(.flexible(), spacing: Theme.Spacing.m)],
+                      spacing: Theme.Spacing.m) { content() }
+        }
+    }
+}
+
+/// A country as a big card, like Discover's cities: its Google photo, then its name and a line about it.
+struct CountryCoverCard: View {
+    let code: String
+    let title: String
+    var subtitle = ""
+    var fallbackURL: URL?
+
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
+    @State private var looked = false
+
+    var body: some View {
+        PhotoCard(url: photo?.url ?? (looked ? fallbackURL : nil), credit: photo?.credit, label: "Photo of \(title)",
+                  placeholderSymbol: "globe", height: 180) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
+                if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
+            }
+        }
+        .contentShape(Rectangle())
+        .task(id: code) {
+            photo = await AreaPhotos.country(services, code: code)
+            looked = true
+        }
     }
 }
