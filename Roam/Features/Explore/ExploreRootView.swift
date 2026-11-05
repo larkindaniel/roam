@@ -177,12 +177,13 @@ final class ExploreModel {
 
 
 extension View {
-    /// A floating control over a map: Liquid Glass on iOS 26, frosted material before it.
-    @ViewBuilder func floatingBubble<S: Shape>(_ shape: S) -> some View {
+    /// A floating control over a map: Liquid Glass on iOS 26, frosted material before it; `tint` colours the glass.
+    @ViewBuilder func floatingBubble<S: Shape>(_ shape: S, tint: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {
-            glassEffect(.regular.interactive(), in: shape)
+            glassEffect(.regular.tint(tint).interactive(), in: shape)
         } else {
-            background(.regularMaterial, in: shape).shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+            background { ZStack { shape.fill(.regularMaterial); if let tint { shape.fill(tint) } } }
+                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         }
     }
 }
