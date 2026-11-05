@@ -164,32 +164,49 @@ struct CountryPageView: View {
     /// The name with its flag just under it (a region has a chip to its country instead), centred against the actions on
     /// the same line.
     private var header: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.s) {
-            VStack(alignment: .leading, spacing: region == nil ? -6 : Theme.Spacing.xs) {
-                Text(name)
-                    .font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
-                    .accessibilityAddTraits(.isHeader)
-                if region != nil {
-                    Button { router.push(.country(code)) } label: {
-                        HStack(spacing: 3) {
-                            Text([TripTitle.flag(code), countryName].compactMap { $0 }.joined(separator: " ")).lineLimit(1)
-                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Roam.ink)
-                        .padding(.horizontal, 10)
-                        .frame(height: 24)
-                        .background(Capsule().fill(Roam.ink.opacity(0.08)))
-                        .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("region-open-country")
-                } else if let flag = TripTitle.flag(code) {
-                    Text(flag).font(.title3).accessibilityHidden(true)
-                }
+        // The name and the actions on one line when the whole name fits there; otherwise the name gets the full width
+        // and the actions go underneath, on the left.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                titleBlock(fitsOneLine: true)
+                Spacer(minLength: Theme.Spacing.s)
+                actionRow
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                titleBlock(fitsOneLine: false)
+                actionRow
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            actionRow
+        }
+    }
+
+    /// The name with its flag just under it (a region has a chip to its country instead).
+    private func titleBlock(fitsOneLine: Bool) -> some View {
+        VStack(alignment: .leading, spacing: region == nil ? -6 : Theme.Spacing.xs) {
+            // Beside the actions it must fit whole on one line (never squeezed); on its own it can wrap.
+            Text(name)
+                .font(.roamDisplay(.title))
+                .lineLimit(fitsOneLine ? 1 : 3)
+                .fixedSize(horizontal: fitsOneLine, vertical: !fitsOneLine)
+                .accessibilityAddTraits(.isHeader)
+            if region != nil {
+                Button { router.push(.country(code)) } label: {
+                    HStack(spacing: 3) {
+                        Text([TripTitle.flag(code), countryName].compactMap { $0 }.joined(separator: " ")).lineLimit(1)
+                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Roam.ink)
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
+                    .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("region-open-country")
+            } else if let flag = TripTitle.flag(code) {
+                Text(flag).font(.title3).accessibilityHidden(true)
+            }
         }
     }
 
