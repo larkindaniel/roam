@@ -118,19 +118,18 @@ struct CityLogSheet: View {
         if let photos {
             Group {
                 if photos.assets.isEmpty {
+                    // The same grey, centred button as Add places, led by a photo icon.
                     PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "photo.on.rectangle").font(.footnote).foregroundStyle(Roam.inkMuted)
-                            Text("Add photos").font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink)
-                            Spacer(minLength: 0)
-                            Image(systemName: "plus").font(.caption2.weight(.semibold)).foregroundStyle(Roam.inkMuted)
-                        }
-                        .padding(.horizontal, Theme.Spacing.m)
-                        .frame(height: 44)
-                        .contentShape(Rectangle())
+                        Label("Add photos", systemImage: "photo.on.rectangle")
+                            .font(.subheadline.weight(.semibold))
+                            .imageScale(.small)
+                            .foregroundStyle(Roam.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Capsule().fill(Roam.fill))
+                            .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .roamCard(padding: 0)
                 } else {
                     PhotoCarousel(model: photos) {
                         PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
