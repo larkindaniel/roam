@@ -1168,7 +1168,7 @@ struct DateRangeRow: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .frame(height: 42)
-                .background(Capsule().fill(Roam.paperRaised))
+                .background(Capsule().fill(Roam.fill))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")

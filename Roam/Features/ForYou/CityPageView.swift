@@ -423,7 +423,8 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        // Log ticks straight away; if you leave before picking both dates, it comes off again (nothing was recorded).
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited || loggingDates, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
