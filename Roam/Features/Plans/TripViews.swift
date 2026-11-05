@@ -118,6 +118,17 @@ struct TripDetailView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
+                        // Attached to the bin, so the confirmation pops up from it rather than mid-screen.
+                        .confirmationDialog("Delete this trip?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+                            Button("Delete trip", role: .destructive) {
+                                Task {
+                                    do { try await services.plans.deleteTrip(id: tripID); dismiss() }
+                                    catch { actionError = error.roamMessage }
+                                }
+                            }
+                        } message: {
+                            Text("Your visits and saved places stay.")
+                        }
                         .accessibilityLabel("Delete trip")
                         .accessibilityIdentifier("trip-delete")
                 }
@@ -139,16 +150,6 @@ struct TripDetailView: View {
                     catch { actionError = error.roamMessage }
                 }
             }
-        }
-        .confirmationDialog("Delete this trip?", isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("Delete trip", role: .destructive) {
-                Task {
-                    do { try await services.plans.deleteTrip(id: tripID); dismiss() }
-                    catch { actionError = error.roamMessage }
-                }
-            }
-        } message: {
-            Text("Your visits and saved places stay.")
         }
         // Your own trip: an "Add to trip" button takes the tab bar's spot and opens the city search.
         .roamTabBar(hidden: detail.value?.summary.isOwn == true)
