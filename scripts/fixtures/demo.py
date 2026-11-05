@@ -69,8 +69,14 @@ values ({q(place)}, 'fixture', {q('demo-' + spot['id'])}, {q(spot['name'])}, app
                 trip = uid("00000051", owner, city["slug"])
                 trips[trip] = (owner, city["name"])
             entries.append(dict(owner=owner, spot=spot, experience=experience, kind=kind, trip=trip, order=city_index * 40 + spot_index))
+    # Every trip has dates: each runs from its first visit to its last.
+    trip_days = {}
+    for entry in entries:
+        if entry["trip"]:
+            trip_days.setdefault(entry["trip"], []).append(entry["order"] % 200 + 1)
     for trip, (owner, name) in trips.items():
-        rows.append(f"insert into public.trips (id, owner_id, name, status) values ({q(trip)}, {q(owner)}, {q(name)}, 'past');")
+        days = trip_days[trip]
+        rows.append(f"insert into public.trips (id, owner_id, name, status, start_date, end_date) values ({q(trip)}, {q(owner)}, {q(name)}, 'past', current_date - {max(days)}, current_date - {min(days)});")
     for entry in entries:
         days = entry["order"] % 200 + 1
         visit = uid("00000041", entry["owner"], entry["spot"]["id"])
@@ -110,20 +116,19 @@ def plans_sql(data):
     kieran = TEAM[0][0]
     spots = {city["name"]: city["spots"] for city in data["cities"]}
     rows = ["begin;"]
-    for name, status, start, end in (("Tokyo", "upcoming", 60, 74), ("Lisbon", "planning", None, None)):
+    for name, status, start, end in (("Tokyo", "upcoming", 60, 74),):
         trip = uid("00000052", kieran, name)
-        dates = [f"current_date + {day}" if day is not None else "null" for day in (start, end)]
+        dates = [f"current_date + {day}" for day in (start, end)]
         rows.append(f"insert into public.trips (id, owner_id, name, status, start_date, end_date) values ({q(trip)}, {q(kieran)}, {q(name)}, '{status}', {dates[0]}, {dates[1]}) on conflict do nothing;")
         for position, spot in enumerate(spots[name]):
             rows.append(f"insert into public.trip_places (trip_id, experience_id, position) values ({q(trip)}, {q(uid('00000031', spot['id']))}, {position}) on conflict do nothing;")
-    # A place Kieran plans to go, on an undated Vancouver trip.
-    place, experience, planned = uid("00000021", "vancouver-stanley-park"), uid("00000031", "vancouver-stanley-park"), uid("00000052", kieran, "Planned")
+    # A place Kieran wants to go (trips need dates, so it's saved rather than on a trip).
+    place, experience = uid("00000021", "vancouver-stanley-park"), uid("00000031", "vancouver-stanley-park")
     rows.append(f"""insert into public.places (id, provider, provider_place_id, name, normalized_name, address, normalized_address, locality, country_code, country_name, city_id, latitude, longitude, provider_category, is_locality, provenance)
 values ({q(place)}, 'fixture', 'demo-vancouver-stanley-park', 'Stanley Park', app_private.normalize_text('Stanley Park'), 'Vancouver, BC V6G 1Z4, Canada', app_private.normalize_text('Vancouver, BC V6G 1Z4, Canada'), 'Vancouver',
  app_private.upsert_country('CA', 'Canada'), 'Canada', app_private.upsert_city('CA', 'Canada', null, 'Vancouver', 49.2827, -123.1207), 49.3017, -123.1417, 'Park', false, '{{}}'::jsonb) on conflict do nothing;
 insert into public.experiences (id, place_id, category, category_source) values ({q(experience)}, {q(place)}, 'outdoors', 'suggested') on conflict do nothing;
-insert into public.trips (id, owner_id, name, status) values ({q(planned)}, {q(kieran)}, 'Vancouver', 'planning') on conflict (id) do update set name = 'Vancouver';
-insert into public.trip_places (trip_id, experience_id, position) values ({q(planned)}, {q(experience)}, 0) on conflict do nothing;""")
+insert into public.bookmarks (owner_id, experience_id) values ({q(kieran)}, {q(experience)}) on conflict do nothing;""")
     # Tokyo is a two-city trip; Kieran lives in Waterloo and Kitchener and has been to Montréal without logging a place.
     rows.append(f"insert into public.trip_cities (trip_id, city_id, position) values ({q(uid('00000052', kieran, 'Tokyo'))}, app_private.upsert_city('JP', 'Japan', null, 'Kyoto', 35.0116, 135.7681), 1) on conflict do nothing;")
     for position, city in enumerate(("Waterloo", "Kitchener")):
