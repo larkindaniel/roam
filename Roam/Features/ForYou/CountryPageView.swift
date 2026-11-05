@@ -25,6 +25,8 @@ struct CountryPageView: View {
     @State private var confirmingBeen = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
     @State private var scrolledPastTitle = false
+    /// Sections folded away, by title.
+    @State private var collapsed: Set<String> = []
 
     static func destination(for code: String) -> Destination {
         CountryDestination.make(code: code)
@@ -40,10 +42,17 @@ struct CountryPageView: View {
     private var hasBeen: Bool { been != nil }
     private var isSaved: Bool { savedCodes.contains(code) }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
+    /// Every trip with a city here, past and ahead, in date order; ones with no dates yet last.
     private var trips: [TripSummary] {
-        (model?.trips ?? []).filter { trip in
-            trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code }
-        }
+        (model?.trips ?? []).filter { trip in trip.cities.contains { $0.countryCode?.uppercased() == code } }
+            .sorted { a, b in
+                switch (a.startDate, b.startDate) {
+                case let (x?, y?): return x < y
+                case (nil, _?): return false
+                case (_?, nil): return true
+                case (nil, nil): return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+                }
+            }
     }
     private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter { $0.countryCode?.uppercased() == code } }
     private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
@@ -163,7 +172,7 @@ struct CountryPageView: View {
                 }
             }
             if !trips.isEmpty {
-                section("Your trips here") {
+                section("Your trips") {
                     VStack(spacing: 0) {
                         ForEach(trips) { trip in
                             TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
@@ -219,10 +228,27 @@ struct CountryPageView: View {
         .accessibilityIdentifier("country-city-\(city.name)")
     }
 
+    /// A section whose title, with a chevron, folds it away and back, as on a city.
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-            content()
+        let isCollapsed = collapsed.contains(title)
+        return VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            Button {
+                withAnimation(.snappy(duration: 0.25)) {
+                    if isCollapsed { collapsed.remove(title) } else { collapsed.insert(title) }
+                }
+            } label: {
+                HStack {
+                    Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
+                    Spacer(minLength: Theme.Spacing.s)
+                    Image(systemName: "chevron.down").font(.headline).foregroundStyle(Roam.inkMuted)
+                        .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityHint(isCollapsed ? "Shows the list" : "Hides the list")
+            if !isCollapsed { content() }
         }
     }
 
