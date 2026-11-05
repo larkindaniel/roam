@@ -42,6 +42,9 @@ struct CountryPageView: View {
     private var hasBeen: Bool { been != nil }
     private var isSaved: Bool { savedCodes.contains(code) }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
+    private var upcomingTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) != .past } }
+    private var pastTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) == .past } }
+    private var homes: [Destination] { (model?.homeCities ?? []).filter { $0.countryCode?.uppercased() == code } }
     /// Every trip with a city here, past and ahead, in date order; ones with no dates yet last.
     private var trips: [TripSummary] {
         (model?.trips ?? []).filter { trip in trip.cities.contains { $0.countryCode?.uppercased() == code } }
@@ -72,6 +75,7 @@ struct CountryPageView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 header
+                if !homes.isEmpty { homeLinks }
                 countryInfo
             }
             .padding(.horizontal, Theme.Spacing.l)
@@ -108,7 +112,7 @@ struct CountryPageView: View {
     /// The name with its flag just under it, centred against the three actions on the same line.
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: -6) {
                 Text(name)
                     .font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
@@ -164,26 +168,17 @@ struct CountryPageView: View {
     // MARK: Content
 
     @ViewBuilder private var countryInfo: some View {
-        CountryPhoto(code: code, name: name, fallback: fallbackPhoto)
-        CityGuideCard(name: name, coordinate: destination.coordinate, showsPhoto: false, within: 3_000_000)
+        // The blurb sits snug under its photo.
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            CountryPhoto(code: code, name: name, fallback: fallbackPhoto)
+            CityGuideCard(name: name, coordinate: destination.coordinate, showsPhoto: false, within: 3_000_000)
+        }
         if let model, model.hasLoaded {
-            if let been, !been.cities.isEmpty {
-                section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
-                    ForEach(been.cities.filter(\.isHome) + been.cities.filter { !$0.isHome }) { city in
-                        cityCard(city.city, isHome: city.isHome)
-                    }
-                }
+            if !upcomingTrips.isEmpty {
+                section("Upcoming trips") { tripList(upcomingTrips, model: model) }
             }
-            if !trips.isEmpty {
-                section("Your trips") {
-                    VStack(spacing: 0) {
-                        ForEach(trips) { trip in
-                            TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                            if trip.id != trips.last?.id { Divider() }
-                        }
-                    }
-                    .roamCard(padding: Theme.Spacing.m)
-                }
+            if !pastTrips.isEmpty {
+                section("Past trips") { tripList(pastTrips, model: model) }
             }
             if !wishlistCities.isEmpty || !wishlistPlaces.isEmpty {
                 section("Your wishlist") {
@@ -197,6 +192,12 @@ struct CountryPageView: View {
                         }
                         .roamCard(padding: Theme.Spacing.m)
                     }
+                }
+            }
+            // Homes have their own link at the top, so they aren't repeated here.
+            if let been, case let cities = been.cities.filter({ !$0.isHome }), !cities.isEmpty {
+                section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
+                    ForEach(cities) { city in cityCard(city.city, isHome: false) }
                 }
             }
         } else {
@@ -221,6 +222,42 @@ struct CountryPageView: View {
                 }
             }
         }
+    }
+
+    /// Your home here first, as a plain link to its page.
+    private var homeLinks: some View {
+        VStack(spacing: 0) {
+            ForEach(homes) { home in
+                Button { router.push(.city(home)) } label: {
+                    HStack(spacing: Theme.Spacing.m) {
+                        Image(systemName: "house.fill").foregroundStyle(Roam.home).frame(width: 24).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(home.name).font(.headline).foregroundStyle(Roam.ink)
+                            Text("Home").font(.footnote).foregroundStyle(Roam.inkMuted)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkFaint)
+                    }
+                    .frame(minHeight: Theme.minimumHitTarget)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Home: \(home.name)")
+                .accessibilityIdentifier("country-home-\(home.name)")
+                if home.id != homes.last?.id { Divider() }
+            }
+        }
+        .roamCard(padding: Theme.Spacing.m)
+    }
+
+    private func tripList(_ list: [TripSummary], model: MyPlacesModel) -> some View {
+        VStack(spacing: 0) {
+            ForEach(list) { trip in
+                TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
+                if trip.id != list.last?.id { Divider() }
+            }
+        }
+        .roamCard(padding: Theme.Spacing.m)
     }
 
     private func cityCard(_ city: Destination, isHome: Bool) -> some View {
