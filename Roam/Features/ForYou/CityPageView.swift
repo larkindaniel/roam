@@ -401,7 +401,7 @@ struct CityPageView: View {
 
     /// When you were there, right under the buttons.
     private var logDates: some View {
-        // Green, as where you've been is, and the size of the country chip.
+        // Green, as where you've been is, and the size of Set as home.
         DateRangeRow(start: $logStart, end: $logEnd, tint: PlaceState.visited.markerColor)
             .transition(.opacity.combined(with: .move(edge: .top)))
     }
@@ -483,10 +483,14 @@ struct CityPageView: View {
     private func setHome(_ present: Bool) async {
         if present {
             homes = (try? await services.plans.setHomeCity(destination, present: true)) ?? homes
-            // A home counts as somewhere you've been (the server marks it too).
+            // A home counts as somewhere you've been (the server marks it too), so no visit dates are asked.
             markedVisited = true
+            loggingDates = false; logStart = nil; logEnd = nil
         } else {
             for stored in matchingHomes { homes = (try? await services.plans.setHomeCity(stored, present: false)) ?? homes }
+            // No longer home, it stays somewhere you've been; Start → End asks when you were there.
+            markedVisited = true
+            withAnimation(.snappy(duration: 0.25)) { loggingDates = true }
         }
         // My Places reloads its home cities.
         library.noteChanged()
