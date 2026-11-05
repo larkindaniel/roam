@@ -161,13 +161,12 @@ struct TripDetailView: View {
                     }
                     .font(.headline)
                     .foregroundStyle(PlaceState.planned.markerColor)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .frame(height: RoamTabBar.height)
+                    .padding(.horizontal, 22)
+                    .frame(height: 44)
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                // Light blue glass, the trip colour.
+                // Light blue glass, the trip colour; sized to its label, centred.
                 .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
                 .padding(.horizontal, RoamTabBar.sideMargin)
                 .padding(.bottom, 4)
@@ -426,8 +425,8 @@ struct TripEditorSheet: View {
             Label("Add a city", systemImage: "plus")
                 .font(.headline)
                 .foregroundStyle(PlaceState.planned.markerColor)
-                .frame(maxWidth: .infinity)
-                .frame(height: RoamTabBar.height)
+                .padding(.horizontal, 22)
+                .frame(height: 44)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
