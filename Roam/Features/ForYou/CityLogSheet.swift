@@ -52,10 +52,10 @@ struct CityLogSheet: View {
                         Label(places.isEmpty ? "Add places" : "Add more places", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .imageScale(.small)
-                            .foregroundStyle(PlaceState.planned.markerColor)
+                            .foregroundStyle(Roam.ink)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
-                            .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
+                            .background(Capsule().fill(Roam.fill))
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -199,6 +199,7 @@ private struct CityPlacePicker: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var placeSearch = PlaceSearch()
+    @FocusState private var searchFocused: Bool
 
     private var results: [SearchHit] {
         (placeSearch.model?.hits ?? []).filter { hit in
@@ -210,9 +211,7 @@ private struct CityPlacePicker: View {
     var body: some View {
         NavigationStack {
             List {
-                if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Text("Search for the places you went in \(city.name).").foregroundStyle(Roam.inkMuted)
-                } else if results.isEmpty, placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results {
+                if !query.trimmingCharacters(in: .whitespaces).isEmpty, results.isEmpty, placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results {
                     Text("Nothing in \(city.name) matches \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
                 }
                 ForEach(results) { hit in
@@ -238,14 +237,34 @@ private struct CityPlacePicker: View {
             }
             .scrollContentBackground(.hidden)
             .background(Roam.paper)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Places in \(city.name)")
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .navigationTitle("Places you went")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            // Just a search bar with an × beside it, as when adding a city; tapping places ticks them.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: Theme.Spacing.s) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                        TextField("Places in \(city.name)", text: $query)
+                            .focused($searchFocused)
+                            .submitLabel(.search)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("city-place-search")
+                    }
+                    .padding(.horizontal, Theme.Spacing.m)
+                    .frame(height: 44)
+                    .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .floatingBubble(Circle())
+                    .accessibilityLabel("Close")
+                }
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.l)
+                .padding(.bottom, Theme.Spacing.s)
             }
+            .toolbar(.hidden, for: .navigationBar)
+            .onAppear { searchFocused = true }
             .task(id: query) { await placeSearch.run(query, services: services, near: city, within: city.name) }
         }
         .roamSheetStyle()
