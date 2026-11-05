@@ -477,8 +477,12 @@ struct CityPageView: View {
                     && $0.city.countryCode?.uppercased() == destination.countryCode?.uppercased() }
                 markedVisited = here.contains(where: \.isMarked)
                 // When you were here, as saved, fills the Start → End row (loading them isn't a change to save).
-                if let city = here.first, city.firstVisit != nil || city.lastVisit != nil {
-                    let start = city.firstVisit?.date(), end = city.lastVisit?.date()
+                // The dates you gave it when logging it; failing those, the first and last of your visits to places there.
+                let marked = here.first { $0.markedStart != nil || $0.markedEnd != nil }
+                let first = marked?.markedStart ?? here.compactMap(\.firstVisit).min()
+                let last = marked?.markedEnd ?? here.compactMap(\.lastVisit).max()
+                if first != nil || last != nil {
+                    let start = first?.date(), end = last?.date()
                     if start != logStart || end != logEnd {
                         loadingDates = true
                         logStart = start

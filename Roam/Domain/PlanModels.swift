@@ -116,6 +116,9 @@ struct PassportCity: Codable, Hashable, Identifiable, Sendable {
     var lastVisit: LocalDate?
     var isMarked: Bool
     var isHome: Bool
+    /// The dates you gave the city when marking it as been.
+    var markedStart: LocalDate? = nil
+    var markedEnd: LocalDate? = nil
 
     var id: String { city.id }
 }
