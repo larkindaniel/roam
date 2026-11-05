@@ -118,6 +118,12 @@ struct TripDetailView: View {
                         .accessibilityLabel("Edit trip")
                         .accessibilityIdentifier("trip-edit")
                 }
+                // Add a city to the trip, between edit and delete.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { addingCity = true } label: { Image(systemName: "plus").foregroundStyle(PlaceState.planned.markerColor) }
+                        .accessibilityLabel("Add a city to the trip")
+                        .accessibilityIdentifier("trip-add-city")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
                         // Attached to the bin, so the confirmation pops up from it rather than mid-screen.
