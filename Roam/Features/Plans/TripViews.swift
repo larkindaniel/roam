@@ -267,8 +267,9 @@ struct TripDetailView: View {
             .padding(.bottom, Theme.Spacing.xs)
             if own {
                 DateRangeRow(start: $tripStart, end: $tripEnd)
-                // Full width between the dates and the cities.
+                // Full width between the dates and the cities, with a little room above it.
                 addCityBubble
+                    .padding(.top, Theme.Spacing.s)
             } else {
                 Text(MyTimeline.range(value.summary.startDate, value.summary.endDate) ?? "No dates yet")
                     .font(.subheadline).foregroundStyle(Roam.inkMuted)
