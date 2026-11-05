@@ -42,9 +42,6 @@ struct CityPageView: View {
     @State private var loggingDates = false
     @State private var logStart: Date?
     @State private var logEnd: Date?
-    @State private var confirmingLeave = false
-    /// Log tapped but both dates not picked yet: leaving now records nothing.
-    private var logPending: Bool { loggingDates && (logStart == nil || logEnd == nil) }
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -131,31 +128,15 @@ struct CityPageView: View {
         } message: {
             Text("\(destination.name) stays on your wishlist while they're saved. Remove them from their pages to take it off.")
         }
-        // Both dates picked: the visit is recorded (and again if they change); the row stays showing them.
+        // Dates are optional. Both picked, the visit is recorded (and again if they change); the row stays showing them.
         .onChange(of: [logStart, logEnd]) { _, _ in
-            guard loggingDates, let logStart, let logEnd else { return }
-            Task {
-                try? await services.plans.markCityVisited(destination, start: LocalDate(date: logStart, timeZone: .current),
-                                                          end: LocalDate(date: logEnd, timeZone: .current))
-                markedVisited = true
-                library.noteChanged()
-            }
+            guard loggingDates, logStart != nil, logEnd != nil else { return }
+            Task { await saveVisit() }
         }
-        // Leaving before both dates are picked asks first: nothing is recorded until then.
-        .navigationBarBackButtonHidden(logPending)
-        .toolbar {
-            if logPending {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { confirmingLeave = true } label: { Image(systemName: "chevron.left") }
-                        .accessibilityLabel("Back")
-                }
-            }
-        }
-        .alert("Leave without logging?", isPresented: $confirmingLeave) {
-            Button("Leave", role: .destructive) { loggingDates = false; router.pop() }
-            Button("Stay", role: .cancel) {}
-        } message: {
-            Text("Your visit to \(destination.name) won't be recorded until you pick both dates.")
+        // Leaving with Log ticked records it, with whatever dates were picked (or none).
+        .onDisappear {
+            guard loggingDates, !markedVisited else { return }
+            Task { await saveVisit() }
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -411,6 +392,13 @@ struct CityPageView: View {
         }
     }
 
+    private func saveVisit() async {
+        try? await services.plans.markCityVisited(destination, start: logStart.map { LocalDate(date: $0, timeZone: .current) },
+                                                  end: logEnd.map { LocalDate(date: $0, timeZone: .current) })
+        markedVisited = true
+        library.noteChanged()
+    }
+
     /// When you were there, right under the buttons.
     private var logDates: some View {
         // Green, as where you've been is, and the size of Set as home.
@@ -419,8 +407,9 @@ struct CityPageView: View {
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
-        // Log ticks straight away; if you leave before picking both dates, it comes off again (nothing was recorded).
-        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited || loggingDates, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
+        // Log ticks straight away; it's saved once both dates are picked or you leave the page.
+        CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited || loggingDates,
+                   beenSaved: mySpotCount > 0 || markedVisited, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
                    // No trips to your own home; Plan offers AI planning there instead.
                    trips: isOwn && !isHome ? trips.filter { $0.phase(today: MyTimeline.today()) != .past } : nil,
@@ -607,6 +596,8 @@ struct CityHeader: View {
     let destination: Destination
     /// You've been: you have spots here (or just marked it).
     var hasBeen = false
+    /// Been and saved, not just ticked while its dates are still being filled in: only then does Wishlist grey out.
+    var beenSaved: Bool?
     /// How many places you've logged here; while there are any, the city stays been.
     var spotCount = 0
     @State private var confirmingUnbeen = false
@@ -698,9 +689,10 @@ struct CityHeader: View {
                     }
                 }
                 // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.
-                circle(isSaved ? "bookmark.fill" : "bookmark", tint: beenHere ? Roam.inkFaint : PlaceState.wishlist.markerColor,
-                       filled: isSaved && !beenHere, caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") {
-                    if !beenHere { onToggleSaved() }
+                let locked = beenSaved ?? beenHere
+                circle(isSaved ? "bookmark.fill" : "bookmark", tint: locked ? Roam.inkFaint : PlaceState.wishlist.markerColor,
+                       filled: isSaved && !locked, caption: isSaved ? "Saved" : "Wishlist", identifier: "city-wishlist") {
+                    if !locked { onToggleSaved() }
                 }
                 Menu {
                     ForEach(trips ?? []) { trip in Button(trip.name) { onAddToTrip(trip) } }
@@ -789,7 +781,7 @@ struct CityPhoto: View {
     }
 }
 
-/// When you were in a city you're marking as been: Start → End, both needed.
+/// When you were in a city you're marking as been: Start → End, both optional.
 struct CityVisitDatesSheet: View {
     let city: Destination
     var onSaved: () -> Void
@@ -818,7 +810,7 @@ struct CityVisitDatesSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
-                        .disabled(saving || start == nil || end == nil)
+                        .disabled(saving)
                         .accessibilityIdentifier("city-dates-save")
                 }
             }

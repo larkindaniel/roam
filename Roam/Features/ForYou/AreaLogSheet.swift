@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Logging a country (or state) you've been to: "Where in Norway?" Search and add the cities and places you went to,
-/// alike, with when you were there (Start → End, both needed). Places are logged as visits without a rating; rank them later from their pages.
+/// alike, with when you were there (Start → End, both optional). Places are logged as visits without a rating; rank them later from their pages.
 struct AreaLogSheet: View {
     /// "Norway", or "Ontario".
     let name: String
@@ -85,7 +85,7 @@ struct AreaLogSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
-                        .disabled(saving || picks.isEmpty || start == nil || end == nil)
+                        .disabled(saving || picks.isEmpty)
                         .accessibilityIdentifier("area-log-save")
                 }
             }
