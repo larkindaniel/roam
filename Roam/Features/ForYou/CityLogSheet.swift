@@ -147,10 +147,11 @@ struct CityLogSheet: View {
             Label(places.isEmpty ? "Add places" : "Add more places", systemImage: "plus")
                 .font(.subheadline.weight(.semibold))
                 .imageScale(.small)
-                .foregroundStyle(Roam.ink)
+                // Light blue, as + New trip is in the trips card.
+                .foregroundStyle(PlaceState.planned.markerColor)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .background(Capsule().fill(Roam.fill))
+                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
