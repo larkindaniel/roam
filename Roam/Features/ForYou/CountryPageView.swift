@@ -54,9 +54,16 @@ struct CountryPageView: View {
     /// The cities you've been to here.
     private var beenCities: [PassportCity] { (been?.cities ?? []).filter { isHere($0.city) } }
     private var hasBeen: Bool { region == nil ? been != nil : !beenCities.isEmpty }
-    /// Saved itself, or you've saved a city or place here and haven't been.
-    private var isSaved: Bool { savedCodes.contains(savedKey) || savedHereCount > 0 }
-    private var savedHereCount: Int { wishlistCities.count + wishlistPlaces.count + wishlistRegions.count }
+    /// Saved itself, or you've saved a city or place here; been wins, so never once you've been.
+    private var isSaved: Bool { !hasBeen && (savedCodes.contains(savedKey) || savedHereCount > 0) }
+    private var savedHereCount: Int {
+        wishlistRegions.count + wishlistCityRows.count + wishlistPlaces.filter { ($0.experience.locality ?? "").isEmpty }.count
+    }
+    /// A city you've been to here, which can't also be on your wishlist.
+    private func isBeen(_ city: Destination) -> Bool {
+        beenCities.contains { $0.city.countryCode?.uppercased() == city.countryCode?.uppercased()
+            && GeographyKey.normalize($0.city.name) == GeographyKey.normalize(city.name) }
+    }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
     private var upcomingTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) != .past } }
     private var pastTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) == .past } }
@@ -75,8 +82,12 @@ struct CountryPageView: View {
     }
     private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter(isHere) }
     private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
-    /// The cities on your wishlist here: saved whole, or where you've saved places, with how many places.
+    /// The cities on your wishlist here: saved whole, or where you've saved places, with how many places; not ones
+    /// you've been to (their saved places are on their own pages).
     private var wishlistCityRows: [(city: Destination, places: Int)] {
+        allWishlistCityRows.filter { !isBeen($0.city) }
+    }
+    private var allWishlistCityRows: [(city: Destination, places: Int)] {
         var rows: [(city: Destination, places: Int)] = wishlistCities.map { city in
             (city, wishlistPlaces.filter { CityMatch.same($0.experience, city) }.count)
         }

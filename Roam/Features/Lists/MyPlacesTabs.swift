@@ -264,11 +264,14 @@ struct SavedTab: View {
     // Saved places by country, for now; custom lists are set aside.
     var body: some View {
         // Saved places, whole saved cities and states, and whole saved countries, by country.
+        // Been wins: a country you've been to is on Been, not here (places saved in it are on its page).
+        let beenCodes = Set(model.passport.map { $0.code.uppercased() })
         let groups = PlaceGroups(model.travelWishlist, extraCities: model.savedCities).countries
+            .filter { !beenCodes.contains($0.code.uppercased()) }
         let groupCodes = Set(groups.map { $0.code.uppercased() })
         let regions = Dictionary(grouping: model.savedRegions) { $0.countryCode.uppercased() }
         let wholes = (model.savedCountries.map { $0.uppercased() } + model.savedRegions.map { $0.countryCode.uppercased() })
-            .uniqued().filter { !groupCodes.contains($0) }
+            .uniqued().filter { !groupCodes.contains($0) && !beenCodes.contains($0) }
         let countries: [SavedCountry] = groups.map { .group($0, regions: regions[$0.code.uppercased()] ?? []) }
             + wholes.map { .whole(code: $0, regions: regions[$0] ?? []) }
         // The same space between cards as Been.
