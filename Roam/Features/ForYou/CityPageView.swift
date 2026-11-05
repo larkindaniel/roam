@@ -42,6 +42,10 @@ struct CityPageView: View {
     @State private var loggingDates = false
     @State private var logStart: Date?
     @State private var logEnd: Date?
+    /// Set while filling the row with saved dates, so that isn't saved back.
+    @State private var loadingDates = false
+    /// Somewhere you've been (not your home) always shows when you were there, picked or not.
+    private var showsDates: Bool { isOwn && !isHome && (loggingDates || mySpotCount > 0 || markedVisited) }
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -130,7 +134,8 @@ struct CityPageView: View {
         }
         // Dates are optional. Both picked, the visit is recorded (and again if they change); the row stays showing them.
         .onChange(of: [logStart, logEnd]) { _, _ in
-            guard loggingDates, logStart != nil, logEnd != nil else { return }
+            if loadingDates { loadingDates = false; return }
+            guard showsDates, logStart != nil, logEnd != nil else { return }
             Task { await saveVisit() }
         }
         // Leaving with Log ticked records it, with whatever dates were picked (or none).
@@ -163,7 +168,7 @@ struct CityPageView: View {
                         // A darker grey field inside the card, the same as My Places' search.
                         .background(Capsule().fill(Roam.ink.opacity(0.12)))
                     cityHeader(showsPhoto: false)
-                    if loggingDates { logDates }
+                    if showsDates { logDates }
                 }
             }
         } content: {
@@ -468,8 +473,18 @@ struct CityPageView: View {
             trips = (try? await services.plans.myTrips()) ?? []
             saved = (try? await services.plans.savedCities()) ?? []
             if let me = session.userID, let passport = try? await services.plans.passport(ownerID: me) {
-                markedVisited = passport.flatMap(\.cities).contains { $0.isMarked && GeographyKey.normalize($0.city.name) == GeographyKey.normalize(destination.name)
+                let here = passport.flatMap(\.cities).filter { GeographyKey.normalize($0.city.name) == GeographyKey.normalize(destination.name)
                     && $0.city.countryCode?.uppercased() == destination.countryCode?.uppercased() }
+                markedVisited = here.contains(where: \.isMarked)
+                // When you were here, as saved, fills the Start → End row (loading them isn't a change to save).
+                if let city = here.first, city.firstVisit != nil || city.lastVisit != nil {
+                    let start = city.firstVisit?.date(), end = city.lastVisit?.date()
+                    if start != logStart || end != logEnd {
+                        loadingDates = true
+                        logStart = start
+                        logEnd = end
+                    }
+                }
             }
         }
         if isOwn, let me = session.userID, let saved = try? await services.lists.want(ownerID: me) {
