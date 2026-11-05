@@ -204,7 +204,8 @@ struct MyPlacesRootView: View {
         recenterToken += 1
         flyingToCountry = true
         focusedCountry = code
-        if detent == .full { detent = .half }
+        // The card comes to halfway, up from the bottom or down from fully up, to show that country's cities.
+        if detent != .half { detent = .half }
     }
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
