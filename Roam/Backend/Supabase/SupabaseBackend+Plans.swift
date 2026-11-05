@@ -72,6 +72,19 @@ extension SupabaseBackend: PlanService {
         return !updated.isEmpty
     }
 
+    func countryPhoto(code: String, name: String) async -> (url: URL, credit: String?)? {
+        guard let snapshot = try? await requestSnapshot(), snapshot.userID != nil else { return nil }
+        var request = URLRequest(url: config.supabaseURL.appendingPathComponent("functions/v1/google-place"))
+        request.httpMethod = "POST"
+        snapshot.headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["country": code, "name": name])
+        guard let (body, response) = try? await send(request), (response as? HTTPURLResponse)?.statusCode == 200,
+              let result = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let photo = (result["photoURL"] as? String).flatMap(URL.init(string:)) else { return nil }
+        return (photo, result["photoCredit"] as? String)
+    }
+
     func myLists() async throws -> [PlaceList] { try await rpc("my_lists") }
 
     func list(id: UUID) async throws -> PlaceListDetail {

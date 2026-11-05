@@ -1,6 +1,7 @@
 // Looks places up on Google Places (New) for their photo and star rating, and saves them on the place.
 // The Google key stays here on the server. Places checked in the last week are skipped, so each place costs
 // one search and one photo request about once a week, however often it is viewed.
+// Sent { country, name } instead, it returns that country's Google photo, kept the same way.
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -92,6 +93,37 @@ async function lookUp(target: Target): Promise<Lookup> {
   };
 }
 
+/// A country's photo: the first landscape-shaped one on its own Google entry.
+async function countryPhoto(code: string, name: string) {
+  const cached = await rpc("country_photo", { p_code: code });
+  if (cached?.fresh) return { photoURL: cached.photoURL ?? null, photoCredit: cached.photoCredit ?? null };
+  const search = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": googleKey!, "X-Goog-FieldMask": "places.types,places.photos" },
+    body: JSON.stringify({ textQuery: name, pageSize: 1 }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!search.ok) throw new Error(`Google search failed: ${search.status} ${await search.text()}`);
+  const place = (await search.json()).places?.[0];
+  let photoURL: string | null = null, photoCredit: string | null = null;
+  if (place?.types?.includes("country")) {
+    const photos: { name?: string; widthPx?: number; heightPx?: number; authorAttributions?: { displayName?: string }[] }[] = place.photos ?? [];
+    const photo = photos.find(p => (p.widthPx ?? 0) > (p.heightPx ?? 0)) ?? photos[0];
+    if (photo?.name) {
+      const media = await fetch(`https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=1600&skipHttpRedirect=true`, {
+        headers: { "X-Goog-Api-Key": googleKey! }, signal: AbortSignal.timeout(15_000),
+      });
+      if (media.ok) {
+        photoURL = (await media.json()).photoUri ?? null;
+        const author = photo.authorAttributions?.[0]?.displayName;
+        photoCredit = author ? `${author} via Google` : null;
+      }
+    }
+  }
+  await rpc("save_country_photo", { p_code: code, p_name: name, p_url: photoURL, p_credit: photoCredit });
+  return { photoURL, photoCredit };
+}
+
 Deno.serve(async request => {
   if (request.method !== "POST") return json({ message: "Use POST." }, 405);
   try {
@@ -100,10 +132,17 @@ Deno.serve(async request => {
     const auth = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anon, Authorization: authorization }, signal: AbortSignal.timeout(15_000) });
     if (!auth.ok) return json({ message: "roam:not_signed_in" }, 401);
     // Without a key there's nothing to look up; the app keeps showing visit photos and maps.
-    if (!googleKey) return json({ updated: [] });
+    if (!googleKey) return json({ updated: [], photoURL: null });
 
     let input;
     try { input = await request.json(); } catch { return json({ message: "roam:validation:Send experienceIDs." }, 400); }
+    if (typeof input?.country === "string") {
+      const code = input.country.toUpperCase();
+      if (!/^[A-Z]{2}$/.test(code) || typeof input.name !== "string" || !input.name.trim()) {
+        return json({ message: "roam:validation:Send a country code and name." }, 400);
+      }
+      return json(await countryPhoto(code, input.name.trim()));
+    }
     const ids: string[] = Array.isArray(input?.experienceIDs) ? input.experienceIDs.filter((id: unknown) => typeof id === "string" && uuid.test(id)) : [];
     if (ids.length === 0 || ids.length > 30) return json({ message: "roam:validation:Send 1 to 30 experienceIDs." }, 400);
 
