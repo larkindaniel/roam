@@ -106,13 +106,11 @@ struct RatingFlowView: View {
                 case .loading:
                     ProgressView("Loading your category ranking…").accessibilityIdentifier("rating-loading")
                 case .comparison: comparison(model)
-                case .saving:
-                    ProgressView("Saving…").accessibilityIdentifier("rating-saving")
-                    Text("Your result appears after saving is confirmed.").foregroundStyle(Theme.secondaryText)
+                // Saving and saved keep the form where it is (Save shows it's working); the log then just closes.
+                case .saving, .result: details(model)
                 case .retry:
                     Button("Retry save") { Task { await model.retrySave() } }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
-                case .result: result(model)
                 }
             }
             .padding(Theme.Spacing.l)
@@ -121,15 +119,16 @@ struct RatingFlowView: View {
         // Save sits where the other bottom buttons do: the tab bar's width and height, the same low gap from the bottom of
         // the screen, with room left above it for the content.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.step == .details { Color.clear.frame(height: RoamTabBar.reservedHeight) }
+            if [.details, .saving, .result].contains(model.step) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
         }
         .overlay {
-            if model.step == .details {
-                let canSave = model.photos?.canCommit != false && model.category != nil
+            if [.details, .saving, .result].contains(model.step) {
+                let working = model.step != .details
+                let canSave = !working && model.photos?.canCommit != false && model.category != nil
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
                     Button { Task { await model.okay() } } label: {
-                        Text("Save")
+                        Group { if working { ProgressView().tint(Roam.onInk) } else { Text("Save") } }
                             .font(.headline)
                             .foregroundStyle(Roam.onInk)
                             .frame(maxWidth: .infinity)
@@ -139,7 +138,7 @@ struct RatingFlowView: View {
                     .buttonStyle(.plain)
                     // Liquid Glass, tinted the dark ink it was.
                     .floatingBubble(Capsule(), tint: Roam.ink)
-                    .opacity(canSave ? 1 : 0.35)
+                    .opacity(canSave || working ? 1 : 0.35)
                     .disabled(!canSave)
                     .padding(.horizontal, RoamTabBar.sideMargin)
                     .padding(.bottom, RoamTabBar.margin + 6)
@@ -396,30 +395,6 @@ struct RatingFlowView: View {
         }.buttonStyle(.plain).accessibilityIdentifier(identifier)
     }
 
-    @ViewBuilder private func result(_ model: RatingFlowModel) -> some View {
-        if let completion = model.completion {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                switch completion {
-                case .rating(let result):
-                    Text("Saved").font(.title2.weight(.semibold))
-                    if Score.isShown {
-                    Text(result.score.formatted).font(.system(.largeTitle, design: .rounded).bold())
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel("Your score \(result.score.formatted)").accessibilityIdentifier("rating-result-score")
-                    Text("Position \(result.rank) of \(result.categoryCount) in \(result.category.title)")
-                        .accessibilityIdentifier("rating-result-position")
-                    if result.groupSize > 1 { Text("Tied with \(result.groupSize - 1) other \(result.groupSize == 2 ? "place" : "places").") }
-                    Text("Your score can change as your category list grows.").font(.footnote).foregroundStyle(Theme.secondaryText)
-                    }
-                case .visit:
-                    Text("Visit saved").font(.title2.weight(.semibold)).accessibilityIdentifier("rating-visit-saved")
-                    Text(request.mode == .addVisit ? "Your existing ranking stays the same." : "You can rank this place whenever you like.").foregroundStyle(Theme.secondaryText)
-                }
-                Text("People you chose can see this entry on your profile and in their Friends tab.").font(.footnote)
-                Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-done")
-            }.screenIdentifier("rating-result")
-        }
-    }
 }
 
 private struct RatingDateEditor: View {
