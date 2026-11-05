@@ -207,7 +207,6 @@ final class RatingFlowModel {
         guard Validation.characterCount(note) <= 5_000 else { message = "Public notes can have up to 5,000 characters."; return false }
         guard date.map({ $0 <= today }) ?? true else { message = "Choose today or an earlier visit date."; return false }
         let assets = mediaIDs ?? visit.mediaIDs
-        guard assets.count <= 6 else { message = "A visit can have up to six photos."; return false }
         visit.publicNote = note
         visit.date = date
         if date != nil && visit.timeZoneIdentifier == nil { visit.timeZoneIdentifier = timeZone.identifier }

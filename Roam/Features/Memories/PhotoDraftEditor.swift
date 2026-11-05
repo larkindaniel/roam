@@ -20,14 +20,13 @@ struct PhotoDraftEditor: View {
         NavigationStack {
             List { Group {
                 Section {
-                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - model.assets.count),
-                                 selectionBehavior: .ordered, matching: .images) {
+                    PhotosPicker(selection: $selectedItems, selectionBehavior: .ordered, matching: .images) {
                         Label("Choose photos", systemImage: "photo.on.rectangle.angled")
                             .frame(minHeight: Theme.minimumHitTarget)
                     }
-                    .disabled(model.assets.count >= 6 || importing || restoring)
+                    .disabled(importing || restoring)
                     .accessibilityIdentifier("photo-picker")
-                    Text("\(model.assets.count) of 6 photos").accessibilityIdentifier("photo-count")
+                    Text(model.assets.count == 1 ? "1 photo" : "\(model.assets.count) photos").accessibilityIdentifier("photo-count")
                     if importing { ProgressView("Reading selected photos…").accessibilityIdentifier("photo-reading") }
                 } footer: {
                     Text("Only photos you choose are read. Photos are private until your visit is saved. Failed photos must be retried or removed.")
@@ -159,5 +158,77 @@ struct PhotoDraftEditor: View {
         case .existing: return "Saved photo"
         case .failed: return "Upload failed · Retry or remove"
         }
+    }
+}
+
+/// A photo in a draft: what was picked on this device, else the uploaded copy.
+struct PhotoDraftImage: View {
+    let model: PhotoDraftModel
+    let asset: PhotoDraftAsset
+
+    var body: some View {
+        if let data = model.thumbnailData(assetID: asset.id), let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill().accessibilityLabel("Selected visit photo")
+        } else if let existing = asset.existing {
+            RemoteImageView(path: existing.path)
+        } else if let staged = asset.staged {
+            RemoteImageView(path: staged.path)
+        } else {
+            Image(systemName: "photo").font(.largeTitle).foregroundStyle(Theme.secondaryText)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.subtleFill)
+                .accessibilityLabel("Selected photo not ready")
+        }
+    }
+}
+
+/// Reads photos picked in the system picker into a draft, which uploads them.
+@MainActor
+enum PhotoImport {
+    static func add(_ items: [PhotosPickerItem], to model: PhotoDraftModel) async {
+        for item in items {
+            guard !Task.isCancelled else { break }
+            if let data = try? await item.loadTransferable(type: Data.self) { await model.add(data: data) }
+            else { model.addFailure(message: "This selected photo couldn't be read. Remove it or choose it again.") }
+        }
+    }
+}
+
+/// A visit's photos one at a time, swiping for the next, each with a way to take it off (and retry one that failed).
+struct PhotoCarousel: View {
+    let model: PhotoDraftModel
+    var height: CGFloat = 240
+
+    var body: some View {
+        TabView {
+            ForEach(model.assets) { asset in
+                PhotoDraftImage(model: model, asset: asset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .overlay {
+                        if asset.status == .preparing || asset.status == .uploading { ProgressView().tint(.white) }
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        if asset.status == .failed {
+                            Button("Retry") { Task { await model.retry(assetID: asset.id) } }
+                                .font(.subheadline.weight(.semibold))
+                                .buttonStyle(.borderedProminent)
+                                .padding(Theme.Spacing.m)
+                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        Button { Task { await model.remove(assetID: asset.id) } } label: {
+                            Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.white)
+                                .frame(width: 30, height: 30).background(Circle().fill(.black.opacity(0.45)))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(Theme.Spacing.s)
+                        .accessibilityLabel("Remove photo")
+                    }
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: model.assets.count > 1 ? .always : .never))
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .accessibilityIdentifier("photo-carousel")
     }
 }

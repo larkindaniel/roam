@@ -1,3 +1,4 @@
+import PhotosUI
 import CoreLocation
 import SwiftUI
 
@@ -11,7 +12,7 @@ struct RatingFlowView: View {
     @State private var model: RatingFlowModel?
     @State private var showsCancel = false
     @State private var showsDate = false
-    @State private var showsPhotos = false
+    @State private var pickedPhotos: [PhotosPickerItem] = []
     @State private var trips: [TripSummary] = []
     @State private var home: Destination?
 
@@ -155,15 +156,6 @@ struct RatingFlowView: View {
             guard model.canEdit, let photos = model.photos, photos.canCommit, let ids = try? photos.attachmentIDs() else { return }
             _ = model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: ids)
         }
-        .sheet(isPresented: $showsPhotos) {
-            if let photos = model.photos {
-                PhotoDraftEditor(model: photos, failureMessage: { model.persistenceError ?? model.message }) {
-                    do {
-                        return model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: try photos.attachmentIDs())
-                    } catch { return false }
-                }
-            }
-        }
         .sheet(isPresented: $showsDate) {
             RatingDateEditor(date: model.visit.date, zone: model.timeZone, today: model.today, failureMessage: { model.persistenceError ?? model.message }) { date in
                 model.updateDetails(note: model.visit.publicNote, date: date)
@@ -270,14 +262,24 @@ struct RatingFlowView: View {
                     .task(id: request.experience.id) { await loadPlacement(model) }
                 }
             }
+            // Photos: the system picker straight away; once there are some, they show one at a time, swiping for more.
             if let photos = model.photos {
-                Button { showsPhotos = true } label: {
-                    bubbleLabel(symbol: "photo.on.rectangle", text: photos.assets.isEmpty ? "Add photos" : "\(photos.assets.count) \(photos.assets.count == 1 ? "photo" : "photos")",
-                                trailing: "chevron.right")
+                if !photos.assets.isEmpty {
+                    PhotoCarousel(model: photos)
+                }
+                PhotosPicker(selection: $pickedPhotos, selectionBehavior: .ordered, matching: .images) {
+                    bubbleLabel(symbol: "photo.on.rectangle", text: photos.assets.isEmpty ? "Add photos" : "Add more photos", trailing: "plus")
                 }
                 .buttonStyle(.plain)
                 .roamCard(padding: Theme.Spacing.m)
                 .accessibilityIdentifier("rating-edit-photos")
+                .onChange(of: pickedPhotos) { _, items in
+                    guard !items.isEmpty else { return }
+                    Task {
+                        await PhotoImport.add(items, to: photos)
+                        pickedPhotos = []
+                    }
+                }
             }
             // The note, typed right here in a roomy box of its own.
             TextField("Add a note", text: Binding(get: { model.visit.publicNote },
