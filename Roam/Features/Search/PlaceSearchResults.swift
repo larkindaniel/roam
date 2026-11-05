@@ -84,7 +84,7 @@ struct PlaceSearchResults: View {
                         row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: area.countryName ?? "") { router.push(.city(area)) }
                     }
                     ForEach(cityHits) { city in
-                        row(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
+                        row(symbol: "building.2.fill", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
                     }
                     ForEach(others) { hit in
                         row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
@@ -105,7 +105,8 @@ struct PlaceSearchResults: View {
                     if let flag { Text(flag).font(.title3) } else { Image(systemName: symbol).foregroundStyle(tint) }
                 }
                 .frame(width: 24).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
+                // Name and where it is sit tight together, so the rows read apart.
+                VStack(alignment: .leading, spacing: 0) {
                     Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
                     if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
                 }
