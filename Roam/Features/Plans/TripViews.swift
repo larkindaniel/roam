@@ -343,10 +343,15 @@ struct TripEditorSheet: View {
                         TextField("Description (optional)", text: $draft.description, axis: .vertical)
                             .textInputAutocapitalization(.never)
                     }
-                    // Both required, the standard date rows once picked; the end never before the start.
+                    // Both required, on one row: Start → End, each opening a calendar; the end never before the start.
                     Section("Dates") {
-                        dateRow("Start", date: $start, from: nil)
-                        dateRow("End", date: $end, from: start)
+                        HStack(spacing: Theme.Spacing.s) {
+                            dateButton("Start", date: $start, from: nil)
+                            Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                                .accessibilityHidden(true)
+                            dateButton("End", date: $end, from: start)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
@@ -429,16 +434,16 @@ struct TripEditorSheet: View {
         .accessibilityIdentifier("trip-editor-add-city")
     }
 
-    /// A date row: "Select" (or the date once picked) opens a calendar; nothing is set until you pick a day.
-    private func dateRow(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
+    /// "Start" or "End" (or the date once picked) with a calendar icon; it opens a calendar, and nothing is set until you
+    /// pick a day.
+    private func dateButton(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
         HStack {
-            Text(title)
-            Spacer()
             Button { pickingDate = title } label: {
-                Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Select", systemImage: "calendar")
+                Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
                     .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
                     .background(Capsule().fill(Roam.fill))
             }
             .buttonStyle(.plain)
