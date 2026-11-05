@@ -169,6 +169,7 @@ struct MyPlacesRootView: View {
     @State private var sheet: MyPlacesSheet?
     @State private var tab = MyPlacesTab.been
     @State private var query = ""
+    @State private var placeSearch = PlaceSearch()
     @FocusState private var searching: Bool
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
@@ -246,7 +247,7 @@ struct MyPlacesRootView: View {
 
     /// The same search results as Discover, with your own places matched first.
     private var searchResults: some View {
-        PlaceSearchResults(query: query, mine: model?.pins ?? [])
+        PlaceSearchResults(query: query, placeSearch: placeSearch, mine: model?.pins ?? [])
     }
 
     private func showWorld() {
@@ -298,6 +299,7 @@ struct MyPlacesRootView: View {
 
     var body: some View {
         sheetLayout
+        .task(id: query) { await placeSearch.run(query, services: services) }
         .sheet(item: $sheet) { which in
             switch which {
             case .homeCity:

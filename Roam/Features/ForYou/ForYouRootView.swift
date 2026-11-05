@@ -104,6 +104,7 @@ struct ForYouRootView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
     @State private var query = ""
+    @State private var placeSearch = PlaceSearch()
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var barsHidden = false
@@ -174,7 +175,7 @@ struct ForYouRootView: View {
             if hasQuery {
                 // The same search results as My Places.
                 ScrollView {
-                    PlaceSearchResults(query: query)
+                    PlaceSearchResults(query: query, placeSearch: placeSearch)
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.vertical, Theme.Spacing.s)
                 }
@@ -189,6 +190,7 @@ struct ForYouRootView: View {
             }
         }
         .background(Roam.paper)
+        .task(id: query) { await placeSearch.run(query, services: services) }
         // One row of floating controls instead of a navigation bar: log or back, search, then profile and map.
         // Scrolling down tucks the row away; scrolling up brings it back.
         .safeAreaInset(edge: .top, spacing: 0) {

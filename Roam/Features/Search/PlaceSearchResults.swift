@@ -2,15 +2,36 @@ import SwiftUI
 
 /// One search, shown the same way everywhere (My Places and Discover): your own places first, then cities, then
 /// everything else Apple knows, each a row with its icon, name and where it is.
+/// The running search. The page owns it, not the results view, so a card rebuilding its content as it rises (My Places)
+/// can't cancel a search halfway and leave it blank.
+@MainActor
+@Observable
+final class PlaceSearch {
+    private(set) var model: ExperienceSearchModel?
+    private(set) var cities: [Destination] = []
+
+    func run(_ query: String, services: AppServices) async {
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; return }
+        try? await Task.sleep(for: Limits.searchDebounce)
+        guard !Task.isCancelled else { return }
+        if model == nil { model = ExperienceSearchModel(services: services) }
+        async let found = services.places.searchDestinations(query: query)
+        await model?.search(query, near: nil)
+        let hits = Array(((try? await found) ?? []).prefix(3))
+        guard !Task.isCancelled else { return }
+        cities = hits
+    }
+}
+
 struct PlaceSearchResults: View {
     let query: String
+    let placeSearch: PlaceSearch
     /// Your places to match by name first (been, going, saved); empty where they aren't to hand.
     var mine: [PlaceMapItem] = []
 
-    @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
-    @State private var search: ExperienceSearchModel?
-    @State private var cityHits: [Destination] = []
+    private var search: ExperienceSearchModel? { placeSearch.model }
+    private var cityHits: [Destination] { placeSearch.cities }
 
     var body: some View {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -43,15 +64,6 @@ struct PlaceSearchResults: View {
                 }
                 .roamCard(padding: Theme.Spacing.m)
             }
-        }
-        .task(id: query) {
-            guard !needle.isEmpty else { search?.query = ""; cityHits = []; return }
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            if search == nil { search = ExperienceSearchModel(services: services) }
-            async let cities = services.places.searchDestinations(query: query)
-            await search?.search(query, near: nil)
-            cityHits = Array(((try? await cities) ?? []).prefix(3))
         }
     }
 
