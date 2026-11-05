@@ -119,13 +119,6 @@ struct TripDetailView: View {
             // Add to trip (a blue bubble with words) beside a separate round Delete. The name, description and dates are
             // edited in place, so there's no Edit button.
             if let summary = detail.value?.summary, summary.isOwn {
-                if #available(iOS 26.0, *) {
-                    // Its own light blue glass, not the bar's shared glass behind it.
-                    ToolbarItem(placement: .topBarTrailing) { addCityBubble }
-                        .sharedBackgroundVisibility(.hidden)
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) { addCityBubble }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
                         // Attached to the bin, so the confirmation pops up from it rather than mid-screen.
@@ -185,18 +178,17 @@ struct TripDetailView: View {
     /// Light blue glass with blue words: adds a city to the trip.
     private var addCityBubble: some View {
         Button { addingCity = true } label: {
-            // The same height as the round Delete beside it, at the bar's own text size.
-            // The top bar shows only a label's icon unless told otherwise; this needs its words.
             Label("Add to trip", systemImage: "plus")
                 .labelStyle(.titleAndIcon)
-                .font(.body.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(PlaceState.planned.markerColor)
-                .padding(.horizontal, 16)
-                .frame(height: 44)
+                .padding(.horizontal, 14)
+                .frame(height: 38)
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+        .fixedSize()
         .accessibilityLabel("Add a city to the trip")
         .accessibilityIdentifier("trip-add-city")
     }
@@ -257,23 +249,20 @@ struct TripDetailView: View {
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
         let own = value.summary.isOwn
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            // The name with its description tight under it, and the edit icon centred against the two together.
+            // The name with the edit icon beside it, and Add to trip at the right of the same line (under Delete).
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                VStack(alignment: .leading, spacing: -2) {
-                    Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
-                        .accessibilityAddTraits(.isHeader)
-                    if !value.summary.description.isEmpty {
-                        Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    }
-                }
+                Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
+                    .accessibilityAddTraits(.isHeader)
                 if own {
-                    // Opens the edit sheet for the name and description, as before.
+                    // Opens the edit sheet for the name.
                     Button { editing = draft(value.summary) } label: {
                         Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.ink)
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Edit trip")
                     .accessibilityIdentifier("trip-edit")
+                    Spacer(minLength: Theme.Spacing.s)
+                    addCityBubble
                 }
             }
             // A little more room before the dates.
@@ -454,8 +443,6 @@ struct TripEditorSheet: View {
                         TextField("Trip name", text: $draft.name)
                             .textInputAutocapitalization(.never)
                             .accessibilityIdentifier("trip-name")
-                        TextField("Description (optional)", text: $draft.description, axis: .vertical)
-                            .textInputAutocapitalization(.never)
                     }
                     // Both dates needed, on their own row just under the name card: Start → End, each opening a calendar;
                     // the end never before the start. Before any city is added, + Add a city sits right under them.
