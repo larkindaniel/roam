@@ -72,6 +72,7 @@ struct TripDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: LoadPhase<TripDetail> = .idle
     @State private var actionError: String?
+    @State private var editing: TripDraft?
     @State private var confirmingDelete = false
     @State private var entries: [TripFeedEntry] = []
     @State private var wishlist: [ExperienceSummary] = []
@@ -79,10 +80,6 @@ struct TripDetailView: View {
     @State private var addingCity = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
     @State private var scrolledPastTitle = false
-    @State private var editingName = false
-    @State private var nameText = ""
-    @State private var descriptionText = ""
-    @FocusState private var nameFocused: Bool
     /// The dates shown in the bubbles; changing both saves them.
     @State private var tripStart: Date?
     @State private var tripEnd: Date?
@@ -150,6 +147,11 @@ struct TripDetailView: View {
                 }
             }
         }
+        .sheet(item: $editing) { draft in
+            // The name, description and dates; cities are added and swiped off on the trip's page.
+            TripEditorSheet(draft: draft) { _ in Task { await load() } }
+                .presentationBackground(Roam.paper)
+        }
         .sheet(isPresented: $addingFromWishlist) {
             if let summary = detail.value?.summary {
                 PlanTripSheet(candidates: wishlist, suggestedName: summary.name, trip: summary) { Task { await load() } }
@@ -186,12 +188,12 @@ struct TripDetailView: View {
     /// Light blue glass with blue words: adds a city to the trip.
     private var addCityBubble: some View {
         Button { addingCity = true } label: {
-            Label("Add city", systemImage: "plus")
-                .font(.subheadline.weight(.semibold))
-                .imageScale(.small)
+            // The same height as the round Delete beside it, at the bar's own text size.
+            Label("Add to trip", systemImage: "plus")
+                .font(.body.weight(.semibold))
                 .foregroundStyle(PlaceState.planned.markerColor)
-                .padding(.horizontal, 14)
-                .frame(height: 36)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -251,50 +253,27 @@ struct TripDetailView: View {
     }
 
     /// Just the trip's name and its dates (a friend's trip says whose).
-    /// The trip's name (a pencil beside it edits it, with a description), its description, and its dates. Your own trip's
-    /// dates are bubbles you change right here; nothing needs an Edit screen.
+    /// The trip's name (the edit icon beside it opens the edit sheet), its description, and its dates. Your own trip's dates
+    /// are bubbles you change right here.
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
         let own = value.summary.isOwn
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            if editingName {
-                TextField("Trip name", text: $nameText)
-                    .font(.roamDisplay(.title))
-                    .textInputAutocapitalization(.never)
-                    .focused($nameFocused)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await saveName() } }
-                    .accessibilityIdentifier("trip-name-field")
-                TextField("Add a description", text: $descriptionText, axis: .vertical)
-                    .font(.subheadline)
-                    .textInputAutocapitalization(.never)
-                    .lineLimit(1...5)
-                    .accessibilityIdentifier("trip-description-field")
-                Button("Done") { Task { await saveName() } }
-                    .font(.subheadline.weight(.semibold))
-                    .buttonStyle(.borderless)
-                    .disabled(nameText.trimmingCharacters(in: .whitespaces).isEmpty)
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                        Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
-                            .accessibilityAddTraits(.isHeader)
-                        if own {
-                            Button {
-                                nameText = value.summary.name
-                                descriptionText = value.summary.description
-                                editingName = true
-                                nameFocused = true
-                            } label: {
-                                Image(systemName: "pencil").font(.headline).foregroundStyle(Roam.inkMuted)
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel("Edit name")
-                            .accessibilityIdentifier("trip-edit-name")
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
+                        .accessibilityAddTraits(.isHeader)
+                    if own {
+                        // Opens the edit sheet for the name and description (and dates), as before.
+                        Button { editing = draft(value.summary) } label: {
+                            Image(systemName: "square.and.pencil").font(.headline).foregroundStyle(Roam.inkMuted)
                         }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Edit trip")
+                        .accessibilityIdentifier("trip-edit")
                     }
-                    if !value.summary.description.isEmpty {
-                        Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    }
+                }
+                if !value.summary.description.isEmpty {
+                    Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
                 }
             }
             if own {
@@ -325,11 +304,6 @@ struct TripDetailView: View {
         } catch { actionError = error.roamMessage }
     }
 
-    private func saveName() async {
-        guard !nameText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        editingName = false
-        await saveTrip(name: nameText, description: descriptionText)
-    }
 
     /// The trip's countries and cities, each a photo card (like My Places' and Discover's) that opens its page. No map
     /// and no list of spots: those are on each city's page.
