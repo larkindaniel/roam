@@ -410,10 +410,23 @@ struct HeroPhotoCard: View {
             }
             .padding(Theme.Spacing.l)
         }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        // A thin white frame and a soft shadow, so the photo reads as something to tap; its corners follow the frame's.
+        // One already inside a card (a country's photo atop its cities) has a smaller radius and no frame of its own.
+        .clipShape(RoundedRectangle(cornerRadius: framed ? cornerRadius - Self.frameWidth : cornerRadius, style: .continuous))
+        .padding(framed ? Self.frameWidth : 0)
+        .background {
+            if framed {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Roam.paperRaised)
+                    .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+            }
+        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
+
+    private var framed: Bool { cornerRadius == Theme.cornerRadius }
+    private static let frameWidth: CGFloat = 4
 }
 
 /// A city as a big card, like an upcoming trip's, led by its Google photo.
