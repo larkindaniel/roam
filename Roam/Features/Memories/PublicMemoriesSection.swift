@@ -193,13 +193,6 @@ struct PublicMemoryCard: View {
                         .frame(minHeight: Theme.minimumHitTarget)
                         .accessibilityLabel("Rated \(score.formatted) out of 5")
                 }
-                Menu {
-                    Button { onReport() } label: { Label("Report memory", systemImage: "flag") }
-                } label: {
-                    Image(systemName: "ellipsis").frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                }
-                .accessibilityLabel("More for \(memory.author.displayName)'s memory")
-                .accessibilityIdentifier("memory-overflow-\(memory.id.uuidString)")
             }
             if !memory.publicNote.isEmpty {
                 Text(memory.publicNote)
