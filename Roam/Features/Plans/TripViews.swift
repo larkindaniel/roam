@@ -50,7 +50,6 @@ enum TripText {
         var parts: [String] = []
         if !trip.stops.isEmpty { parts.append(trip.stops.joined(separator: ", ")) }
         parts.append(dates(trip))
-        parts.append("\(trip.visitedCount) visited, \(trip.plannedCount) planned")
         return parts.joined(separator: " · ")
     }
 

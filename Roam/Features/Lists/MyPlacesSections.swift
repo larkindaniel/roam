@@ -295,7 +295,6 @@ struct TripCard: View {
             let days = MyTimeline.days(from: today, to: start)
             parts.append(days == 1 ? "tomorrow" : "in \(days) days")
         }
-        parts.append("\(trip.plannedCount) planned")
         return parts.joined(separator: " · ")
     }
 }
