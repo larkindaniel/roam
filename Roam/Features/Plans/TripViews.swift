@@ -431,7 +431,7 @@ struct TripEditorSheet: View {
             Text(title)
             Spacer()
             Button { pickingDate = title } label: {
-                Text(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Select")
+                Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Select", systemImage: "calendar")
                     .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
                     .padding(.horizontal, 12)
                     .frame(height: 34)
