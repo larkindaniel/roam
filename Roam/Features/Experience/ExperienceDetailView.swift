@@ -344,11 +344,31 @@ struct ExperienceDetailView: View {
                         .minimumScaleFactor(0.8)
                         .accessibilityAddTraits(.isHeader)
                     if sheetDetent != .peek {
-                        Text([(detail.myRating?.category ?? summary.category)?.title, summary.areaLine.isEmpty ? nil : summary.areaLine]
-                                .compactMap { $0 }.joined(separator: " · "))
-                            .font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
-                            // Tucked right up under the name.
-                            .padding(.top, -4)
+                        // The city first, as a slim grey chip that opens its page; then the category.
+                        HStack(spacing: Theme.Spacing.s) {
+                            if let city = summary.locality, !city.isEmpty {
+                                // A tap handler, like Log and Save: Buttons in this card didn't get their taps.
+                                HStack(spacing: 3) {
+                                    Text(city).lineLimit(1)
+                                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                                }
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Roam.ink)
+                                .padding(.horizontal, 10)
+                                .frame(height: 24)
+                                .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                                .contentShape(Capsule())
+                                .onTapGesture { Task { await openCity(summary) } }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { Task { await openCity(summary) } }
+                                .accessibilityLabel("Open \(city)")
+                                .accessibilityIdentifier("detail-open-city")
+                            }
+                            if let category = (detail.myRating?.category ?? summary.category)?.title {
+                                Text(category).font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                            }
+                        }
+                        .padding(.top, 2)
                     }
                 }
                 Spacer(minLength: 0)
@@ -374,7 +394,7 @@ struct ExperienceDetailView: View {
             // Log, Save and Send sit in the card's fixed header, under the name, as in Apple Maps (buttons in the
             // scrolling part weren't reliably receiving taps).
             if sheetDetent != .peek {
-                actionRow(detail).padding(.top, Theme.Spacing.s)
+                actionRow(detail).padding(.top, Theme.Spacing.m + 2)
             }
         } content: {
                 if !galleryItems(summary).isEmpty {
@@ -683,6 +703,12 @@ struct ExperienceDetailView: View {
     private func openLog(_ mode: LogRequest.Mode) async {
         do { router.sheet = .log(try await services.makeLogRequest(experienceID: experienceID, mode: mode)) }
         catch { actionError = session.handle(error) }
+    }
+
+    /// The place's city page, found from where the place is.
+    private func openCity(_ place: ExperienceSummary) async {
+        guard let city = try? await services.places.destination(for: place.coordinate) else { return }
+        router.push(.city(city))
     }
 
     /// Takes the place off where you've been: every visit goes, and the ranking with the last one.
