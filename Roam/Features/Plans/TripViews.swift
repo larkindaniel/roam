@@ -256,8 +256,11 @@ struct TripDetailView: View {
     private func countryGroup(_ code: String, cities: [Destination]) -> some View {
         VStack(spacing: Theme.Spacing.s) {
             Button { router.push(.country(code)) } label: {
+                // Its corners follow the card's at the same distance (the card's radius less the margin), so the two
+                // curves read as one roundness.
                 CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code),
-                                 subtitle: cities.isEmpty ? "Pick cities and places as you go" : "")
+                                 subtitle: cities.isEmpty ? "Pick cities and places as you go" : "",
+                                 cornerRadius: Theme.cornerRadius - Self.groupMargin)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("trip-country-\(code)")
@@ -268,12 +271,15 @@ struct TripDetailView: View {
                         if city.id != cities.last?.id { RowSeparator() }
                     }
                 }
-                // The rows keep the usual inset; only the photo sits closer to the card's edge.
-                .padding(.horizontal, Theme.Spacing.xs)
+                // The rows keep the usual inset; only the photo sits close to the card's edge.
+                .padding(.horizontal, Theme.Spacing.m - Self.groupMargin)
             }
         }
-        .roamCard(padding: Theme.Spacing.s)
+        .roamCard(padding: Self.groupMargin)
     }
+
+    /// The tight margin round a country's photo in its trip card.
+    private static let groupMargin: CGFloat = 6
 
     private func draft(_ summary: TripSummary) -> TripDraft {
         TripDraft(id: summary.id, name: summary.name, description: summary.description,
