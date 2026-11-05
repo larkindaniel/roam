@@ -175,20 +175,20 @@ struct TripDetailView: View {
         places(value)
     }
 
-    /// Light blue glass with blue words: adds a city to the trip.
+    /// Light blue with blue words: adds a city to the trip.
     private var addCityBubble: some View {
         Button { addingCity = true } label: {
+            // The same light blue full-width button as Add a city on a new trip, the date bubbles' height and text.
             Label("Add to trip", systemImage: "plus")
-                .labelStyle(.titleAndIcon)
                 .font(.subheadline.weight(.semibold))
+                .imageScale(.small)
                 .foregroundStyle(PlaceState.planned.markerColor)
-                .padding(.horizontal, 14)
-                .frame(height: 38)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
                 .contentShape(Capsule())
         }
         .buttonStyle(.borderless)
-        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
-        .fixedSize()
         .accessibilityLabel("Add a city to the trip")
         .accessibilityIdentifier("trip-add-city")
     }
@@ -249,7 +249,7 @@ struct TripDetailView: View {
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
         let own = value.summary.isOwn
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            // The name with the edit icon beside it, and Add to trip at the right of the same line (under Delete).
+            // The name with the edit icon beside it.
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
@@ -261,14 +261,14 @@ struct TripDetailView: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Edit trip")
                     .accessibilityIdentifier("trip-edit")
-                    Spacer(minLength: Theme.Spacing.s)
-                    addCityBubble
                 }
             }
             // A little more room before the dates.
             .padding(.bottom, Theme.Spacing.xs)
             if own {
                 DateRangeRow(start: $tripStart, end: $tripEnd)
+                // Full width between the dates and the cities.
+                addCityBubble
             } else {
                 Text(MyTimeline.range(value.summary.startDate, value.summary.endDate) ?? "No dates yet")
                     .font(.subheadline).foregroundStyle(Roam.inkMuted)
