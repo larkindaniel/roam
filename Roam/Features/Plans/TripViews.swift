@@ -178,7 +178,7 @@ struct TripDetailView: View {
             Section { addCityBubble }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: 0, trailing: 0))
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         }
     }
 
