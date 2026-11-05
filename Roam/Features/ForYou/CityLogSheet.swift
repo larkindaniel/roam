@@ -1,0 +1,195 @@
+import SwiftUI
+
+/// Logging a city, laid out like logging a place: its name and where it is, how it was, when, a note and Save. The one
+/// difference is the places you went there, added with a full-width button and logged as visits without ratings.
+struct CityLogSheet: View {
+    let city: Destination
+    var onSaved: () -> Void
+
+    @Environment(AppServices.self) private var services
+    @Environment(\.dismiss) private var dismiss
+    @State private var sentiment: Sentiment? = .fine
+    @State private var start: Date?
+    @State private var end: Date?
+    @State private var note = ""
+    @State private var places: [SearchHit] = []
+    @State private var addingPlaces = false
+    @State private var saving = false
+    @State private var error: String?
+    @State private var confirmingDiscard = false
+
+    private var hasChanges: Bool { sentiment != .fine || start != nil || end != nil || !note.isEmpty || !places.isEmpty }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(city.name).font(.roamTitle())
+                        Text(city.subtitle).font(.subheadline).foregroundStyle(Theme.secondaryText)
+                    }
+                    .accessibilityElement(children: .combine)
+                    FeelingSlider(selection: $sentiment, enabled: true) { _ in }
+                    DateRangeRow(start: $start, end: $end)
+                    // The places you went here, as rows, then the button to add more (as on a trip's page).
+                    if !places.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(places) { hit in
+                                placeRow(hit)
+                                if hit.id != places.last?.id { RowSeparator() }
+                            }
+                        }
+                        .roamCard(padding: Theme.Spacing.m)
+                    }
+                    Button { addingPlaces = true } label: {
+                        Label(places.isEmpty ? "Add places" : "Add more places", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                            .imageScale(.small)
+                            .foregroundStyle(PlaceState.planned.markerColor)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("city-log-add-places")
+                    TextField("Add a note", text: $note, axis: .vertical)
+                        .lineLimit(5...12)
+                        .textInputAutocapitalization(.never)
+                        .frame(minHeight: 110, alignment: .topLeading)
+                        .roamCard(padding: Theme.Spacing.m)
+                        .accessibilityIdentifier("city-log-note")
+                    if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
+                }
+                .padding(Theme.Spacing.l)
+            }
+            .background(Roam.paper)
+            .navigationTitle("Log a city")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { if hasChanges { confirmingDiscard = true } else { dismiss() } } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
+                        .disabled(saving)
+                        // Pops up from the ×.
+                        .confirmationDialog("Discard this log?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+                            Button("Discard", role: .destructive) { dismiss() }
+                            Button("Keep editing", role: .cancel) {}
+                        }
+                }
+            }
+            // Save where the place log's is: see-through glass in the bottom buttons' spot.
+            .tabBarSpotButton(true, title: saving ? "Saving…" : "Save", identifier: "city-log-save", systemImage: nil, tint: nil,
+                              enabled: !saving) {
+                Task { await save() }
+            }
+            .sheet(isPresented: $addingPlaces) {
+                CityPlacePicker(city: city, picked: $places)
+            }
+        }
+        .roamSheetStyle()
+        .presentationDetents([.large])
+        .interactiveDismissDisabled(hasChanges)
+        .screenIdentifier("city-log")
+    }
+
+    private func placeRow(_ hit: SearchHit) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24)
+                .accessibilityHidden(true)
+            Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+            Spacer(minLength: 0)
+            Button { places.removeAll { $0.id == hit.id } } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkFaint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(hit.candidate.name)")
+        }
+        .frame(minHeight: Theme.minimumHitTarget)
+    }
+
+    private func save() async {
+        saving = true
+        defer { saving = false }
+        error = nil
+        let from = start.map { LocalDate(date: $0, timeZone: .current) }
+        let to = end.map { LocalDate(date: $0, timeZone: .current) }
+        do {
+            try await services.plans.logCity(city, start: from, end: to, sentiment: sentiment, note: note)
+            for hit in places {
+                let place: ExperienceSummary
+                if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
+                // A visit with no rating; the place's own category files it.
+                let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [],
+                                         audience: .public)
+                _ = try await services.ranking.addVisit(AddVisitRequest(operationID: UUID(), experienceID: place.id, visit: visit,
+                                                                        category: place.category ?? hit.category ?? .activities))
+            }
+            onSaved()
+            dismiss()
+        } catch { self.error = error.roamMessage }
+    }
+}
+
+/// Picking the places you went in a city: search its places and tick them, then Done.
+private struct CityPlacePicker: View {
+    let city: Destination
+    @Binding var picked: [SearchHit]
+
+    @Environment(AppServices.self) private var services
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var placeSearch = PlaceSearch()
+
+    private var results: [SearchHit] {
+        (placeSearch.model?.hits ?? []).filter { hit in
+            hit.candidate.countryCode?.uppercased() == city.countryCode?.uppercased()
+                && GeographyKey.normalize(hit.candidate.locality ?? "") == GeographyKey.normalize(city.name)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("Search for the places you went in \(city.name).").foregroundStyle(Roam.inkMuted)
+                } else if results.isEmpty, placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results {
+                    Text("Nothing in \(city.name) matches \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
+                }
+                ForEach(results) { hit in
+                    let chosen = picked.contains { $0.id == hit.id }
+                    Button {
+                        if chosen { picked.removeAll { $0.id == hit.id } } else { picked.append(hit) }
+                    } label: {
+                        HStack(spacing: Theme.Spacing.m) {
+                            Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24)
+                            VStack(alignment: .leading, spacing: -2) {
+                                Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                                if let category = hit.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted) }
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(chosen ? PlaceState.visited.markerColor : Roam.inkFaint)
+                        }
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Roam.paper)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Places in \(city.name)")
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .navigationTitle("Places you went")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .task(id: query) { await placeSearch.run(query, services: services, near: city, within: city.name) }
+        }
+        .roamSheetStyle()
+        .presentationDetents([.large])
+    }
+}

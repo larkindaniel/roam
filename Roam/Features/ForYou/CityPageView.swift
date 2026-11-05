@@ -145,7 +145,7 @@ struct CityPageView: View {
             Task { await saveVisit() }
         }
         .sheet(isPresented: $loggingCity) {
-            AreaLogSheet(name: destination.name, countryCode: destination.countryCode ?? "", around: destination, city: destination) {
+            CityLogSheet(city: destination) {
                 markedVisited = true
                 library.noteChanged()
                 Task { await reload() }
