@@ -319,7 +319,9 @@ struct TripEditorSheet: View {
         NavigationStack {
             Form { Group {
                 Section {
-                    TextField("Trip name", text: $draft.name).accessibilityIdentifier("trip-name")
+                    TextField("Trip name", text: $draft.name)
+                        .textInputAutocapitalization(.never)
+                        .accessibilityIdentifier("trip-name")
                     TextField("Description (optional)", text: $draft.description, axis: .vertical)
                         .textInputAutocapitalization(.never)
                 }

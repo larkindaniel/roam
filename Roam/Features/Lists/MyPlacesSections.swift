@@ -799,7 +799,9 @@ struct PlanTripSheet: View {
             Form { Group {
                 if trip == nil {
                     Section {
-                        TextField("Trip name", text: $name).accessibilityIdentifier("plan-trip-name")
+                        TextField("Trip name", text: $name)
+                            .textInputAutocapitalization(.never)
+                            .accessibilityIdentifier("plan-trip-name")
                         TripDatesRow(start: $start, end: $end)
                     }
                 }
