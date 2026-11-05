@@ -334,16 +334,24 @@ struct ExperienceDetailView: View {
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                // Opened up, the area and the place's icon sit right under the name.
+                // Opened up, the city sits right under the name.
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(summary.name)
-                        .font(.roamTitle())
-                        .foregroundStyle(Roam.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .accessibilityAddTraits(.isHeader)
+                    // The name with the place's icon just after it, on the same line.
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                        Text(summary.name)
+                            .font(.roamTitle())
+                            .foregroundStyle(Roam.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .accessibilityAddTraits(.isHeader)
+                        let category = detail.myRating?.category ?? summary.category
+                        Image(systemName: PlaceIcon.symbol(appleType: summary.providerCategory, category: category))
+                            .font(.title3)
+                            .foregroundStyle(Theme.secondaryText)
+                            .accessibilityLabel(category?.title ?? "Place")
+                    }
                     if sheetDetent != .peek {
-                        // The city first, as a slim grey chip that opens its page; then the place's icon.
+                        // The city, as a slim grey chip that opens its page.
                         HStack(spacing: Theme.Spacing.s) {
                             if let city = summary.locality, !city.isEmpty {
                                 // A tap handler, like Log and Save: Buttons in this card didn't get their taps.
@@ -363,12 +371,6 @@ struct ExperienceDetailView: View {
                                 .accessibilityLabel("Open \(city)")
                                 .accessibilityIdentifier("detail-open-city")
                             }
-                            // Just the place's icon, not the category's name.
-                            let category = detail.myRating?.category ?? summary.category
-                            Image(systemName: PlaceIcon.symbol(appleType: summary.providerCategory, category: category))
-                                .font(.subheadline)
-                                .foregroundStyle(Theme.secondaryText)
-                                .accessibilityLabel(category?.title ?? "Place")
                         }
                         .padding(.top, 2)
                     }
