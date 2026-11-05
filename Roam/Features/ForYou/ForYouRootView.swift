@@ -191,6 +191,11 @@ struct ForYouRootView: View {
         }
         .background(Roam.paper)
         .task(id: query) { await placeSearch.run(query, services: services) }
+        // Leaving the tab puts it back on its home page, with no search.
+        .onChange(of: router.selectedTab) { _, tab in
+            guard tab != .forYou else { return }
+            query = ""; searchFocused = false
+        }
         // One row of floating controls instead of a navigation bar: log or back, search, then profile and map.
         // Scrolling down tucks the row away; scrolling up brings it back.
         .safeAreaInset(edge: .top, spacing: 0) {

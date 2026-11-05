@@ -300,6 +300,11 @@ struct MyPlacesRootView: View {
     var body: some View {
         sheetLayout
         .task(id: query) { await placeSearch.run(query, services: services) }
+        // Leaving the tab puts it back on its home page: no search, the card halfway as it opens.
+        .onChange(of: router.selectedTab) { _, tab in
+            guard tab != .myPlaces else { return }
+            query = ""; searching = false; detent = .half
+        }
         .sheet(item: $sheet) { which in
             switch which {
             case .homeCity:
