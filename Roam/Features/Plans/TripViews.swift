@@ -71,7 +71,6 @@ struct TripDetailView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var detail: LoadPhase<TripDetail> = .idle
-    @State private var editing: TripDraft?
     @State private var actionError: String?
     @State private var confirmingDelete = false
     @State private var entries: [TripFeedEntry] = []
@@ -80,6 +79,15 @@ struct TripDetailView: View {
     @State private var addingCity = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
     @State private var scrolledPastTitle = false
+    @State private var editingName = false
+    @State private var nameText = ""
+    @State private var descriptionText = ""
+    @FocusState private var nameFocused: Bool
+    /// The dates shown in the bubbles; changing both saves them.
+    @State private var tripStart: Date?
+    @State private var tripEnd: Date?
+    /// Set while filling the bubbles from the trip, so that isn't saved back.
+    @State private var loadingTripDates = false
 
     var body: some View {
         // A list, so a city (or country) can be swiped off the trip; it's styled to look like the page it was.
@@ -110,19 +118,17 @@ struct TripDetailView: View {
                 Text(detail.value?.summary.name ?? "").font(.headline)
                     .opacity(scrolledPastTitle ? 1 : 0).accessibilityHidden(!scrolledPastTitle)
             }
-            // Edit and Delete as their own buttons, not tucked in a menu.
+            // Add to trip (a blue bubble with words) beside a separate round Delete. The name, description and dates are
+            // edited in place, so there's no Edit button.
             if let summary = detail.value?.summary, summary.isOwn {
                 ToolbarItem(placement: .topBarTrailing) {
-                    // Square and pencil: the same boxy weight as the bin beside it (a bare pencil read oddly).
-                    Button { editing = draft(summary) } label: { Image(systemName: "square.and.pencil") }
-                        .accessibilityLabel("Edit trip")
-                        .accessibilityIdentifier("trip-edit")
-                }
-                // Add a city to the trip, between edit and delete.
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { addingCity = true } label: { Image(systemName: "plus").foregroundStyle(PlaceState.planned.markerColor) }
+                    Button { addingCity = true } label: { Label("Add to trip", systemImage: "plus").labelStyle(.titleAndIcon) }
+                        .tripBlueBubble()
                         .accessibilityLabel("Add a city to the trip")
                         .accessibilityIdentifier("trip-add-city")
+                }
+                if #available(iOS 26.0, *) {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
@@ -142,11 +148,6 @@ struct TripDetailView: View {
                 }
             }
         }
-        .sheet(item: $editing) { draft in
-            // Editing is just the name, description and dates; cities are added and swiped off on the trip's page.
-            TripEditorSheet(draft: draft) { _ in Task { await load() } }
-                .presentationBackground(Roam.paper)
-        }
         .sheet(isPresented: $addingFromWishlist) {
             if let summary = detail.value?.summary {
                 PlanTripSheet(candidates: wishlist, suggestedName: summary.name, trip: summary) { Task { await load() } }
@@ -160,6 +161,12 @@ struct TripDetailView: View {
                     catch { actionError = error.roamMessage }
                 }
             }
+        }
+        // Both dates set: a change is saved (a trip always has both).
+        .onChange(of: [tripStart, tripEnd]) { _, _ in
+            if loadingTripDates { loadingTripDates = false; return }
+            guard let tripStart, let tripEnd else { return }
+            Task { await saveTrip(start: tripStart, end: tripEnd) }
         }
         .task { await load() }
         .refreshable { await load() }
@@ -225,24 +232,84 @@ struct TripDetailView: View {
     }
 
     /// Just the trip's name and its dates (a friend's trip says whose).
+    /// The trip's name (a pencil beside it edits it, with a description), its description, and its dates. Your own trip's
+    /// dates are bubbles you change right here; nothing needs an Edit screen.
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
-                .accessibilityAddTraits(.isHeader)
-            Text(dateLine(value.summary)).font(.subheadline).foregroundStyle(Roam.inkMuted)
-            if !value.summary.isOwn { Text("From \(value.summary.owner.displayName)").font(.footnote).foregroundStyle(Roam.inkMuted) }
-            if let actionError { Text(actionError).font(.footnote).foregroundStyle(Roam.signal).padding(.top, Theme.Spacing.xs) }
+        let own = value.summary.isOwn
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if editingName {
+                TextField("Trip name", text: $nameText)
+                    .font(.roamDisplay(.title))
+                    .textInputAutocapitalization(.never)
+                    .focused($nameFocused)
+                    .submitLabel(.done)
+                    .onSubmit { Task { await saveName() } }
+                    .accessibilityIdentifier("trip-name-field")
+                TextField("Add a description", text: $descriptionText, axis: .vertical)
+                    .font(.subheadline)
+                    .textInputAutocapitalization(.never)
+                    .lineLimit(1...5)
+                    .accessibilityIdentifier("trip-description-field")
+                Button("Done") { Task { await saveName() } }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.borderless)
+                    .disabled(nameText.trimmingCharacters(in: .whitespaces).isEmpty)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                        Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
+                            .accessibilityAddTraits(.isHeader)
+                        if own {
+                            Button {
+                                nameText = value.summary.name
+                                descriptionText = value.summary.description
+                                editingName = true
+                                nameFocused = true
+                            } label: {
+                                Image(systemName: "pencil").font(.headline).foregroundStyle(Roam.inkMuted)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Edit name")
+                            .accessibilityIdentifier("trip-edit-name")
+                        }
+                    }
+                    if !value.summary.description.isEmpty {
+                        Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    }
+                }
+            }
+            if own {
+                DateRangeRow(start: $tripStart, end: $tripEnd)
+            } else {
+                Text(MyTimeline.range(value.summary.startDate, value.summary.endDate) ?? "No dates yet")
+                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                Text("From \(value.summary.owner.displayName)").font(.footnote).foregroundStyle(Roam.inkMuted)
+            }
+            if let actionError { Text(actionError).font(.footnote).foregroundStyle(Roam.signal) }
         }
     }
 
-    private func dateLine(_ trip: TripSummary) -> String {
-        let today = MyTimeline.today()
-        let dates = MyTimeline.range(trip.startDate, trip.endDate) ?? "No dates yet"
-        if let start = trip.startDate, start > today {
-            let days = MyTimeline.days(from: today, to: start)
-            return "\(dates) · \(days == 1 ? "tomorrow" : "in \(days) days")"
-        }
-        return trip.phase(today: today) == .now ? "\(dates) · Happening now" : dates
+    /// Saves the trip with a new name, description or dates (the rest kept as it is).
+    private func saveTrip(name: String? = nil, description: String? = nil, start: Date? = nil, end: Date? = nil) async {
+        guard let summary = detail.value?.summary else { return }
+        var value = draft(summary)
+        if let name { value.name = name.trimmingCharacters(in: .whitespaces) }
+        if let description { value.description = description }
+        if let start { value.startDate = LocalDate(date: start, timeZone: .current) }
+        if let end { value.endDate = LocalDate(date: end, timeZone: .current) }
+        value.status = TripSummary.status(start: value.startDate, end: value.endDate, today: MyTimeline.today())
+        if let message = value.validationMessage { actionError = message; return }
+        do {
+            _ = try await services.plans.saveTrip(value)
+            actionError = nil
+            await load()
+        } catch { actionError = error.roamMessage }
+    }
+
+    private func saveName() async {
+        guard !nameText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        editingName = false
+        await saveTrip(name: nameText, description: descriptionText)
     }
 
     /// The trip's countries and cities, each a photo card (like My Places' and Discover's) that opens its page. No map
@@ -328,6 +395,12 @@ struct TripDetailView: View {
         do {
             let loaded = try await services.plans.trip(id: tripID)
             detail = .loaded(loaded)
+            let start = loaded.summary.startDate?.date(), end = loaded.summary.endDate?.date()
+            if start != tripStart || end != tripEnd {
+                loadingTripDates = true
+                tripStart = start
+                tripEnd = end
+            }
             entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
             if loaded.summary.isOwn, let me = session.userID {
                 let onTrip = Set(loaded.places.map(\.id))
@@ -666,6 +739,18 @@ extension View {
                 }
         } else {
             self
+        }
+    }
+}
+
+
+private extension View {
+    /// A blue glass bubble in the top bar (Liquid Glass on iOS 26, a filled button before it).
+    @ViewBuilder func tripBlueBubble() -> some View {
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glassProminent).tint(PlaceState.planned.markerColor)
+        } else {
+            buttonStyle(.borderedProminent).tint(PlaceState.planned.markerColor)
         }
     }
 }
