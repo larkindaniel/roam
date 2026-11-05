@@ -187,6 +187,8 @@ struct RouteDestinationView: View {
             WishlistCountryView(code: code, title: title)
         case .country(let code):
             CountryPageView(code: code)
+        case .region(let area):
+            CountryPageView(code: area.countryCode ?? "", region: area)
         case .passport(let ownerID, let name):
             PassportView(ownerID: ownerID, name: name)
         case .passportCountry(let ownerID, let country):

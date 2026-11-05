@@ -161,7 +161,11 @@ extension FixtureBackend: PlanService {
 
     func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool { false }
 
-    func countryPhoto(code: String, name: String) async -> (url: URL, credit: String?)? { nil }
+    func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)? { nil }
+
+    func savedRegions() async throws -> [String] { [] }
+
+    func setRegionSaved(country: String, region: String, name: String, present: Bool) async throws -> [String] { [] }
 
     func myLists() async throws -> [PlaceList] {
         let me = try await authenticatedActor()

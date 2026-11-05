@@ -85,7 +85,7 @@ struct PlaceSearchResults: View {
                         }
                     }
                     ForEach(placeSearch.regions) { area in
-                        row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: CountryName.display(area.countryName, code: area.countryCode) ?? "") { router.push(.city(area)) }
+                        row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: CountryName.display(area.countryName, code: area.countryCode) ?? "") { router.push(.region(area)) }
                     }
                     ForEach(cityHits) { city in
                         row(symbol: "signpost.right.and.left", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }

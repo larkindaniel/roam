@@ -54,6 +54,8 @@ enum AppRoute: Hashable, Sendable {
     case cityAt(latitude: Double?, longitude: Double?)
     case wishlistCountry(code: String, title: String)
     case country(String)
+    /// A state or province: its name, its code in `region` ("ON"), its country and middle.
+    case region(Destination)
     case passport(ownerID: UUID, name: String)
     case passportCountry(ownerID: UUID, country: PassportCountry)
     case passportCity(ownerID: UUID, city: PassportCity)

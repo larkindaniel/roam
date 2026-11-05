@@ -325,7 +325,10 @@ protocol PlanService: AnyObject, Sendable {
     /// Looks places up on Google for a photo and star rating, at most about once a week each. True when any changed.
     func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool
     /// A country's photo from its own Google entry, with its credit; nil when there isn't one.
-    func countryPhoto(code: String, name: String) async -> (url: URL, credit: String?)?
+    func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)?
+    /// States and provinces on your wishlist, each as "CA|ON".
+    func savedRegions() async throws -> [String]
+    func setRegionSaved(country: String, region: String, name: String, present: Bool) async throws -> [String]
     func myLists() async throws -> [PlaceList]
     func list(id: UUID) async throws -> PlaceListDetail
     func saveList(id: UUID?, title: String, description: String) async throws -> PlaceList

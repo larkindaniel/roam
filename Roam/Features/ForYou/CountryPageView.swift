@@ -1,14 +1,17 @@
 import MapKit
 import SwiftUI
 
-/// One country, on a plain full-screen page (no map, unlike a city): its name with Been / Wishlist / Plan beside it,
-/// its Google photo and Wikipedia blurb, then the cities you've been to, your trips there, your wishlist there, and places we think
-/// you'd enjoy.
+/// One country, or one state or province in it, on a plain full-screen page (no map, unlike a city): its name with
+/// Been / Wishlist / Plan beside it, its Google photo and Wikipedia blurb, then your home, trips, wishlist and cities
+/// there, and places we think you'd enjoy.
 struct CountryPageView: View {
     let code: String
+    /// A state or province (Ontario) instead of the whole country: its name, its code in `region` ("ON"), its middle.
+    var region: Destination?
 
-    init(code: String) {
+    init(code: String, region: Destination? = nil) {
         self.code = code.uppercased()
+        self.region = region
     }
 
     @Environment(AppServices.self) private var services
@@ -38,22 +41,34 @@ struct CountryPageView: View {
 
     /// A country too small for the world outline map (Hong Kong) is found by name instead.
     @State private var lookedUp: Destination?
-    private var destination: Destination { CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
-    private var name: String { CountryName.display(code: code) }
-    private func isHere(_ place: ExperienceSummary) -> Bool { place.countryCode?.uppercased() == code }
+    private var destination: Destination { region ?? CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
+    private var countryName: String { CountryName.display(code: code) }
+    private var name: String { region?.name ?? countryName }
+    /// How saved regions are keyed: "CA|ON".
+    private var savedKey: String { region.map { "\(code)|\($0.region ?? $0.name)" } ?? code }
+    /// In the region, when this is one: places and cities carry its code ("ON") or, now and then, its name.
+    private func inRegion(_ value: String?) -> Bool {
+        guard let region else { return true }
+        guard let value = value?.trimmingCharacters(in: .whitespaces), !value.isEmpty else { return false }
+        return [region.region, region.name].contains { $0?.caseInsensitiveCompare(value) == .orderedSame }
+    }
+    private func isHere(_ place: ExperienceSummary) -> Bool { place.countryCode?.uppercased() == code && inRegion(place.region) }
+    private func isHere(_ city: Destination) -> Bool { city.countryCode?.uppercased() == code && inRegion(city.region) }
 
     private var been: PassportCountry? { model?.passport.first { $0.code.uppercased() == code } }
-    private var hasBeen: Bool { been != nil }
+    /// The cities you've been to here.
+    private var beenCities: [PassportCity] { (been?.cities ?? []).filter { isHere($0.city) } }
+    private var hasBeen: Bool { region == nil ? been != nil : !beenCities.isEmpty }
     /// Saved itself, or you've saved a city or place here and haven't been.
-    private var isSaved: Bool { savedCodes.contains(code) || savedHereCount > 0 }
+    private var isSaved: Bool { savedCodes.contains(savedKey) || savedHereCount > 0 }
     private var savedHereCount: Int { wishlistCities.count + wishlistPlaces.count }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
     private var upcomingTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) != .past } }
     private var pastTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) == .past } }
-    private var homes: [Destination] { (model?.homeCities ?? []).filter { $0.countryCode?.uppercased() == code } }
+    private var homes: [Destination] { (model?.homeCities ?? []).filter(isHere) }
     /// Every trip with a city here, past and ahead, in date order; ones with no dates yet last.
     private var trips: [TripSummary] {
-        (model?.trips ?? []).filter { $0.covers(country: code) }
+        (model?.trips ?? []).filter { trip in region == nil ? trip.covers(country: code) : trip.cities.contains(where: isHere) }
             .sorted { a, b in
                 switch (a.startDate, b.startDate) {
                 case let (x?, y?): return x < y
@@ -63,7 +78,7 @@ struct CountryPageView: View {
                 }
             }
     }
-    private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter { $0.countryCode?.uppercased() == code } }
+    private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter(isHere) }
     private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
     /// Places others loved here that aren't already yours.
     private var recommended: [DiscoverPlace] {
@@ -72,7 +87,7 @@ struct CountryPageView: View {
         return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
             .filter { isHere($0.experience) && !mine.contains($0.id) }
     }
-    /// Google's photo of a place here, for when the country's own has none.
+    /// Google's photo of a place here, for when the country's (or region's) own has none.
     private var fallbackPhoto: URL? {
         (pins.map(\.experience) + recommended.map(\.experience)).lazy.compactMap(\.photoURL).first
     }
@@ -103,7 +118,7 @@ struct CountryPageView: View {
                 Text(name).font(.headline).opacity(scrolledPastTitle ? 1 : 0).accessibilityHidden(!scrolledPastTitle)
             }
         }
-            .task(id: code) { await reload() }
+            .task(id: savedKey) { await reload() }
             .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
             .sheet(isPresented: $pickingCity, onDismiss: {
                 if let pickedCity { datesFor = pickedCity; self.pickedCity = nil }
@@ -130,14 +145,32 @@ struct CountryPageView: View {
 
     // MARK: Header
 
-    /// The name with its flag just under it, centred against the three actions on the same line.
+    /// The name with its flag just under it (a region has a chip to its country instead), centred against the actions on
+    /// the same line.
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s) {
-            VStack(alignment: .leading, spacing: -6) {
+            VStack(alignment: .leading, spacing: region == nil ? -6 : Theme.Spacing.xs) {
                 Text(name)
                     .font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
-                if let flag = TripTitle.flag(code) { Text(flag).font(.title3).accessibilityHidden(true) }
+                if region != nil {
+                    Button { router.push(.country(code)) } label: {
+                        HStack(spacing: 3) {
+                            Text([TripTitle.flag(code), countryName].compactMap { $0 }.joined(separator: " ")).lineLimit(1)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Roam.ink)
+                        .padding(.horizontal, 10)
+                        .frame(height: 24)
+                        .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("region-open-country")
+                } else if let flag = TripTitle.flag(code) {
+                    Text(flag).font(.title3).accessibilityHidden(true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             actionRow
@@ -166,9 +199,17 @@ struct CountryPageView: View {
                    filled: isSaved && !hasBeen, caption: isSaved ? "Saved" : "Wishlist", identifier: "country-wishlist") {
                 guard !hasBeen else { return }
                 // Saved because of cities or places saved here: it comes off with them, so tapping explains instead.
-                if isSaved && !savedCodes.contains(code) { explainingSaved = true } else { Task { await setSaved(!isSaved) } }
+                if isSaved && !savedCodes.contains(savedKey) { explainingSaved = true } else { Task { await setSaved(!isSaved) } }
             }
-            // A trip can go to the whole country before any of its cities or places are picked.
+            // A trip can go to the whole country before any of its cities or places are picked (not yet to a region).
+            if region == nil { tripMenu }
+            circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "country-plan") {
+                router.sheet = .researchBrief(destination)
+            }
+        }
+    }
+
+    private var tripMenu: some View {
             Menu {
                 ForEach(tripsToAddTo) { trip in Button(trip.name) { Task { await add(to: trip) } } }
                 Button("New trip", systemImage: "plus") { planningNewTrip = true }
@@ -186,10 +227,6 @@ struct CountryPageView: View {
             }
             .accessibilityLabel("Add to a trip")
             .accessibilityIdentifier("country-trip")
-            circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "country-plan") {
-                router.sheet = .researchBrief(destination)
-            }
-        }
     }
 
     private func circle(_ symbol: String, tint: Color, filled: Bool, caption: String, identifier: String,
@@ -216,8 +253,10 @@ struct CountryPageView: View {
     @ViewBuilder private var countryInfo: some View {
         // The blurb sits snug under its photo.
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            CountryPhoto(code: code, name: name, fallback: fallbackPhoto)
-            CityGuideCard(name: name, coordinate: destination.coordinate, showsPhoto: false, within: 3_000_000)
+            CountryPhoto(code: code, region: region.map { $0.region ?? $0.name }, name: region == nil ? name : "\(name), \(countryName)",
+                         fallback: fallbackPhoto)
+            CityGuideCard(name: name, country: region == nil ? nil : countryName, coordinate: destination.coordinate, showsPhoto: false,
+                          within: region == nil ? 3_000_000 : 1_500_000)
         }
         if let model, model.hasLoaded {
             if !upcomingTrips.isEmpty {
@@ -241,7 +280,7 @@ struct CountryPageView: View {
                 }
             }
             // Homes have their own link at the top, so they aren't repeated here.
-            if let been, case let cities = been.cities.filter({ !$0.isHome }), !cities.isEmpty {
+            if case let cities = beenCities.filter({ !$0.isHome }), !cities.isEmpty {
                 section(model.ownerIDValue == session.userID ? "Cities you've been to" : "Cities") {
                     ForEach(cities) { city in cityCard(city.city, isHome: false) }
                 }
@@ -341,7 +380,7 @@ struct CountryPageView: View {
     // MARK: Loading
 
     private func reload() async {
-        if CountryDestination.make(code: code) == nil, lookedUp == nil,
+        if region == nil, CountryDestination.make(code: code) == nil, lookedUp == nil,
            let found = try? await CLGeocoder().geocodeAddressString(name).first(where: { $0.isoCountryCode?.uppercased() == code }),
            let at = found.location?.coordinate {
             lookedUp = Destination(name: name, region: nil, countryCode: code, countryName: name,
@@ -350,7 +389,7 @@ struct CountryPageView: View {
         if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
         if suggestions == nil { suggestions = ForYouModel(plans: services.plans) }
         async let mine: Void = model?.load() ?? ()
-        async let saved = services.plans.savedCountries()
+        async let saved = region == nil ? services.plans.savedCountries() : services.plans.savedRegions()
         savedCodes = (try? await saved) ?? savedCodes
         await mine
         await suggestions?.load(destination)
@@ -362,16 +401,22 @@ struct CountryPageView: View {
         router.push(.trip(trip.id))
     }
 
-    /// A whole country on your wishlist.
+    /// A whole country (or region) on your wishlist.
     private func setSaved(_ present: Bool) async {
-        savedCodes = (try? await services.plans.setCountrySaved(code: code, name: name, present: present)) ?? savedCodes
+        if let region {
+            savedCodes = (try? await services.plans.setRegionSaved(country: code, region: region.region ?? region.name, name: name,
+                                                                   present: present)) ?? savedCodes
+        } else {
+            savedCodes = (try? await services.plans.setCountrySaved(code: code, name: name, present: present)) ?? savedCodes
+        }
         library.noteChanged()
     }
 }
 
-/// A country's photo from its own Google entry, else Google's photo of a place there.
+/// A country's (or region's) photo from its own Google entry, else Google's photo of a place there.
 struct CountryPhoto: View {
     let code: String
+    var region: String?
     let name: String
     var fallback: URL?
     @Environment(AppServices.self) private var services
@@ -385,8 +430,8 @@ struct CountryPhoto: View {
                                showsCredit: photo?.credit != nil)
             }
         }
-        .task(id: code) {
-            photo = await services.plans.countryPhoto(code: code, name: name)
+        .task(id: "\(code)|\(region ?? "")") {
+            photo = await services.plans.countryPhoto(code: code, region: region, name: name)
             looked = true
         }
     }

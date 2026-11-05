@@ -83,7 +83,8 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         return regions.prefix(2).compactMap { item in
             guard let name = item.name else { return nil }
             let placemark = item.placemark
-            return Destination(name: name, region: nil, countryCode: placemark.isoCountryCode, countryName: placemark.country,
+            // The state's own code ("ON"), as places and cities there carry it.
+            return Destination(name: name, region: placemark.administrativeArea ?? name, countryCode: placemark.isoCountryCode, countryName: placemark.country,
                                latitude: placemark.coordinate.latitude, longitude: placemark.coordinate.longitude, radiusMeters: radius)
         }
     }
