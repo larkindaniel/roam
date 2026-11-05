@@ -88,10 +88,10 @@ struct CityPageView: View {
         // Searching wants room for the results.
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
-            // Raising the card rebuilds the field; put the cursor back once it's up, so typing carries on.
-            detent = .full
+            // The card glides up; it rebuilds the field, so the cursor goes back once it has settled.
+            withAnimation(.smooth(duration: 0.35)) { detent = .full }
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(380))
+                try? await Task.sleep(for: .milliseconds(360))
                 searching = true
             }
         }
