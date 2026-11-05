@@ -441,12 +441,15 @@ private struct FeelingSlider: View {
             let segment = width / CGFloat(stops.count)
             ZStack(alignment: .leading) {
                 Capsule().fill(Roam.ink.opacity(0.06))
+                // A glass bubble, lightly tinted in the feeling's colour, sits over the one picked and slides between them.
                 if let selection, let index = stops.firstIndex(of: selection) {
-                    Capsule().fill(Theme.fill(for: selection))
-                        .overlay(Capsule().stroke(Theme.color(for: selection).opacity(0.5), lineWidth: 1.5))
-                        .frame(width: segment - 8)
-                        .offset(x: segment * CGFloat(index) + 4)
+                    Color.clear
+                        .floatingBubble(Capsule(), tint: Theme.color(for: selection).opacity(0.15))
+                        .frame(width: segment - 6)
+                        .padding(.vertical, 3)
+                        .offset(x: segment * CGFloat(index) + 3)
                         .animation(.snappy(duration: 0.25), value: selection)
+                        .allowsHitTesting(false)
                 }
                 HStack(spacing: 0) {
                     ForEach(stops, id: \.self) { feeling in
