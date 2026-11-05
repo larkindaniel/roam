@@ -150,16 +150,8 @@ struct TripDetailView: View {
 
     @ViewBuilder private func content(_ value: TripDetail) -> some View {
         header(value)
-        Picker("View", selection: $view) {
-            ForEach(TripViewMode.allCases) { Text($0.title).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("trip-view-mode")
-        switch view {
-        case .places: places(value)
-        case .timeline: entryList(entries, empty: "No visits logged on this trip yet.")
-        case .topPicks: entryList(TripText.topPicks(entries), empty: "Rank a place from this trip to see top picks here.")
-        }
+        // Just the places; no timeline or top picks views.
+        places(value)
     }
 
     private func entryList(_ list: [TripFeedEntry], empty: String) -> some View {

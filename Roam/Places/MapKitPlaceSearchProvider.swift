@@ -22,7 +22,8 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
                                                 span: MKCoordinateSpan(latitudeDelta: 140, longitudeDelta: 359))
         }
         let items = try await run(MKLocalSearch(request: request))
-        return items.compactMap(Self.candidate(from:))
+        // Towns and cities aren't places to log (they'd come out as Day Trips): they have their own city results and pages.
+        return items.compactMap(Self.candidate(from:)).filter { !$0.isLocality }
     }
 
     @MainActor private static let locationManager = CLLocationManager()
@@ -109,7 +110,10 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         guard CLLocationCoordinate2DIsValid(coordinate), let name = item.name, !name.isEmpty else { return nil }
         let poi = item.pointOfInterestCategory
         let isStreetAddress = placemark.thoroughfare != nil || placemark.subThoroughfare != nil
-        let isLocality = poi == nil && !isStreetAddress && (placemark.locality != nil || placemark.subAdministrativeArea != nil)
+        // A town only when the result is the town itself (its name is the locality's); an untyped result with some other
+        // name is a natural feature, like a mountain ridge or a lake.
+        let isLocality = poi == nil && !isStreetAddress && [placemark.locality, placemark.subAdministrativeArea].contains { $0 == name }
+        let isFeature = poi == nil && !isStreetAddress && !isLocality
         // Plain street addresses are not experiences; MapKit POIs, physical features and localities are.
         if poi == nil && isStreetAddress { return nil }
         return PlaceCandidate(
@@ -128,7 +132,7 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
             providerCategory: poi?.rawValue,
             timeZoneIdentifier: item.timeZone?.identifier,
             isLocality: isLocality,
-            suggestedCategory: PlaceCategoryMapper.suggestedCategory(for: poi, isLocality: isLocality)
+            suggestedCategory: isFeature ? .outdoors : PlaceCategoryMapper.suggestedCategory(for: poi, isLocality: isLocality)
         )
     }
 

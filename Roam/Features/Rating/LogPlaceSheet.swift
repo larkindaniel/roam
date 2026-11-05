@@ -53,7 +53,7 @@ struct LogPlaceSheet: View {
             async let known = services.plans.searchRoamPlaces(query: query)
             async let foundCities = services.places.searchDestinations(query: query)
             await model?.search(query, near: nil)
-            onRoam = (try? await known) ?? []
+            onRoam = ((try? await known) ?? []).filter { $0.category != .dayTrips }
             cities = Array(((try? await foundCities) ?? []).prefix(3))
         }
         .sheet(item: $datingCity) { city in

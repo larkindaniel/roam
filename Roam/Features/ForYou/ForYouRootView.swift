@@ -84,6 +84,8 @@ struct DiscoverResults: Equatable {
     /// Towns come back from both searches, so place results keep only points of interest.
     init(destinations: [Destination] = [], candidates: [PlaceCandidate] = [], matches: [String: ExperienceSummary] = [:], onRoam: [ExperienceSummary] = []) {
         self.destinations = destinations
+        // Towns saved on Roam as Day Trips are cities, not places: they show under Cities instead.
+        let onRoam = onRoam.filter { $0.category != .dayTrips }
         self.onRoam = onRoam
         let known = Set(onRoam.map(\.id))
         let knownNames = Set(onRoam.map { $0.name.lowercased() })

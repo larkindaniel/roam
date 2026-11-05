@@ -319,7 +319,8 @@ struct MyPlacesRootView: View {
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
                          collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, peekOpacity: 0,
-                         headerTapToggles: false) {
+                         // Tapping the header (outside the search field) flips between halfway and fully up.
+                         headerTapToggles: detent != .peek) {
             globe
         } header: {
             // A search bar for every place, there at every height; opened up, your places sit under it.
