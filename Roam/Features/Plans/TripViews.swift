@@ -126,9 +126,6 @@ struct TripDetailView: View {
                 } else {
                     ToolbarItem(placement: .topBarTrailing) { addCityBubble }
                 }
-                if #available(iOS 26.0, *) {
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
                         // Attached to the bin, so the confirmation pops up from it rather than mid-screen.
