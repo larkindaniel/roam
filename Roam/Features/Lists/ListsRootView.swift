@@ -252,8 +252,7 @@ struct MyPlacesRootView: View {
             } else if let model, model.hasLoaded {
                 switch tab {
                 case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
-                case .going: GoingTab(model: model)
-                case .saved: SavedTab(model: model)
+                case .saved: SavedTab(model: model, onNewTrip: { sheet = .newTrip })
                 }
             } else if let error = model?.error {
                 InlineRetryView(message: error) { Task { await model?.load() } }

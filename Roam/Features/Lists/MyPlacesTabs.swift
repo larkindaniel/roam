@@ -1,10 +1,9 @@
 import MapKit
 import SwiftUI
 
-/// My Places in three parts, coloured like the place states they hold.
+/// My Places in two parts, coloured like the place states they hold. Upcoming trips sit on Saved.
 enum MyPlacesTab: String, CaseIterable, Identifiable {
     case been
-    case going
     case saved
 
     var id: String { rawValue }
@@ -12,7 +11,6 @@ enum MyPlacesTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .been: return "Been"
-        case .going: return "Going"
         case .saved: return "Saved"
         }
     }
@@ -20,13 +18,12 @@ enum MyPlacesTab: String, CaseIterable, Identifiable {
     var state: PlaceState {
         switch self {
         case .been: return .visited
-        case .going: return .planned
         case .saved: return .wishlist
         }
     }
 }
 
-/// A three-way segmented control: one track, with the chosen segment's pill sliding across in its place-state colour.
+/// A segmented control: one track, with the chosen segment's pill sliding across in its place-state colour.
 struct MyPlacesTabPicker: View {
     @Binding var tab: MyPlacesTab
     @Namespace private var pill
@@ -167,95 +164,60 @@ struct HomeCitiesCard: View {
     }
 }
 
-// MARK: - Going
-
-/// What's ahead: the next trip large, the rest below it.
-struct GoingTab: View {
+/// Your upcoming trips, one row each like your homes, with + New trip as the last row: all one card.
+struct UpcomingTripsCard: View {
     let model: MyPlacesModel
+    var onNewTrip: () -> Void
 
     @Environment(AppRouter.self) private var router
 
     private var trips: [TripSummary] {
         let today = MyTimeline.today()
-        let ahead = model.trips.filter { $0.phase(today: today) != .past }
-        func order(_ trip: TripSummary) -> (Int, LocalDate) {
-            switch trip.phase(today: today) {
-            case .now: return (0, trip.startDate ?? today)
-            case .upcoming: return (1, trip.startDate ?? trip.endDate ?? today)
-            default: return (2, today)
-            }
+        let upcoming = model.trips.filter { $0.isOwn && $0.phase(today: today) != .past }
+        // Soonest first; every trip has dates, so none should be missing one.
+        return upcoming.sorted { a, b in
+            guard let first = a.startDate else { return false }
+            guard let second = b.startDate else { return true }
+            return first < second
         }
-        return ahead.sorted { order($0) < order($1) }
     }
 
     var body: some View {
-        let trips = trips
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            if let next = trips.first {
-                hero(next)
-                if trips.count > 1 {
-                    VStack(spacing: 0) {
-                        ForEach(trips.dropFirst()) { trip in
-                            TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                            if trip.id != trips.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
-                        }
-                    }
-                    .roamCard(padding: Theme.Spacing.m)
-                }
-            } else {
-                Text("No trips yet. Plan one from your saved places, or start fresh.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+        VStack(spacing: 0) {
+            ForEach(trips) { trip in
+                tripRow(trip)
+                Divider()
             }
+            Button(action: onNewTrip) {
+                HStack(spacing: Theme.Spacing.m) {
+                    Image(systemName: "plus").fontWeight(.semibold).frame(width: 24).accessibilityHidden(true)
+                    Text("New trip").font(.headline)
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(PlaceState.planned.markerColor)
+                .frame(minHeight: Theme.minimumHitTarget)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("upcoming-new-trip")
         }
+        .roamCard(padding: Theme.Spacing.m)
     }
 
-    private func hero(_ trip: TripSummary) -> some View {
-        let cover = model.tripDetails[trip.id]?.places.first?.experience
-        let location = cover?.coordinate ?? trip.cities.first.map(\.coordinate)
-        return Button { router.push(.trip(trip.id)) } label: {
-            ZStack(alignment: .bottomLeading) {
-                if let city = trip.coverCity {
-                    AreaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
-                              fallbackURL: cover?.photoURL, symbol: "airplane", height: 210)
-                } else {
-                    PlacePhotoView(url: cover?.photoURL, label: "Photo for \(trip.name)", placeholderSymbol: "airplane", height: 210,
-                                   showsCredit: false, cornerRadius: 0, location: location)
-                }
-                LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
-                    .allowsHitTesting(false)
-                VStack(alignment: .leading, spacing: -3) {
-                    Text(trip.name).font(.roamTitle()).foregroundStyle(.white)
-                    Text([trip.placeLine.isEmpty || trip.placeLine == trip.name ? nil : trip.placeLine,
-                          MyTimeline.range(trip.startDate, trip.endDate)].compactMap { $0 }.joined(separator: " · "))
-                        .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                }
-                .padding(Theme.Spacing.l)
+    private func tripRow(_ trip: TripSummary) -> some View {
+        Button { router.push(.trip(trip.id)) } label: {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: "airplane").foregroundStyle(PlaceState.planned.markerColor).frame(width: 24).accessibilityHidden(true)
+                Text(trip.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                Spacer(minLength: Theme.Spacing.s)
+                Text(MyTimeline.range(trip.startDate, trip.endDate) ?? "").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             }
-            .overlay(alignment: .topTrailing) {
-                Text(countdown(trip))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
-                    .background(Capsule().fill(PlaceState.planned.markerColor))
-                    .padding(Theme.Spacing.m)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .frame(minHeight: Theme.minimumHitTarget)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-hero-\(trip.name)")
-    }
-
-    private func countdown(_ trip: TripSummary) -> String {
-        let today = MyTimeline.today()
-        switch trip.phase(today: today) {
-        case .now: return "Now"
-        case .upcoming:
-            guard let start = trip.startDate else { return "Upcoming" }
-            let days = MyTimeline.days(from: today, to: start)
-            return days == 1 ? "Tomorrow" : "In \(days) days"
-        default: return "No dates yet"
-        }
+        .accessibilityIdentifier("upcoming-trip-\(trip.name)")
     }
 }
 
@@ -264,6 +226,7 @@ struct GoingTab: View {
 /// Your wishlist as country photo tiles, and your own lists.
 struct SavedTab: View {
     let model: MyPlacesModel
+    var onNewTrip: () -> Void = {}
 
     @Environment(AppRouter.self) private var router
 
@@ -292,6 +255,7 @@ struct SavedTab: View {
             + wholes.map { .whole(code: $0, regions: regions[$0] ?? []) }
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
             HomeCitiesCard(model: model)
+            UpcomingTripsCard(model: model, onNewTrip: onNewTrip)
             if countries.isEmpty {
                 Text("Save places you want to go. When you're ready, plan a trip from them.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             } else {
