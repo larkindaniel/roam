@@ -272,18 +272,16 @@ struct CountryPageView: View {
         case .failed(let message):
             InlineRetryView(message: message) { Task { await suggestions?.load(destination) } }
         case .loaded:
-            // A level down from a country or state: cities, not places.
+            // A level down from a country or state: cities, not places. No heading: the cards just follow on.
             let cities = DiscoverCity.cities(from: recommended)
             if !cities.isEmpty {
-                section("Places we think you'd enjoy") {
-                    LazyVStack(spacing: Theme.Spacing.l) {
-                        ForEach(cities) { city in
-                            Button { router.push(.city(city.destination)) } label: {
-                                CityHeroCard(city: city.destination, subtitle: suggestionLine(city))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("country-suggested-\(city.destination.name)")
+                LazyVStack(spacing: Theme.Spacing.l) {
+                    ForEach(cities) { city in
+                        Button { router.push(.city(city.destination)) } label: {
+                            CityHeroCard(city: city.destination, subtitle: suggestionLine(city))
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("country-suggested-\(city.destination.name)")
                     }
                 }
             }

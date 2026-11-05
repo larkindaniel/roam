@@ -366,15 +366,12 @@ struct CityPageView: View {
             InlineRetryView(message: message) { Task { await model?.load(destination) } }
         case .loaded:
             if !recommended.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    sectionTitle("Places we think you'd enjoy")
-                    // Lazy, so only the cards on screen build their maps.
-                    LazyVStack(spacing: Theme.Spacing.l) {
-                        ForEach(recommended) { place in
-                            DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
-                                              score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
-                                fly(to: place.experience)
-                            }
+                // No heading: the suggestions just follow on. Lazy, so only the cards on screen build their maps.
+                LazyVStack(spacing: Theme.Spacing.l) {
+                    ForEach(recommended) { place in
+                        DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
+                                          score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
+                            fly(to: place.experience)
                         }
                     }
                 }
@@ -472,9 +469,6 @@ struct CityPageView: View {
             .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
     }
 
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
-    }
 }
 
 /// Finds the city at a point (or where you are) and shows its page; failing that, your home city or the last city you
