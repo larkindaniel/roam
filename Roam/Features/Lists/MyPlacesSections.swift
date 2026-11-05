@@ -1035,7 +1035,6 @@ struct PlacesMapScreen<Content: View>: View {
     }
 }
 
-
 /// Optional start and end dates side by side. Each is blank until tapped, and can be cleared again.
 struct TripDatesRow: View {
     @Binding var start: Date?
@@ -1077,34 +1076,3 @@ struct TripDatesRow: View {
     }
 }
 
-/// The country the My Places globe is zoomed in on: your trips there and your places by city.
-struct CountryFocusSection: View {
-    let model: MyPlacesModel
-    let code: String
-    let title: String
-
-    var body: some View {
-        let items = model.countries.first { $0.code == code }?.items ?? []
-        let trips = model.trips.filter { trip in
-            trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code }
-        }
-        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            if !trips.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    Text("Trips").font(.roamTitle()).accessibilityAddTraits(.isHeader)
-                    VStack(spacing: 0) {
-                        ForEach(trips) { trip in
-                            TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                            if trip.id != trips.last?.id { Divider() }
-                        }
-                    }
-                    .roamCard(padding: Theme.Spacing.m)
-                }
-            }
-            if !items.isEmpty {
-                PlaceBreakdown(items: items, scores: model.scores)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}

@@ -171,42 +171,7 @@ struct MyPlacesRootView: View {
     @State private var query = ""
     @State private var placeSearch = PlaceSearch()
     @FocusState private var searching: Bool
-    /// The country the globe is zoomed in on; the card shows that country instead of everything.
-    @State private var focusedCountry: String?
     @State private var focusRegion: MKCoordinateRegion?
-    @State private var flyingToCountry = false
-
-    private func countryTitle(_ code: String) -> String {
-        model?.countries.first { $0.code == code }?.title ?? CountryTitle.text(name: Locale.current.localizedString(forRegionCode: code), code: code)
-    }
-
-    /// Countries with something of yours in them: places, or a trip that's still ahead.
-    private func isYours(_ code: String) -> Bool {
-        guard let model else { return false }
-        return model.countries.contains { $0.code == code }
-            || model.trips.contains { trip in trip.phase(today: MyTimeline.today()) != .past && trip.cities.contains { $0.countryCode?.uppercased() == code } }
-    }
-
-    private func zoom(to code: String) {
-        // A country you have nothing in does nothing when tapped.
-        guard isYours(code) else { return }
-        // Framed on your places there when you have some, so a big country doesn't open on empty land.
-        let mine = model?.countries.first { $0.code == code }?.items.map(\.experience) ?? []
-        if let minLat = mine.map(\.latitude).min(), let maxLat = mine.map(\.latitude).max(),
-           let minLon = mine.map(\.longitude).min(), let maxLon = mine.map(\.longitude).max() {
-            focusRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-                                             span: MKCoordinateSpan(latitudeDelta: max((maxLat - minLat) * 1.4, 1.5), longitudeDelta: max((maxLon - minLon) * 1.4, 1.5)))
-        } else if let destination = CountryDestination.make(code: code) {
-            focusRegion = MKCoordinateRegion(center: destination.coordinate, latitudinalMeters: destination.radiusMeters * 2, longitudinalMeters: destination.radiusMeters * 2)
-        } else {
-            return
-        }
-        recenterToken += 1
-        flyingToCountry = true
-        focusedCountry = code
-        // The card comes to halfway, up from the bottom or down from fully up, to show that country's cities.
-        if detent != .half { detent = .half }
-    }
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -254,12 +219,11 @@ struct MyPlacesRootView: View {
     private func showWorld() {
         focusRegion = nil
         recenterToken += 1
-        focusedCountry = nil
     }
 
     private var sheetLayout: some View {
         GlobeSheetLayout(detent: $detent, peekHeight: 72, bottomOverlap: detent == .full ? RoamTabBar.reservedHeight + 16 : 0,
-                         headerLabel: focusedCountry.map(countryTitle) ?? "My Places",
+                         headerLabel: "My Places",
                          headerIdentifier: "myplaces-sheet-header", onRefresh: { await model?.load() }, floatsWhenPeeking: true,
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
                          collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, peekOpacity: 0,
@@ -271,9 +235,9 @@ struct MyPlacesRootView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 searchField
                 if detent != .peek, !hasQuery {
-                    Text(focusedCountry.map(countryTitle) ?? "My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
+                    Text("My Places").font(.roamTitle()).foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
-                    if focusedCountry == nil { MyPlacesTabPicker(tab: $tab) }
+                    MyPlacesTabPicker(tab: $tab)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -281,14 +245,10 @@ struct MyPlacesRootView: View {
             if hasQuery {
                 searchResults
             } else if let model, model.hasLoaded {
-                if let focusedCountry {
-                    CountryFocusSection(model: model, code: focusedCountry, title: countryTitle(focusedCountry))
-                } else {
-                    switch tab {
-                    case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
-                    case .going: GoingTab(model: model)
-                    case .saved: SavedTab(model: model)
-                    }
+                switch tab {
+                case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
+                case .going: GoingTab(model: model)
+                case .saved: SavedTab(model: model)
                 }
             } else if let error = model?.error {
                 InlineRetryView(message: error) { Task { await model?.load() } }
@@ -374,7 +334,7 @@ struct MyPlacesRootView: View {
         if let model, model.hasLoaded {
             // Minimised, the globe shows everything; with the card up it shows the chosen tab: green where you've been,
             // blue where you're going, yellow what you've saved.
-            let pins = focusedCountry == nil && detent != .peek ? model.pins.filter { $0.state == tab.state } : model.pins
+            let pins = detent != .peek ? model.pins.filter { $0.state == tab.state } : model.pins
             GlobeMapView(pins: pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
                          shadedCountryCodes: Set(PlaceMapItem.countryTints(pins).keys),
                          focusRegion: focusRegion,
@@ -382,16 +342,8 @@ struct MyPlacesRootView: View {
                          onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
                          globeCenter: PlaceMapItem.startingRegion(pins.isEmpty ? model.pins : pins).center,
                          countryTints: PlaceMapItem.countryTints(pins),
-                         pinTints: Dictionary(uniqueKeysWithValues: pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }),
-                         onSelectCountry: { code in zoom(to: code) },
-                         onCameraChange: { center, scale in
-                             // Landing after flying to a tapped country keeps that country, even if the middle of the
-                             // view (framed on your places there) falls just over a border.
-                             if flyingToCountry { flyingToCountry = false; return }
-                             // Close enough to see one country, the card follows whichever is under the middle of the view.
-                             let code = scale < 22_000 ? CountryGeometry.shared.code(at: center, among: Set(CountryGeometry.shared.allCodes)).flatMap { isYours($0) ? $0 : nil } : nil
-                             if code != focusedCountry { focusedCountry = code }
-                         })
+                         // Countries aren't tappable here: the globe just shows them.
+                         pinTints: Dictionary(uniqueKeysWithValues: pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }))
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
         } else {
             Color.black
