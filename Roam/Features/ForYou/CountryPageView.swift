@@ -105,13 +105,16 @@ struct CountryPageView: View {
 
     // MARK: Header
 
-    /// The name, with the three actions on the same line.
+    /// The name with its flag just under it, centred against the three actions on the same line.
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s) {
-            Text(name)
-                .font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
-                .accessibilityAddTraits(.isHeader)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(name)
+                    .font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
+                    .accessibilityAddTraits(.isHeader)
+                if let flag = TripTitle.flag(code) { Text(flag).font(.title3).accessibilityHidden(true) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             actionRow
         }
     }
