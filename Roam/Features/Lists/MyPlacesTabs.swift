@@ -361,6 +361,8 @@ struct HeroPhotoCard: View {
     var subtitle = ""
     var symbol = "globe"
     var location: CLLocationCoordinate2D?
+    /// Zero when it sits at the top of a bigger card that rounds the corners itself.
+    var cornerRadius: CGFloat = Theme.cornerRadius
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -376,7 +378,7 @@ struct HeroPhotoCard: View {
             }
             .padding(Theme.Spacing.l)
         }
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -405,13 +407,14 @@ struct CountryCoverCard: View {
     let title: String
     var subtitle = ""
     var fallbackURL: URL?
+    var cornerRadius: CGFloat = Theme.cornerRadius
 
     @Environment(AppServices.self) private var services
     @State private var photo: AreaPhotos.Photo?
     @State private var looked = false
 
     var body: some View {
-        HeroPhotoCard(url: photo?.url ?? (looked ? fallbackURL : nil), title: title, subtitle: subtitle)
+        HeroPhotoCard(url: photo?.url ?? (looked ? fallbackURL : nil), title: title, subtitle: subtitle, cornerRadius: cornerRadius)
             .task(id: code) {
                 photo = await AreaPhotos.country(services, code: code)
                 looked = true

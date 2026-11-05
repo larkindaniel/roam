@@ -243,23 +243,58 @@ struct TripDetailView: View {
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         let cities = value.summary.cities
         let countries = value.summary.countries.filter { code in !cities.contains { $0.countryCode?.uppercased() == code.uppercased() } }
-        ForEach(countries, id: \.self) { code in
-            Button { router.push(.country(code)) } label: {
-                CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
+        // Every country the trip goes to: named for it, or where one of its cities is.
+        let allCountries = (cities.compactMap { $0.countryCode?.uppercased() } + value.summary.countries.map { $0.uppercased() }).uniqued()
+        if allCountries.count > 1 {
+            // Several countries: one card each, the country's photo on top and its cities as rows under it.
+            ForEach(allCountries, id: \.self) { code in
+                countryGroup(code, cities: cities.filter { $0.countryCode?.uppercased() == code })
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("trip-country-\(code)")
-        }
-        ForEach(cities) { city in
-            Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
+        } else {
+            ForEach(countries, id: \.self) { code in
+                Button { router.push(.country(code)) } label: {
+                    CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
+                }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("trip-city-\(city.name)")
+                .accessibilityIdentifier("trip-country-\(code)")
+            }
+            ForEach(cities) { city in
+                Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("trip-city-\(city.name)")
+            }
         }
         if cities.isEmpty && countries.isEmpty {
             Text("Add a city to start.")
                 .font(.subheadline).foregroundStyle(Roam.inkMuted)
                 .accessibilityIdentifier("trip-places-empty")
         }
+    }
+
+    /// One country on a trip to several: its photo big at the top (opening its page), then its cities as rows with the
+    /// trip mark, all one card.
+    private func countryGroup(_ code: String, cities: [Destination]) -> some View {
+        VStack(spacing: 0) {
+            Button { router.push(.country(code)) } label: {
+                CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code),
+                                 subtitle: cities.isEmpty ? "Pick cities and places as you go" : "", cornerRadius: 0)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("trip-country-\(code)")
+            if !cities.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(cities) { city in
+                        CityRow(city: city, state: .planned) { router.push(.city(city)) }
+                        if city.id != cities.last?.id { RowSeparator() }
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.m)
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+        }
+        .background(Roam.paperRaised)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
     }
 
     private func draft(_ summary: TripSummary) -> TripDraft {
