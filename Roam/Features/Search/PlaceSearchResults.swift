@@ -88,7 +88,7 @@ struct PlaceSearchResults: View {
                         row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: CountryName.display(area.countryName, code: area.countryCode) ?? "") { router.push(.city(area)) }
                     }
                     ForEach(cityHits) { city in
-                        row(skyline: true, symbol: "building.2.fill", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
+                        row(symbol: "signpost.right.and.left", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
                     }
                     ForEach(others) { hit in
                         row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
@@ -102,13 +102,11 @@ struct PlaceSearchResults: View {
         }
     }
 
-    private func row(flag: String? = nil, skyline: Bool = false, symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func row(flag: String? = nil, symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.m) {
                 Group {
-                    if let flag { Text(flag).font(.title3) }
-                    else if skyline { CitySkylineIcon(size: 26) }
-                    else { Image(systemName: symbol).foregroundStyle(tint) }
+                    if let flag { Text(flag).font(.title3) } else { Image(systemName: symbol).foregroundStyle(tint) }
                 }
                 .frame(width: 24).accessibilityHidden(true)
                 // Name and where it is sit tight together, so the rows read apart.
