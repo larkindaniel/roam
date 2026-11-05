@@ -582,21 +582,26 @@ extension View {
     @ViewBuilder func tabBarSpotButton(_ shown: Bool, title: String, identifier: String, action: @escaping () -> Void) -> some View {
         if shown {
             safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
-                .overlay(alignment: .bottom) {
-                    Button(action: action) {
-                        Label(title, systemImage: "plus")
-                            .font(.headline)
-                            .foregroundStyle(PlaceState.planned.markerColor)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: RoamTabBar.height)
-                            .contentShape(Capsule())
+                .overlay {
+                    // As the tab bar is placed: a stack reaching the very bottom of the screen (not the home indicator),
+                    // the button the same gap above it.
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Button(action: action) {
+                            Label(title, systemImage: "plus")
+                                .font(.headline)
+                                .foregroundStyle(PlaceState.planned.markerColor)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: RoamTabBar.height)
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+                        .padding(.horizontal, RoamTabBar.sideMargin)
+                        .padding(.bottom, RoamTabBar.margin)
+                        .accessibilityIdentifier(identifier)
                     }
-                    .buttonStyle(.plain)
-                    .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
-                    .padding(.horizontal, RoamTabBar.sideMargin)
-                    .padding(.bottom, RoamTabBar.margin)
                     .ignoresSafeArea(edges: .bottom)
-                    .accessibilityIdentifier(identifier)
                 }
         } else {
             self
