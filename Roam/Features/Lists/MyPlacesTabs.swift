@@ -69,6 +69,7 @@ struct MyPlacesTabPicker: View {
 struct BeenTab: View {
     let model: MyPlacesModel
     var onAddHome: () -> Void
+    var onNewTrip: () -> Void = {}
 
     @Environment(AppRouter.self) private var router
 
@@ -77,6 +78,8 @@ struct BeenTab: View {
         let cityCount = countries.map(\.cities.count).reduce(0, +)
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HomeCitiesCard(model: model, onAdd: onAddHome)
+            // Upcoming trips here too, as on Saved.
+            UpcomingTripsCard(model: model, onNewTrip: onNewTrip)
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(countries.count)").font(.roamTitle()).monospacedDigit()

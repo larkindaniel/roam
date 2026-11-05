@@ -251,7 +251,7 @@ struct MyPlacesRootView: View {
                 searchResults
             } else if let model, model.hasLoaded {
                 switch tab {
-                case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
+                case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity }, onNewTrip: { sheet = .newTrip })
                 case .saved: SavedTab(model: model, onNewTrip: { sheet = .newTrip })
                 }
             } else if let error = model?.error {
