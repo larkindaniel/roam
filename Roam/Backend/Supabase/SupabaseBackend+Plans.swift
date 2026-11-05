@@ -48,6 +48,11 @@ extension SupabaseBackend: PlanService {
         try await rpcVoid("mark_city_visited", ["p_city": try RPC.json(city), "p_start": RPC.date(start), "p_end": RPC.date(end)])
     }
 
+    func logCity(_ city: Destination, start: LocalDate?, end: LocalDate?, sentiment: Sentiment?, note: String) async throws {
+        try await rpcVoid("log_city", ["p_city": try RPC.json(city), "p_start": RPC.date(start), "p_end": RPC.date(end),
+                                       "p_sentiment": RPC.string(sentiment?.rawValue), "p_note": RPC.string(note)])
+    }
+
     func savedCities() async throws -> [Destination] { try await rpc("my_saved_cities") }
 
     func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination] {

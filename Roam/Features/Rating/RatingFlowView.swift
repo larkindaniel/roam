@@ -395,7 +395,8 @@ private struct RatingDateEditor: View {
 }
 
 /// Didn't like · Neutral · Liked it, as a track with a knob that slides to the stop you tap or drag to.
-private struct FeelingSlider: View {
+/// Didn't like / Neutral / Liked it, with a glass bubble over the one picked. Logging a place, and a city.
+struct FeelingSlider: View {
     @Binding var selection: Sentiment?
     var enabled: Bool
     var onPick: (Sentiment) -> Void

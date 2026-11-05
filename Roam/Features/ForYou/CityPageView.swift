@@ -44,6 +44,7 @@ struct CityPageView: View {
     @State private var logEnd: Date?
     /// Set while filling the row with saved dates, so that isn't saved back.
     @State private var loadingDates = false
+    @State private var loggingCity = false
     /// Somewhere you've been (not your home) always shows when you were there, picked or not.
     private var showsDates: Bool { isOwn && !isHome && (loggingDates || mySpotCount > 0 || markedVisited) }
     @State private var trips: [TripSummary] = []
@@ -142,6 +143,13 @@ struct CityPageView: View {
         .onDisappear {
             guard loggingDates, !markedVisited else { return }
             Task { await saveVisit() }
+        }
+        .sheet(isPresented: $loggingCity) {
+            AreaLogSheet(name: destination.name, countryCode: destination.countryCode ?? "", around: destination, city: destination) {
+                markedVisited = true
+                library.noteChanged()
+                Task { await reload() }
+            }
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -421,7 +429,8 @@ struct CityPageView: View {
                    onNewTrip: { planningNewTrip = true },
                    // Marking it been asks when you were there; unmarking just removes it.
                    onMarkVisited: { present in
-                       if present { withAnimation(.snappy(duration: 0.25)) { loggingDates = true } }
+                       // Logging a city is its own log: how it was, when, a note and the places you went.
+                       if present { loggingCity = true }
                        else {
                            loggingDates = false; logStart = nil; logEnd = nil
                            Task {

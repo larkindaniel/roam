@@ -141,6 +141,10 @@ extension FixtureBackend: PlanService {
         try await setCityVisited(city, present: true)
     }
 
+    func logCity(_ city: Destination, start: LocalDate?, end: LocalDate?, sentiment: Sentiment?, note: String) async throws {
+        try await setCityVisited(city, present: true)
+    }
+
     func savedCities() async throws -> [Destination] { [] }
 
     func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination] { [] }

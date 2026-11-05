@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Logging a country (or state) you've been to: "Where in Norway?" Search and add the cities and places you went to,
-/// alike, with when you were there (Start → End, both optional). Places are logged as visits without a rating; rank them later from their pages.
+/// alike, with when you were there (Start → End, both optional). For a city it's the city's own log: how it was, when, a
+/// note, and the places you went there (logged without ratings). Places are logged as visits without a rating; rank them later from their pages.
 struct AreaLogSheet: View {
     /// "Norway", or "Ontario".
     let name: String
@@ -10,6 +11,8 @@ struct AreaLogSheet: View {
     var region: Destination?
     /// Where to look first for places.
     let around: Destination
+    /// Logging this city itself (its places only, with a rating and a note) rather than a country or state.
+    var city: Destination?
     var onSaved: () -> Void
 
     private enum Pick: Identifiable, Hashable {
@@ -33,22 +36,27 @@ struct AreaLogSheet: View {
     @State private var end: Date?
     @State private var saving = false
     @State private var error: String?
+    @State private var sentiment: Sentiment?
+    @State private var note = ""
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    private func inArea(country: String?, region value: String?) -> Bool {
+    private func inArea(country: String?, region value: String?, town: String? = nil) -> Bool {
         guard country?.uppercased() == countryCode.uppercased() else { return false }
+        if let city { return GeographyKey.normalize(town ?? "") == GeographyKey.normalize(city.name) }
         guard let region else { return true }
         guard let value, !value.isEmpty else { return false }
         return [region.region, region.name].contains { $0?.caseInsensitiveCompare(value) == .orderedSame }
     }
 
     private var cityResults: [Destination] {
-        placeSearch.cities.filter { inArea(country: $0.countryCode, region: $0.region) && !picks.contains(.city($0)) }
+        guard city == nil else { return [] }
+        return placeSearch.cities.filter { inArea(country: $0.countryCode, region: $0.region) && !picks.contains(.city($0)) }
     }
     private var placeResults: [SearchHit] {
         (placeSearch.model?.hits ?? []).filter { hit in
-            inArea(country: hit.candidate.countryCode, region: hit.candidate.region) && !picks.contains { $0.id == "place:\(hit.id)" }
+            inArea(country: hit.candidate.countryCode, region: hit.candidate.region, town: hit.candidate.locality)
+                && !picks.contains { $0.id == "place:\(hit.id)" }
         }
     }
 
@@ -58,26 +66,42 @@ struct AreaLogSheet: View {
                 if hasQuery {
                     results
                 } else {
+                    if city != nil {
+                        // How it was, like a place's log.
+                        Section { FeelingSlider(selection: $sentiment, enabled: true) { _ in } }
+                            .floatingFormRow()
+                    }
                     Section {
                         if picks.isEmpty {
-                            Text("Search for the cities and places you went to.").foregroundStyle(Roam.inkMuted)
+                            Text(city == nil ? "Search for the cities and places you went to." : "Search for the places you went in \(name).")
+                                .foregroundStyle(Roam.inkMuted)
                         }
                         ForEach(picks) { pick in pickRow(pick) }
                             .onDelete { picks.remove(atOffsets: $0) }
                     } header: {
-                        Text("Where you went")
+                        Text(city == nil ? "Where you went" : "Places you went")
                     }
                     Section { DateRangeRow(start: $start, end: $end) }
                         .floatingFormRow()
+                    if city != nil {
+                        Section {
+                            TextField("Add a note", text: $note, axis: .vertical)
+                                .lineLimit(4...10)
+                                .textInputAutocapitalization(.never)
+                                .frame(minHeight: 90, alignment: .topLeading)
+                                .accessibilityIdentifier("city-log-note")
+                        }
+                    }
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Roam.paper)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Cities and places in \(name)")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: city == nil ? "Cities and places in \(name)" : "Places in \(name)")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .navigationTitle("Where in \(name)?")
+            .navigationTitle(city == nil ? "Where in \(name)?" : "Log \(name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -85,7 +109,8 @@ struct AreaLogSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
-                        .disabled(saving || picks.isEmpty)
+                        // A city's log can be saved on its own; a country's needs somewhere in it.
+                        .disabled(saving || (city == nil && picks.isEmpty))
                         .accessibilityIdentifier("area-log-save")
                 }
             }
@@ -155,6 +180,9 @@ struct AreaLogSheet: View {
         let from = start.map { LocalDate(date: $0, timeZone: .current) }
         let to = end.map { LocalDate(date: $0, timeZone: .current) }
         do {
+            if let city {
+                try await services.plans.logCity(city, start: from, end: to, sentiment: sentiment, note: note)
+            }
             for pick in picks {
                 switch pick {
                 case .city(let city):
