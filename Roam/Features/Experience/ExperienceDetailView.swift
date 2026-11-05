@@ -193,7 +193,6 @@ struct ExperienceDetailView: View {
     @State private var model: ExperienceDetailModel?
     @State private var memoriesModel: PublicMemoriesModel?
     @State private var editingVisit: Visit?
-    @State private var showsPrivateNote = false
     @State private var reportTarget: ReportTarget?
     @State private var reportReason: ReportReason?
     @State private var pendingDeletion: DetailDeletion?
@@ -294,9 +293,6 @@ struct ExperienceDetailView: View {
                 Task { await reload() }
             }
         }
-        .sheet(isPresented: $showsPrivateNote) {
-            PrivateNoteEditor(experienceID: experienceID) { Task { await model?.load() } }
-        }
         .alert(pendingDeletion?.title ?? "Confirm removal", isPresented: Binding(
             get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { action in
                 Button(action.buttonTitle, role: .destructive) { Task { await confirmDeletion(action) } }
@@ -338,7 +334,7 @@ struct ExperienceDetailView: View {
         } header: {
             // Just the name and directions, so the bubble over the map stays short.
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                // Opened up, the category and area sit right under the name.
+                // Opened up, the area and the place's icon sit right under the name.
                 VStack(alignment: .leading, spacing: 0) {
                     Text(summary.name)
                         .font(.roamTitle())
@@ -347,7 +343,7 @@ struct ExperienceDetailView: View {
                         .minimumScaleFactor(0.8)
                         .accessibilityAddTraits(.isHeader)
                     if sheetDetent != .peek {
-                        // The city first, as a slim grey chip that opens its page; then the category.
+                        // The city first, as a slim grey chip that opens its page; then the place's icon.
                         HStack(spacing: Theme.Spacing.s) {
                             if let city = summary.locality, !city.isEmpty {
                                 // A tap handler, like Log and Save: Buttons in this card didn't get their taps.
@@ -367,9 +363,12 @@ struct ExperienceDetailView: View {
                                 .accessibilityLabel("Open \(city)")
                                 .accessibilityIdentifier("detail-open-city")
                             }
-                            if let category = (detail.myRating?.category ?? summary.category)?.title {
-                                Text(category).font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1)
-                            }
+                            // Just the place's icon, not the category's name.
+                            let category = detail.myRating?.category ?? summary.category
+                            Image(systemName: PlaceIcon.symbol(appleType: summary.providerCategory, category: category))
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.secondaryText)
+                                .accessibilityLabel(category?.title ?? "Place")
                         }
                         .padding(.top, 2)
                     }
@@ -420,7 +419,6 @@ struct ExperienceDetailView: View {
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
                 memories(detail)
-                privateNote(detail)
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
@@ -654,26 +652,6 @@ struct ExperienceDetailView: View {
             .roamCard()
             .accessibilityIdentifier("detail-memories")
         }
-    }
-
-    /// Owner-only note, separate from public visit notes and never part of any public projection.
-    private func privateNote(_ detail: ExperienceDetail) -> some View {
-        Button { showsPrivateNote = true } label: {
-            HStack(spacing: Theme.Spacing.m) {
-                Image(systemName: "lock.fill").foregroundStyle(Theme.accent).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(detail.hasPrivateNote ? "Private note" : "Add a private note").font(.subheadline.weight(.semibold))
-                    Text("Only you can see this.").font(.caption).foregroundStyle(Theme.secondaryText)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
-            }
-            .frame(minHeight: Theme.minimumHitTarget)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .roamCard()
-        .accessibilityIdentifier("detail-private-note")
     }
 
     private func overflowMenu(_ detail: ExperienceDetail) -> some View {
