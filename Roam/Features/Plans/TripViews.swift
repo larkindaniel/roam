@@ -368,28 +368,45 @@ struct TripEditorSheet: View {
                 }
                 .listRowBackground(Roam.paperRaised)
                 if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
+                // A thin full-width + right under the last city (or the dates, before there are any).
+                if draft.id == nil {
+                    Section {
+                        Button { pickingCity = true } label: {
+                            Label("Add a city", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(PlaceState.planned.markerColor)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 36)
+                                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("trip-editor-add-city")
+                    }
+                    .floatingFormRow()
+                }
             }
             .scrollContentBackground(.hidden)
-            // Adding a city is the same light blue bubble as on a trip's page, where the tab bar would be.
-            .tabBarSpotButton(draft.id == nil, title: "Add a city", identifier: "trip-editor-add-city") { pickingCity = true }
+            // Tighter gaps between the name, the dates and the cities.
+            .listSectionSpacing(.compact)
+            // Save sits at the bottom, where the other bottom buttons do.
+            .tabBarSpotButton(true, title: "Save", identifier: "trip-save", systemImage: nil, tint: nil, enabled: canSave) {
+                Task { await save() }
+            }
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarTrailing) {
                     // Closing with changes asks first.
                     Button { if hasChanges { confirmingDiscard = true } else { dismiss() } } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("Close")
                         .accessibilityIdentifier("trip-close")
+                        // Attached to the ×, so it pops up from it rather than mid-screen.
+                        .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+                            Button("Discard changes", role: .destructive) { dismiss() }
+                            Button("Keep editing", role: .cancel) {}
+                        }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
-                        .disabled(!canSave)
-                        .accessibilityIdentifier("trip-save")
-                }
-            }
-            .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
-                Button("Discard changes", role: .destructive) { dismiss() }
-                Button("Keep editing", role: .cancel) {}
             }
             .sheet(isPresented: $pickingCity) {
                 DestinationPickerSheet(purpose: .homeCity, title: "Add a city") { city in
@@ -539,7 +556,11 @@ struct AddToTripSheet: View {
 extension View {
     /// A light blue glass button in the tab bar's own spot: as wide and tall as it, the same gap from the bottom of the
     /// screen, with room left above it for the content.
-    @ViewBuilder func tabBarSpotButton(_ shown: Bool, title: String, identifier: String, action: @escaping () -> Void) -> some View {
+    /// `systemImage` leads the title; `tint` colours the glass and text (nil: see-through glass with dark text, like the
+    /// tab bar); `enabled` false fades it and stops taps.
+    @ViewBuilder func tabBarSpotButton(_ shown: Bool, title: String, identifier: String, systemImage: String? = "plus",
+                                       tint: Color? = PlaceState.planned.markerColor, enabled: Bool = true,
+                                       action: @escaping () -> Void) -> some View {
         if shown {
             safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
                 .overlay {
@@ -548,15 +569,20 @@ extension View {
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
                         Button(action: action) {
-                            Label(title, systemImage: "plus")
-                                .font(.headline)
-                                .foregroundStyle(PlaceState.planned.markerColor)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: RoamTabBar.height)
-                                .contentShape(Capsule())
+                            HStack(spacing: Theme.Spacing.s) {
+                                if let systemImage { Image(systemName: systemImage) }
+                                Text(title)
+                            }
+                            .font(.headline)
+                            .foregroundStyle(tint ?? Roam.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: RoamTabBar.height)
+                            .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
-                        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+                        .floatingBubble(Capsule(), tint: tint?.opacity(0.18))
+                        .opacity(enabled ? 1 : 0.4)
+                        .disabled(!enabled)
                         .padding(.horizontal, RoamTabBar.sideMargin)
                         // A touch higher than the tab bar's gap.
                         .padding(.bottom, RoamTabBar.margin + 6)
