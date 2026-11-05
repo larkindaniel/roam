@@ -111,8 +111,8 @@ struct TripDetailView: View {
             // Edit and Delete as their own buttons, not tucked in a menu.
             if let summary = detail.value?.summary, summary.isOwn {
                 ToolbarItem(placement: .topBarTrailing) {
-                    // "Edit", as iOS writes it; a bare pencil beside the bin read oddly.
-                    Button("Edit") { editing = draft(summary) }
+                    // Square and pencil: the same boxy weight as the bin beside it (a bare pencil read oddly).
+                    Button { editing = draft(summary) } label: { Image(systemName: "square.and.pencil") }
                         .accessibilityLabel("Edit trip")
                         .accessibilityIdentifier("trip-edit")
                 }
