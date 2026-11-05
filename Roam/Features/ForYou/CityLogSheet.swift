@@ -150,11 +150,18 @@ struct CityLogSheet: View {
         }
     }
 
+    /// A place you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.
     private func placeRow(_ hit: SearchHit) -> some View {
         HStack(spacing: Theme.Spacing.m) {
-            Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24)
-                .accessibilityHidden(true)
-            Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+            ZStack(alignment: .bottomTrailing) {
+                PlaceThumbnail(id: hit.id, url: hit.experience?.photoURL, coordinate: hit.candidate.coordinate,
+                               symbol: hit.experience?.iconName ?? hit.candidate.iconName, size: 48)
+                StatusMark(state: .visited).scaleEffect(0.75).offset(x: 6, y: 6)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                if let category = hit.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted) }
+            }
             Spacer(minLength: 0)
             Button { places.removeAll { $0.id == hit.id } } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkFaint)
@@ -162,7 +169,7 @@ struct CityLogSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Remove \(hit.candidate.name)")
         }
-        .frame(minHeight: Theme.minimumHitTarget)
+        .padding(.vertical, Theme.Spacing.s)
     }
 
     private func save() async {
