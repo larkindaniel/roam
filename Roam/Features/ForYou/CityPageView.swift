@@ -38,7 +38,13 @@ struct CityPageView: View {
     @State private var saved: [Destination] = []
     /// Marked as been without logging a place there.
     @State private var markedVisited = false
-    @State private var askingDates = false
+    /// Log tapped: Start → End shows under the buttons, and the visit is saved once both are picked.
+    @State private var loggingDates = false
+    @State private var logStart: Date?
+    @State private var logEnd: Date?
+    @State private var confirmingLeave = false
+    /// Log tapped but both dates not picked yet: leaving now records nothing.
+    private var logPending: Bool { loggingDates && (logStart == nil || logEnd == nil) }
     @State private var trips: [TripSummary] = []
     @State private var planningNewTrip = false
     @State private var selection: MapSelection<UUID>?
@@ -125,8 +131,31 @@ struct CityPageView: View {
         } message: {
             Text("\(destination.name) stays on your wishlist while they're saved. Remove them from their pages to take it off.")
         }
-        .sheet(isPresented: $askingDates) {
-            CityVisitDatesSheet(city: destination) { markedVisited = true; library.noteChanged() }
+        // Both dates picked: the visit is recorded (and again if they change); the row stays showing them.
+        .onChange(of: [logStart, logEnd]) { _, _ in
+            guard loggingDates, let logStart, let logEnd else { return }
+            Task {
+                try? await services.plans.markCityVisited(destination, start: LocalDate(date: logStart, timeZone: .current),
+                                                          end: LocalDate(date: logEnd, timeZone: .current))
+                markedVisited = true
+                library.noteChanged()
+            }
+        }
+        // Leaving before both dates are picked asks first: nothing is recorded until then.
+        .navigationBarBackButtonHidden(logPending)
+        .toolbar {
+            if logPending {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { confirmingLeave = true } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel("Back")
+                }
+            }
+        }
+        .alert("Leave without logging?", isPresented: $confirmingLeave) {
+            Button("Leave", role: .destructive) { loggingDates = false; router.pop() }
+            Button("Stay", role: .cancel) {}
+        } message: {
+            Text("Your visit to \(destination.name) won't be recorded until you pick both dates.")
         }
         .sheet(isPresented: $planningNewTrip) {
             TripEditorSheet(draft: TripDraft(), initialCities: [destination]) { trip in router.push(.trip(trip.id)) }
@@ -153,6 +182,7 @@ struct CityPageView: View {
                         // A darker grey field inside the card, the same as My Places' search.
                         .background(Capsule().fill(Roam.ink.opacity(0.12)))
                     cityHeader(showsPhoto: false)
+                    if loggingDates { logDates }
                 }
             }
         } content: {
@@ -381,6 +411,17 @@ struct CityPageView: View {
         }
     }
 
+    /// When you were there, right under the buttons; until both are picked, a line says nothing's recorded yet.
+    private var logDates: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            DateRangeRow(start: $logStart, end: $logEnd)
+            if logPending {
+                Text("Pick both dates to log your visit.").font(.footnote).foregroundStyle(Roam.inkMuted)
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
     private func cityHeader(showsPhoto: Bool) -> some View {
         CityHeader(destination: destination, hasBeen: mySpotCount > 0 || markedVisited, spotCount: mySpotCount, isHome: isOwn && isHome, showsPlanWithAI: loadedSpots && (mySpotCount == 0 || isHome),
                    onToggleHome: isOwn && loadedSpots ? { Task { await setHome(!isHome) } } : nil,
@@ -390,8 +431,11 @@ struct CityPageView: View {
                    onNewTrip: { planningNewTrip = true },
                    // Marking it been asks when you were there; unmarking just removes it.
                    onMarkVisited: { present in
-                       if present { askingDates = true }
-                       else { Task { try? await services.plans.setCityVisited(destination, present: false); markedVisited = false; library.noteChanged() } }
+                       if present { withAnimation(.snappy(duration: 0.25)) { loggingDates = true } }
+                       else {
+                           loggingDates = false; logStart = nil; logEnd = nil
+                           Task { try? await services.plans.setCityVisited(destination, present: false); markedVisited = false; library.noteChanged() }
+                       }
                    },
                    isSaved: isSaved,
                    // Saved because of places saved here: it comes off with them, so tapping explains instead.
