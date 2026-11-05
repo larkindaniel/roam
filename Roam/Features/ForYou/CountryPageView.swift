@@ -375,8 +375,7 @@ struct CountryPageView: View {
         if !cities.isEmpty {
             VStack(spacing: 0) {
                 ForEach(cities) { city in
-                    CityRow(city: city.city, state: .visited,
-                            subtitle: city.placeCount == 0 ? "Been" : (city.placeCount == 1 ? "1 place" : "\(city.placeCount) places")) {
+                    CityRow(city: city.city, state: .visited) {
                         router.push(.city(city.city))
                     }
                     if city.id != cities.last?.id { RowSeparator() }
@@ -399,8 +398,7 @@ struct CountryPageView: View {
                     if index < total - 1 { RowSeparator() }
                 }
                 ForEach(Array(rows.enumerated()), id: \.element.city.id) { index, row in
-                    CityRow(city: row.city, state: .wishlist,
-                            subtitle: row.places == 0 ? "Saved" : (row.places == 1 ? "1 place saved" : "\(row.places) places saved")) {
+                    CityRow(city: row.city, state: .wishlist) {
                         router.push(.city(row.city))
                     }
                     if wishlistRegions.count + index < total - 1 { RowSeparator() }
