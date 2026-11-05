@@ -260,24 +260,27 @@ struct TripDetailView: View {
     @ViewBuilder private func header(_ value: TripDetail) -> some View {
         let own = value.summary.isOwn
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+            // The name with its description tight under it, and the edit icon centred against the two together.
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                VStack(alignment: .leading, spacing: -2) {
                     Text(value.summary.name).font(.roamDisplay(.title)).lineLimit(2).minimumScaleFactor(0.6)
                         .accessibilityAddTraits(.isHeader)
-                    if own {
-                        // Opens the edit sheet for the name and description (and dates), as before.
-                        Button { editing = draft(value.summary) } label: {
-                            Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.ink)
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Edit trip")
-                        .accessibilityIdentifier("trip-edit")
+                    if !value.summary.description.isEmpty {
+                        Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
                     }
                 }
-                if !value.summary.description.isEmpty {
-                    Text(value.summary.description).font(.subheadline).foregroundStyle(Roam.inkMuted)
+                if own {
+                    // Opens the edit sheet for the name and description, as before.
+                    Button { editing = draft(value.summary) } label: {
+                        Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.ink)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Edit trip")
+                    .accessibilityIdentifier("trip-edit")
                 }
             }
+            // A little more room before the dates.
+            .padding(.bottom, Theme.Spacing.xs)
             if own {
                 DateRangeRow(start: $tripStart, end: $tripEnd)
             } else {
