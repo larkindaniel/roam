@@ -189,7 +189,9 @@ struct TripDetailView: View {
     private var addCityBubble: some View {
         Button { addingCity = true } label: {
             // The same height as the round Delete beside it, at the bar's own text size.
+            // The top bar shows only a label's icon unless told otherwise; this needs its words.
             Label("Add to trip", systemImage: "plus")
+                .labelStyle(.titleAndIcon)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(PlaceState.planned.markerColor)
                 .padding(.horizontal, 16)
