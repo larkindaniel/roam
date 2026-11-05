@@ -222,7 +222,7 @@ struct GoingTab: View {
                 }
                 LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
                     .allowsHitTesting(false)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: -3) {
                     Text(trip.name).font(.roamTitle()).foregroundStyle(.white)
                     Text([trip.placeLine.isEmpty || trip.placeLine == trip.name ? nil : trip.placeLine,
                           MyTimeline.range(trip.startDate, trip.endDate)].compactMap { $0 }.joined(separator: " · "))
@@ -367,7 +367,7 @@ struct HeroPhotoCard: View {
                            cornerRadius: 0, location: location)
             LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
                 .allowsHitTesting(false)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: -3) {
                 Text(title).font(.roamTitle()).foregroundStyle(.white).lineLimit(1)
                 if !subtitle.isEmpty {
                     Text(subtitle).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
