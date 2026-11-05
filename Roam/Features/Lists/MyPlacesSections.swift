@@ -152,15 +152,14 @@ struct PlaceRow: View {
     }
 }
 
-/// The line between rows in a card, starting after the row's photo. iOS's solid separator colour, exactly one pixel
-/// tall: a see-through line takes on whatever is behind a glass card, and a half-point one smears unevenly across pixels.
+/// The line between rows in a card, starting after the row's photo: a solid light grey a full point tall. A see-through
+/// line takes on whatever is behind a glass card, and a one-pixel one flickers as the list scrolls between pixels.
 struct RowSeparator: View {
     /// Where the line starts: past a place row's photo by default; a trip row's is a little bigger.
     var inset: CGFloat = 48 + Theme.Spacing.m
-    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        Rectangle().fill(Color(uiColor: .opaqueSeparator)).frame(height: 1 / displayScale).padding(.leading, inset)
+        Rectangle().fill(Roam.fill).frame(height: 1).padding(.leading, inset)
             .accessibilityHidden(true)
     }
 }
