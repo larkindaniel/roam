@@ -262,13 +262,13 @@ struct TripDetailView: View {
                     .listRowInsets(EdgeInsets(top: Self.groupMargin, leading: Self.groupMargin, bottom: Self.groupMargin, trailing: Self.groupMargin))
                     .swipeActions {
                         if own, value.summary.countries.contains(where: { $0.uppercased() == code }) {
-                            Button("Delete", role: .destructive) { removeCountry(code) }
+                            Button("Delete", role: .destructive) { removeCountry(code) }.tint(.red)
                         }
                     }
                     ForEach(here) { city in
                         CityRow(city: city, state: .planned) { router.push(.city(city)) }
                             .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.m, bottom: 0, trailing: Theme.Spacing.m))
-                            .swipeActions { if own { Button("Delete", role: .destructive) { removeCity(city) } } }
+                            .swipeActions { if own { Button("Delete", role: .destructive) { removeCity(city) }.tint(.red) } }
                     }
                 }
                 .listRowBackground(Roam.paperRaised)
@@ -282,13 +282,13 @@ struct TripDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("trip-country-\(code)")
-                    .swipeActions { if own { Button("Delete", role: .destructive) { removeCountry(code) } } }
+                    .swipeActions { if own { Button("Delete", role: .destructive) { removeCountry(code) }.tint(.red) } }
                 }
                 ForEach(cities) { city in
                     Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("trip-city-\(city.name)")
-                        .swipeActions { if own { Button("Delete", role: .destructive) { removeCity(city) } } }
+                        .swipeActions { if own { Button("Delete", role: .destructive) { removeCity(city) }.tint(.red) } }
                 }
                 if cities.isEmpty && countries.isEmpty {
                     Text("Add a city to start.")
