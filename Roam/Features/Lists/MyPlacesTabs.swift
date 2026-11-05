@@ -431,6 +431,23 @@ struct HeroPhotoCard: View {
     }
 }
 
+/// A city as a big card, like an upcoming trip's, led by its Google photo.
+struct CityHeroCard: View {
+    let city: Destination
+    var subtitle: String?
+
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
+
+    var body: some View {
+        HeroPhotoCard(url: photo?.url, title: city.name, subtitle: subtitle ?? city.subtitle, symbol: "signpost.right.and.left",
+                      location: city.coordinate)
+            .task(id: city.id) {
+                photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
+            }
+    }
+}
+
 /// A country as a big card, like an upcoming trip's, led by its Google photo.
 struct CountryCoverCard: View {
     let code: String

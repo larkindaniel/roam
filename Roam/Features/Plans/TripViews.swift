@@ -76,8 +76,6 @@ struct TripDetailView: View {
     @State private var confirmingDelete = false
     @State private var entries: [TripFeedEntry] = []
     @State private var wishlist: [ExperienceSummary] = []
-    /// Places the trip's owner has been to (any trip), so the spots in its cities you've already been show first.
-    @State private var been: [ExperienceSummary] = []
     @State private var addingFromWishlist = false
     @State private var addingCity = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
@@ -118,7 +116,7 @@ struct TripDetailView: View {
                         .accessibilityIdentifier("trip-edit")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash") }
+                    Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
                         .accessibilityLabel("Delete trip")
                         .accessibilityIdentifier("trip-delete")
                 }
@@ -216,8 +214,8 @@ struct TripDetailView: View {
         return trip.phase(today: today) == .now ? "\(dates) · Happening now" : dates
     }
 
-    /// The trip's countries and cities, each as the card that opens its page, with its spots under it: where you've
-    /// already been first, then what's on the trip or saved there. No map.
+    /// The trip's countries and cities, each a photo card (like My Places' and Discover's) that opens its page. No map
+    /// and no list of spots: those are on each city's page.
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
         let cities = value.summary.cities
         let countries = value.summary.countries.filter { code in !cities.contains { $0.countryCode?.uppercased() == code.uppercased() } }
@@ -229,60 +227,19 @@ struct TripDetailView: View {
             .accessibilityIdentifier("trip-country-\(code)")
         }
         ForEach(cities) { city in
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                Button { router.push(.city(city)) } label: {
-                    CityPhotoCard(destination: city).contentShape(Rectangle())
-                }
+            Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("trip-city-\(city.name)")
-                spotList(spots(in: city, value), value)
-            }
-        }
-        // Anything on the trip outside its cities.
-        let elsewhere = value.places.filter { place in !cities.contains { CityMatch.same(place.experience, $0) } }
-            .map { PlaceMapItem(experience: $0.experience, state: $0.state) }
-        if !elsewhere.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                Text("Other places").font(.roamTitle()).accessibilityAddTraits(.isHeader)
-                spotList(elsewhere, value)
-            }
         }
         if value.summary.isOwn {
             Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
                 .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
                 .accessibilityIdentifier("trip-add-city")
         }
-        if cities.isEmpty && countries.isEmpty && elsewhere.isEmpty {
-            Text("Add a city. Places you've saved there show up here.")
+        if cities.isEmpty && countries.isEmpty {
+            Text("Add a city to start.")
                 .font(.subheadline).foregroundStyle(Roam.inkMuted)
                 .accessibilityIdentifier("trip-places-empty")
-        }
-    }
-
-    /// A city's spots: the ones you've been to first, then the ones on the trip or saved there.
-    private func spots(in city: Destination, _ value: TripDetail) -> [PlaceMapItem] {
-        let visited = (been + value.places.filter(\.isVisited).map(\.experience)).filter { CityMatch.same($0, city) }.uniqued { $0.id }
-        let seen = Set(visited.map(\.id))
-        let others = (value.places.filter { !$0.isVisited }.map(\.experience) + wishlist)
-            .filter { CityMatch.same($0, city) && !seen.contains($0.id) }.uniqued { $0.id }
-        return visited.map { PlaceMapItem(experience: $0, state: .visited) } + others.map { PlaceMapItem(experience: $0, state: .wishlist) }
-    }
-
-    @ViewBuilder private func spotList(_ items: [PlaceMapItem], _ value: TripDetail) -> some View {
-        if !items.isEmpty {
-            VStack(spacing: 0) {
-                ForEach(items) { item in
-                    PlaceRow(item: item) { router.push(.experience(item.id)) }
-                        .contextMenu {
-                            // Only what's actually on the trip can come off it; saved spots show up on their own.
-                            if value.summary.isOwn, value.places.contains(where: { $0.id == item.id }) {
-                                Button("Remove from trip", systemImage: "minus.circle", role: .destructive) { Task { await remove(item.id) } }
-                            }
-                        }
-                    if item.id != items.last?.id { Divider() }
-                }
-            }
-            .roamCard(padding: Theme.Spacing.m)
         }
     }
 
@@ -304,7 +261,6 @@ struct TripDetailView: View {
             let loaded = try await services.plans.trip(id: tripID)
             detail = .loaded(loaded)
             entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
-            been = ((try? await services.lists.been(ownerID: loaded.summary.owner.id)) ?? []).map(\.experience)
             if loaded.summary.isOwn, let me = session.userID {
                 let onTrip = Set(loaded.places.map(\.id))
                 let saved = (try? await services.lists.want(ownerID: me)) ?? []
