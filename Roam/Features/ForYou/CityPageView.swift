@@ -83,8 +83,7 @@ struct CityPageView: View {
         cityLayout
         // Fully up, the card makes room for the tab bar; lower down it has the bottom of the screen to itself.
         .roamTabBar(hidden: detent != .full)
-        // Fully up, the tab bar is there; the back button only shows over the map.
-        .navigationBarBackButtonHidden(detent == .full)
+        // The back button stays at every height, so a city opened from My Places goes back to where you were.
         .navigationTitle(destination.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
