@@ -234,8 +234,6 @@ struct RatingFlowView: View {
                 FeelingSlider(selection: Binding(get: { model.sentiment }, set: { _ in }), enabled: model.category != nil) { picked in
                     model.setFeeling(picked)
                 }
-                // A little more room between how it was and the details under it.
-                .padding(.bottom, Theme.Spacing.s)
             }
             // The category, when it isn't known yet, as its own bubble.
             if !model.categoryLocked {
@@ -447,14 +445,6 @@ struct FeelingSlider: View {
 
     private let stops: [Sentiment] = [.disliked, .fine, .liked]
 
-    /// Didn't like red, Neutral yellow, Liked it green.
-    private func tint(_ feeling: Sentiment) -> Color {
-        switch feeling {
-        case .disliked: return .red
-        case .fine: return PlaceState.wishlist.markerColor
-        case .liked: return PlaceState.visited.markerColor
-        }
-    }
 
     private func label(_ feeling: Sentiment) -> String {
         switch feeling {
@@ -470,11 +460,11 @@ struct FeelingSlider: View {
             let segment = width / CGFloat(stops.count)
             ZStack(alignment: .leading) {
                 Capsule().fill(Roam.ink.opacity(0.06))
-                // A glass bubble, lightly tinted in the feeling's colour, sits over the one picked and slides between them.
+                // A plain glass bubble sits over the one picked and slides between them.
                 if let selection, let index = stops.firstIndex(of: selection) {
                     // Right up to the track's edge.
                     Color.clear
-                        .floatingBubble(Capsule(), tint: tint(selection).opacity(0.18))
+                        .floatingBubble(Capsule())
                         .frame(width: segment)
                         .offset(x: segment * CGFloat(index))
                         .animation(.snappy(duration: 0.25), value: selection)
@@ -486,7 +476,8 @@ struct FeelingSlider: View {
                             Image(systemName: feeling.symbolName).font(.footnote)
                             Text(label(feeling)).font(.footnote.weight(.semibold))
                         }
-                        .foregroundStyle(selection == feeling ? tint(feeling) : Roam.inkMuted)
+                        // Not colour-coded: the one picked is in ink under the glass, the others muted.
+                        .foregroundStyle(selection == feeling ? Roam.ink : Roam.inkMuted)
                         .frame(width: segment)
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(.isButton)
