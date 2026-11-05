@@ -81,7 +81,7 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
 
     func destination(for coordinate: CLLocationCoordinate2D) async throws -> Destination? {
         let placemarks = try await CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
-        guard let placemark = placemarks.first, let locality = placemark.locality ?? placemark.subAdministrativeArea else { return nil }
+        guard let placemark = placemarks.first, let locality = Self.town(placemark) else { return nil }
         return Destination(name: locality, region: placemark.administrativeArea, countryCode: placemark.isoCountryCode,
                            countryName: placemark.country, latitude: coordinate.latitude, longitude: coordinate.longitude,
                            radiusMeters: 12_000)
@@ -104,6 +104,16 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
 
     // MARK: - Mapping
 
+    /// The town a place is in. Mountains and lakes out in the country have no locality, so they take their municipality
+    /// ("Lom Municipality" → "Lom") instead.
+    static func town(_ placemark: CLPlacemark) -> String? {
+        if let locality = placemark.locality { return locality }
+        guard var area = placemark.subAdministrativeArea else { return nil }
+        for suffix in [" Municipality", " County", " District"] where area.hasSuffix(suffix) { area.removeLast(suffix.count) }
+        return area
+    }
+
+
     static func candidate(from item: MKMapItem) -> PlaceCandidate? {
         let placemark = item.placemark
         let coordinate = placemark.coordinate
@@ -112,7 +122,7 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         let isStreetAddress = placemark.thoroughfare != nil || placemark.subThoroughfare != nil
         // A town only when the result is the town itself (its name is the locality's); an untyped result with some other
         // name is a natural feature, like a mountain ridge or a lake.
-        let isLocality = poi == nil && !isStreetAddress && [placemark.locality, placemark.subAdministrativeArea].contains { $0 == name }
+        let isLocality = poi == nil && !isStreetAddress && [placemark.locality, placemark.subAdministrativeArea, town(placemark)].contains { $0 == name }
         let isFeature = poi == nil && !isStreetAddress && !isLocality
         // Plain street addresses are not experiences; MapKit POIs, physical features and localities are.
         if poi == nil && isStreetAddress { return nil }
@@ -121,7 +131,7 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
             providerPlaceID: item.identifier?.rawValue,
             name: name,
             address: formattedAddress(placemark),
-            locality: placemark.locality ?? (isLocality ? name : nil),
+            locality: isLocality ? name : town(placemark),
             region: placemark.administrativeArea,
             countryCode: placemark.isoCountryCode,
             countryName: placemark.country,
