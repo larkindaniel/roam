@@ -52,7 +52,6 @@ struct CityLogSheet: View {
                     .accessibilityElement(children: .combine)
                     FeelingSlider(selection: $sentiment, enabled: true) { _ in }
                     DateRangeRow(start: $start, end: $end)
-                    photoSection
                     // The places you went here: rows with the add button as the last thing in the same card, like upcoming
                     // trips on My Places; with none yet, just the button.
                     if places.isEmpty {
@@ -67,6 +66,8 @@ struct CityLogSheet: View {
                         }
                         .roamCard(padding: Theme.Spacing.m)
                     }
+                    // Photos after the places, right above the note.
+                    photoSection
                     TextField("Add a note", text: $note, axis: .vertical)
                         .lineLimit(5...12)
                         .textInputAutocapitalization(.never)

@@ -459,13 +459,12 @@ struct FeelingSlider: View {
             let width = proxy.size.width
             let segment = width / CGFloat(stops.count)
             ZStack(alignment: .leading) {
-                // The whole bar is Liquid Glass, with a brighter glass bubble over the one picked.
-                Color.clear.floatingBubble(Capsule())
-                // A plain glass bubble sits over the one picked and slides between them.
+                // Like My Places' Saved / Been selector: a grey track with the one picked as a raised pill sitting in it.
+                Capsule().fill(Color.gray.opacity(0.18))
                 if let selection, let index = stops.firstIndex(of: selection) {
-                    // Right up to the track's edge.
-                    Color.clear
-                        .floatingBubble(Capsule(), tint: .white.opacity(0.55))
+                    Capsule().fill(Roam.paperRaised)
+                        .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                        .padding(3)
                         .frame(width: segment)
                         .offset(x: segment * CGFloat(index))
                         .animation(.snappy(duration: 0.25), value: selection)
