@@ -333,10 +333,10 @@ struct SavedTab: View {
 
 enum CountryCardsLayout {
     /// From this many countries, they go two across in a grid of smaller tiles.
-    static let gridFrom = 8
+    static let gridFrom = 10
 }
 
-/// Countries on My Places: big photo cards, one under another, while there are a few; from eight, a two-across grid.
+/// Countries on My Places: big photo cards, one under another, up to nine; from ten, a two-across grid.
 struct CountryCards<Content: View>: View {
     let count: Int
     @ViewBuilder var content: () -> Content
