@@ -307,79 +307,70 @@ struct TripEditorSheet: View {
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
-    @State private var start = Calendar.current.startOfDay(for: Date())
-    @State private var end = Calendar.current.date(byAdding: .day, value: 7, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    // Dates start empty; both are needed to save.
+    @State private var start: Date?
+    @State private var end: Date?
     @State private var cities: [Destination] = []
     @State private var countries: [String] = []
     @State private var pickingCity = false
     @State private var error: String?
     @State private var saving = false
+    @State private var confirmingDiscard = false
+    /// What the sheet opened with, to tell whether closing loses anything.
+    @State private var opened: (name: String, description: String, start: Date?, end: Date?, cities: [Destination], countries: [String])?
+
+    private var hasChanges: Bool {
+        guard let opened else { return false }
+        return draft.name != opened.name || draft.description != opened.description || start != opened.start || end != opened.end
+            || cities != opened.cities || countries != opened.countries
+    }
+    private var canSave: Bool { !saving && !draft.name.trimmingCharacters(in: .whitespaces).isEmpty && start != nil && end != nil }
 
     var body: some View {
         NavigationStack {
-            Form { Group {
-                Section {
-                    TextField("Trip name", text: $draft.name)
-                        .textInputAutocapitalization(.never)
-                        .accessibilityIdentifier("trip-name")
-                    TextField("Description (optional)", text: $draft.description, axis: .vertical)
-                        .textInputAutocapitalization(.never)
-                }
-                // Dates are required: the standard date rows, the end never before the start.
-                Section("Dates") {
-                    DatePicker("Start", selection: $start, displayedComponents: .date)
-                        .accessibilityIdentifier("trip-start")
-                    DatePicker("End", selection: $end, in: start..., displayedComponents: .date)
-                        .accessibilityIdentifier("trip-end")
-                }
-                .onChange(of: start) { _, value in if end < value { end = value } }
-                if draft.id == nil {
-                    // Like adding a phone number in Contacts: each city a row, then a green add row.
-                    Section(countries.isEmpty ? "Cities" : "Where") {
-                        ForEach(countries, id: \.self) { code in
-                            HStack {
-                                Text(CountryName.display(code: code))
-                                Spacer()
-                                Text(TripTitle.flag(code) ?? "")
-                            }
-                        }
-                        .onDelete { countries.remove(atOffsets: $0) }
-                        ForEach(cities) { city in
-                            HStack {
-                                Text(city.name)
-                                Spacer()
-                                Text(city.countryName ?? "").foregroundStyle(Roam.inkMuted)
-                            }
-                        }
-                        .onDelete { cities.remove(atOffsets: $0) }
-                        Button { pickingCity = true } label: {
-                            Label {
-                                Text("Add a city").foregroundStyle(Roam.ink)
-                            } icon: {
-                                Image(systemName: "plus.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, Color.green)
-                            }
-                        }
-                        .accessibilityIdentifier("trip-editor-add-city")
+            Form {
+                Group {
+                    Section {
+                        TextField("Trip name", text: $draft.name)
+                            .textInputAutocapitalization(.never)
+                            .accessibilityIdentifier("trip-name")
+                        TextField("Description (optional)", text: $draft.description, axis: .vertical)
+                            .textInputAutocapitalization(.never)
                     }
+                    // Both required, the standard date rows once picked; the end never before the start.
+                    Section("Dates") {
+                        dateRow("Start", date: $start, from: nil)
+                        dateRow("End", date: $end, from: start)
+                    }
+                    .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
+                    if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
-                if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
-            }
-            .listRowBackground(Roam.paperRaised)
+                .listRowBackground(Roam.paperRaised)
+                if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
             }
             .scrollContentBackground(.hidden)
-            .onAppear {
-                if cities.isEmpty { cities = initialCities }
-                if countries.isEmpty { countries = initialCountries }
+            // Adding a city is the same light blue bubble as on a trip's page.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if draft.id == nil { addCityButton }
             }
             .navigationTitle(draft.id == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    // Closing with changes asks first.
+                    Button { if hasChanges { confirmingDiscard = true } else { dismiss() } } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
+                        .accessibilityIdentifier("trip-close")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
-                        .disabled(saving || draft.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(!canSave)
                         .accessibilityIdentifier("trip-save")
                 }
+            }
+            .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
             }
             .sheet(isPresented: $pickingCity) {
                 DestinationPickerSheet(purpose: .homeCity, title: "Add a city") { city in
@@ -387,16 +378,70 @@ struct TripEditorSheet: View {
                 }
             }
             .onAppear {
-                if let saved = draft.startDate?.date() { start = saved }
-                if let saved = draft.endDate?.date() { end = saved }
+                guard opened == nil else { return }
+                start = draft.startDate?.date()
+                end = draft.endDate?.date()
+                cities = initialCities
+                countries = initialCountries
+                opened = (draft.name, draft.description, start, end, cities, countries)
             }
         }
         .roamSheetStyle()
-        // Opens fully up.
+        // Opens fully up; swiping it away with changes asks first too.
         .presentationDetents([.large])
+        .interactiveDismissDisabled(hasChanges)
+    }
+
+    /// Where the trip goes, as the same photo cards its page shows; swipe one away to take it off.
+    private var destinations: some View {
+        Section {
+            ForEach(countries, id: \.self) { code in
+                CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
+            }
+            .onDelete { countries.remove(atOffsets: $0) }
+            ForEach(cities) { city in CityHeroCard(city: city) }
+                .onDelete { cities.remove(atOffsets: $0) }
+        }
+        .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: 0, bottom: Theme.Spacing.s, trailing: 0))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    private var addCityButton: some View {
+        Button { pickingCity = true } label: {
+            Label("Add a city", systemImage: "plus")
+                .font(.headline)
+                .foregroundStyle(PlaceState.planned.markerColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: RoamTabBar.height)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
+        .padding(.horizontal, RoamTabBar.sideMargin)
+        .padding(.bottom, Theme.Spacing.s)
+        .accessibilityIdentifier("trip-editor-add-city")
+    }
+
+    /// A date row that starts empty: "Add" until it's picked, then the standard date picker.
+    @ViewBuilder private func dateRow(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
+        if let value = date.wrappedValue {
+            DatePicker(title, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
+                       in: (minimum ?? .distantPast)..., displayedComponents: .date)
+                .accessibilityIdentifier("trip-\(title.lowercased())")
+        } else {
+            HStack {
+                Text(title)
+                Spacer()
+                Button("Add") { date.wrappedValue = minimum ?? Calendar.current.startOfDay(for: Date()) }
+                    .accessibilityLabel("Add \(title.lowercased()) date")
+                    .accessibilityIdentifier("trip-\(title.lowercased())")
+            }
+        }
     }
 
     private func save() async {
+        guard let start, let end else { return }
         var value = draft
         value.startDate = LocalDate(date: start, timeZone: .current)
         value.endDate = LocalDate(date: end, timeZone: .current)
