@@ -172,7 +172,7 @@ struct MyPlacesRootView: View {
     @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
-    @State private var tab = MyPlacesTab.been
+    @State private var tab = MyPlacesTab.saved
     @State private var query = ""
     @State private var placeSearch = PlaceSearch()
     @FocusState private var searching: Bool
@@ -251,7 +251,7 @@ struct MyPlacesRootView: View {
                 searchResults
             } else if let model, model.hasLoaded {
                 switch tab {
-                case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity }, onNewTrip: { sheet = .newTrip })
+                case .been: BeenTab(model: model, onAddHome: { sheet = .homeCity })
                 case .saved: SavedTab(model: model, onNewTrip: { sheet = .newTrip })
                 }
             } else if let error = model?.error {

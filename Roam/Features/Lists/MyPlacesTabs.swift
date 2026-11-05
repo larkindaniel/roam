@@ -1,10 +1,11 @@
 import MapKit
 import SwiftUI
 
-/// My Places in two parts, coloured like the place states they hold. Upcoming trips sit on Saved.
+/// My Places in two parts, coloured like the place states they hold: Saved (with upcoming trips) on the left, Been (with
+/// past trips) on the right.
 enum MyPlacesTab: String, CaseIterable, Identifiable {
-    case been
     case saved
+    case been
 
     var id: String { rawValue }
 
@@ -69,7 +70,6 @@ struct MyPlacesTabPicker: View {
 struct BeenTab: View {
     let model: MyPlacesModel
     var onAddHome: () -> Void
-    var onNewTrip: () -> Void = {}
 
     @Environment(AppRouter.self) private var router
 
@@ -78,8 +78,7 @@ struct BeenTab: View {
         let cityCount = countries.map(\.cities.count).reduce(0, +)
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HomeCitiesCard(model: model, onAdd: onAddHome)
-            // Upcoming trips here too, as on Saved.
-            UpcomingTripsCard(model: model, onNewTrip: onNewTrip)
+            PastTripsCard(model: model)
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(countries.count)").font(.roamTitle()).monospacedDigit()
@@ -151,6 +150,35 @@ struct HomeCitiesCard: View {
                         .contextMenu { Button("Remove home city", role: .destructive) { Task { await model.setHome(city, present: false) } } }
                         .accessibilityIdentifier("home-city-\(city.name)")
                     if city.id != model.homeCities.last?.id { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+        }
+    }
+}
+
+/// Your past trips, newest first, one row each with the green been mark: all one card, and nothing when there are none.
+struct PastTripsCard: View {
+    let model: MyPlacesModel
+
+    private var trips: [TripSummary] {
+        let today = MyTimeline.today()
+        let past = model.trips.filter { $0.isOwn && $0.phase(today: today) == .past }
+        return past.sorted { a, b in
+            guard let first = a.endDate ?? a.startDate else { return false }
+            guard let second = b.endDate ?? b.startDate else { return true }
+            return first > second
+        }
+    }
+
+    var body: some View {
+        let trips = trips
+        if !trips.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(trips) { trip in
+                    TripRow(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience,
+                            subtitle: MyTimeline.range(trip.startDate, trip.endDate) ?? "", state: .visited)
+                    if trip.id != trips.last?.id { RowSeparator() }
                 }
             }
             .roamCard(padding: Theme.Spacing.m)
@@ -243,7 +271,8 @@ struct SavedTab: View {
             .uniqued().filter { !groupCodes.contains($0) }
         let countries: [SavedCountry] = groups.map { .group($0, regions: regions[$0.code.uppercased()] ?? []) }
             + wholes.map { .whole(code: $0, regions: regions[$0] ?? []) }
-        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+        // The same space between cards as Been.
+        VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HomeCitiesCard(model: model)
             UpcomingTripsCard(model: model, onNewTrip: onNewTrip)
             if countries.isEmpty {

@@ -12,8 +12,6 @@ enum Roam {
     static let inkMuted = dynamic(light: 0x6C6C70, dark: 0x98989F)
     static let inkFaint = dynamic(light: 0x8E8E93, dark: 0x636366)
     static let rule = dynamic(light: 0xD1D1D6, dark: 0x38383A)
-    /// Lines between rows on a see-through glass card, where the lighter `fill` washes out to white.
-    static let ruleOnGlass = dynamic(light: 0xC7C7CC, dark: 0x48484A)
     static let fill = dynamic(light: 0xE5E5EA, dark: 0x2C2C2E)
     static let onInk = dynamic(light: 0xF2F2F7, dark: 0x000000)
     static let signal = dynamic(light: 0xB3261E, dark: 0xFF8A80)

@@ -156,8 +156,8 @@ struct PlaceRow: View {
     }
 }
 
-/// The line between rows in a card, starting after the row's photo: a solid grey a full point tall, darker on a
-/// see-through glass card (a swipe-up card short of fully up) so it doesn't wash out to white. A see-through line takes
+/// The line between rows in a card, starting after the row's photo: a solid grey a full point tall, the chevrons' darker
+/// grey on a see-through glass card (a swipe-up card short of fully up), where a light one washes out to white. A see-through line takes
 /// on whatever is behind the glass, and a one-pixel one flickers as the list scrolls between pixels.
 struct RowSeparator: View {
     /// Where the line starts: past a place row's photo by default; a trip row's is a little bigger.
@@ -165,7 +165,8 @@ struct RowSeparator: View {
     @Environment(\.onGlass) private var onGlass
 
     var body: some View {
-        Rectangle().fill(onGlass ? Roam.ruleOnGlass : Roam.fill).frame(height: 1).padding(.leading, inset)
+        // On glass, the same grey as the rows' chevrons.
+        Rectangle().fill(onGlass ? Roam.inkMuted : Roam.fill).frame(height: 1).padding(.leading, inset)
             .accessibilityHidden(true)
     }
 }
@@ -175,6 +176,8 @@ struct TripRow: View {
     let trip: TripSummary
     var cover: ExperienceSummary?
     var subtitle = ""
+    /// The mark on its photo: blue for a trip ahead, green for one you've been on.
+    var state: PlaceState = .planned
 
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
@@ -187,7 +190,7 @@ struct TripRow: View {
                     PlaceThumbnail(id: "trip-\(trip.id)", url: photo?.url ?? cover?.photoURL,
                                    coordinate: trip.coverCity?.coordinate ?? cover?.coordinate ?? CLLocationCoordinate2D(),
                                    symbol: "airplane", size: 48)
-                    StatusMark(state: .planned).scaleEffect(0.75).offset(x: 6, y: 6)
+                    StatusMark(state: state).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(trip.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
