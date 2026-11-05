@@ -172,9 +172,12 @@ struct ForYouRootView: View {
         // typed letter, and the bar toggling there took the keyboard away.
         ZStack {
             if hasQuery {
-                List { searchResults }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
+                // The same search results as My Places.
+                ScrollView {
+                    PlaceSearchResults(query: query)
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .padding(.vertical, Theme.Spacing.s)
+                }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
                     // Reading down hides the top buttons and search; any move back up brings them back.
@@ -202,12 +205,6 @@ struct ForYouRootView: View {
         .onAppear {
             navigationBarHidden = false
             Task { @MainActor in navigationBarHidden = true }
-        }
-        .task(id: query) {
-            guard hasQuery else { results = .idle; return }
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            await search(query)
         }
         .task {
             if model == nil { model = ForYouModel(plans: services.plans) }

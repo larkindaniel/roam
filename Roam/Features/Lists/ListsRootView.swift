@@ -170,9 +170,6 @@ struct MyPlacesRootView: View {
     @State private var tab = MyPlacesTab.been
     @State private var query = ""
     @FocusState private var searching: Bool
-    @State private var search: ExperienceSearchModel?
-    @State private var cityHits: [Destination] = []
-    @State private var openingHit: String?
     /// The country the globe is zoomed in on; the card shows that country instead of everything.
     @State private var focusedCountry: String?
     @State private var focusRegion: MKCoordinateRegion?
@@ -245,66 +242,11 @@ struct MyPlacesRootView: View {
                 searching = true
             }
         }
-        .task(id: query) {
-            guard hasQuery else { search?.query = ""; cityHits = []; return }
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            if search == nil { search = ExperienceSearchModel(services: services) }
-            async let cities = services.places.searchDestinations(query: query)
-            await search?.search(query, near: nil)
-            cityHits = Array(((try? await cities) ?? []).prefix(3))
-        }
     }
 
-    /// Your own places first, then cities, then everywhere else Apple knows.
-    @ViewBuilder private var searchResults: some View {
-        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let mine = (model?.pins ?? []).filter { $0.experience.name.lowercased().contains(needle) }.uniqued { $0.id }
-        let others = (search?.hits ?? []).filter { hit in !mine.contains { $0.id == hit.experience?.id } }
-        // No empty card while nothing has matched: just a line once the search has finished.
-        if mine.isEmpty && cityHits.isEmpty && others.isEmpty {
-            if search?.phase == .noResults || search?.phase == .results {
-                Text("No places match \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-            }
-        } else {
-        VStack(spacing: 0) {
-            ForEach(mine.prefix(8)) { item in
-                resultRow(symbol: item.experience.iconName, tint: item.state.markerColor, title: item.experience.name,
-                          subtitle: item.experience.areaLine) { router.push(.experience(item.id)) }
-            }
-            ForEach(cityHits) { city in
-                resultRow(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
-            }
-            ForEach(others) { hit in
-                resultRow(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
-                          subtitle: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.joined(separator: ", ")) {
-                    Task {
-                        openingHit = hit.id
-                        defer { openingHit = nil }
-                        if let place = try? await search?.resolve(hit) { router.push(.experience(place.id)) }
-                    }
-                }
-            }
-        }
-        .roamCard(padding: Theme.Spacing.m)
-        }
-    }
-
-    private func resultRow(symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Theme.Spacing.m) {
-                Image(systemName: symbol).foregroundStyle(tint).frame(width: 24).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                    if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(minHeight: Theme.minimumHitTarget)
-            .padding(.vertical, Theme.Spacing.xs)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+    /// The same search results as Discover, with your own places matched first.
+    private var searchResults: some View {
+        PlaceSearchResults(query: query, mine: model?.pins ?? [])
     }
 
     private func showWorld() {
