@@ -34,7 +34,9 @@ struct CountryPageView: View {
                            countryName: nil, latitude: 20, longitude: 0, radiusMeters: 1_500_000)
     }
 
-    private var destination: Destination { Self.destination(for: code) }
+    /// A country too small for the world outline map (Hong Kong) is found by name instead.
+    @State private var lookedUp: Destination?
+    private var destination: Destination { CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
     private var name: String { Locale.current.localizedString(forRegionCode: code) ?? code }
     private func isHere(_ place: ExperienceSummary) -> Bool { place.countryCode?.uppercased() == code }
 
@@ -295,6 +297,12 @@ struct CountryPageView: View {
     // MARK: Loading
 
     private func reload() async {
+        if CountryDestination.make(code: code) == nil, lookedUp == nil,
+           let found = try? await CLGeocoder().geocodeAddressString(name).first(where: { $0.isoCountryCode?.uppercased() == code }),
+           let at = found.location?.coordinate {
+            lookedUp = Destination(name: name, region: nil, countryCode: code, countryName: name,
+                                   latitude: at.latitude, longitude: at.longitude, radiusMeters: 60_000)
+        }
         if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
         if suggestions == nil { suggestions = ForYouModel(plans: services.plans) }
         async let mine: Void = model?.load() ?? ()

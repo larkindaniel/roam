@@ -30,14 +30,18 @@ final class PlaceSearch {
         countries = Self.countries(matching: query)
     }
 
+    private static let groupings: Set<String> = ["EU", "EZ", "UN", "QO", "XA", "XB"]
+
     private static func countries(matching query: String) -> [String] {
         let needle = " " + query.trimmingCharacters(in: .whitespaces)
         guard needle.count > 2 else { return [] }
         let found: [(code: String, name: String)] = Locale.Region.isoRegions.compactMap { region in
             let code = region.identifier
-            guard code.count == 2, code.allSatisfy(\.isLetter), let name = Locale.current.localizedString(forRegionCode: code),
-                  (" " + name).range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil,
-                  !CountryGeometry.shared.polygons(for: [code]).isEmpty else { return nil }
+            // Every two-letter country or territory, small ones too (Hong Kong, Singapore aren't on the world outline map),
+            // but not groupings like the EU or UN.
+            guard code.count == 2, code.allSatisfy(\.isLetter), !Self.groupings.contains(code),
+                  let name = Locale.current.localizedString(forRegionCode: code),
+                  (" " + name).range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil else { return nil }
             return (code, name)
         }
         // "nor" puts Norway ahead of North Korea: the closest to what's typed first.
@@ -106,7 +110,7 @@ struct PlaceSearchResults: View {
                 }
                 .frame(width: 24).accessibilityHidden(true)
                 // Name and where it is sit tight together, so the rows read apart.
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: -2) {
                     Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
                     if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
                 }
