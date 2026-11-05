@@ -326,6 +326,8 @@ protocol PlanService: AnyObject, Sendable {
     func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool
     /// A country's photo from its own Google entry, with its credit; nil when there isn't one.
     func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)?
+    /// A town or city's photo from its own Google entry; `fullName` is "Waterloo, Ontario, Canada".
+    func cityPhoto(fullName: String) async -> (url: URL, credit: String?)?
     /// States and provinces on your wishlist, each as "CA|ON".
     func savedRegions() async throws -> [String]
     func setRegionSaved(country: String, region: String, name: String, present: Bool) async throws -> [String]

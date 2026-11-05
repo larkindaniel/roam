@@ -261,8 +261,8 @@ struct TripCard: View {
             HStack(spacing: Theme.Spacing.m) {
                 Group {
                     if let city = trip.coverCity {
-                        WikipediaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
-                                       fallbackURL: cover?.photoURL, symbol: "airplane", height: 56)
+                        AreaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
+                                  fallbackURL: cover?.photoURL, symbol: "airplane", height: 56)
                             .frame(width: 56, height: 56)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     } else if let cover {

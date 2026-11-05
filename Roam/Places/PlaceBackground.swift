@@ -397,24 +397,56 @@ struct CityGuideCard: View {
     }
 }
 
-/// A city's (or country's) Wikipedia photo, else the given photo, else a map of the spot.
-struct WikipediaPhoto: View {
+/// Photos of towns, cities and countries come from their own Google entries, Wikipedia's only when Google has none.
+/// Each is asked for once a session.
+@MainActor
+enum AreaPhotos {
+    typealias Photo = (url: URL, credit: String?)
+    private static var cache: [String: Photo?] = [:]
+
+    static func city(_ services: AppServices, name: String, region: String?, country: String?,
+                     coordinate: CLLocationCoordinate2D) async -> Photo? {
+        let fullName = [name, region, country].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
+        let key = "city|\(fullName.lowercased())"
+        if let known = cache[key] { return known }
+        var found = await services.plans.cityPhoto(fullName: fullName)
+        if found == nil, let wiki = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate)?.photoURL {
+            found = (wiki, "Wikipedia")
+        }
+        cache[key] = .some(found)
+        return found
+    }
+
+    static func country(_ services: AppServices, code: String) async -> Photo? {
+        let key = "country|\(code.uppercased())"
+        if let known = cache[key] { return known }
+        let found = await services.plans.countryPhoto(code: code.uppercased(), region: nil, name: CountryName.display(code: code))
+        cache[key] = .some(found)
+        return found
+    }
+}
+
+/// A city's photo (or, given its code, a country's), else the given photo, else a map of the spot.
+struct AreaPhoto: View {
     let name: String
     var region: String?
     var country: String?
+    /// Set for a country's own photo instead of a city's.
+    var countryCode: String?
     let coordinate: CLLocationCoordinate2D
-    var within: CLLocationDistance = 80_000
     var fallbackURL: URL?
     var symbol = "mappin"
     let height: CGFloat
 
-    @State private var guide: CityGuide?
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
 
     var body: some View {
-        PlacePhotoView(url: guide?.photoURL ?? fallbackURL, label: "Photo of \(name)", placeholderSymbol: symbol, height: height,
+        PlacePhotoView(url: photo?.url ?? fallbackURL, label: "Photo of \(name)", placeholderSymbol: symbol, height: height,
                        showsCredit: false, cornerRadius: 0, location: coordinate)
-            .task(id: name) {
-                guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate, within: within)
+            .task(id: "\(countryCode ?? "")|\(name)") {
+                if let countryCode { photo = await AreaPhotos.country(services, code: countryCode) }
+                else { photo = await AreaPhotos.city(services, name: name, region: region, country: country, coordinate: coordinate) }
             }
     }
 }

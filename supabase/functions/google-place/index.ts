@@ -2,7 +2,7 @@
 // The Google key stays here on the server. Places checked in the last week are skipped, so each place costs
 // one search and one photo request about once a week, however often it is viewed.
 // Sent { country, name } instead, it returns that country's Google photo, kept the same way; with a region too
-// ({ country, region, name }), that state or province's.
+// ({ country, region, name }), that state or province's; sent { city, name }, that town or city's.
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -94,10 +94,12 @@ async function lookUp(target: Target): Promise<Lookup> {
   };
 }
 
-/// A country's (or a state's) photo: the first landscape-shaped one on its own Google entry.
-async function areaPhoto(code: string, name: string, region: string | null) {
-  const key = region ? `${code}|${region}` : code;
-  const cached = region ? await rpc("region_photo", { p_key: key }) : await rpc("country_photo", { p_code: code });
+/// A country's, state's or city's photo: the first landscape-shaped one on its own Google entry. A country needs
+/// Google's country entry; a state or city any political area (Tokyo comes back as a prefecture), never a business.
+async function areaPhoto(code: string | null, name: string, region: string | null, cityKey: string | null = null) {
+  const key = cityKey ?? (region ? `${code}|${region}` : code!);
+  const isCountry = !cityKey && !region;
+  const cached = isCountry ? await rpc("country_photo", { p_code: code }) : await rpc("area_photo", { p_key: key });
   if (cached?.fresh) return { photoURL: cached.photoURL ?? null, photoCredit: cached.photoCredit ?? null };
   const search = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
@@ -108,7 +110,7 @@ async function areaPhoto(code: string, name: string, region: string | null) {
   if (!search.ok) throw new Error(`Google search failed: ${search.status} ${await search.text()}`);
   const place = (await search.json()).places?.[0];
   let photoURL: string | null = null, photoCredit: string | null = null;
-  if (place?.types?.includes(region ? "administrative_area_level_1" : "country")) {
+  if (place?.types?.includes(isCountry ? "country" : "political")) {
     const photos: { name?: string; widthPx?: number; heightPx?: number; authorAttributions?: { displayName?: string }[] }[] = place.photos ?? [];
     const photo = photos.find(p => (p.widthPx ?? 0) > (p.heightPx ?? 0)) ?? photos[0];
     if (photo?.name) {
@@ -122,8 +124,8 @@ async function areaPhoto(code: string, name: string, region: string | null) {
       }
     }
   }
-  if (region) await rpc("save_region_photo", { p_key: key, p_url: photoURL, p_credit: photoCredit });
-  else await rpc("save_country_photo", { p_code: code, p_name: name, p_url: photoURL, p_credit: photoCredit });
+  if (isCountry) await rpc("save_country_photo", { p_code: code, p_name: name, p_url: photoURL, p_credit: photoCredit });
+  else await rpc("save_area_photo", { p_key: key, p_url: photoURL, p_credit: photoCredit });
   return { photoURL, photoCredit };
 }
 
@@ -139,6 +141,13 @@ Deno.serve(async request => {
 
     let input;
     try { input = await request.json(); } catch { return json({ message: "roam:validation:Send experienceIDs." }, 400); }
+    if (typeof input?.city === "string") {
+      if (!input.city.trim() || typeof input.name !== "string" || !input.name.trim()) {
+        return json({ message: "roam:validation:Send a city and its full name." }, 400);
+      }
+      const cityKey = `city|${normalize(input.name)}`.slice(0, 200);
+      return json(await areaPhoto(null, input.name.trim().slice(0, 200), null, cityKey));
+    }
     if (typeof input?.country === "string") {
       const code = input.country.toUpperCase();
       if (!/^[A-Z]{2}$/.test(code) || typeof input.name !== "string" || !input.name.trim()) {

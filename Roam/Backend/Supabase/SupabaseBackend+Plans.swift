@@ -85,13 +85,22 @@ extension SupabaseBackend: PlanService {
     }
 
     func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)? {
+        var body = ["country": code, "name": name]
+        if let region { body["region"] = region }
+        return await areaPhoto(body)
+    }
+
+    func cityPhoto(fullName: String) async -> (url: URL, credit: String?)? {
+        await areaPhoto(["city": fullName, "name": fullName])
+    }
+
+    /// Asks the google-place function for an area's photo (it keeps each for a week).
+    private func areaPhoto(_ body: [String: String]) async -> (url: URL, credit: String?)? {
         guard let snapshot = try? await requestSnapshot(), snapshot.userID != nil else { return nil }
         var request = URLRequest(url: config.supabaseURL.appendingPathComponent("functions/v1/google-place"))
         request.httpMethod = "POST"
         snapshot.headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var body = ["country": code, "name": name]
-        if let region { body["region"] = region }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         guard let (body, response) = try? await send(request), (response as? HTTPURLResponse)?.statusCode == 200,
               let result = try? JSONSerialization.jsonObject(with: body) as? [String: Any],

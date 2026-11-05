@@ -433,19 +433,20 @@ struct ForYouRootView: View {
     }
 }
 
-/// A city's card, led by its Wikipedia photo; a photo from a place there when Wikipedia has none.
+/// A city's card, led by its Google photo; a photo from a place there when there's none.
 private struct CityCoverCard<Content: View>: View {
     let city: DiscoverCity
     @ViewBuilder var content: () -> Content
 
-    @State private var guide: CityGuide?
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
     @State private var looked = false
 
     var body: some View {
         let destination = city.destination
         Group {
-            if let photo = guide?.photoURL {
-                PhotoCard(url: photo, credit: "Wikipedia", label: "Photo of \(destination.name)", height: 180, content: content)
+            if let photo {
+                PhotoCard(url: photo.url, credit: photo.credit, label: "Photo of \(destination.name)", height: 180, content: content)
             } else if looked {
                 PhotoCard(path: city.coverPath, url: city.coverURL, credit: city.coverCredit, label: "Photo from \(destination.name)", height: 180, content: content)
             } else {
@@ -453,7 +454,8 @@ private struct CityCoverCard<Content: View>: View {
             }
         }
         .task(id: destination.id) {
-            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+            photo = await AreaPhotos.city(services, name: destination.name, region: destination.region, country: destination.countryName,
+                                          coordinate: destination.coordinate)
             looked = true
         }
     }

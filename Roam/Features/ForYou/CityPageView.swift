@@ -560,10 +560,11 @@ struct CityPhotoCard: View {
     let destination: Destination
     var isHome = false
 
-    @State private var guide: CityGuide?
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
 
     var body: some View {
-        PhotoCard(url: guide?.photoURL, label: "Photo of \(destination.name)",
+        PhotoCard(url: photo?.url, label: "Photo of \(destination.name)",
                   placeholderSymbol: "building.2", height: 160, location: destination.coordinate) {
             // The credit sits snug under the name.
             VStack(alignment: .leading, spacing: 0) {
@@ -572,12 +573,12 @@ struct CityPhotoCard: View {
                     Text(destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
                     Spacer(minLength: 0)
                 }
-                if guide?.photoURL != nil { Text("Photo: Wikipedia").font(.caption2).foregroundStyle(Roam.inkMuted) }
+                if let credit = photo?.credit { Text("Photo: \(credit)").font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1) }
             }
         }
         .task(id: destination.id) {
-            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName,
-                                         coordinate: destination.coordinate)
+            photo = await AreaPhotos.city(services, name: destination.name, region: destination.region, country: destination.countryName,
+                                          coordinate: destination.coordinate)
         }
     }
 }
@@ -748,20 +749,23 @@ struct CityHeader: View {
     }
 }
 
-/// A city's Wikipedia lead photo; credited once, under the blurb that follows it.
+/// A city's photo, from its own Google entry (Wikipedia's when Google has none).
 struct CityPhoto: View {
     let destination: Destination
-    @State private var guide: CityGuide?
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
 
     var body: some View {
         // A ZStack always has a view to host `.task`; an empty Group would never run it.
         ZStack {
-            if let photo = guide?.photoURL {
-                PlacePhotoView(url: photo, credit: nil, label: "Photo of \(destination.name)", placeholderSymbol: "building.2", height: 220, showsCredit: false)
+            if let photo {
+                PlacePhotoView(url: photo.url, credit: photo.credit, label: "Photo of \(destination.name)", placeholderSymbol: "building.2",
+                               height: 220, showsCredit: photo.credit != nil)
             }
         }
         .task(id: destination.id) {
-            guide = await CityGuide.load(name: destination.name, region: destination.region, country: destination.countryName, coordinate: destination.coordinate)
+            photo = await AreaPhotos.city(services, name: destination.name, region: destination.region, country: destination.countryName,
+                                          coordinate: destination.coordinate)
         }
     }
 }

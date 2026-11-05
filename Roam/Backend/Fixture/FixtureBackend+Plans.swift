@@ -163,6 +163,8 @@ extension FixtureBackend: PlanService {
 
     func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)? { nil }
 
+    func cityPhoto(fullName: String) async -> (url: URL, credit: String?)? { nil }
+
     func savedRegions() async throws -> [String] { [] }
 
     func setRegionSaved(country: String, region: String, name: String, present: Bool) async throws -> [String] { [] }

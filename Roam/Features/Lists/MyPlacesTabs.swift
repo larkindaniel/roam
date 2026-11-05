@@ -109,8 +109,9 @@ struct BeenTab: View {
     private func tile(_ country: PassportCountry) -> some View {
         let cover = country.cities.sorted { ($0.isHome ? 1 : 0, -$0.placeCount) < ($1.isHome ? 1 : 0, -$1.placeCount) }.first?.city
         return ZStack(alignment: .bottomLeading) {
-            WikipediaPhoto(name: cover?.name ?? country.name, region: cover?.region, country: cover?.countryName ?? country.name,
-                           coordinate: cover?.coordinate ?? CLLocationCoordinate2D(), symbol: "globe", height: Self.tileHeight)
+            // The country's own Google photo, the same one its page leads with.
+            AreaPhoto(name: country.name, countryCode: country.code, coordinate: cover?.coordinate ?? CLLocationCoordinate2D(),
+                      symbol: "globe", height: Self.tileHeight)
             LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
                 .allowsHitTesting(false)
             Text(country.title).font(.headline).foregroundStyle(.white).lineLimit(1)
@@ -202,8 +203,8 @@ struct GoingTab: View {
         return Button { router.push(.trip(trip.id)) } label: {
             ZStack(alignment: .bottomLeading) {
                 if let city = trip.coverCity {
-                    WikipediaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
-                                   fallbackURL: cover?.photoURL, symbol: "airplane", height: 210)
+                    AreaPhoto(name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate,
+                              fallbackURL: cover?.photoURL, symbol: "airplane", height: 210)
                 } else {
                     PlacePhotoView(url: cover?.photoURL, label: "Photo for \(trip.name)", placeholderSymbol: "airplane", height: 210,
                                    showsCredit: false, cornerRadius: 0, location: location)
@@ -280,13 +281,11 @@ struct SavedTab: View {
             router.push(.country(country.code))
         } label: {
             ZStack(alignment: .bottomLeading) {
-                // Pictured by the Wikipedia photo of the city you've saved most in (a country's own article leads with its flag).
-                let mainCity = country.cities.first
-                let anchor = mainCity?.items.first?.experience
-                WikipediaPhoto(name: mainCity?.name ?? country.title, region: anchor?.region ?? savedCity?.region,
-                               country: anchor?.countryName ?? savedCity?.countryName,
-                               coordinate: anchor?.coordinate ?? savedCity?.coordinate ?? CLLocationCoordinate2D(), fallbackURL: cover?.photoURL,
-                               symbol: "bookmark", height: 150)
+                // The country's own Google photo, the same one its page leads with.
+                let anchor = country.cities.first?.items.first?.experience
+                AreaPhoto(name: country.title, countryCode: country.code,
+                          coordinate: anchor?.coordinate ?? savedCity?.coordinate ?? CLLocationCoordinate2D(), fallbackURL: cover?.photoURL,
+                          symbol: "bookmark", height: 150)
                 LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
                     .allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 0) {
