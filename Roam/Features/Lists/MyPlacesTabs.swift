@@ -183,7 +183,8 @@ struct UpcomingTripsCard: View {
                 ForEach(trips) { trip in
                     TripRow(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience,
                             subtitle: MyTimeline.range(trip.startDate, trip.endDate) ?? "")
-                    RowSeparator()
+                    // Lines only between trips; the button below needs none.
+                    if trip.id != trips.last?.id { RowSeparator() }
                 }
                 newTripButton.padding(.top, Theme.Spacing.s)
             }
