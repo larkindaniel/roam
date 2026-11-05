@@ -188,6 +188,8 @@ struct ExperienceDetailView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
     @State private var friendMemories: [PublicMemory] = []
+    /// Your own photos of this place (from your logs), shown ahead of Google's.
+    @State private var myPhotos: [String] = []
     @State private var model: ExperienceDetailModel?
     @State private var memoriesModel: PublicMemoriesModel?
     @State private var editingVisit: Visit?
@@ -443,7 +445,9 @@ struct ExperienceDetailView: View {
     /// The place's photo first, then photos from friends' visits. Look Around is a button on the map.
     private func galleryItems(_ summary: ExperienceSummary) -> [PlaceGalleryItem] {
         var items: [PlaceGalleryItem] = []
-        if let url = summary.photoURL { items.append(.photo(url, credit: summary.photoCredit)) }
+        // Your own photos of it take Google's place (for you); friends' visit photos follow either way.
+        if !myPhotos.isEmpty { items += myPhotos.map { .visitPhoto(path: $0) } }
+        else if let url = summary.photoURL { items.append(.photo(url, credit: summary.photoCredit)) }
         let visitPhotos = friendMemories.flatMap { $0.media.sorted { $0.position < $1.position } }.prefix(8)
         items += visitPhotos.map { .visitPhoto(path: $0.path) }
         return items
@@ -453,9 +457,11 @@ struct ExperienceDetailView: View {
         async let detail: Void = model?.load() ?? ()
         async let memories: Void = memoriesModel?.load() ?? ()
         async let friends = try? services.plans.friendMemories(experienceID: experienceID)
+        async let mine = services.plans.myPhotos(experienceID: experienceID, country: nil, region: nil, regionName: nil, city: nil)
         let loadedFriends = await friends
         _ = await (detail, memories)
         if let loadedFriends { friendMemories = loadedFriends }
+        myPhotos = await mine
     }
 
     private func reportTitle(_ target: ReportTarget) -> String {

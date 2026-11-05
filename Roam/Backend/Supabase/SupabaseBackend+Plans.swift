@@ -85,6 +85,12 @@ extension SupabaseBackend: PlanService {
 
     func savedRegions() async throws -> [String] { try await rpc("my_saved_regions") }
 
+    func myPhotos(experienceID: UUID?, country: String?, region: String?, regionName: String?, city: String?) async -> [String] {
+        (try? await rpc("my_photos", ["p_experience": RPC.uuid(experienceID), "p_country": RPC.string(country),
+                                      "p_region": RPC.string(region), "p_region_name": RPC.string(regionName),
+                                      "p_city": RPC.string(city)])) ?? []
+    }
+
     func savedRegionList() async throws -> [SavedRegion] { try await rpc("my_saved_region_list") }
 
     func setRegionSaved(country: String, region: String, name: String, area: Destination?, present: Bool) async throws -> [String] {

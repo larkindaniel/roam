@@ -171,6 +171,8 @@ extension FixtureBackend: PlanService {
 
     func savedRegions() async throws -> [String] { [] }
 
+    func myPhotos(experienceID: UUID?, country: String?, region: String?, regionName: String?, city: String?) async -> [String] { [] }
+
     func savedRegionList() async throws -> [SavedRegion] { [] }
 
     func setRegionSaved(country: String, region: String, name: String, area: Destination?, present: Bool) async throws -> [String] { [] }

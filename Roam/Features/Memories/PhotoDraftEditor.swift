@@ -245,3 +245,23 @@ struct PhotoCarousel<Accessory: View>: View {
         .accessibilityIdentifier("photo-carousel")
     }
 }
+
+/// Your own photos of somewhere, one at a time, swiping for the next; shown to you ahead of Google's photo.
+struct MyPhotoCarousel: View {
+    let paths: [String]
+    var height: CGFloat = 220
+
+    var body: some View {
+        TabView {
+            ForEach(paths, id: \.self) { path in
+                RemoteImageView(path: path, accessibilityLabel: "Your photo")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: paths.count > 1 ? .always : .never))
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .accessibilityIdentifier("my-photos")
+    }
+}

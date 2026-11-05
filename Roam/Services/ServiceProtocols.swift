@@ -332,6 +332,8 @@ protocol PlanService: AnyObject, Sendable {
     func cityPhoto(fullName: String) async -> (url: URL, credit: String?)?
     /// States and provinces on your wishlist, each as "CA|ON".
     func savedRegions() async throws -> [String]
+    /// Your own photos (storage paths, newest first) for a place, or rolled up for a city, state or country.
+    func myPhotos(experienceID: UUID?, country: String?, region: String?, regionName: String?, city: String?) async -> [String]
     func savedRegionList() async throws -> [SavedRegion]
     /// `area` is the state itself (its middle and size), kept so it can open from a list.
     func setRegionSaved(country: String, region: String, name: String, area: Destination?, present: Bool) async throws -> [String]

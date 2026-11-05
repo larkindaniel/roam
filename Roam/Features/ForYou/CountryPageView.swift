@@ -268,8 +268,8 @@ struct CountryPageView: View {
     @ViewBuilder private var countryInfo: some View {
         // The blurb sits snug under its photo.
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            CountryPhoto(code: code, region: region.map { $0.region ?? $0.name }, name: region == nil ? name : "\(name), \(countryName)",
-                         fallback: fallbackPhoto)
+            CountryPhoto(code: code, region: region.map { $0.region ?? $0.name }, regionName: region?.name,
+                         name: region == nil ? name : "\(name), \(countryName)", fallback: fallbackPhoto)
             CityGuideCard(name: name, country: region == nil ? nil : countryName, coordinate: destination.coordinate, showsPhoto: false,
                           within: region == nil ? 3_000_000 : 1_500_000)
         }
@@ -473,25 +473,32 @@ struct CountryPageView: View {
     }
 }
 
-/// A country's (or region's) photo from its own Google entry, else Google's photo of a place there.
+/// A country's (or region's) photo: a carousel of your own from anywhere in it when you have some, else its own Google
+/// entry's, else Google's photo of a place there.
 struct CountryPhoto: View {
     let code: String
     var region: String?
+    var regionName: String?
     let name: String
     var fallback: URL?
     @Environment(AppServices.self) private var services
+    @Environment(LibraryStore.self) private var library
     @State private var photo: (url: URL, credit: String?)?
+    @State private var mine: [String] = []
     @State private var looked = false
 
     var body: some View {
         ZStack {
-            if let url = photo?.url ?? (looked ? fallback : nil) {
+            if !mine.isEmpty {
+                MyPhotoCarousel(paths: mine)
+            } else if let url = photo?.url ?? (looked ? fallback : nil) {
                 PlacePhotoView(url: url, credit: photo?.credit, label: "Photo of \(name)", placeholderSymbol: "globe", height: 220,
                                showsCredit: photo?.credit != nil)
             }
         }
-        .task(id: "\(code)|\(region ?? "")") {
-            photo = await services.plans.countryPhoto(code: code, region: region, name: name)
+        .task(id: "\(code)|\(region ?? "")|\(library.revision)") {
+            mine = await services.plans.myPhotos(experienceID: nil, country: code, region: region, regionName: regionName, city: nil)
+            if mine.isEmpty, photo == nil { photo = await services.plans.countryPhoto(code: code, region: region, name: name) }
             looked = true
         }
     }

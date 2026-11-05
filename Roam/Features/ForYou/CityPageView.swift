@@ -791,23 +791,32 @@ struct CityHeader: View {
     }
 }
 
-/// A city's photo, from its own Google entry (Wikipedia's when Google has none).
+/// A city's photo: a carousel of your own when you have some there (from logging it and places in it), else its own
+/// Google entry's (Wikipedia's when Google has none).
 struct CityPhoto: View {
     let destination: Destination
     @Environment(AppServices.self) private var services
+    @Environment(LibraryStore.self) private var library
     @State private var photo: AreaPhotos.Photo?
+    @State private var mine: [String] = []
 
     var body: some View {
         // A ZStack always has a view to host `.task`; an empty Group would never run it.
         ZStack {
-            if let photo {
+            if !mine.isEmpty {
+                MyPhotoCarousel(paths: mine)
+            } else if let photo {
                 PlacePhotoView(url: photo.url, credit: photo.credit, label: "Photo of \(destination.name)", placeholderSymbol: "building.2",
                                height: 220, showsCredit: photo.credit != nil)
             }
         }
-        .task(id: destination.id) {
-            photo = await AreaPhotos.city(services, name: destination.name, region: destination.region, country: destination.countryName,
-                                          coordinate: destination.coordinate)
+        .task(id: "\(destination.id)|\(library.revision)") {
+            mine = await services.plans.myPhotos(experienceID: nil, country: destination.countryCode, region: nil, regionName: nil,
+                                                 city: destination.name)
+            if mine.isEmpty, photo == nil {
+                photo = await AreaPhotos.city(services, name: destination.name, region: destination.region, country: destination.countryName,
+                                              coordinate: destination.coordinate)
+            }
         }
     }
 }
