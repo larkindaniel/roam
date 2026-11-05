@@ -96,6 +96,9 @@ struct TripDetailView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .listSectionSpacing(.compact)
+        // As the page was: the name close under the top bar, and room at the bottom so the last card clears the tab bar.
+        .contentMargins(.top, Theme.Spacing.s, for: .scrollContent)
+        .contentMargins(.bottom, Theme.Spacing.xxl + RoamTabBar.reservedHeight, for: .scrollContent)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 44 } action: { _, past in
             withAnimation(.easeInOut(duration: 0.2)) { scrolledPastTitle = past }
         }
