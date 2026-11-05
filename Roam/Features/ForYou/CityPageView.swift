@@ -411,15 +411,10 @@ struct CityPageView: View {
         }
     }
 
-    /// When you were there, right under the buttons; until both are picked, a line says nothing's recorded yet.
+    /// When you were there, right under the buttons.
     private var logDates: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            DateRangeRow(start: $logStart, end: $logEnd)
-            if logPending {
-                Text("Pick both dates to log your visit.").font(.footnote).foregroundStyle(Roam.inkMuted)
-            }
-        }
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        DateRangeRow(start: $logStart, end: $logEnd)
+            .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func cityHeader(showsPhoto: Bool) -> some View {
