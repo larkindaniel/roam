@@ -123,9 +123,14 @@ final class MapKitPlaceSearchProvider: PlaceSearchProviding, @unchecked Sendable
         // A town only when the result is the town itself (its name is the locality's); an untyped result with some other
         // name is a natural feature, like a mountain ridge or a lake.
         let isLocality = poi == nil && !isStreetAddress && [placemark.locality, placemark.subAdministrativeArea, town(placemark)].contains { $0 == name }
+        // A country, state or province is no place to log either, and not a mountain. Apple gives them a country but no
+        // town or municipality (Ontario's state reads "ON"); huge features like Lake Superior or Everest have no country.
+        let isRegion = poi == nil && !isStreetAddress && !isLocality
+            && ([placemark.country, placemark.administrativeArea].contains { $0 == name }
+                || (placemark.locality == nil && placemark.subAdministrativeArea == nil && placemark.country != nil))
         let isFeature = poi == nil && !isStreetAddress && !isLocality
-        // Plain street addresses are not experiences; MapKit POIs, physical features and localities are.
-        if poi == nil && isStreetAddress { return nil }
+        // Plain street addresses and regions are not experiences; MapKit POIs, physical features and localities are.
+        if poi == nil && isStreetAddress || isRegion { return nil }
         return PlaceCandidate(
             provider: .mapkit,
             providerPlaceID: item.identifier?.rawValue,
