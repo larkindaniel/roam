@@ -20,7 +20,7 @@ struct Destination: Codable, Hashable, Identifiable, Sendable {
 
     /// "Portland, Oregon, United States" style disambiguation.
     var subtitle: String {
-        [region, countryName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+        [region, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     var displayName: String {
@@ -68,7 +68,7 @@ struct PlaceCandidate: Codable, Hashable, Identifiable, Sendable {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 
     var areaLine: String {
-        [locality, region, countryName].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
+        [locality, region, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
     }
 }
 
@@ -221,7 +221,7 @@ struct ExperienceSummary: Codable, Hashable, Identifiable, Sendable {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 
     var areaLine: String {
-        [locality, countryName].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
+        [locality, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
     }
 }
 

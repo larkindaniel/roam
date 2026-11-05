@@ -377,8 +377,25 @@ struct CountryFeedCard: Codable, Hashable, Identifiable, Sendable {
 
 enum CountryTitle {
     static func text(name: String?, code: String?) -> String {
-        [name ?? "Other places", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
+        [CountryName.display(name, code: code) ?? "Other places", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
     }
+}
+
+/// A country's everyday name. Anywhere with its own flag counts as its own country (Hong Kong too), so the qualifiers
+/// Apple and providers add go: "China mainland" is China, "Hong Kong SAR, China" is Hong Kong.
+enum CountryName {
+    static func display(_ name: String?, code: String?) -> String? {
+        let code = code?.uppercased()
+        guard let base = name ?? code.flatMap({ Locale.current.localizedString(forRegionCode: $0) }) else { return nil }
+        if code == "CN" || base == "China mainland" || base == "Mainland China" { return "China" }
+        for suffix in [" SAR, China", " SAR China", " (China)", " SAR"] where base.hasSuffix(suffix) {
+            return String(base.dropLast(suffix.count))
+        }
+        return base
+    }
+
+    /// The name for a country code alone.
+    static func display(code: String) -> String { display(nil, code: code) ?? code }
 }
 
 /// One person's trip on the Friends tab. A nil trip is Home: everything not attributed to a trip.

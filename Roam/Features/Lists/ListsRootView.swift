@@ -132,7 +132,7 @@ enum CountryDestination {
         guard let main = CountryGeometry.shared.polygons(for: [code]).max(by: { $0.boundingMapRect.width * $0.boundingMapRect.height < $1.boundingMapRect.width * $1.boundingMapRect.height }) else { return nil }
         let region = MKCoordinateRegion(main.boundingMapRect)
         let widest = max(region.span.latitudeDelta, region.span.longitudeDelta * cos(region.center.latitude * .pi / 180))
-        let name = Locale.current.localizedString(forRegionCode: code) ?? code
+        let name = CountryName.display(code: code)
         return Destination(name: name, region: nil, countryCode: code, countryName: nil,
                            latitude: region.center.latitude, longitude: region.center.longitude,
                            radiusMeters: min(max(widest * 111_000 / 2, 50_000), 1_500_000))

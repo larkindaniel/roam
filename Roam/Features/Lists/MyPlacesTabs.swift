@@ -113,7 +113,7 @@ struct BeenTab: View {
                            coordinate: cover?.coordinate ?? CLLocationCoordinate2D(), symbol: "globe", height: Self.tileHeight)
             LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
                 .allowsHitTesting(false)
-            Text("\(country.name) \(TripTitle.flag(country.code) ?? "")").font(.headline).foregroundStyle(.white).lineLimit(1)
+            Text(country.title).font(.headline).foregroundStyle(.white).lineLimit(1)
                 .padding(Theme.Spacing.m)
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))

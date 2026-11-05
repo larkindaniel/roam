@@ -30,14 +30,14 @@ struct CountryPageView: View {
 
     static func destination(for code: String) -> Destination {
         CountryDestination.make(code: code)
-            ?? Destination(name: Locale.current.localizedString(forRegionCode: code) ?? code, region: nil, countryCode: code,
+            ?? Destination(name: CountryName.display(code: code), region: nil, countryCode: code,
                            countryName: nil, latitude: 20, longitude: 0, radiusMeters: 1_500_000)
     }
 
     /// A country too small for the world outline map (Hong Kong) is found by name instead.
     @State private var lookedUp: Destination?
     private var destination: Destination { CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
-    private var name: String { Locale.current.localizedString(forRegionCode: code) ?? code }
+    private var name: String { CountryName.display(code: code) }
     private func isHere(_ place: ExperienceSummary) -> Bool { place.countryCode?.uppercased() == code }
 
     private var been: PassportCountry? { model?.passport.first { $0.code.uppercased() == code } }

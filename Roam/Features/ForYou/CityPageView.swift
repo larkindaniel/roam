@@ -607,7 +607,7 @@ struct CityHeader: View {
                 if let code = destination.countryCode?.uppercased(), code.count == 2 {
                     Button { router.push(.country(code)) } label: {
                         HStack(spacing: 3) {
-                            Text(destination.countryName ?? Locale.current.localizedString(forRegionCode: code) ?? code).lineLimit(1)
+                            Text(CountryName.display(destination.countryName, code: code) ?? code).lineLimit(1)
                             Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
                         }
                         .font(.subheadline.weight(.medium))

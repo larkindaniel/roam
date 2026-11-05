@@ -40,7 +40,7 @@ final class PlaceSearch {
             // Every two-letter country or territory, small ones too (Hong Kong, Singapore aren't on the world outline map),
             // but not groupings like the EU or UN.
             guard code.count == 2, code.allSatisfy(\.isLetter), !Self.groupings.contains(code),
-                  let name = Locale.current.localizedString(forRegionCode: code),
+                  case let name = CountryName.display(code: code),
                   (" " + name).range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil else { return nil }
             return (code, name)
         }
@@ -79,20 +79,20 @@ struct PlaceSearchResults: View {
                             subtitle: item.experience.areaLine) { router.push(.experience(item.id)) }
                     }
                     ForEach(placeSearch.countries, id: \.self) { code in
-                        let name = Locale.current.localizedString(forRegionCode: code) ?? code
+                        let name = CountryName.display(code: code)
                         row(flag: TripTitle.flag(code), symbol: "flag", tint: Roam.inkMuted, title: name, subtitle: "Country") {
                             router.push(.country(code))
                         }
                     }
                     ForEach(placeSearch.regions) { area in
-                        row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: area.countryName ?? "") { router.push(.city(area)) }
+                        row(symbol: "map", tint: Roam.inkMuted, title: area.name, subtitle: CountryName.display(area.countryName, code: area.countryCode) ?? "") { router.push(.city(area)) }
                     }
                     ForEach(cityHits) { city in
-                        row(symbol: "building.2.fill", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
+                        row(skyline: true, symbol: "building.2.fill", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }
                     }
                     ForEach(others) { hit in
                         row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, tint: Roam.inkMuted, title: hit.candidate.name,
-                            subtitle: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.uniqued().joined(separator: ", ")) {
+                            subtitle: [hit.candidate.locality, CountryName.display(hit.candidate.countryName, code: hit.candidate.countryCode)].compactMap { $0 }.uniqued().joined(separator: ", ")) {
                             Task { if let place = try? await search?.resolve(hit) { router.push(.experience(place.id)) } }
                         }
                     }
@@ -102,11 +102,13 @@ struct PlaceSearchResults: View {
         }
     }
 
-    private func row(flag: String? = nil, symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func row(flag: String? = nil, skyline: Bool = false, symbol: String, tint: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.m) {
                 Group {
-                    if let flag { Text(flag).font(.title3) } else { Image(systemName: symbol).foregroundStyle(tint) }
+                    if let flag { Text(flag).font(.title3) }
+                    else if skyline { CitySkylineIcon(size: 26) }
+                    else { Image(systemName: symbol).foregroundStyle(tint) }
                 }
                 .frame(width: 24).accessibilityHidden(true)
                 // Name and where it is sit tight together, so the rows read apart.
