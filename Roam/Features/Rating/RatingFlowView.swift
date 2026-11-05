@@ -92,12 +92,15 @@ struct RatingFlowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 // The name, with where it is right under it as one block: a city's country, or a place's city and country.
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
-                    Text(isCity ? (request.experience.countryName ?? "") : request.experience.areaLine)
-                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
+                // Not while comparing: the place is one of the two cards then.
+                if model.step != .comparison {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
+                        Text(isCity ? (request.experience.countryName ?? "") : request.experience.areaLine)
+                            .font(.subheadline).foregroundStyle(Theme.secondaryText)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
                 if let error = model.persistenceError ?? model.message {
                     Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-message")
                 }
@@ -355,39 +358,54 @@ struct RatingFlowView: View {
         }
     }
 
+    /// Just the question, the two places to tap, and small ways out underneath.
     private func comparison(_ model: RatingFlowModel) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("Which did you prefer?").font(.title2.weight(.semibold))
+        VStack(spacing: Theme.Spacing.m) {
+            Text("Which did you like more?")
+                .font(.title3.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, Theme.Spacing.s)
             if let existing = model.comparison {
-                comparisonCard(name: request.experience.name, city: request.experience.areaLine, identifier: "rating-prefer-new") {
+                comparisonCard(name: request.experience.name, city: request.experience.locality, identifier: "rating-prefer-new") {
                     Task { await model.choose(.preferNew) }
                 }
-                comparisonCard(name: existing.name, city: existing.locality ?? "Location unavailable", identifier: "rating-prefer-existing") {
+                Text("or").font(.subheadline).foregroundStyle(Theme.secondaryText)
+                comparisonCard(name: existing.name, city: existing.locality, identifier: "rating-prefer-existing") {
                     Task { await model.choose(.preferExisting) }
                 }
             }
-            Text("Only your \(model.category?.title ?? "category") places marked \(model.sentiment?.title.lowercased() ?? "the same way") are compared.")
-                .font(.footnote).foregroundStyle(Theme.secondaryText)
-            Button("Too tough") { Task { await model.choose(.tooTough) } }
-                .buttonStyle(SecondaryButtonStyle()).accessibilityIdentifier("rating-too-tough")
-            Button("Skip") { Task { await model.choose(.skip) } }
-                .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-skip")
-            Text("Skip places this approximately; you can rank again.")
-                .font(.footnote).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-skip-explanation")
-            Button("Undo") { model.undo() }.disabled(!model.canUndo)
-                .frame(minHeight: Theme.minimumHitTarget).accessibilityIdentifier("rating-undo")
+            HStack(spacing: Theme.Spacing.l) {
+                if model.canUndo {
+                    Button { model.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                        .accessibilityIdentifier("rating-undo")
+                }
+                Button("Too tough") { Task { await model.choose(.tooTough) } }
+                    .accessibilityIdentifier("rating-too-tough")
+                Button("Skip") { Task { await model.choose(.skip) } }
+                    .accessibilityIdentifier("rating-skip")
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Theme.secondaryText)
+            .buttonStyle(.plain)
+            .frame(minHeight: Theme.minimumHitTarget)
+            .padding(.top, Theme.Spacing.s)
         }
         .screenIdentifier("rating-comparison")
     }
 
-    private func comparisonCard(name: String, city: String, identifier: String, action: @escaping () -> Void) -> some View {
+    private func comparisonCard(name: String, city: String?, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                Text(name).font(.headline)
-                Text(city).font(.subheadline).foregroundStyle(Theme.secondaryText)
-            }.frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
-                .roamCard()
-        }.buttonStyle(.plain).accessibilityIdentifier(identifier)
+            VStack(spacing: 2) {
+                Text(name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.center).lineLimit(2)
+                if let city, !city.isEmpty { Text(city).font(.subheadline).foregroundStyle(Theme.secondaryText).lineLimit(1) }
+            }
+            .padding(Theme.Spacing.m)
+            .frame(maxWidth: .infinity, minHeight: 96)
+            .roamCard(padding: 0)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 
 }
