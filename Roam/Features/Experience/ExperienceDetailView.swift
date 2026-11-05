@@ -400,6 +400,12 @@ struct ExperienceDetailView: View {
                 if !galleryItems(summary).isEmpty {
                     PlaceGallery(items: galleryItems(summary), placeName: summary.name)
                 }
+                // The place's Wikipedia blurb when it has an article pinned close by (Besseggen, Stanley Park); a big
+                // outdoor place's pin can sit kilometres from ours, so it may be further off.
+                if !detail.isLocality {
+                    CityGuideCard(name: summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate,
+                                  showsPhoto: false, within: summary.category == .outdoors ? 30_000 : 3_000)
+                }
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }
                 }
