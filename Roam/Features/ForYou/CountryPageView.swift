@@ -21,10 +21,7 @@ struct CountryPageView: View {
     @State private var model: MyPlacesModel?
     @State private var suggestions: ForYouModel?
     @State private var savedCodes: [String] = []
-    @State private var pickingCity = false
-    /// The city picked for Been, asked for its dates once the picker has gone.
-    @State private var pickedCity: Destination?
-    @State private var datesFor: Destination?
+    @State private var logging = false
     @State private var confirmingBeen = false
     /// Scrolled past the big name, so the small one shows at the top, as standard.
     @State private var scrolledPastTitle = false
@@ -120,10 +117,12 @@ struct CountryPageView: View {
         }
             .task(id: savedKey) { await reload() }
             .onChange(of: library.revision) { _, _ in Task { await model?.load() } }
-            .sheet(isPresented: $pickingCity, onDismiss: {
-                if let pickedCity { datesFor = pickedCity; self.pickedCity = nil }
-            }) {
-                DestinationPickerSheet(purpose: .homeCity, title: "Which city in \(name)?") { city in pickedCity = city }
+            // "Where in Norway?": the cities and places you went to, alike.
+            .sheet(isPresented: $logging) {
+                AreaLogSheet(name: name, countryCode: code, region: region, around: destination) {
+                    library.noteChanged()
+                    Task { await model?.load() }
+                }
             }
             .alert("You've saved \(savedHereCount) \(savedHereCount == 1 ? "city or place" : "cities and places") here", isPresented: $explainingSaved) {
                 Button("OK", role: .cancel) {}
@@ -136,9 +135,6 @@ struct CountryPageView: View {
                     router.push(.trip(trip.id))
                 }
                 .presentationBackground(Roam.paper)
-            }
-            .sheet(item: $datesFor) { city in
-                CityVisitDatesSheet(city: city) { library.noteChanged(); Task { await model?.load() } }
             }
             .screenIdentifier("country-page")
     }
@@ -187,13 +183,13 @@ struct CountryPageView: View {
         HStack(spacing: Theme.Spacing.m) {
             circle(hasBeen ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: hasBeen,
                    caption: hasBeen ? "Been" : "Log", identifier: "country-log") {
-                // Been comes from the cities you've been to, so logging asks which one.
-                if hasBeen { confirmingBeen = true } else { pickingCity = true }
+                // Been comes from the cities and places you've been to, so logging asks where.
+                if hasBeen { confirmingBeen = true } else { logging = true }
             }
             .alert("You've been to \(name)", isPresented: $confirmingBeen) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("It counts as somewhere you've been while you have cities there. Remove them from their pages to take it off.")
+                Text("It counts as somewhere you've been while you have places there. Remove them from their pages to take it off.")
             }
             circle(isSaved ? "bookmark.fill" : "bookmark", tint: hasBeen ? Roam.inkFaint : PlaceState.wishlist.markerColor,
                    filled: isSaved && !hasBeen, caption: isSaved ? "Saved" : "Wishlist", identifier: "country-wishlist") {

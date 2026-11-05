@@ -14,14 +14,15 @@ final class PlaceSearch {
     /// States and provinces (Ontario, Kerala).
     private(set) var regions: [Destination] = []
 
-    func run(_ query: String, services: AppServices) async {
+    /// `near` steers place results to an area; `within` ("Norway") is added to the city search, so its towns come first.
+    func run(_ query: String, services: AppServices, near: Destination? = nil, within: String? = nil) async {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; countries = []; regions = []; return }
         try? await Task.sleep(for: Limits.searchDebounce)
         guard !Task.isCancelled else { return }
         if model == nil { model = ExperienceSearchModel(services: services) }
-        async let found = services.places.searchDestinations(query: query)
+        async let found = services.places.searchDestinations(query: within.map { "\(query), \($0)" } ?? query)
         async let areas = services.places.searchRegions(query: query)
-        await model?.search(query, near: nil)
+        await model?.search(query, near: near)
         let hits = Array(((try? await found) ?? []).prefix(3))
         let regionHits = (try? await areas) ?? []
         guard !Task.isCancelled else { return }
