@@ -134,9 +134,8 @@ struct TripDetailView: View {
             }
         }
         .sheet(item: $editing) { draft in
-            // The same sheet as a new trip, its cities and countries in it to add to or take off.
-            TripEditorSheet(draft: draft, initialCities: detail.value?.summary.cities ?? [],
-                            initialCountries: detail.value?.summary.countries ?? []) { _ in Task { await load() } }
+            // Editing is just the name, description and dates; cities are added and swiped off on the trip's page.
+            TripEditorSheet(draft: draft) { _ in Task { await load() } }
                 .presentationBackground(Roam.paper)
         }
         .sheet(isPresented: $addingFromWishlist) {
@@ -367,7 +366,7 @@ struct TripEditorSheet: View {
     /// A name, both dates and, for a new trip, somewhere to go: a city, or a whole country planned from its page.
     private var canSave: Bool {
         !saving && !draft.name.trimmingCharacters(in: .whitespaces).isEmpty && start != nil && end != nil
-            && (!cities.isEmpty || !countries.isEmpty)
+            && (draft.id != nil || !cities.isEmpty || !countries.isEmpty)
     }
 
     var body: some View {
@@ -386,16 +385,16 @@ struct TripEditorSheet: View {
                     Section {
                         VStack(spacing: Theme.Spacing.l) {
                             DateRangeRow(start: $start, end: $end)
-                            if cities.isEmpty, countries.isEmpty { addCityButton }
+                            if draft.id == nil, cities.isEmpty, countries.isEmpty { addCityButton }
                         }
                     }
                     .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
-                if !cities.isEmpty || !countries.isEmpty { destinations }
+                if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
                 // Once there are cities, + Add a city goes right under the last one.
-                if !cities.isEmpty || !countries.isEmpty {
+                if draft.id == nil, !cities.isEmpty || !countries.isEmpty {
                     Section { addCityButton }
                         .floatingFormRow()
                 }
