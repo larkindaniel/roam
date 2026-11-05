@@ -383,6 +383,24 @@ struct CountryFeedCard: Codable, Hashable, Identifiable, Sendable {
     var lastVisit: LocalDate? { entries.compactMap(\.visitDate.date).max() }
 }
 
+/// A state or province on your wishlist.
+struct SavedRegion: Codable, Hashable, Identifiable, Sendable {
+    var countryCode: String
+    var region: String
+    var name: String
+    var latitude: Double?
+    var longitude: Double?
+    var radiusMeters: Double?
+    var id: String { "\(countryCode)|\(region)" }
+
+    /// Its page, when it was saved with where it is.
+    var destination: Destination? {
+        guard let latitude, let longitude else { return nil }
+        return Destination(name: name, region: region, countryCode: countryCode, countryName: CountryName.display(code: countryCode),
+                           latitude: latitude, longitude: longitude, radiusMeters: radiusMeters ?? 200_000)
+    }
+}
+
 enum CountryTitle {
     static func text(name: String?, code: String?) -> String {
         [CountryName.display(name, code: code) ?? "Other places", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")

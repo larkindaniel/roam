@@ -58,7 +58,7 @@ struct CountryPageView: View {
     private var hasBeen: Bool { region == nil ? been != nil : !beenCities.isEmpty }
     /// Saved itself, or you've saved a city or place here and haven't been.
     private var isSaved: Bool { savedCodes.contains(savedKey) || savedHereCount > 0 }
-    private var savedHereCount: Int { wishlistCities.count + wishlistPlaces.count }
+    private var savedHereCount: Int { wishlistCities.count + wishlistPlaces.count + wishlistRegions.count }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
     private var upcomingTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) != .past } }
     private var pastTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) == .past } }
@@ -77,6 +77,10 @@ struct CountryPageView: View {
     }
     private var wishlistCities: [Destination] { (model?.savedCities ?? []).filter(isHere) }
     private var wishlistPlaces: [PlaceMapItem] { (model?.travelWishlist ?? []).filter { isHere($0.experience) } }
+    /// States you've saved in this country (on a country's page only).
+    private var wishlistRegions: [SavedRegion] {
+        region == nil ? (model?.savedRegions ?? []).filter { $0.countryCode.uppercased() == code } : []
+    }
     /// Places others loved here that aren't already yours.
     private var recommended: [DiscoverPlace] {
         guard case .loaded(let sections) = suggestions?.phase else { return [] }
@@ -261,8 +265,31 @@ struct CountryPageView: View {
             if !pastTrips.isEmpty {
                 section("Past trips") { tripList(pastTrips, model: model) }
             }
-            if !wishlistCities.isEmpty || !wishlistPlaces.isEmpty {
+            if !wishlistCities.isEmpty || !wishlistPlaces.isEmpty || !wishlistRegions.isEmpty {
                 section("Your wishlist") {
+                    if !wishlistRegions.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(wishlistRegions) { saved in
+                                Button { if let area = saved.destination { router.push(.region(area)) } } label: {
+                                    HStack(spacing: Theme.Spacing.m) {
+                                        Image(systemName: "map").foregroundStyle(PlaceState.wishlist.markerColor).frame(width: 24)
+                                            .accessibilityHidden(true)
+                                        Text(saved.name).font(.headline).foregroundStyle(Roam.ink)
+                                        Spacer(minLength: 0)
+                                        if saved.destination != nil {
+                                            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkFaint)
+                                        }
+                                    }
+                                    .frame(minHeight: Theme.minimumHitTarget)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("country-saved-region-\(saved.region)")
+                                if saved.id != wishlistRegions.last?.id { Divider() }
+                            }
+                        }
+                        .roamCard(padding: Theme.Spacing.m)
+                    }
                     ForEach(wishlistCities) { city in cityCard(city, isHome: false) }
                     if !wishlistPlaces.isEmpty {
                         VStack(spacing: 0) {
@@ -401,7 +428,7 @@ struct CountryPageView: View {
     private func setSaved(_ present: Bool) async {
         if let region {
             savedCodes = (try? await services.plans.setRegionSaved(country: code, region: region.region ?? region.name, name: name,
-                                                                   present: present)) ?? savedCodes
+                                                                   area: region, present: present)) ?? savedCodes
         } else {
             savedCodes = (try? await services.plans.setCountrySaved(code: code, name: name, present: present)) ?? savedCodes
         }

@@ -167,7 +167,9 @@ extension FixtureBackend: PlanService {
 
     func savedRegions() async throws -> [String] { [] }
 
-    func setRegionSaved(country: String, region: String, name: String, present: Bool) async throws -> [String] { [] }
+    func savedRegionList() async throws -> [SavedRegion] { [] }
+
+    func setRegionSaved(country: String, region: String, name: String, area: Destination?, present: Bool) async throws -> [String] { [] }
 
     func myLists() async throws -> [PlaceList] {
         let me = try await authenticatedActor()

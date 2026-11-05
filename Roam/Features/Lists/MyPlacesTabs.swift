@@ -267,10 +267,29 @@ struct SavedTab: View {
 
     @Environment(AppRouter.self) private var router
 
+    /// A country on Saved: one with saved cities or places in it, or one you've wishlisted as a whole (or a state of).
+    private enum SavedCountry: Identifiable {
+        case group(PlaceGroups.Country, regions: [SavedRegion])
+        case whole(code: String, regions: [SavedRegion])
+
+        var id: String {
+            switch self {
+            case .group(let country, _): return country.code.uppercased()
+            case .whole(let code, _): return code
+            }
+        }
+    }
+
     // Saved places by country, for now; custom lists are set aside.
     var body: some View {
-        // Saved places and whole saved cities, by country.
-        let countries = PlaceGroups(model.travelWishlist, extraCities: model.savedCities).countries
+        // Saved places, whole saved cities and states, and whole saved countries, by country.
+        let groups = PlaceGroups(model.travelWishlist, extraCities: model.savedCities).countries
+        let groupCodes = Set(groups.map { $0.code.uppercased() })
+        let regions = Dictionary(grouping: model.savedRegions) { $0.countryCode.uppercased() }
+        let wholes = (model.savedCountries.map { $0.uppercased() } + model.savedRegions.map { $0.countryCode.uppercased() })
+            .uniqued().filter { !groupCodes.contains($0) }
+        let countries: [SavedCountry] = groups.map { .group($0, regions: regions[$0.code.uppercased()] ?? []) }
+            + wholes.map { .whole(code: $0, regions: regions[$0] ?? []) }
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
             HomeCitiesCard(model: model)
             if countries.isEmpty {
@@ -279,14 +298,14 @@ struct SavedTab: View {
                 CountryCards(count: countries.count) {
                     ForEach(countries) { country in
                         if countries.count < CountryCardsLayout.gridFrom {
-                            Button { router.push(.country(country.code)) } label: {
-                                CountryCoverCard(code: country.code, title: country.title, subtitle: savedLine(country),
-                                                 fallbackURL: country.cities.flatMap(\.items).lazy.compactMap(\.experience.photoURL).first)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("wishlist-country-\(country.code)")
+                            Button { router.push(.country(country.id)) } label: { card(country) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("wishlist-country-\(country.id)")
                         } else {
-                            tile(country)
+                            switch country {
+                            case .group(let group, _): tile(group)
+                            case .whole(let code, _): wholeTile(code)
+                            }
                         }
                     }
                 }
@@ -294,12 +313,43 @@ struct SavedTab: View {
         }
     }
 
-    /// "2 cities · 5 places" saved there.
-    private func savedLine(_ country: PlaceGroups.Country) -> String {
+    private func card(_ country: SavedCountry) -> some View {
+        switch country {
+        case .group(let group, let regions):
+            return CountryCoverCard(code: group.code, title: group.title, subtitle: savedLine(group, regions: regions),
+                                    fallbackURL: group.cities.flatMap(\.items).lazy.compactMap(\.experience.photoURL).first)
+        case .whole(let code, let regions):
+            // Wishlisted as a whole, or a state of it ("Ontario").
+            return CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code),
+                                    subtitle: regions.isEmpty ? "Whole country" : regions.map(\.name).joined(separator: ", "))
+        }
+    }
+
+    /// "2 cities · 5 places" saved there, and any states saved whole.
+    private func savedLine(_ country: PlaceGroups.Country, regions: [SavedRegion] = []) -> String {
         let places = country.cities.flatMap(\.items).count
         let cities = country.cities.count
-        return [cities > 0 ? (cities == 1 ? "1 city" : "\(cities) cities") : nil,
-                places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil].compactMap { $0 }.joined(separator: " · ")
+        return ([cities > 0 ? (cities == 1 ? "1 city" : "\(cities) cities") : nil,
+                 places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil] + regions.map { Optional($0.name) })
+            .compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// A country saved as a whole, as a grid tile.
+    private func wholeTile(_ code: String) -> some View {
+        Button { router.push(.country(code)) } label: {
+            ZStack(alignment: .bottomLeading) {
+                AreaPhoto(name: CountryName.display(code: code), countryCode: code, coordinate: CLLocationCoordinate2D(),
+                          symbol: "bookmark", height: 150)
+                LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .center, endPoint: .bottom)
+                    .allowsHitTesting(false)
+                Text(CountryTitle.text(name: nil, code: code)).font(.headline).foregroundStyle(.white).lineLimit(1)
+                    .padding(Theme.Spacing.m)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("wishlist-country-\(code)")
     }
 
     private func tile(_ country: PlaceGroups.Country) -> some View {

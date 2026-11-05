@@ -48,6 +48,9 @@ final class MyPlacesModel {
     private(set) var homeCities: [Destination] = []
     /// Cities on your wishlist, saved as a whole.
     private(set) var savedCities: [Destination] = []
+    /// Whole countries (ISO codes) and states on your wishlist.
+    private(set) var savedCountries: [String] = []
+    private(set) var savedRegions: [SavedRegion] = []
     private(set) var passport: [PassportCountry] = []
     private(set) var lists: [PlaceList] = []
     private(set) var timeline: [TimelineEntry] = []
@@ -79,6 +82,8 @@ final class MyPlacesModel {
             let planned = details.values.flatMap { $0.places.filter(\.isPlanned).map(\.experience) }
             homeCities = HomeCities.distinct((try? await services.plans.homeCities()) ?? homeCities)
             savedCities = (try? await services.plans.savedCities()) ?? savedCities
+            savedCountries = (try? await services.plans.savedCountries()) ?? savedCountries
+            savedRegions = (try? await services.plans.savedRegionList()) ?? savedRegions
             passport = (try? await services.plans.passport(ownerID: ownerID)) ?? passport
             lists = (try? await services.plans.myLists()) ?? lists
             self.trips = trips
