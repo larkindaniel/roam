@@ -28,6 +28,7 @@ struct CountryPageView: View {
     /// Sections folded away, by title.
     @State private var collapsed: Set<String> = []
     @State private var planningNewTrip = false
+    @State private var explainingSaved = false
 
     static func destination(for code: String) -> Destination {
         CountryDestination.make(code: code)
@@ -43,7 +44,9 @@ struct CountryPageView: View {
 
     private var been: PassportCountry? { model?.passport.first { $0.code.uppercased() == code } }
     private var hasBeen: Bool { been != nil }
-    private var isSaved: Bool { savedCodes.contains(code) }
+    /// Saved itself, or you've saved a city or place here and haven't been.
+    private var isSaved: Bool { savedCodes.contains(code) || savedHereCount > 0 }
+    private var savedHereCount: Int { wishlistCities.count + wishlistPlaces.count }
     private var pins: [PlaceMapItem] { (model?.pins ?? []).filter { isHere($0.experience) } }
     private var upcomingTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) != .past } }
     private var pastTrips: [TripSummary] { trips.filter { $0.phase(today: MyTimeline.today()) == .past } }
@@ -107,6 +110,11 @@ struct CountryPageView: View {
             }) {
                 DestinationPickerSheet(purpose: .homeCity, title: "Which city in \(name)?") { city in pickedCity = city }
             }
+            .alert("You've saved \(savedHereCount) \(savedHereCount == 1 ? "city or place" : "cities and places") here", isPresented: $explainingSaved) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("\(name) stays on your wishlist while they're saved. Remove them to take it off.")
+            }
             .sheet(isPresented: $planningNewTrip) {
                 TripEditorSheet(draft: TripDraft(), initialCountries: [code]) { trip in
                     library.noteChanged()
@@ -156,7 +164,9 @@ struct CountryPageView: View {
             }
             circle(isSaved ? "bookmark.fill" : "bookmark", tint: hasBeen ? Roam.inkFaint : PlaceState.wishlist.markerColor,
                    filled: isSaved && !hasBeen, caption: isSaved ? "Saved" : "Wishlist", identifier: "country-wishlist") {
-                if !hasBeen { Task { await setSaved(!isSaved) } }
+                guard !hasBeen else { return }
+                // Saved because of cities or places saved here: it comes off with them, so tapping explains instead.
+                if isSaved && !savedCodes.contains(code) { explainingSaved = true } else { Task { await setSaved(!isSaved) } }
             }
             // A trip can go to the whole country before any of its cities or places are picked.
             Menu {

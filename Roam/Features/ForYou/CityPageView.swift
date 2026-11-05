@@ -51,6 +51,7 @@ struct CityPageView: View {
     /// Places you've saved in this city (yours, or the friend's whose passport you're in).
     @State private var wishlist: [ListEntry] = []
     @State private var suggestionsCollapsed = false
+    @State private var explainingSaved = false
 
     /// The view and card height a city opened from another city's map keeps.
     @MainActor static var handoffRegion: [String: MKCoordinateRegion] = [:]
@@ -66,7 +67,9 @@ struct CityPageView: View {
     private var matchingSaved: [Destination] {
         saved.filter { $0.countryCode?.uppercased() == destination.countryCode?.uppercased() && GeographyKey.normalize($0.name) == GeographyKey.normalize(destination.name) }
     }
-    private var isSaved: Bool { !matchingSaved.isEmpty }
+    /// Places you've saved here and not been to: while there are any, the city is on your wishlist too.
+    private var savedPlaceCount: Int { wishlist.filter { item in !spots.contains { $0.id == item.id } }.count }
+    private var isSaved: Bool { !matchingSaved.isEmpty || (isOwn && savedPlaceCount > 0) }
 
     /// Places others loved that aren't already among your spots.
     private var recommended: [DiscoverPlace] {
@@ -119,6 +122,11 @@ struct CityPageView: View {
             guard !Task.isCancelled else { return }
             if search == nil { search = ExperienceSearchModel(services: services) }
             await search?.search(query, near: destination)
+        }
+        .alert("You've saved \(savedPlaceCount) \(savedPlaceCount == 1 ? "place" : "places") here", isPresented: $explainingSaved) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\(destination.name) stays on your wishlist while they're saved. Remove them from their pages to take it off.")
         }
         .sheet(isPresented: $askingDates) {
             CityVisitDatesSheet(city: destination) { markedVisited = true; library.noteChanged() }
@@ -387,7 +395,10 @@ struct CityPageView: View {
                        else { Task { try? await services.plans.setCityVisited(destination, present: false); markedVisited = false; library.noteChanged() } }
                    },
                    isSaved: isSaved,
-                   onToggleSaved: { Task { await setSaved(!isSaved) } },
+                   // Saved because of places saved here: it comes off with them, so tapping explains instead.
+                   onToggleSaved: {
+                       if isSaved && matchingSaved.isEmpty { explainingSaved = true } else { Task { await setSaved(!isSaved) } }
+                   },
                    showsPhoto: showsPhoto)
     }
 
