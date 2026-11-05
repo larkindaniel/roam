@@ -577,23 +577,22 @@ struct DiscoverPlaceCard: View {
     var score: Score?
     let action: () -> Void
 
+    /// The full-photo card: the name in white with who's been there under it, and just the stars at the bottom right;
+    /// the rest (category, reviews) is on the place's page.
     var body: some View {
         Button(action: action) {
-            PhotoCard(path: path, url: experience.photoURL, credit: experience.photoCredit,
-                      label: "Photo of \(experience.name)", placeholderSymbol: experience.iconName,
-                      height: 190, location: experience.coordinate) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(2).multilineTextAlignment(.leading)
-                        Text([experience.category?.title, experience.locality].compactMap { $0 }.joined(separator: " · "))
-                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                        if let evidence { Text(evidence).font(.subheadline).foregroundStyle(Roam.ink).lineLimit(1) }
-                        GoogleRatingLine(experience: experience)
+            HeroPhotoCard(path: path, url: experience.photoURL, title: experience.name,
+                          subtitle: evidence ?? experience.category?.title ?? "", symbol: experience.iconName,
+                          location: experience.coordinate)
+                .overlay(alignment: .bottomTrailing) {
+                    if let rating = experience.googleRating {
+                        Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(Theme.Spacing.l)
+                            .accessibilityLabel("Rated \(rating.formatted(.number.precision(.fractionLength(1)))) stars")
                     }
-                    Spacer(minLength: Theme.Spacing.s)
                 }
-            }
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("foryou-place-\(experience.name)")
