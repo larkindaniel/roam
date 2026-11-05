@@ -1178,14 +1178,22 @@ struct DateRangeRow: View {
         .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
         .accessibilityIdentifier("date-\(title.lowercased())")
         .popover(isPresented: Binding(get: { picking == title }, set: { if !$0 { picking = nil } })) {
-            DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
-                                                 set: { date.wrappedValue = $0; picking = nil }),
-                       in: (minimum ?? .distantPast)..., displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-                .padding()
-                .frame(width: 340)
-                .presentationCompactAdaptation(.popover)
+            VStack(spacing: Theme.Spacing.s) {
+                DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
+                                                     set: { date.wrappedValue = $0; picking = nil }),
+                           in: (minimum ?? .distantPast)..., displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                // The calendar doesn't report a tap on the day already picked, so taking a date off is a button.
+                if date.wrappedValue != nil {
+                    Button("Remove date", role: .destructive) { date.wrappedValue = nil; picking = nil }
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("date-\(title.lowercased())-remove")
+                }
+            }
+            .padding()
+            .frame(width: 340)
+            .presentationCompactAdaptation(.popover)
         }
     }
 }

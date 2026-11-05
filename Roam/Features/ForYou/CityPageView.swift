@@ -132,10 +132,10 @@ struct CityPageView: View {
         } message: {
             Text("\(destination.name) stays on your wishlist while they're saved. Remove them from their pages to take it off.")
         }
-        // Dates are optional. Both picked, the visit is recorded (and again if they change); the row stays showing them.
+        // Dates are optional: any change to them (picking, changing or removing one) is saved; the row stays showing them.
         .onChange(of: [logStart, logEnd]) { _, _ in
             if loadingDates { loadingDates = false; return }
-            guard showsDates, logStart != nil, logEnd != nil else { return }
+            guard showsDates else { return }
             Task { await saveVisit() }
         }
         // Leaving with Log ticked records it, with whatever dates were picked (or none).
