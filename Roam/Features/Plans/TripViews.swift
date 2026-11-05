@@ -342,8 +342,10 @@ struct TripEditorSheet: View {
                             .accessibilityIdentifier("trip-name")
                         TextField("Description (optional)", text: $draft.description, axis: .vertical)
                             .textInputAutocapitalization(.never)
-                        // Both dates needed, on one row under the name: Start → End, each opening a calendar; the end
-                        // never before the start.
+                    }
+                    // Both dates needed, on their own row just under the name card: Start → End, each opening a calendar;
+                    // the end never before the start.
+                    Section {
                         HStack(spacing: Theme.Spacing.s) {
                             dateButton("Start", date: $start, from: nil)
                             Image(systemName: "arrow.right").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
@@ -353,6 +355,8 @@ struct TripEditorSheet: View {
                         .frame(maxWidth: .infinity)
                         .onChange(of: start) { _, value in if let value, let current = end, current < value { end = value } }
                     }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
@@ -440,10 +444,11 @@ struct TripEditorSheet: View {
             Button { pickingDate = title } label: {
                 Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
                     .foregroundStyle(date.wrappedValue == nil ? Color.accentColor : Roam.ink)
+                    .font(.body.weight(.medium))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 38)
-                    .background(Capsule().fill(Roam.fill))
+                    .frame(height: 42)
+                    .background(Capsule().fill(Roam.paperRaised))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
