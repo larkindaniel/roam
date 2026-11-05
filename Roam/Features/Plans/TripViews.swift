@@ -150,14 +150,14 @@ struct TripDetailView: View {
         } message: {
             Text("Your visits and saved places stay.")
         }
-        // Your own trip: an "Add a city to trip" button takes the tab bar's spot and opens the city search.
+        // Your own trip: an "Add to trip" button takes the tab bar's spot and opens the city search.
         .roamTabBar(hidden: detail.value?.summary.isOwn == true)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if detail.value?.summary.isOwn == true {
                 Button { addingCity = true } label: {
                     HStack(spacing: Theme.Spacing.s) {
                         Image(systemName: "plus").fontWeight(.semibold).accessibilityHidden(true)
-                        Text("Add a city to trip")
+                        Text("Add to trip")
                     }
                     .font(.headline)
                     .foregroundStyle(PlaceState.planned.markerColor)
