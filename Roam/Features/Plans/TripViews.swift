@@ -361,29 +361,22 @@ struct TripEditorSheet: View {
                             .textInputAutocapitalization(.never)
                     }
                     // Both dates needed, on their own row just under the name card: Start → End, each opening a calendar;
-                    // the end never before the start.
-                    Section { DateRangeRow(start: $start, end: $end) }
-                        .floatingFormRow()
+                    // the end never before the start. Before any city is added, + Add a city sits right under them.
+                    Section {
+                        VStack(spacing: Theme.Spacing.l) {
+                            DateRangeRow(start: $start, end: $end)
+                            if draft.id == nil, cities.isEmpty, countries.isEmpty { addCityButton }
+                        }
+                    }
+                    .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
                 if draft.id == nil, !cities.isEmpty || !countries.isEmpty { destinations }
-                // A thin full-width + right under the last city (or the dates, before there are any).
-                if draft.id == nil {
-                    Section {
-                        Button { pickingCity = true } label: {
-                            Label("Add a city", systemImage: "plus")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(PlaceState.planned.markerColor)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 36)
-                                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("trip-editor-add-city")
-                    }
-                    .floatingFormRow()
+                // Once there are cities, + Add a city goes right under the last one.
+                if draft.id == nil, !cities.isEmpty || !countries.isEmpty {
+                    Section { addCityButton }
+                        .floatingFormRow()
                 }
             }
             .scrollContentBackground(.hidden)
@@ -426,6 +419,22 @@ struct TripEditorSheet: View {
         // Opens fully up; swiping it away with changes asks first too.
         .presentationDetents([.large])
         .interactiveDismissDisabled(hasChanges)
+    }
+
+    /// Full width, the same height, text and icon size as the Start and End bubbles.
+    private var addCityButton: some View {
+        Button { pickingCity = true } label: {
+            Label("Add a city", systemImage: "plus")
+                .font(.subheadline.weight(.semibold))
+                .imageScale(.small)
+                .foregroundStyle(PlaceState.planned.markerColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Capsule().fill(PlaceState.planned.markerColor.opacity(0.15)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("trip-editor-add-city")
     }
 
     /// Where the trip goes, as the same photo cards its page shows; swipe one away to take it off.

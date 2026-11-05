@@ -1167,9 +1167,10 @@ struct DateRangeRow: View {
     private func button(_ title: String, date: Binding<Date?>, from minimum: Date?) -> some View {
         Button { picking = title } label: {
             Label(date.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? title, systemImage: "calendar")
-                .font(tint == nil ? .body.weight(.medium) : .subheadline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
+                .imageScale(.small)
                 .frame(maxWidth: .infinity)
-                .frame(height: tint == nil ? 42 : 36)
+                .frame(height: tint == nil ? 44 : 36)
                 .foregroundStyle(tint ?? (date.wrappedValue == nil ? Color.accentColor : Roam.ink))
             .lineLimit(1)
             .background(Capsule().fill(tint.map { $0.opacity(0.15) } ?? Roam.fill))
