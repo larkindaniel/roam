@@ -413,7 +413,8 @@ struct CityPageView: View {
 
     /// When you were there, right under the buttons.
     private var logDates: some View {
-        DateRangeRow(start: $logStart, end: $logEnd)
+        // Green, as where you've been is, and the size of Set as home.
+        DateRangeRow(start: $logStart, end: $logEnd, tint: PlaceState.visited.markerColor)
             .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
