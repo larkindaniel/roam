@@ -419,7 +419,13 @@ struct CityPageView: View {
                        if present { withAnimation(.snappy(duration: 0.25)) { loggingDates = true } }
                        else {
                            loggingDates = false; logStart = nil; logEnd = nil
-                           Task { try? await services.plans.setCityVisited(destination, present: false); markedVisited = false; library.noteChanged() }
+                           Task {
+                               // Places logged here are cleared too (the dialog said so), then the city itself.
+                               try? await BeenClearing.clear(places: isOwn ? spots.map(\.id) : [], cities: [destination],
+                                                             services: services, library: library)
+                               markedVisited = false
+                               await refreshMine()
+                           }
                        }
                    },
                    isSaved: isSaved,
@@ -676,17 +682,13 @@ struct CityHeader: View {
                     // Tapping again asks before taking it back off where you've been.
                     if beenHere { confirmingUnbeen = true } else { onMarkVisited(true) }
                 }
-                .alert(spotCount > 0 ? "You've logged \(spotCount) \(spotCount == 1 ? "spot" : "spots") here" : "Remove from places you've been?",
-                       isPresented: $confirmingUnbeen) {
-                    if spotCount > 0 {
-                        Button("OK", role: .cancel) {}
-                    } else {
-                        Button("Remove", role: .destructive) { markedNow = false; onMarkVisited(false) }
-                        Button("Cancel", role: .cancel) {}
-                    }
+                // Taking it off asks first; with places logged here, it says they go too.
+                .alert("Remove from places you've been?", isPresented: $confirmingUnbeen) {
+                    Button("Remove", role: .destructive) { markedNow = false; onMarkVisited(false) }
+                    Button("Cancel", role: .cancel) {}
                 } message: {
                     if spotCount > 0 {
-                        Text("\(destination.name) counts as somewhere you've been while those are logged. Remove them from their pages to take it off.")
+                        Text("This also clears the \(spotCount) \(spotCount == 1 ? "place" : "places") you've logged in \(destination.name).")
                     }
                 }
                 // Somewhere you've been isn't on your wishlist: once you've been, Wishlist greys out.

@@ -218,10 +218,12 @@ struct CountryPageView: View {
                 // Been comes from the cities and places you've been to, so logging asks where.
                 if hasBeen { confirmingBeen = true } else { logging = true }
             }
-            .alert("You've been to \(name)", isPresented: $confirmingBeen) {
-                Button("OK", role: .cancel) {}
+            // Taking it off clears every city and place you've logged here (homes stay), after asking.
+            .alert("Remove \(name) from places you've been?", isPresented: $confirmingBeen) {
+                Button("Remove", role: .destructive) { Task { await clearBeen() } }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("It counts as somewhere you've been while you have places there. Remove them from their pages to take it off.")
+                Text(clearMessage)
             }
             circle(isSaved ? "bookmark.fill" : "bookmark", tint: hasBeen ? Roam.inkFaint : PlaceState.wishlist.markerColor,
                    filled: isSaved && !hasBeen, caption: isSaved ? "Saved" : "Wishlist", identifier: "country-wishlist") {
@@ -440,6 +442,23 @@ struct CountryPageView: View {
         savedCodes = (try? await saved) ?? savedCodes
         await mine
         await suggestions?.load(destination)
+    }
+
+    /// Your places logged here (been, not homes').
+    private var beenPlaces: [UUID] { pins.filter { $0.state == .visited }.map(\.id) }
+    private var beenAwayCities: [PassportCity] { beenCities.filter { !$0.isHome } }
+
+    private var clearMessage: String {
+        let places = beenPlaces.count, cities = beenAwayCities.count
+        let parts = [cities > 0 ? (cities == 1 ? "1 city" : "\(cities) cities") : nil,
+                     places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil].compactMap { $0 }
+        let homes = beenCities.contains(where: \.isHome) ? " Your home stays." : ""
+        return (parts.isEmpty ? "" : "This clears the \(parts.joined(separator: " and ")) you've logged here.") + homes
+    }
+
+    private func clearBeen() async {
+        try? await BeenClearing.clear(places: beenPlaces, cities: beenAwayCities.map(\.city), services: services, library: library)
+        await model?.load()
     }
 
     /// A whole country (or region) on your wishlist.
