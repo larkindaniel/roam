@@ -48,6 +48,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     var cardHidden = false
     /// Sits over a map that belongs to the screen underneath (a place's card over its city's map): no backdrop of its own.
     var seeThrough = false
+    /// Changing it scrolls the card's content back to the top (its tab's button tapped).
+    var scrollToTopToken = 0
     @ViewBuilder var globe: () -> Globe
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -56,6 +58,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @State private var headerHeight: CGFloat?
     @State private var snapping = false
     @State private var contentScrolled = false
+    @State private var scroll = ScrollPosition(edge: .top)
 
     /// Minimised, the card is just its header, sitting on the tab bar.
     private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
@@ -196,6 +199,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 // Clear of the tab bar floating over the bottom of the card.
                 .padding(.bottom, Theme.Spacing.xxl + bottomOverlap)
         }
+        .scrollPosition($scroll)
+        .onChange(of: scrollToTopToken) { _, _ in withAnimation { scroll.scrollTo(edge: .top) } }
         // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
             contentScrolled = new > 8

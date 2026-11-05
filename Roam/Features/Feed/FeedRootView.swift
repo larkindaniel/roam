@@ -8,9 +8,13 @@ struct FeedRootView: View {
     @Environment(ActivityChangeStore.self) private var changes
     @State private var cards: LoadPhase<[CountryFeedCard]> = .idle
     @State private var unreadCount = 0
+    @State private var scroll = ScrollPosition(edge: .top)
 
     var body: some View {
         ScrollView { content.padding(.horizontal, Theme.Spacing.l).padding(.vertical, Theme.Spacing.m) }
+            .scrollPosition($scroll)
+            // Tapping Friends in the tab bar scrolls back to the top.
+            .onChange(of: router.scrollToTopRequests[.friends]) { _, _ in withAnimation { scroll.scrollTo(edge: .top) } }
             .background(Roam.paper)
             .navigationTitle("Friends")
             .toolbar {

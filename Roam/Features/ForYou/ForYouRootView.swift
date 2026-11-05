@@ -105,6 +105,7 @@ struct ForYouRootView: View {
     @State private var model: ForYouModel?
     @State private var query = ""
     @State private var placeSearch = PlaceSearch()
+    @State private var scroll = ScrollPosition(edge: .top)
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var barsHidden = false
@@ -181,6 +182,7 @@ struct ForYouRootView: View {
                 }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+                    .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
                         let hide = new > 40 && new > old
@@ -191,6 +193,10 @@ struct ForYouRootView: View {
         }
         .background(Roam.paper)
         .task(id: query) { await placeSearch.run(query, services: services) }
+        // Tapping Discover in the tab bar scrolls back to the top, with the search row showing.
+        .onChange(of: router.scrollToTopRequests[.forYou]) { _, _ in
+            withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
+        }
         // Leaving the tab puts it back on its home page, with no search.
         .onChange(of: router.selectedTab) { _, tab in
             guard tab != .forYou else { return }

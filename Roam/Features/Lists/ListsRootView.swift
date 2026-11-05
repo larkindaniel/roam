@@ -233,7 +233,7 @@ struct MyPlacesRootView: View {
                          floatingBottomMargin: RoamTabBar.margin, floatingSideMargin: RoamTabBar.sideMargin,
                          collapsesHeaderOnScroll: true, floatingHeight: RoamTabBar.height, peekOpacity: 0,
                          // Tapping the header (outside the search field) flips between halfway and fully up.
-                         headerTapToggles: detent != .peek) {
+                         headerTapToggles: detent != .peek, scrollToTopToken: router.scrollToTopRequests[.myPlaces] ?? 0) {
             globe
         } header: {
             // A search bar for every place, there at every height; opened up, your places sit under it.
@@ -265,6 +265,11 @@ struct MyPlacesRootView: View {
     var body: some View {
         sheetLayout
         .task(id: query) { await placeSearch.run(query, services: services) }
+        // Tapping My Places in the tab bar: back to its home page, the card halfway with its list at the top.
+        .onChange(of: router.scrollToTopRequests[.myPlaces]) { _, _ in
+            query = ""; searching = false
+            withAnimation(.smooth(duration: 0.35)) { detent = .half }
+        }
         // Leaving the tab puts it back on its home page: no search, the card halfway as it opens.
         .onChange(of: router.selectedTab) { _, tab in
             guard tab != .myPlaces else { return }

@@ -181,6 +181,13 @@ final class AppRouter {
         paths[tab ?? selectedTab] = []
     }
 
+    /// Bumped each time a tab's button is tapped; its home page scrolls back to the top when it changes.
+    private(set) var scrollToTopRequests: [AppTab: Int] = [:]
+
+    func requestTop(_ tab: AppTab) {
+        scrollToTopRequests[tab, default: 0] += 1
+    }
+
     func showFindPeople() {
         searchSegmentRequest = .members
         openSearch()

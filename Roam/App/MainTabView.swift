@@ -135,7 +135,8 @@ struct RoamTabBar: View {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let selected = tab == selection
                 // Each tab always opens on its main page, like a back button to it.
-                Button { router.popToRoot(tab); selection = tab } label: {
+                // Back to the tab's home page, scrolled to the top.
+                Button { router.popToRoot(tab); router.requestTop(tab); selection = tab } label: {
                     VStack(spacing: 1) {
                         Image(systemName: tab.symbolName).font(.system(size: 17, weight: .semibold)).frame(height: 21)
                         Text(tab.title).font(.caption2.weight(.semibold))
