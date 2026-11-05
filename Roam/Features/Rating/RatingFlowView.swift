@@ -164,17 +164,20 @@ struct RatingFlowView: View {
         }
     }
 
-    /// One bubble's contents: an icon, its value, and optionally a hint it opens something.
+    /// One bubble's contents: an icon, its value, and optionally a hint it opens something. The same height and text as
+    /// the feeling picker above (44 points, footnote semibold).
     private func bubbleLabel(symbol: String, text: String, trailing: String? = nil) -> some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: symbol).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            Text(text).foregroundStyle(Roam.ink).lineLimit(1).minimumScaleFactor(0.8)
+        HStack(spacing: 5) {
+            Image(systemName: symbol).font(.footnote).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            Text(text).font(.footnote.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: 0)
             if let trailing {
-                Image(systemName: trailing).font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                Image(systemName: trailing).font(.caption2.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget - 12, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 44)
         .contentShape(Rectangle())
     }
 
@@ -245,7 +248,7 @@ struct RatingFlowView: View {
                     bubbleLabel(symbol: "calendar", text: model.visit.date?.displayString ?? "Date")
                 }
                 .buttonStyle(.plain)
-                .roamCard(padding: Theme.Spacing.m)
+                .roamCard(padding: 0)
                 .accessibilityIdentifier("rating-edit-date")
                 if request.mode != .rerank {
                     Menu {
@@ -258,7 +261,7 @@ struct RatingFlowView: View {
                                     text: trips.first { $0.id == model.visit.tripID }?.name ?? home.map { "Home · \($0.name)" } ?? "No trip",
                                     trailing: "chevron.up.chevron.down")
                     }
-                    .roamCard(padding: Theme.Spacing.m)
+                    .roamCard(padding: 0)
                     .accessibilityIdentifier("rating-part-of")
                     .task(id: request.experience.id) { await loadPlacement(model) }
                 }
@@ -271,7 +274,7 @@ struct RatingFlowView: View {
                             bubbleLabel(symbol: "photo.on.rectangle", text: "Add photos", trailing: "plus")
                         }
                         .buttonStyle(.plain)
-                        .roamCard(padding: Theme.Spacing.m)
+                        .roamCard(padding: 0)
                     } else {
                         // Adding more is a glass bubble on the photos themselves.
                         PhotoCarousel(model: photos) {
