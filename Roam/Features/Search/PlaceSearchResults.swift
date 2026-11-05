@@ -9,9 +9,11 @@ import SwiftUI
 final class PlaceSearch {
     private(set) var model: ExperienceSearchModel?
     private(set) var cities: [Destination] = []
+    /// Countries whose name (or a word of it) starts with the search, as ISO codes.
+    private(set) var countries: [String] = []
 
     func run(_ query: String, services: AppServices) async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; return }
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; cities = []; countries = []; return }
         try? await Task.sleep(for: Limits.searchDebounce)
         guard !Task.isCancelled else { return }
         if model == nil { model = ExperienceSearchModel(services: services) }
@@ -20,6 +22,21 @@ final class PlaceSearch {
         let hits = Array(((try? await found) ?? []).prefix(3))
         guard !Task.isCancelled else { return }
         cities = hits
+        countries = Self.countries(matching: query)
+    }
+
+    private static func countries(matching query: String) -> [String] {
+        let needle = " " + query.trimmingCharacters(in: .whitespaces)
+        guard needle.count > 2 else { return [] }
+        let found: [(code: String, name: String)] = Locale.Region.isoRegions.compactMap { region in
+            let code = region.identifier
+            guard code.count == 2, code.allSatisfy(\.isLetter), let name = Locale.current.localizedString(forRegionCode: code),
+                  (" " + name).range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil,
+                  !CountryGeometry.shared.polygons(for: [code]).isEmpty else { return nil }
+            return (code, name)
+        }
+        // "nor" puts Norway ahead of North Korea: the closest to what's typed first.
+        return found.sorted { $0.name.count < $1.name.count }.prefix(2).map(\.code)
     }
 }
 
@@ -28,6 +45,8 @@ struct PlaceSearchResults: View {
     let placeSearch: PlaceSearch
     /// Your places to match by name first (been, going, saved); empty where they aren't to hand.
     var mine: [PlaceMapItem] = []
+    /// Where a country opens; My Places sends one you've been to to its passport page.
+    var countryRoute: ((String) -> AppRoute)?
 
     @Environment(AppRouter.self) private var router
     private var search: ExperienceSearchModel? { placeSearch.model }
@@ -39,7 +58,7 @@ struct PlaceSearchResults: View {
         let others = (search?.hits ?? []).filter { hit in !matchedMine.contains { $0.id == hit.experience?.id } }
         Group {
             // No empty card while nothing has matched: just a line once the search has finished.
-            if matchedMine.isEmpty && cityHits.isEmpty && others.isEmpty {
+            if matchedMine.isEmpty && placeSearch.countries.isEmpty && cityHits.isEmpty && others.isEmpty {
                 if case .failed(let message) = search?.phase {
                     InlineRetryView(message: message) { Task { await search?.search(query, near: nil) } }
                 } else if search?.phase == .noResults || search?.phase == .results {
@@ -51,6 +70,12 @@ struct PlaceSearchResults: View {
                     ForEach(matchedMine.prefix(8)) { item in
                         row(symbol: item.experience.iconName, tint: item.state.markerColor, title: item.experience.name,
                             subtitle: item.experience.areaLine) { router.push(.experience(item.id)) }
+                    }
+                    ForEach(placeSearch.countries, id: \.self) { code in
+                        let name = Locale.current.localizedString(forRegionCode: code) ?? code
+                        row(symbol: "flag", tint: Roam.inkMuted, title: CountryTitle.text(name: name, code: code), subtitle: "Country") {
+                            router.push(countryRoute?(code) ?? .wishlistCountry(code: code, title: CountryTitle.text(name: name, code: code)))
+                        }
                     }
                     ForEach(cityHits) { city in
                         row(symbol: "building.2", tint: Roam.inkMuted, title: city.name, subtitle: city.subtitle) { router.push(.city(city)) }

@@ -247,7 +247,13 @@ struct MyPlacesRootView: View {
 
     /// The same search results as Discover, with your own places matched first.
     private var searchResults: some View {
-        PlaceSearchResults(query: query, placeSearch: placeSearch, mine: model?.pins ?? [])
+        PlaceSearchResults(query: query, placeSearch: placeSearch, mine: model?.pins ?? []) { code in
+            // A country you've been to opens its page of your cities there; otherwise its saved-and-trips page.
+            if let model, let been = model.passport.first(where: { $0.code.uppercased() == code }) {
+                return PassportCountry.route(ownerID: model.ownerIDValue, country: been)
+            }
+            return .wishlistCountry(code: code, title: countryTitle(code))
+        }
     }
 
     private func showWorld() {
