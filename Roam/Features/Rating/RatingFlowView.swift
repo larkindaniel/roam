@@ -445,6 +445,15 @@ struct FeelingSlider: View {
 
     private let stops: [Sentiment] = [.disliked, .fine, .liked]
 
+    /// The picked pill: Didn't like red, Neutral white, Liked it green.
+    private func fill(_ feeling: Sentiment) -> Color {
+        switch feeling {
+        case .disliked: return .red
+        case .fine: return Roam.paperRaised
+        case .liked: return PlaceState.visited.markerColor
+        }
+    }
+
 
     private func label(_ feeling: Sentiment) -> String {
         switch feeling {
@@ -462,7 +471,7 @@ struct FeelingSlider: View {
                 // Like My Places' Saved / Been selector: a grey track with the one picked as a raised pill sitting in it.
                 Capsule().fill(Color.gray.opacity(0.18))
                 if let selection, let index = stops.firstIndex(of: selection) {
-                    Capsule().fill(Roam.paperRaised)
+                    Capsule().fill(fill(selection))
                         .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                         .padding(3)
                         .frame(width: segment)
@@ -476,8 +485,8 @@ struct FeelingSlider: View {
                             Image(systemName: feeling.symbolName).font(.footnote)
                             Text(label(feeling)).font(.footnote.weight(.semibold))
                         }
-                        // Not colour-coded: the one picked is in ink under the glass, the others muted.
-                        .foregroundStyle(selection == feeling ? Roam.ink : Roam.inkMuted)
+                        // The one picked reads on its pill (white on red or green, ink on white); the others muted.
+                        .foregroundStyle(selection == feeling ? (feeling == .fine ? Roam.ink : .white) : Roam.inkMuted)
                         .frame(width: segment)
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(.isButton)
