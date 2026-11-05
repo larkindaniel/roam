@@ -1,8 +1,23 @@
+import CoreLocation
 import PhotosUI
 import SwiftUI
 
+/// Somewhere you went on a city's log: a place, or a town or neighbourhood near it (West Vancouver, from Vancouver).
+enum CityLogPick: Identifiable, Hashable {
+    case place(SearchHit)
+    case town(Destination)
+
+    var id: String {
+        switch self {
+        case .place(let hit): return "place:\(hit.id)"
+        case .town(let town): return "town:\(town.id)"
+        }
+    }
+}
+
 /// Logging a city, laid out like logging a place: its name and where it is, how it was, when, a note and Save. The one
-/// difference is the places you went there, added with a full-width button and logged as visits without ratings.
+/// difference is the places you went there (or nearby towns), added with a full-width button: places are logged as visits
+/// without ratings, and a town is marked as been too.
 struct CityLogSheet: View {
     let city: Destination
     var onSaved: () -> Void
@@ -16,7 +31,7 @@ struct CityLogSheet: View {
     @State private var start: Date?
     @State private var end: Date?
     @State private var note = ""
-    @State private var places: [SearchHit] = []
+    @State private var places: [CityLogPick] = []
     @State private var addingPlaces = false
     @State private var saving = false
     @State private var error: String?
@@ -44,9 +59,9 @@ struct CityLogSheet: View {
                         addPlacesButton
                     } else {
                         VStack(spacing: 0) {
-                            ForEach(places) { hit in
-                                placeRow(hit)
-                                if hit.id != places.last?.id { RowSeparator() }
+                            ForEach(places) { pick in
+                                pickRow(pick)
+                                if pick.id != places.last?.id { RowSeparator() }
                             }
                             addPlacesButton.padding(.top, Theme.Spacing.s)
                         }
@@ -158,24 +173,35 @@ struct CityLogSheet: View {
         .accessibilityIdentifier("city-log-add-places")
     }
 
-    /// A place you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.
-    private func placeRow(_ hit: SearchHit) -> some View {
+    /// Somewhere you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.
+    private func pickRow(_ pick: CityLogPick) -> some View {
         HStack(spacing: Theme.Spacing.m) {
             ZStack(alignment: .bottomTrailing) {
-                PlaceThumbnail(id: hit.id, url: hit.experience?.photoURL, coordinate: hit.candidate.coordinate,
-                               symbol: hit.experience?.iconName ?? hit.candidate.iconName, size: 48)
+                switch pick {
+                case .place(let hit):
+                    PlaceThumbnail(id: hit.id, url: hit.experience?.photoURL, coordinate: hit.candidate.coordinate,
+                                   symbol: hit.experience?.iconName ?? hit.candidate.iconName, size: 48)
+                case .town(let town):
+                    PlaceThumbnail(id: "town-\(town.id)", url: nil, coordinate: town.coordinate, symbol: "signpost.right.and.left", size: 48)
+                }
                 StatusMark(state: .visited).scaleEffect(0.75).offset(x: 6, y: 6)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                if let category = hit.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted) }
+                switch pick {
+                case .place(let hit):
+                    Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    if let category = hit.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted) }
+                case .town(let town):
+                    Text(town.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    Text("City").font(.footnote).foregroundStyle(Roam.inkMuted)
+                }
             }
             Spacer(minLength: 0)
-            Button { places.removeAll { $0.id == hit.id } } label: {
+            Button { places.removeAll { $0.id == pick.id } } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkFaint)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Remove \(hit.candidate.name)")
+            .accessibilityLabel("Remove")
         }
         .padding(.vertical, Theme.Spacing.s)
     }
@@ -190,14 +216,20 @@ struct CityLogSheet: View {
             let mediaIDs = try photos?.attachmentIDs() ?? []
             try await services.plans.logCity(city, start: from, end: to, sentiment: sentiment, note: note, mediaIDs: mediaIDs)
             photos?.committed()
-            for hit in places {
-                let place: ExperienceSummary
-                if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
-                // A visit with no rating; the place's own category files it.
-                let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [],
-                                         audience: .public)
-                _ = try await services.ranking.addVisit(AddVisitRequest(operationID: UUID(), experienceID: place.id, visit: visit,
-                                                                        category: place.category ?? hit.category ?? .activities))
+            for pick in places {
+                switch pick {
+                case .town(let town):
+                    // A nearby town you went to is somewhere you've been too, with the same dates.
+                    try await services.plans.markCityVisited(town, start: from, end: to)
+                case .place(let hit):
+                    let place: ExperienceSummary
+                    if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
+                    // A visit with no rating; the place's own category files it (and its town counts as been).
+                    let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [],
+                                             audience: .public)
+                    _ = try await services.ranking.addVisit(AddVisitRequest(operationID: UUID(), experienceID: place.id, visit: visit,
+                                                                            category: place.category ?? hit.category ?? .activities))
+                }
             }
             onSaved()
             dismiss()
@@ -205,10 +237,11 @@ struct CityLogSheet: View {
     }
 }
 
-/// Picking the places you went in a city: search its places and tick them, then Done.
+/// Adding somewhere you went in or near a city: the standard search (a bar and an × on one line), with anything within
+/// about 60 km, towns and neighbourhoods included. Tapping a result adds it and closes.
 private struct CityPlacePicker: View {
     let city: Destination
-    @Binding var picked: [SearchHit]
+    @Binding var picked: [CityLogPick]
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
@@ -216,48 +249,53 @@ private struct CityPlacePicker: View {
     @State private var placeSearch = PlaceSearch()
     @FocusState private var searchFocused: Bool
 
-    private var results: [SearchHit] {
-        (placeSearch.model?.hits ?? []).filter { hit in
-            hit.candidate.countryCode?.uppercased() == city.countryCode?.uppercased()
-                && GeographyKey.normalize(hit.candidate.locality ?? "") == GeographyKey.normalize(city.name)
+    private static let nearby: CLLocationDistance = 60_000
+    private var centre: CLLocation { CLLocation(latitude: city.latitude, longitude: city.longitude) }
+    private func isNear(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude).distance(from: centre) <= Self.nearby
+    }
+
+    private var towns: [Destination] {
+        placeSearch.cities.filter { town in
+            isNear(town.coordinate) && !(GeographyKey.normalize(town.name) == GeographyKey.normalize(city.name))
+                && !picked.contains(.town(town))
         }
     }
+    private var places: [SearchHit] {
+        (placeSearch.model?.hits ?? []).filter { hit in isNear(hit.candidate.coordinate) && !picked.contains(.place(hit)) }
+    }
+    private var finished: Bool { placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results }
 
     var body: some View {
         NavigationStack {
-            List {
-                if !query.trimmingCharacters(in: .whitespaces).isEmpty, results.isEmpty, placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results {
-                    Text("Nothing in \(city.name) matches \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
-                }
-                ForEach(results) { hit in
-                    let chosen = picked.contains { $0.id == hit.id }
-                    Button {
-                        if chosen { picked.removeAll { $0.id == hit.id } } else { picked.append(hit) }
-                    } label: {
-                        HStack(spacing: Theme.Spacing.m) {
-                            Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24)
-                            VStack(alignment: .leading, spacing: -2) {
-                                Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                                if let category = hit.category?.title { Text(category).font(.footnote).foregroundStyle(Roam.inkMuted) }
+            ScrollView {
+                VStack(spacing: 0) {
+                    if !towns.isEmpty || !places.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(towns) { town in
+                                row(symbol: "signpost.right.and.left", title: town.name, subtitle: town.subtitle) { add(.town(town)) }
                             }
-                            Spacer(minLength: 0)
-                            Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(chosen ? PlaceState.visited.markerColor : Roam.inkFaint)
+                            ForEach(places) { hit in
+                                row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, title: hit.candidate.name,
+                                    subtitle: [hit.candidate.locality, CountryName.display(hit.candidate.countryName, code: hit.candidate.countryCode)]
+                                        .compactMap { $0 }.uniqued().joined(separator: ", ")) { add(.place(hit)) }
+                            }
                         }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                        .contentShape(Rectangle())
+                        .roamCard(padding: Theme.Spacing.m)
+                    } else if !query.trimmingCharacters(in: .whitespaces).isEmpty, finished {
+                        Text("Nothing near \(city.name) matches \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.vertical, Theme.Spacing.s)
             }
-            .scrollContentBackground(.hidden)
             .background(Roam.paper)
-            // Just a search bar with an × beside it, as when adding a city; tapping places ticks them.
             .safeAreaInset(edge: .top, spacing: 0) {
                 HStack(spacing: Theme.Spacing.s) {
                     HStack(spacing: Theme.Spacing.s) {
                         Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-                        TextField("Places in \(city.name)", text: $query)
+                        TextField("Places near \(city.name)", text: $query)
                             .focused($searchFocused)
                             .submitLabel(.search)
                             .textInputAutocapitalization(.never)
@@ -280,9 +318,32 @@ private struct CityPlacePicker: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .onAppear { searchFocused = true }
-            .task(id: query) { await placeSearch.run(query, services: services, near: city, within: city.name) }
+            .task(id: query) { await placeSearch.run(query, services: services, near: city) }
         }
         .roamSheetStyle()
         .presentationDetents([.large])
+    }
+
+    private func add(_ pick: CityLogPick) {
+        picked.append(pick)
+        dismiss()
+    }
+
+    /// A result as the main search shows one: its icon, name and where it is.
+    private func row(symbol: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.m) {
+                Image(systemName: symbol).foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: -2) {
+                    Text(title).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: Theme.minimumHitTarget)
+            .padding(.vertical, Theme.Spacing.xs)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
