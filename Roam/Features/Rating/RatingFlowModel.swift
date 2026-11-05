@@ -92,7 +92,7 @@ final class RatingFlowModel {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id))
         } else {
-            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .friends)
+            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .public)
         }
         let name = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)"
         storage.purgeExpired(userID: accountID, prefix: "rating-draft-", lifetime: 30 * 86_400, now: now())

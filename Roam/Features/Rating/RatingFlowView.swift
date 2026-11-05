@@ -254,28 +254,30 @@ struct RatingFlowView: View {
                     Divider()
                     detailRow("Photos", symbol: "photo.on.rectangle", value: photos.assets.isEmpty ? "Optional" : "\(photos.assets.count)", identifier: "rating-edit-photos") { showsPhotos = true }
                 }
+                // Which trip it was part of, in the same card rather than a box of its own.
+                if request.mode != .rerank {
+                    Divider()
+                    pickerRow("Part of", symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane") {
+                        Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
+                            Text(home.map { "Home · \($0.name)" } ?? "No trip").tag(UUID?.none)
+                            ForEach(trips) { Text($0.name).tag(Optional($0.id)) }
+                        }
+                        .labelsHidden()
+                        .accessibilityIdentifier("rating-part-of")
+                    }
+                    .task(id: request.experience.id) { await loadPlacement(model) }
+                }
             }
             .roamCard(padding: Theme.Spacing.m)
             if let photos = model.photos, !photos.canCommit {
                 Text("Retry or remove unfinished photos before continuing.").foregroundStyle(Theme.disliked)
             }
-            if request.mode != .rerank {
-                pickerRow("Part of", symbol: home != nil && model.visit.tripID == nil ? "house" : "airplane") {
-                    Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
-                        Text(home.map { "Home · \($0.name)" } ?? "No trip").tag(UUID?.none)
-                        ForEach(trips) { Text($0.name).tag(Optional($0.id)) }
-                    }
-                    .labelsHidden()
-                    .accessibilityIdentifier("rating-part-of")
-                }
-                .roamCard(padding: Theme.Spacing.m)
-                .task(id: request.experience.id) { await loadPlacement(model) }
-            }
             if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("Who can see this").font(.footnote.weight(.semibold))
-                    Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .friends }, set: { model.setAudience($0) })) {
+                    // Only me, Friends, Public; a new log is public unless you choose otherwise.
+                    Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .public }, set: { model.setAudience($0) })) {
                         ForEach(Audience.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)

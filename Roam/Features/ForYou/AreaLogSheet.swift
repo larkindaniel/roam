@@ -163,7 +163,8 @@ struct AreaLogSheet: View {
                     let place: ExperienceSummary
                     if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
                     // A visit with no rating; the place's own category files it.
-                    let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [])
+                    let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [],
+                                             audience: .public)
                     _ = try await services.ranking.addVisit(AddVisitRequest(operationID: UUID(), experienceID: place.id, visit: visit,
                                                                             category: place.category ?? hit.category ?? .activities))
                 }

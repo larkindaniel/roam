@@ -1,9 +1,10 @@
 import Foundation
 
 /// Who can see a visit, its note, its photos and its rating.
+/// Who sees something, narrowest first (the order pickers show it in).
 enum Audience: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
-    case friends
     case onlyMe = "only_me"
+    case friends
     case `public`
 
     var id: String { rawValue }
