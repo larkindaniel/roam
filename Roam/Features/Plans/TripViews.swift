@@ -265,7 +265,7 @@ struct TripDetailView: View {
                     if own {
                         // Opens the edit sheet for the name and description (and dates), as before.
                         Button { editing = draft(value.summary) } label: {
-                            Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.inkMuted)
+                            Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.ink)
                         }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Edit trip")
@@ -457,13 +457,17 @@ struct TripEditorSheet: View {
                     }
                     // Both dates needed, on their own row just under the name card: Start → End, each opening a calendar;
                     // the end never before the start. Before any city is added, + Add a city sits right under them.
-                    Section {
-                        VStack(spacing: Theme.Spacing.l) {
-                            DateRangeRow(start: $start, end: $end)
-                            if draft.id == nil, cities.isEmpty, countries.isEmpty { addCityButton }
+                    // A new trip picks its dates here; an existing one changes them on its page, so editing is just the
+                    // name and description.
+                    if draft.id == nil {
+                        Section {
+                            VStack(spacing: Theme.Spacing.l) {
+                                DateRangeRow(start: $start, end: $end)
+                                if cities.isEmpty, countries.isEmpty { addCityButton }
+                            }
                         }
+                        .floatingFormRow()
                     }
-                    .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
                 }
                 .listRowBackground(Roam.paperRaised)
