@@ -150,7 +150,12 @@ struct RatingFlowView: View {
         }
         .roamHaptic(.selection, trigger: model.comparison?.id)
         .roamHaptic(.success, trigger: model.step == .result)
-        .onChange(of: model.completion) { _, completion in if let completion { onSaved(completion) } }
+        // Saved: it just closes, no result screen to tap Done on.
+        .onChange(of: model.completion) { _, completion in
+            guard let completion else { return }
+            onSaved(completion)
+            dismiss()
+        }
         .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
         .onChange(of: model.photos?.assets) { _, _ in
             // Only a fully ready selection is mirrored into the draft; in-progress uploads are not errors.
