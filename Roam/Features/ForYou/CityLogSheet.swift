@@ -36,6 +36,7 @@ struct CityLogSheet: View {
                     }
                     .accessibilityElement(children: .combine)
                     FeelingSlider(selection: $sentiment, enabled: true) { _ in }
+                        .padding(.bottom, Theme.Spacing.s)
                     DateRangeRow(start: $start, end: $end)
                     photoSection
                     // The places you went here, as rows, then the button to add more (as on a trip's page).

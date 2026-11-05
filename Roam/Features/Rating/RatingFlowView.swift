@@ -234,6 +234,8 @@ struct RatingFlowView: View {
                 FeelingSlider(selection: Binding(get: { model.sentiment }, set: { _ in }), enabled: model.category != nil) { picked in
                     model.setFeeling(picked)
                 }
+                // A little more room between how it was and the details under it.
+                .padding(.bottom, Theme.Spacing.s)
             }
             // The category, when it isn't known yet, as its own bubble.
             if !model.categoryLocked {
