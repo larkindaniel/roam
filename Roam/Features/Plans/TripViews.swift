@@ -265,7 +265,7 @@ struct TripDetailView: View {
                     if own {
                         // Opens the edit sheet for the name and description (and dates), as before.
                         Button { editing = draft(value.summary) } label: {
-                            Image(systemName: "square.and.pencil").font(.headline).foregroundStyle(Roam.inkMuted)
+                            Image(systemName: "square.and.pencil").font(.title2).foregroundStyle(Roam.inkMuted)
                         }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Edit trip")
