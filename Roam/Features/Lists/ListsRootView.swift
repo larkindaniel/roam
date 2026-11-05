@@ -345,12 +345,14 @@ struct MyPlacesRootView: View {
             // blue where you're going, yellow what you've saved.
             let pins = detent != .peek ? model.pins.filter { $0.state == tab.state } : model.pins
             GlobeMapView(pins: pins.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: nil, latitude: $0.experience.latitude, longitude: $0.experience.longitude) },
-                         shadedCountryCodes: Set(PlaceMapItem.countryTints(pins).keys),
+                         // Countries always show everything, been (green) over going (blue) over saved (yellow),
+                         // whichever tab is open.
+                         shadedCountryCodes: Set(PlaceMapItem.countryTints(model.pins).keys),
                          focusRegion: focusRegion,
                          focusToken: recenterToken,
                          onSelectPin: { pin in if let id = UUID(uuidString: pin.id) { router.push(.experience(id)) } },
                          globeCenter: PlaceMapItem.startingRegion(pins.isEmpty ? model.pins : pins).center,
-                         countryTints: PlaceMapItem.countryTints(pins),
+                         countryTints: PlaceMapItem.countryTints(model.pins),
                          // Countries aren't tappable here: the globe just shows them.
                          pinTints: Dictionary(uniqueKeysWithValues: pins.map { ($0.id.uuidString, UIColor($0.state.markerColor)) }))
                 .mapAccessibility("Globe of the places you've been, planned and saved", identifier: "myplaces-map")
