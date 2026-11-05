@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 struct RatingFlowView: View {
@@ -316,10 +317,18 @@ struct RatingFlowView: View {
         let today = MyTimeline.today()
         trips = all.sorted { ($0.phase(today: today) == .past ? 1 : 0, $0.name) < ($1.phase(today: today) == .past ? 1 : 0, $1.name) }
         home = CityMatch.home(for: request.experience, homes: homes)
-        guard home == nil, model.visit.tripID == nil else { return }
+        guard model.visit.tripID == nil else { return }
+        // A trip happening now that covers this place comes first: it's in one of the trip's cities or within 100 km of
+        // one (a day out from it), or in a country the trip is to. Otherwise, near a home, it goes with that home.
         let place = request.experience
+        let spot = CLLocation(latitude: place.latitude, longitude: place.longitude)
         if let match = all.first(where: { trip in
-            trip.phase(today: today) == .now && trip.cities.contains { city in CityMatch.same(place, city) || place.countryCode?.uppercased() == city.countryCode?.uppercased() }
+            guard trip.isOwn, trip.phase(today: today) == .now else { return false }
+            let nearCity = trip.cities.contains { city in
+                CityMatch.same(place, city) || (!(city.latitude == 0 && city.longitude == 0)
+                    && CLLocation(latitude: city.latitude, longitude: city.longitude).distance(from: spot) <= CityMatch.homeRadius)
+            }
+            return nearCity || place.countryCode.map { trip.covers(country: $0) } == true
         }) {
             model.setTrip(match.id)
         }
