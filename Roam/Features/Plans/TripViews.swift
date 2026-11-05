@@ -111,7 +111,8 @@ struct TripDetailView: View {
             // Edit and Delete as their own buttons, not tucked in a menu.
             if let summary = detail.value?.summary, summary.isOwn {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { editing = draft(summary) } label: { Image(systemName: "pencil") }
+                    // "Edit", as iOS writes it; a bare pencil beside the bin read oddly.
+                    Button("Edit") { editing = draft(summary) }
                         .accessibilityLabel("Edit trip")
                         .accessibilityIdentifier("trip-edit")
                 }
@@ -148,6 +149,28 @@ struct TripDetailView: View {
             }
         } message: {
             Text("Your visits and saved places stay.")
+        }
+        // Your own trip: an "Add a city" search bar takes the tab bar's spot and opens the city search.
+        .roamTabBar(hidden: detail.value?.summary.isOwn == true)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if detail.value?.summary.isOwn == true {
+                Button { addingCity = true } label: {
+                    HStack(spacing: Theme.Spacing.s) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                        Text("Add a city").foregroundStyle(Roam.inkMuted)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.body)
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .frame(height: RoamTabBar.height)
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Capsule())
+                .padding(.horizontal, RoamTabBar.sideMargin)
+                .padding(.bottom, 4)
+                .accessibilityIdentifier("trip-add-city")
+            }
         }
         .task { await load() }
         .refreshable { await load() }
@@ -230,11 +253,6 @@ struct TripDetailView: View {
             Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("trip-city-\(city.name)")
-        }
-        if value.summary.isOwn {
-            Button { addingCity = true } label: { PillLabel(title: "Add a city", systemImage: "plus") }
-                .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                .accessibilityIdentifier("trip-add-city")
         }
         if cities.isEmpty && countries.isEmpty {
             Text("Add a city to start.")
