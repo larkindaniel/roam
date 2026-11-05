@@ -158,8 +158,8 @@ enum PlaceGalleryItem: Identifiable {
     }
 }
 
-/// A place's pictures: its photo first, then photos from visits. The arrow in the corner steps to the next one,
-/// and a Look Around button opens Apple's street-level view of the spot.
+/// A place's pictures: its photo first, then photos from visits. Swipe between them, with dots
+/// below, and a Look Around button opens Apple's street-level view of the spot.
 struct PlaceGallery: View {
     let items: [PlaceGalleryItem]
     let placeName: String
@@ -172,25 +172,32 @@ struct PlaceGallery: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ZStack(alignment: .topTrailing) {
-                Roam.fill
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .overlay {
-                        switch current {
-                        case .lookAround(let scene):
-                            LookAroundPreview(initialScene: scene, allowsNavigation: true, badgePosition: .bottomTrailing)
-                                .accessibilityLabel("Look Around at \(placeName)")
-                        case .photo(let url, _):
-                            PlacePhotoView(url: url, label: "Photo of \(placeName)", height: 220, showsCredit: false, cornerRadius: 0)
-                        case .visitPhoto(let path):
-                            RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
-                        case nil:
-                            EmptyView()
+            ZStack {
+                // Swipe between pictures; the dots show where you are.
+                TabView(selection: $index) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { offset, item in
+                        page(item).tag(offset)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .background(Roam.fill)
+                .frame(maxWidth: .infinity)
+                .frame(height: 220)
+                // Concentric with the card around it: its 38-point corners less the 16-point inset.
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                if items.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(items.indices, id: \.self) { offset in
+                            Circle().fill(.white.opacity(offset == min(index, items.count - 1) ? 1 : 0.5)).frame(width: 7, height: 7)
                         }
                     }
-                    // Concentric with the card around it: its 38-point corners less the 16-point inset.
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(Capsule().fill(.black.opacity(0.35)))
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, Theme.Spacing.s)
+                    .accessibilityElement()
+                    .accessibilityLabel("Picture \(min(index, items.count - 1) + 1) of \(items.count)")
+                }
                 if let lookAround, !items.contains(where: { if case .lookAround = $0 { return true } else { return false } }) {
                     Button { showsLookAround = true } label: {
                         Image(systemName: "binoculars.fill")
@@ -207,25 +214,8 @@ struct PlaceGallery: View {
                     .accessibilityLabel("Look Around")
                     .accessibilityIdentifier("place-look-around")
                 }
-                if items.count > 1 {
-                    Button { index = (min(index, items.count - 1) + 1) % items.count } label: {
-                        HStack(spacing: 4) {
-                            Text("\(min(index, items.count - 1) + 1)/\(items.count)").monospacedDigit()
-                            Image(systemName: "chevron.right")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .frame(height: 32)
-                        .background(Capsule().fill(.black.opacity(0.55)))
-                        .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(Theme.Spacing.xs)
-                    .accessibilityLabel("Next picture, \(min(index, items.count - 1) + 1) of \(items.count)")
-                    .accessibilityIdentifier("place-gallery-next")
-                }
             }
+            .frame(height: 220)
             switch current {
             case .lookAround:
                 Text("Tap to look around in Apple Maps").font(.caption2).foregroundStyle(Roam.inkMuted)
@@ -234,6 +224,18 @@ struct PlaceGallery: View {
             default:
                 EmptyView()
             }
+        }
+    }
+
+    @ViewBuilder private func page(_ item: PlaceGalleryItem) -> some View {
+        switch item {
+        case .lookAround(let scene):
+            LookAroundPreview(initialScene: scene, allowsNavigation: true, badgePosition: .bottomTrailing)
+                .accessibilityLabel("Look Around at \(placeName)")
+        case .photo(let url, _):
+            PlacePhotoView(url: url, label: "Photo of \(placeName)", height: 220, showsCredit: false, cornerRadius: 0)
+        case .visitPhoto(let path):
+            RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
         }
     }
 }
