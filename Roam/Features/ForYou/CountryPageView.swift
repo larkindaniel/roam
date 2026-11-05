@@ -82,7 +82,8 @@ struct CountryPageView: View {
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.top, Theme.Spacing.s)
-            .padding(.bottom, Theme.Spacing.xxl)
+            // Clear of the tab bar floating over the bottom.
+            .padding(.bottom, Theme.Spacing.xxl + RoamTabBar.reservedHeight)
         }
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 44 } action: { _, past in
             withAnimation(.easeInOut(duration: 0.2)) { scrolledPastTitle = past }
@@ -91,6 +92,8 @@ struct CountryPageView: View {
         .refreshable { await reload() }
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
+        // However you got here, Discover / Friends / My Places are at the bottom.
+        .roamTabBarShown()
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(name).font(.headline).opacity(scrolledPastTitle ? 1 : 0).accessibilityHidden(!scrolledPastTitle)

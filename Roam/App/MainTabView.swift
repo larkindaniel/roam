@@ -66,11 +66,17 @@ struct MainTabView: View {
 @Observable
 final class TabBarState {
     private var hiders: [AppTab: Set<UUID>] = [:]
+    /// Screens that always have the tab bar, whatever the screens under them asked for.
+    private var showers: [AppTab: Set<UUID>] = [:]
 
-    func isHidden(on tab: AppTab) -> Bool { !(hiders[tab]?.isEmpty ?? true) }
+    func isHidden(on tab: AppTab) -> Bool { !(hiders[tab]?.isEmpty ?? true) && (showers[tab]?.isEmpty ?? true) }
 
     func set(_ hidden: Bool, by id: UUID, on tab: AppTab) {
         if hidden { hiders[tab, default: []].insert(id) } else { hiders[tab]?.remove(id) }
+    }
+
+    func setShown(_ shown: Bool, by id: UUID, on tab: AppTab) {
+        if shown { showers[tab, default: []].insert(id) } else { showers[tab]?.remove(id) }
     }
 }
 
@@ -93,9 +99,24 @@ private struct TabBarHider: ViewModifier {
     }
 }
 
+private struct TabBarShower: ViewModifier {
+    @Environment(TabBarState.self) private var state
+    @Environment(\.roamTab) private var tab
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { state.setShown(true, by: id, on: tab) }
+            .onDisappear { state.setShown(false, by: id, on: tab) }
+    }
+}
+
 extension View {
     /// Hides Roam's floating tab bar while this screen is showing.
     func roamTabBar(hidden: Bool) -> some View { modifier(TabBarHider(hidden: hidden)) }
+
+    /// Keeps Roam's floating tab bar showing on this screen, even over one that hid it.
+    func roamTabBarShown() -> some View { modifier(TabBarShower()) }
 }
 
 /// The floating glass tab bar: the same gap from the sides of the screen as from its bottom.
