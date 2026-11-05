@@ -193,11 +193,6 @@ struct CountryPageView: View {
         }
     }
 
-    /// Your own trips still ahead that don't already go here, to add the country to.
-    private var tripsToAddTo: [TripSummary] {
-        (model?.trips ?? []).filter { $0.isOwn && $0.phase(today: MyTimeline.today()) != .past && !$0.covers(country: code) }
-    }
-
     /// Been (green), Wishlist (yellow, greyed once you've been), Trip (blue) and Plan with AI (pink), as on a city.
     private var actionRow: some View {
         HStack(spacing: Theme.Spacing.m) {
@@ -217,32 +212,17 @@ struct CountryPageView: View {
                 // Saved because of cities or places saved here: it comes off with them, so tapping explains instead.
                 if isSaved && !savedCodes.contains(savedKey) { explainingSaved = true } else { Task { await setSaved(!isSaved) } }
             }
-            // A trip can go to the whole country before any of its cities or places are picked (not yet to a region).
-            if region == nil { tripMenu }
+            // Straight to a new trip to the whole country, before any of its cities or places are picked (not yet to a
+            // region).
+            if region == nil {
+                circle("airplane", tint: PlaceState.planned.markerColor, filled: false, caption: "Trip", identifier: "country-trip") {
+                    planningNewTrip = true
+                }
+            }
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "country-plan") {
                 router.sheet = .researchBrief(destination)
             }
         }
-    }
-
-    private var tripMenu: some View {
-            Menu {
-                ForEach(tripsToAddTo) { trip in Button(trip.name) { Task { await add(to: trip) } } }
-                Button("New trip", systemImage: "plus") { planningNewTrip = true }
-            } label: {
-                VStack(spacing: 6) {
-                    Image(systemName: "airplane")
-                        .font(.headline)
-                        .foregroundStyle(PlaceState.planned.markerColor)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(PlaceState.planned.markerColor.opacity(0.15)))
-                    Text("Trip").font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
-                }
-                .frame(minWidth: 44)
-                .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Add to a trip")
-            .accessibilityIdentifier("country-trip")
     }
 
     private func circle(_ symbol: String, tint: Color, filled: Bool, caption: String, identifier: String,
@@ -275,9 +255,8 @@ struct CountryPageView: View {
                           within: region == nil ? 3_000_000 : 1_500_000)
         }
         if let model, model.hasLoaded {
-            if !upcomingTrips.isEmpty {
-                section("Upcoming trips") { tripList(upcomingTrips, model: model) }
-            }
+            // Upcoming trips need no title: the trip mark on each row says so, as on the wishlist and been cards.
+            if !upcomingTrips.isEmpty { tripList(upcomingTrips, model: model) }
             if !pastTrips.isEmpty {
                 section("Past trips") { tripList(pastTrips, model: model) }
             }
@@ -347,8 +326,8 @@ struct CountryPageView: View {
     private func tripList(_ list: [TripSummary], model: MyPlacesModel) -> some View {
         VStack(spacing: 0) {
             ForEach(list) { trip in
-                TripCard(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience)
-                if trip.id != list.last?.id { RowSeparator(inset: 56 + Theme.Spacing.m) }
+                TripRow(trip: trip, cover: model.tripDetails[trip.id]?.places.first?.experience, subtitle: MyTimeline.range(trip.startDate, trip.endDate) ?? "")
+                if trip.id != list.last?.id { RowSeparator() }
             }
         }
         .roamCard(padding: Theme.Spacing.m)
@@ -446,12 +425,6 @@ struct CountryPageView: View {
         savedCodes = (try? await saved) ?? savedCodes
         await mine
         await suggestions?.load(destination)
-    }
-
-    private func add(to trip: TripSummary) async {
-        try? await services.plans.setTripCountry(tripID: trip.id, code: code, name: name, present: true)
-        library.noteChanged()
-        router.push(.trip(trip.id))
     }
 
     /// A whole country (or region) on your wishlist.

@@ -168,6 +168,44 @@ struct RowSeparator: View {
     }
 }
 
+/// A trip as one row, like a place's or a city's: its photo square with the trip mark, its name and a line.
+struct TripRow: View {
+    let trip: TripSummary
+    var cover: ExperienceSummary?
+    var subtitle = ""
+
+    @Environment(AppServices.self) private var services
+    @Environment(AppRouter.self) private var router
+    @State private var photo: AreaPhotos.Photo?
+
+    var body: some View {
+        Button { router.push(.trip(trip.id)) } label: {
+            HStack(spacing: Theme.Spacing.m) {
+                ZStack(alignment: .bottomTrailing) {
+                    PlaceThumbnail(id: "trip-\(trip.id)", url: photo?.url ?? cover?.photoURL,
+                                   coordinate: trip.coverCity?.coordinate ?? cover?.coordinate ?? CLLocationCoordinate2D(),
+                                   symbol: "airplane", size: 48)
+                    StatusMark(state: .planned).scaleEffect(0.75).offset(x: 6, y: 6)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(trip.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                    if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted) }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
+            .padding(.vertical, Theme.Spacing.s)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("trip-row-\(trip.name)")
+        .task(id: trip.id) {
+            guard let city = trip.coverCity else { return }
+            photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
+        }
+    }
+}
+
 /// A city as one row, like a place's: its photo square with a been (green) or saved (yellow) mark, its name and a line.
 struct CityRow: View {
     let city: Destination
