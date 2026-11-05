@@ -201,7 +201,6 @@ struct ExperienceDetailView: View {
     @State private var deleting = false
     @State private var nearbyFeature: MapFeature?
     @State private var choosingBeen = false
-    @State private var confirmingUnbeen = false
     /// The card rises from the bottom once the page is up, as in Apple Maps.
     @State private var cardRisen = false
 
@@ -543,13 +542,10 @@ struct ExperienceDetailView: View {
                     }
                     .confirmationDialog("Been here", isPresented: $choosingBeen, titleVisibility: .hidden) {
                         Button("Add another visit") { Task { await openLog(rated ? .addVisit : .firstLog) } }
-                        Button("Remove from places I've been", role: .destructive) { confirmingUnbeen = true }
-                    }
-                    .alert("Remove from places you've been?", isPresented: $confirmingUnbeen) {
-                        Button("Remove", role: .destructive) { Task { await removeBeen(detail) } }
-                        Button("Cancel", role: .cancel) {}
+                        // The one confirmation: picking it here removes it.
+                        Button("Remove from places I've been", role: .destructive) { Task { await removeBeen(detail) } }
                     } message: {
-                        Text("This deletes your visits here, with their notes and photos, and your ranking.")
+                        Text("Removing deletes your visits here, with their notes and photos, and your ranking.")
                     }
                     .disabled(deleting || failedDeletion != nil)
                 }
