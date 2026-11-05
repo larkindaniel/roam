@@ -338,13 +338,7 @@ struct ForYouRootView: View {
 
     private func cityCard(_ city: DiscoverCity) -> some View {
         Button { choose(city.destination) } label: {
-            CityCoverCard(city: city) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(city.destination.name).font(.roamTitle()).foregroundStyle(Roam.ink)
-                    Text(cityLine(city)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
-                }
-            }
-            .contentShape(Rectangle())
+            CityCoverCard(city: city, subtitle: cityLine(city))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("discover-city-\(city.destination.name)")
@@ -433,10 +427,10 @@ struct ForYouRootView: View {
     }
 }
 
-/// A city's card, led by its Google photo; a photo from a place there when there's none.
-private struct CityCoverCard<Content: View>: View {
+/// A city's card, like an upcoming trip's: led by its Google photo, else a photo from a place there.
+private struct CityCoverCard: View {
     let city: DiscoverCity
-    @ViewBuilder var content: () -> Content
+    var subtitle = ""
 
     @Environment(AppServices.self) private var services
     @State private var photo: AreaPhotos.Photo?
@@ -446,11 +440,11 @@ private struct CityCoverCard<Content: View>: View {
         let destination = city.destination
         Group {
             if let photo {
-                PhotoCard(url: photo.url, credit: photo.credit, label: "Photo of \(destination.name)", height: 180, content: content)
-            } else if looked {
-                PhotoCard(path: city.coverPath, url: city.coverURL, credit: city.coverCredit, label: "Photo from \(destination.name)", height: 180, content: content)
+                HeroPhotoCard(url: photo.url, title: destination.name, subtitle: subtitle, symbol: "signpost.right.and.left",
+                              location: destination.coordinate)
             } else {
-                PhotoCard(label: "Photo of \(destination.name)", height: 180, content: content)
+                HeroPhotoCard(path: looked ? city.coverPath : nil, url: looked ? city.coverURL : nil, title: destination.name,
+                              subtitle: subtitle, symbol: "signpost.right.and.left", location: destination.coordinate)
             }
         }
         .task(id: destination.id) {

@@ -93,8 +93,7 @@ struct BeenTab: View {
                     ForEach(countries) { country in
                         Button { router.push(.country(country.code)) } label: {
                             if countries.count < CountryCardsLayout.gridFrom {
-                                CountryCoverCard(code: country.code, title: country.title,
-                                                 subtitle: country.cities.count == 1 ? "1 city" : "\(country.cities.count) cities")
+                                CountryCoverCard(code: country.code, title: country.title, subtitle: beenLine(country))
                             } else {
                                 tile(country)
                             }
@@ -108,6 +107,13 @@ struct BeenTab: View {
     }
 
     private static let tileHeight: CGFloat = 150
+
+    /// "3 cities · 12 places" you've been to there.
+    private func beenLine(_ country: PassportCountry) -> String {
+        let cities = country.cities.count, places = country.placeCount
+        return [cities > 0 ? (cities == 1 ? "1 city" : "\(cities) cities") : nil,
+                places > 0 ? (places == 1 ? "1 place" : "\(places) places") : nil].compactMap { $0 }.joined(separator: " · ")
+    }
 
     /// A country you've been to, pictured by the Wikipedia photo of the city you've been to most there (a country's own
     /// article leads with its flag). Away-from-home cities come first, so a home country shows somewhere you travelled.
@@ -345,7 +351,37 @@ struct CountryCards<Content: View>: View {
     }
 }
 
-/// A country as a big card, like Discover's cities: its Google photo, then its name and a line about it.
+/// A big card like an upcoming trip's: the photo edge to edge, darkening at the bottom under the name and a line in white.
+struct HeroPhotoCard: View {
+    /// A photo stored on Roam (from a visit), else one at a URL.
+    var path: String?
+    var url: URL?
+    let title: String
+    var subtitle = ""
+    var symbol = "globe"
+    var location: CLLocationCoordinate2D?
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            PlacePhotoView(path: path, url: url, label: "Photo of \(title)", placeholderSymbol: symbol, height: 210, showsCredit: false,
+                           cornerRadius: 0, location: location)
+            LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
+                .allowsHitTesting(false)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.roamTitle()).foregroundStyle(.white).lineLimit(1)
+                if !subtitle.isEmpty {
+                    Text(subtitle).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A country as a big card, like an upcoming trip's, led by its Google photo.
 struct CountryCoverCard: View {
     let code: String
     let title: String
@@ -357,17 +393,10 @@ struct CountryCoverCard: View {
     @State private var looked = false
 
     var body: some View {
-        PhotoCard(url: photo?.url ?? (looked ? fallbackURL : nil), credit: photo?.credit, label: "Photo of \(title)",
-                  placeholderSymbol: "globe", height: 180) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.roamTitle()).foregroundStyle(Roam.ink)
-                if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1) }
+        HeroPhotoCard(url: photo?.url ?? (looked ? fallbackURL : nil), title: title, subtitle: subtitle)
+            .task(id: code) {
+                photo = await AreaPhotos.country(services, code: code)
+                looked = true
             }
-        }
-        .contentShape(Rectangle())
-        .task(id: code) {
-            photo = await AreaPhotos.country(services, code: code)
-            looked = true
-        }
     }
 }
