@@ -141,7 +141,8 @@ final class RatingFlowModel {
             storage.remove(name: name, userID: accountID)
             operationID = UUID()
             category = request.experience.category ?? request.suggestedCategory
-            sentiment = nil
+            // A new log starts at Neutral (it's ranked, comparing as usual); you can change it before saving.
+            sentiment = request.mode == .firstLog ? .fine : nil
             visit = initial
             initialVisit = initial
             step = request.mode == .addVisit ? .details : .sentiment
