@@ -584,7 +584,7 @@ extension View {
             safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
                 .overlay {
                     // As the tab bar is placed: a stack reaching the very bottom of the screen (not the home indicator),
-                    // the button the same gap above it.
+                    // the button just above it.
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
                         Button(action: action) {
@@ -598,7 +598,8 @@ extension View {
                         .buttonStyle(.plain)
                         .floatingBubble(Capsule(), tint: PlaceState.planned.markerColor.opacity(0.18))
                         .padding(.horizontal, RoamTabBar.sideMargin)
-                        .padding(.bottom, RoamTabBar.margin)
+                        // A touch higher than the tab bar's gap.
+                        .padding(.bottom, RoamTabBar.margin + 6)
                         .accessibilityIdentifier(identifier)
                     }
                     .ignoresSafeArea(edges: .bottom)
