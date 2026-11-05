@@ -128,16 +128,16 @@ struct RatingFlowView: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
                     Button { Task { await model.okay() } } label: {
-                        Group { if working { ProgressView().tint(Roam.onInk) } else { Text("Save") } }
+                        Group { if working { ProgressView() } else { Text("Save") } }
                             .font(.headline)
-                            .foregroundStyle(Roam.onInk)
+                            .foregroundStyle(Roam.ink)
                             .frame(maxWidth: .infinity)
                             .frame(height: RoamTabBar.height)
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    // Liquid Glass, tinted the dark ink it was.
-                    .floatingBubble(Capsule(), tint: Roam.ink)
+                    // See-through Liquid Glass, like the tab bar.
+                    .floatingBubble(Capsule())
                     .opacity(canSave || working ? 1 : 0.35)
                     .disabled(!canSave)
                     .padding(.horizontal, RoamTabBar.sideMargin)
