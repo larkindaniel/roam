@@ -326,7 +326,11 @@ struct TripEditorSheet: View {
         return draft.name != opened.name || draft.description != opened.description || start != opened.start || end != opened.end
             || cities != opened.cities || countries != opened.countries
     }
-    private var canSave: Bool { !saving && !draft.name.trimmingCharacters(in: .whitespaces).isEmpty && start != nil && end != nil }
+    /// A name, both dates and, for a new trip, somewhere to go: a city, or a whole country planned from its page.
+    private var canSave: Bool {
+        !saving && !draft.name.trimmingCharacters(in: .whitespaces).isEmpty && start != nil && end != nil
+            && (draft.id != nil || !cities.isEmpty || !countries.isEmpty)
+    }
 
     var body: some View {
         NavigationStack {
