@@ -2,6 +2,23 @@
 
 Setup completed October 14, 2026 for the user's first internal phone test with Apple sign-in.
 
+## November 6, 2026 update
+
+Build 5, combining Kieran's product overhaul with the beta configuration and fixes, was signed,
+uploaded, processed as valid, and added to the existing `Roam Internal` TestFlight group. Its build
+ID is `f108055e-e52f-48d3-a957-b61a0177e3e4`. Existing internal testers can update in TestFlight.
+
+The overhaul's 34 migrations (`20261101000100` through `20261106000100`) were applied to this
+project. The remote now has 50 migration history entries; `plan` reports none pending and `check`
+passes. `google-place` was deployed and is active alongside `prepare-media`. The new
+`friends_feed()` RPC is present. Existing one-way follows became pending friend requests as designed:
+the beta has six mutual follow edges and three pending requests after migration.
+
+No `GOOGLE_PLACES_KEY` is set on the hosted function. It safely returns a fallback, so Google photos
+and ratings are unavailable until a server-side Places API (New) key is configured. Do not put that
+key in the iOS app. The refreshed project-scoped deployment token is in the ignored `.env.beta` and
+expires according to its Supabase token settings.
+
 ## Target and access
 
 - Organization: Roam, Free plan (`hhcmlcedfqllxefntitp`).
@@ -70,6 +87,6 @@ existing Python workers still intentionally reject non-loopback URLs. Real Apple
 upload must be verified on the phone. Support/privacy/terms destinations and moderation ownership
 remain setup for a wider beta/public release. Do not represent account-deletion revocation as complete.
 
-Signed archive/IPA verification is recorded in `apple-deployment-setup.md`. Next: upload the exported
-IPA to App Store Connect, wait for processing, and add the user to internal TestFlight testing after
-the user authorizes that step.
+Signed archive/IPA verification is recorded in `apple-deployment-setup.md`. Build 5 is available to
+the existing internal TestFlight tester. Additional testers require their own App Store Connect access
+and invitations; real-device behavior is still to be verified.

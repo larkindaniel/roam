@@ -50,10 +50,15 @@ The private key's contents were not read or copied into the repository. Keep the
 storage and back it up securely: Apple permits only one download. This App Store Connect key is
 separate from any Sign in with Apple server/revocation key. No such revocation key was created here.
 
-## Remaining deployment work
+## November 6, 2026 TestFlight update
 
-Hosted Supabase and Release setup are recorded in `docs/hosted-beta.md`. Upload and real-device
-verification remain outstanding. No build has been uploaded in this setup session.
+Version 1.0 build 5 was archived from the merged product overhaul and beta source, exported as a
+signed 9.9 MiB IPA, and passed `codesign --verify --deep --strict`. Apple accepted the upload, marked
+the build `VALID`, and the build was attached to the `Roam Internal` group. Build ID:
+`f108055e-e52f-48d3-a957-b61a0177e3e4`. The archive and export were generated in an isolated
+temporary checkout; their locations were not committed. Real-device verification remains outstanding.
+
+Hosted backend deployment status is recorded in `docs/hosted-beta.md`.
 
 Do not substitute another Apple team. Keep private signing material out of xcconfig files, app bundles,
 Git, screenshots and logs.
