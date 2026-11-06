@@ -523,11 +523,10 @@ struct ExperienceDetailView: View {
                 do {
                     circleAction(visited ? "checkmark" : "plus", tint: PlaceState.visited.markerColor, filled: visited, caption: visited ? "Been" : "Log",
                                  label: visited ? "Been here" : "Log a visit", identifier: rated ? "detail-add-visit" : "detail-log") {
-                        // Been here offers another visit, or taking the place off where you've been.
+                        // Been here offers only taking the place off where you've been; + Add visit is on your visits card.
                         if visited { choosingBeen = true } else { Task { await openLog(.firstLog) } }
                     }
                     .confirmationDialog("Been here", isPresented: $choosingBeen, titleVisibility: .hidden) {
-                        Button("Add another visit") { Task { await openLog(rated ? .addVisit : .firstLog) } }
                         // The one confirmation: picking it here removes it.
                         Button("Remove from places I've been", role: .destructive) { Task { await removeBeen(detail) } }
                     } message: {
