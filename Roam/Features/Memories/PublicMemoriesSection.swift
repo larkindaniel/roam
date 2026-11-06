@@ -131,15 +131,11 @@ struct PublicMemoriesSection: View {
     }
 }
 
-/// Reviews of the place as a card with no title: Google's rating first, then friends who've been here, one row each,
-/// their name with when they last went tucked right under it, and their stars at the far right when they ranked it.
+/// Friends who've been here, as a card with no title: one row each, their name with when they last went tucked right
+/// under it, and their stars at the far right when they ranked it.
 struct FriendMemoriesSection: View {
     let memories: [PublicMemory]
-    /// The place, for its Google rating, shown as the first row.
-    var place: ExperienceSummary? = nil
     let onReport: (ReportTarget) -> Void
-
-    private var googleRating: Double? { place?.googleRating }
 
     /// Each friend once, with their latest visit.
     private var latest: [PublicMemory] {
@@ -157,17 +153,13 @@ struct FriendMemoriesSection: View {
     }
 
     var body: some View {
-        if memories.isEmpty && googleRating == nil {
+        if memories.isEmpty {
             Label("None of your friends have been here yet.", systemImage: "person.2")
                 .font(.footnote).foregroundStyle(Theme.secondaryText)
                 .accessibilityIdentifier("friend-memories-empty")
         } else {
             let rows = latest
             VStack(spacing: 0) {
-                if let googleRating {
-                    googleRow(googleRating)
-                    if !rows.isEmpty { RowSeparator() }
-                }
                 ForEach(rows) { memory in
                     row(memory)
                     if memory.id != rows.last?.id { RowSeparator() }
@@ -177,31 +169,6 @@ struct FriendMemoriesSection: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("detail-friend-memories")
         }
-    }
-
-    /// Google's rating as a row like a friend's: a G for the avatar, how many reviews it's from under the name.
-    private func googleRow(_ rating: Double) -> some View {
-        let count = place?.googleRatingCount
-        return HStack(spacing: Theme.Spacing.m) {
-            Text("G")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.blue)
-                .frame(width: 48, height: 48)
-                .background(Circle().fill(Roam.ink.opacity(0.06)))
-            VStack(alignment: .leading, spacing: -2) {
-                Text("Google").font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                if let count {
-                    Text("\(count.formatted()) \(count == 1 ? "review" : "reviews")")
-                        .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                }
-            }
-            Spacer(minLength: 0)
-            stars(String(format: "%.1f", rating))
-        }
-        .padding(.vertical, Theme.Spacing.s)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Google rating \(String(format: "%.1f", rating)) out of 5\(count.map { " from \($0) reviews" } ?? "")")
-        .accessibilityIdentifier("detail-google-rating")
     }
 
     private func stars(_ value: String) -> some View {

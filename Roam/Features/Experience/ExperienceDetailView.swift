@@ -402,8 +402,7 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                // Google's rating first, then friends'.
-                FriendMemoriesSection(memories: friendMemories, place: summary, onReport: { target in reportReason = nil; reportTarget = target })
+                FriendMemoriesSection(memories: friendMemories, onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
@@ -543,6 +542,7 @@ struct ExperienceDetailView: View {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
+                googleRating(detail.summary)
             }
             .animation(.spring(duration: 0.3), value: anyState)
             .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
@@ -596,6 +596,27 @@ struct ExperienceDetailView: View {
                              Task { await confirmDeletion(DetailDeletion(experienceID: experienceID, visitID: visit.id,
                                                                          lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)) }
                          })
+        }
+    }
+
+    /// Google's stars at the right end of the buttons, with how many reviews they're from under them in place of a
+    /// caption.
+    @ViewBuilder private func googleRating(_ summary: ExperienceSummary) -> some View {
+        if let rating = summary.googleRating {
+            let value = String(format: "%.1f", rating)
+            VStack(alignment: .trailing, spacing: 6) {
+                Label(value, systemImage: "star.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Roam.ink)
+                    .monospacedDigit()
+                    .frame(height: 38)
+                Text(summary.googleRatingCount.map { "\($0.formatted(.number.notation(.compactName))) on Google" } ?? "Google")
+                    .font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1).fixedSize()
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Google rating \(value) out of 5\(summary.googleRatingCount.map { " from \($0) reviews" } ?? "")")
+            .accessibilityIdentifier("detail-google-rating")
         }
     }
 
