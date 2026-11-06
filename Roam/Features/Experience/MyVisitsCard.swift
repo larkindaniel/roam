@@ -39,7 +39,8 @@ struct MyVisitsCard: View {
                                    coordinate: coordinate, symbol: symbol, size: 48)
                     StatusMark(state: .visited).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                // The note's start tucked right under the date.
+                VStack(alignment: .leading, spacing: -2) {
                     Text(visit.visitDate.displayString).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
                     if !visit.publicNote.isEmpty {
                         Text(visit.publicNote.replacingOccurrences(of: "\n", with: " "))
