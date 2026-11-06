@@ -6,7 +6,7 @@ struct FeedRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
     @Environment(ActivityChangeStore.self) private var changes
-    @State private var cards: LoadPhase<[CountryFeedCard]> = .idle
+    @State private var cards: LoadPhase<[FriendFeedGroup]> = .idle
     @State private var unreadCount = 0
     @State private var scroll = ScrollPosition(edge: .top)
 
@@ -55,10 +55,8 @@ struct FeedRootView: View {
                 .accessibilityIdentifier("feed-empty")
         case .loaded(let value):
             LazyVStack(spacing: Theme.Spacing.l) {
-                ForEach(value) { card in
-                    CountryFeedCardView(card: card) {
-                        router.push(.countryUpdates(ownerID: card.author.id, countryCode: card.countryCode, title: card.title, byline: card.author.displayName))
-                    }
+                ForEach(value) { group in
+                    FriendGroupCard(group: group) { router.push(.friendGroup(group)) }
                 }
             }
             .accessibilityElement(children: .contain)
@@ -69,15 +67,8 @@ struct FeedRootView: View {
     private func load() async {
         if cards.value == nil { cards = .loading }
         do {
-            // Newest trip first, by when they were there (not when they posted); undated ones last.
-            cards = .loaded(try await services.plans.countryFeed().filter { !$0.isOwn }.sorted { left, right in
-                switch (left.lastVisit, right.lastVisit) {
-                case let (l?, r?): return l > r
-                case (nil, nil): return left.latestAt > right.latestAt
-                case (nil, _): return false
-                case (_, nil): return true
-                }
-            })
+            // A trip, a city or a country per card, newest first by when they were there (not when they posted).
+            cards = .loaded(FriendFeedGrouping.groups(try await services.plans.friendsFeed()))
         } catch {
             if cards.value == nil { cards = .failed(session.handle(error)) }
         }
@@ -85,120 +76,151 @@ struct FeedRootView: View {
     }
 }
 
-struct CountryFeedCardView: View {
-    let card: CountryFeedCard
+/// A friend's trip, city or country: their name and when, what it is, then their three best-ranked places as rows with
+/// their stars at the right.
+struct FriendGroupCard: View {
+    let group: FriendFeedGroup
     let onOpen: () -> Void
-
-    private var pictured: [TripFeedEntry] { card.entries.filter { !$0.media.isEmpty || $0.experience.photoURL != nil } }
 
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 HStack(spacing: Theme.Spacing.s) {
-                    AvatarView(member: card.author, size: 36)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(card.isOwn ? "You" : card.author.displayName).font(.subheadline.weight(.semibold))
-                        Text(MyTimeline.range(card.firstVisit, card.lastVisit) ?? "Updated \(card.latestAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(Roam.inkMuted)
+                    AvatarView(member: group.author, size: 36)
+                    VStack(alignment: .leading, spacing: -2) {
+                        Text(group.author.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
+                        if let dates = MyTimeline.range(group.firstVisit, group.lastVisit) {
+                            Text(dates).font(.caption).foregroundStyle(Roam.inkMuted)
+                        }
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                 }
-                Text(card.title).font(.roamTitle()).multilineTextAlignment(.leading)
-                if card.entries.contains(where: { !$0.media.isEmpty || $0.experience.photoURL != nil }) { photoStrip }
-                if let latest = card.entries.first {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(latest.experience.name).font(.headline)
-                        if !latest.publicNote.isEmpty {
-                            Text(latest.publicNote).font(.subheadline).foregroundStyle(Roam.inkMuted).lineLimit(2).multilineTextAlignment(.leading)
-                        }
+                FriendGroupTitle(kind: group.kind)
+                let rows = group.preview
+                VStack(spacing: 0) {
+                    ForEach(rows) { entry in
+                        row(entry)
+                        if entry.id != rows.last?.id { RowSeparator() }
                     }
                 }
-                Text(card.placeCount == 1 ? "1 place" : "\(card.placeCount) places").font(.footnote.weight(.semibold))
+                let more = group.places.count - rows.count
+                if more > 0 {
+                    Text("+ \(more) more").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                }
             }
-            .foregroundStyle(Roam.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .roamCard()
+            .roamCard(padding: Theme.Spacing.m)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("country-card-\(card.author.handle)-\(card.title)")
+        .accessibilityIdentifier("friend-group-\(group.author.handle)-\(group.id)")
     }
 
-    private var photoStrip: some View {
-        HStack(spacing: Theme.Spacing.xs) {
-            ForEach(pictured.prefix(3)) { entry in
-                PlacePhotoView(path: entry.media.first?.path, url: entry.experience.photoURL, credit: nil,
-                               label: "Photo of \(entry.experience.name)", height: pictured.count == 1 ? 180 : 110)
-            }
+    private func row(_ entry: TripFeedEntry) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            PlaceThumbnail(id: "feed-\(entry.id)", path: entry.media.sorted { $0.position < $1.position }.first?.path,
+                           url: entry.experience.photoURL, coordinate: entry.experience.coordinate, symbol: entry.experience.iconName, size: 48)
+            Text(entry.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 0)
+            if let score = entry.score { FriendStars(score: score) }
         }
+        .padding(.vertical, Theme.Spacing.s)
     }
 }
 
-/// Everything someone has done in one country, newest first.
-struct CountryUpdatesView: View {
-    let ownerID: UUID
-    let countryCode: String?
-    let title: String
-    var byline: String? = nil
+/// What a friend's card is about: a trip's name, a country with its flag, or a city with its country and flag small
+/// under it.
+struct FriendGroupTitle: View {
+    let kind: FriendFeedGroup.Kind
 
-    @Environment(AppServices.self) private var services
+    var body: some View {
+        switch kind {
+        case .trip(let name):
+            Text(name).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(2)
+        case .country(let code, let name):
+            Text(country(code, name)).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
+        case .city(let name, let code, let countryName):
+            VStack(alignment: .leading, spacing: -2) {
+                Text(name).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
+                Text(country(code, countryName)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+            }
+        }
+    }
+
+    private func country(_ code: String?, _ name: String?) -> String {
+        [TripTitle.flag(code), name ?? code ?? "Somewhere"].compactMap { $0 }.joined(separator: " ")
+    }
+}
+
+/// A friend's stars for a place, out of 5.
+struct FriendStars: View {
+    let score: Score
+    var color: Color = Roam.ink
+
+    var body: some View {
+        Label(score.formatted, systemImage: "star.fill")
+            .labelStyle(.titleAndIcon)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(color)
+            .accessibilityLabel("Rated \(score.formatted) out of 5")
+    }
+}
+
+/// All of a friend's places on a trip, in a city or in a country, as photo cards with their stars in the corner; when
+/// they span cities, each city heads its own places.
+struct FriendGroupView: View {
+    let group: FriendFeedGroup
+
     @Environment(AppRouter.self) private var router
-    @State private var entries: LoadPhase<[TripFeedEntry]> = .idle
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                if let byline {
-                    Text("\(byline)\u{2019}s places").font(.subheadline).foregroundStyle(Roam.inkMuted)
-                        .accessibilityIdentifier("country-updates-byline")
-                }
-                switch entries {
-                case .idle, .loading:
-                    SkeletonList(rows: 3)
-                case .failed(let message):
-                    InlineRetryView(message: message) { Task { await load() } }
-                case .loaded(let value) where value.isEmpty:
-                    Text("Nothing here that you can see yet.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-                case .loaded(let value):
-                    ForEach(value) { entry($0) }
+            LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                Text([group.author.displayName, MyTimeline.range(group.firstVisit, group.lastVisit)].compactMap { $0 }.joined(separator: " · "))
+                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                let cities = group.cities
+                if cities.count > 1 {
+                    ForEach(cities, id: \.name) { city in
+                        VStack(alignment: .leading, spacing: -2) {
+                            Text(city.name).font(.roamTitle(.title3)).foregroundStyle(Roam.ink)
+                            if case .trip = group.kind {
+                                Text([TripTitle.flag(city.countryCode), city.countryName].compactMap { $0 }.joined(separator: " "))
+                                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                            }
+                        }
+                        .padding(.top, Theme.Spacing.s)
+                        ForEach(city.places) { card($0) }
+                    }
+                } else {
+                    ForEach(group.places) { card($0) }
                 }
             }
             .padding(Theme.Spacing.l)
         }
         .background(Roam.paper)
         .navigationTitle(title)
-        .task { await load() }
-        .refreshable { await load() }
-        .screenIdentifier("country-updates")
+        .screenIdentifier("friend-group")
     }
 
-    private func entry(_ entry: TripFeedEntry) -> some View {
+    private var title: String {
+        switch group.kind {
+        case .trip(let name): return name
+        case .city(let name, _, _): return name
+        case .country(let code, let name): return [TripTitle.flag(code), name ?? code].compactMap { $0 }.joined(separator: " ")
+        }
+    }
+
+    private func card(_ entry: TripFeedEntry) -> some View {
         Button { router.push(.experience(entry.experience.id)) } label: {
-            PhotoCard(path: entry.media.first?.path, url: entry.experience.photoURL, credit: entry.experience.photoCredit,
-                      label: "Photo of \(entry.experience.name)", placeholderSymbol: entry.experience.iconName, height: 200, location: entry.experience.coordinate) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(entry.experience.name).font(.headline).multilineTextAlignment(.leading)
-                    Spacer(minLength: Theme.Spacing.s)
-                    if Score.isShown, let score = entry.score {
-                        Text(score.formatted).font(.system(.title3, design: .rounded).bold()).monospacedDigit()
-                    }
+            HeroPhotoCard(path: entry.media.sorted { $0.position < $1.position }.first?.path, url: entry.experience.photoURL,
+                          title: entry.experience.name, symbol: entry.experience.iconName, location: entry.experience.coordinate)
+                .overlay(alignment: .bottomTrailing) {
+                    if let score = entry.score { FriendStars(score: score, color: .white).padding(Theme.Spacing.l) }
                 }
-                Text([entry.experience.category?.title, entry.experience.locality, entry.visitDate.date?.displayString].compactMap { $0 }.joined(separator: " · "))
-                    .font(.footnote).foregroundStyle(Roam.inkMuted)
-                if !entry.publicNote.isEmpty {
-                    Text(entry.publicNote).font(.body).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .foregroundStyle(Roam.ink)
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("country-entry-\(entry.experience.name)")
-    }
-
-    private func load() async {
-        if entries.value == nil { entries = .loading }
-        do { entries = .loaded(try await services.plans.countryUpdates(ownerID: ownerID, countryCode: countryCode)) }
-        catch { if entries.value == nil { entries = .failed(error.roamMessage) } }
+        .accessibilityIdentifier("friend-group-place-\(entry.experience.name)")
     }
 }
 

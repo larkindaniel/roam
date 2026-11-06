@@ -298,27 +298,19 @@ extension FixtureBackend: PlanService {
         }.sorted { $0.latestAt > $1.latestAt }
     }
 
-    func countryFeed() async throws -> [CountryFeedCard] {
+    func friendsFeed() async throws -> FriendsFeed {
         let me = try await authenticatedActor()
+        func homes(_ id: UUID) -> [String] { members[id]?.homeCity?.countryCode.map { [$0] } ?? [] }
         let visible = visits.values.filter {
-            audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
-                && ($0.owner == me || (areFriends(me, $0.owner) && !mutes.contains(Pair(a: me, b: $0.owner))))
-        }
-        struct Key: Hashable { let owner: UUID; let country: String? }
-        return Dictionary(grouping: visible) { Key(owner: $0.owner, country: summary($0.experience, viewer: me)?.countryCode) }.compactMap { key, rows -> CountryFeedCard? in
-            let sorted = rows.sorted { $0.createdAt > $1.createdAt }
-            guard let latest = sorted.first else { return nil }
-            return CountryFeedCard(author: memberSummary(key.owner), countryCode: key.country, countryName: summary(latest.experience, viewer: me)?.countryName,
-                                   placeCount: Set(rows.map(\.experience)).count, latestAt: latest.createdAt, isOwn: key.owner == me,
-                                   entries: sorted.prefix(5).compactMap { tripFeedEntry($0, viewer: me) })
-        }.sorted { $0.latestAt > $1.latestAt }
-    }
-
-    func countryUpdates(ownerID: UUID, countryCode: String?) async throws -> [TripFeedEntry] {
-        let me = try await authenticatedActor()
-        return visits.values.filter {
-            $0.owner == ownerID && summary($0.experience, viewer: me)?.countryCode == countryCode && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
-        }.sorted { $0.createdAt > $1.createdAt }.compactMap { tripFeedEntry($0, viewer: me) }
+            $0.owner != me && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
+                && areFriends(me, $0.owner) && !mutes.contains(Pair(a: me, b: $0.owner))
+        }.sorted { $0.createdAt > $1.createdAt }
+        return FriendsFeed(myHomeCountries: homes(me), visits: visible.compactMap { row in
+            tripFeedEntry(row, viewer: me).map {
+                FriendFeedVisit(author: memberSummary(row.owner), tripID: row.tripID, tripName: row.tripID.flatMap { trips[$0]?.draft.name },
+                                homeCountries: homes(row.owner), entry: $0)
+            }
+        })
     }
 
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry] {

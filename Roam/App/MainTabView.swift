@@ -174,8 +174,8 @@ struct RouteDestinationView: View {
             SettingsView()
         case .trip(let id):
             TripDetailView(tripID: id)
-        case .countryUpdates(let ownerID, let countryCode, let title, let byline):
-            CountryUpdatesView(ownerID: ownerID, countryCode: countryCode, title: title, byline: byline)
+        case .friendGroup(let group):
+            FriendGroupView(group: group)
         case .placeGroup(let title, let subtitle, let ids):
             PlaceGroupView(title: title, subtitle: subtitle, ids: ids)
         case .homeCity(let city):

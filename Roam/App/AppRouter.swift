@@ -45,7 +45,7 @@ enum AppRoute: Hashable, Sendable {
     case search
     case ownProfile
     case trip(UUID)
-    case countryUpdates(ownerID: UUID, countryCode: String?, title: String, byline: String?)
+    case friendGroup(FriendFeedGroup)
     case placeGroup(title: String, subtitle: String?, ids: [UUID])
     case homeCity(Destination)
     /// A city's page, shared by Discover and My Places; `ownerID` is whose spots it shows (nil for yours).

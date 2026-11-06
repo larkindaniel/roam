@@ -370,23 +370,6 @@ enum TripTitle {
     }
 }
 
-/// One person's places in one country on the Friends tab.
-struct CountryFeedCard: Codable, Hashable, Identifiable, Sendable {
-    var author: MemberSummary
-    var countryCode: String?
-    var countryName: String?
-    var placeCount: Int
-    var latestAt: Date
-    var isOwn: Bool
-    var entries: [TripFeedEntry]
-
-    var id: String { "\(author.id.uuidString)-\(countryCode ?? "none")" }
-    var title: String { CountryTitle.text(name: countryName, code: countryCode) }
-    /// When they were there: the span of their visit dates here.
-    var firstVisit: LocalDate? { entries.compactMap(\.visitDate.date).min() }
-    var lastVisit: LocalDate? { entries.compactMap(\.visitDate.date).max() }
-}
-
 /// A state or province on your wishlist.
 struct SavedRegion: Codable, Hashable, Identifiable, Sendable {
     var countryCode: String
