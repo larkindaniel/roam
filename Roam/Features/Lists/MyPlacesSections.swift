@@ -137,7 +137,7 @@ struct PlaceRow: View {
                     StatusMark(state: item.state).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                    Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
                     if showsDetail {
                         Text(item.experience.category?.title ?? item.state.markerTitle).font(.footnote).foregroundStyle(Roam.inkMuted)
                     }
@@ -192,7 +192,7 @@ struct TripRow: View {
                     StatusMark(state: state).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(trip.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                    Text(trip.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
                     if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted) }
                 }
                 Spacer(minLength: 0)
@@ -239,7 +239,7 @@ struct CityRow: View {
                     mark.scaleEffect(0.75).offset(x: 6, y: 6)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(city.name).font(.headline).foregroundStyle(Roam.ink).multilineTextAlignment(.leading)
+                    Text(city.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
                     if !subtitle.isEmpty { Text(subtitle).font(.footnote).foregroundStyle(Roam.inkMuted) }
                 }
                 Spacer(minLength: 0)
