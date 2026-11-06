@@ -1,16 +1,40 @@
-# Roam build-run instructions
+# Roam agent instructions
 
-> **Current work is the product overhaul** on branch `kieran/roam-product-overhaul`. Before anything else, read
-> `docs/product-overhaul.md` (how we work, the app's model and screens) and `docs/design-language.md` (the visual rules
-> and shared components every screen must reuse). They, and Kieran's latest instructions, override this file, SPEC,
-> MILESTONES, DECISIONS and PLAN wherever they disagree. In short:
-> - commit locally and never push
-> - no AI attribution in commits (no `Co-Authored-By` trailer)
-> - don't run the full test suites
-> - build with `./scripts/build.sh <simulator-id>`, then install and launch for Kieran to check
->
-> The rest of this file describes the original M1–M8 build run and still applies where the overhaul hasn't changed
-> anything (data rules, security, secrets, no destructive remote commands).
+Read `README.md` ("How the app works") for the app's model and screens, and `docs/design-language.md` before touching
+any UI: every screen reuses its components. Those two, and Kieran's latest instructions, override the original v1
+contract (SPEC, MILESTONES, PLAN and the build run below) wherever they disagree.
+
+## Working on Roam now
+
+- **Branch:** `kieran/roam-product-overhaul`, cut from `codex/sol-max-handoff`.
+  - Commit locally after each round of changes. **Never push.**
+  - Commit messages are plain English describing what changed for the user (see `git log`).
+  - **No AI attribution:** no `Co-Authored-By` trailer. Kieran is the only author and committer.
+- **Speed over ceremony.** Don't run the full test suites.
+  - Build with `./scripts/build.sh <simulator-id>` (it runs XcodeGen and then builds).
+  - Then `xcrun simctl install … build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` and
+    `xcrun simctl launch --terminate-running-process … com.daniellarkin.roam`.
+  - When you change shared types or remove code, compile the tests with `xcodebuild … build-for-testing`. Don't run
+    them.
+- **Simulator:** iPhone 17, `CC85E084-8AB2-46F6-ABF7-12546336CCF5`, located in Waterloo. Kieran checks screens himself:
+  build, install and launch, but don't tap through the app unless he asks.
+- **Backend:** local Supabase in Docker. The tools are in `~/.local/bin` (`export PATH="$HOME/.local/bin:$PATH"`).
+  - Schema changes are forward-only migrations in `supabase/migrations/`. Apply them with
+    `supabase migration up --local`.
+  - To look at data, run `docker exec supabase_db_roam psql -U postgres`.
+  - A new edge function is only served after `supabase stop && supabase start`. Data survives the restart.
+  - Demo login: `kieran@roam.test`. The password is in `scripts/fixtures/setup.py`. The demo seed is
+    `scripts/fixtures/demo.py` and isn't idempotent (`plans_sql()` re-runs only trips, homes and visited cities).
+- **Secrets:** the Google Places key lives in `supabase/functions/.env` (gitignored) as `GOOGLE_PLACES_KEY`. Never commit
+  it, paste it anywhere or put any key in the app.
+- **Feedback loop:** Kieran sends many small UI notes, often mid-task. Fold each one in, rebuild, install, and commit in
+  small batches. When a note reverses an earlier one, the latest note wins. Remove the old version rather than keeping
+  both behind a flag.
+
+## The original build run (M1–M8, complete)
+
+The rest of this file is the original M1–M8 build run. Its rules on data, security, secrets, signing and destructive or
+remote commands still apply.
 
 Repository: `/Users/daniellarkin/Desktop/projects/capstone`.
 

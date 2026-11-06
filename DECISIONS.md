@@ -114,12 +114,12 @@ Append entries here with date, affected requirement/milestone, chosen rule, reas
 | 2026-10-14 | M8 / R00 accessibility | Xcode's automated accessibility audit runs on every main screen (`M8AccessibilityAuditTests`) and its findings were fixed rather than waived:<br>• Secondary text now uses one darker color, `Theme.secondaryText` (about 6.3:1 on white, versus about 3.5:1 for the system secondary gray).<br>• Light-mode sentiment colors were darkened to at least 5.4:1 on their fills.<br>• In-page destructive buttons use the theme red; system red is 3.6:1 on white.<br>• The wordmark and avatar initials scale with Dynamic Type.<br>• Destination chips, feed area lines and short notes no longer truncate.<br>The documented, non-failing exceptions are: advisory "nearly passed" contrast and bounded ("partial") Dynamic Type; contrast in iOS 26 scroll-edge zones under the translucent bars; disabled controls (WCAG 1.4.3); the system keyboard; MapKit attribution and cluster glyphs; and single-line text fields. Each screen's full findings are attached to the result bundle. | R00 accessibility; M8 "check Dynamic Type/VoiceOver" | `M8AccessibilityAuditTests` |
 | 2026-10-14 | M8 / R01 routes | The unused `AppRoute.findPeople` and the "Not available" route fallback were removed, so every route has a real screen and the switch is exhaustive. Find people opens the Members segment of Search. | No stale routes or placeholder screens | Compile-time exhaustive switch |
 | 2026-10-14 | M8 / testing | A `stress` fixture scenario adds a 49-character display name, a 104-character place name and a 13-place tie group for layout checks on the compact iPhone. The debug component catalogue reports the Reduce Motion setting the app received; the only app-defined motion (skeleton pulse, map camera moves) is gated on it. | M8 long names, large tie groups and Reduce Motion | `M8LayoutStressUITests`, `M8MotionUITests` |
-| 2026-11-02 | Product overhaul / scores | Scores are shown out of 5 everywhere (one decimal, half-up: 8.4 shows 4.2). Storage, ranking maths (`roam-category-v1`, D04 bands) and the database stay on 0–10; only display changes. | Matches the 5-star scale people know and sits beside Google's star rating | `Score.formatted`; `Score.formattedOutOf10` keeps the stored value for tests |
+| 2026-11-02 | Scores | Scores are shown out of 5 everywhere (one decimal, half-up: 8.4 shows 4.2). Storage, ranking maths (`roam-category-v1`, D04 bands) and the database stay on 0–10; only display changes. | Matches the 5-star scale people know and sits beside Google's star rating | `Score.formatted`; `Score.formattedOutOf10` keeps the stored value for tests |
 
-## Product overhaul (November 2026)
+## Current product (November 2026)
 
-The overhaul on branch `kieran/roam-product-overhaul` replaced several decisions above. `docs/product-overhaul.md` is
-the authority for current behaviour, and `docs/design-language.md` for UI. The main changes:
+The app has since moved on from several decisions above. README's "How the app works" describes current behaviour, and
+`docs/design-language.md` covers UI. The main changes:
 
 | Replaces | Now |
 |---|---|

@@ -1,7 +1,7 @@
 # Roam design language
 
 How Roam's visible screens look and the shared pieces they're built from. Read this before building or changing any UI.
-It describes what's in the app now; `docs/product-overhaul.md` covers the product model and screens.
+It describes what's in the app now; README's "How the app works" covers the product model and screens.
 
 ## Principles
 
