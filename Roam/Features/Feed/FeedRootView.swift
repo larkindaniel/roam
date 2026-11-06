@@ -168,7 +168,7 @@ struct FriendGroupTitle: View {
     }
 
     private func country(_ code: String?, _ name: String?) -> String {
-        [TripTitle.flag(code), name ?? code ?? "Somewhere"].compactMap { $0 }.joined(separator: " ")
+        [name ?? code ?? "Somewhere", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
     }
 }
 
@@ -198,14 +198,16 @@ struct FriendGroupView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                // Whose it is and when, under the title as on their card.
+                // Whose it is and when, snug under the title as on their card, with more room before the first city.
                 FriendGroupByline(group: group)
+                    .padding(.bottom, Theme.Spacing.s)
                 let cities = group.cities
                 // The country and flag on each city only when the cities are in more than one country.
                 let countries = Set(cities.map { $0.countryCode?.uppercased() })
                 ForEach(cities, id: \.name) { city in cityCard(city, showsCountry: countries.count > 1) }
             }
-            .padding(Theme.Spacing.l)
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.l)
         }
         // Clear of the floating tab bar at the bottom.
         .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
@@ -219,7 +221,7 @@ struct FriendGroupView: View {
         switch group.kind {
         case .trip(let name): return name
         case .city(let name, _, _): return name
-        case .country(let code, let name): return [TripTitle.flag(code), name ?? code].compactMap { $0 }.joined(separator: " ")
+        case .country(let code, let name): return [name ?? code, TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
         }
     }
 
@@ -230,7 +232,7 @@ struct FriendGroupView: View {
         return VStack(spacing: 0) {
             Button { router.push(.city(destination, ownerID: nil)) } label: {
                 CityHeroCard(city: destination,
-                             subtitle: showsCountry ? [TripTitle.flag(city.countryCode), city.countryName].compactMap { $0 }.joined(separator: " ") : "",
+                             subtitle: showsCountry ? [city.countryName, TripTitle.flag(city.countryCode)].compactMap { $0 }.joined(separator: " ") : "",
                              cornerRadius: Theme.cornerRadius - margin)
             }
             .buttonStyle(.plain)
