@@ -115,3 +115,21 @@ Append entries here with date, affected requirement/milestone, chosen rule, reas
 | 2026-10-14 | M8 / R01 routes | The unused `AppRoute.findPeople` and the "Not available" route fallback were removed, so every route has a real screen and the switch is exhaustive. Find people opens the Members segment of Search. | No stale routes or placeholder screens | Compile-time exhaustive switch |
 | 2026-10-14 | M8 / testing | A `stress` fixture scenario adds a 49-character display name, a 104-character place name and a 13-place tie group for layout checks on the compact iPhone. The debug component catalogue reports the Reduce Motion setting the app received; the only app-defined motion (skeleton pulse, map camera moves) is gated on it. | M8 long names, large tie groups and Reduce Motion | `M8LayoutStressUITests`, `M8MotionUITests` |
 | 2026-11-02 | Product overhaul / scores | Scores are shown out of 5 everywhere (one decimal, half-up: 8.4 shows 4.2). Storage, ranking maths (`roam-category-v1`, D04 bands) and the database stay on 0–10; only display changes. | Matches the 5-star scale people know and sits beside Google's star rating | `Score.formatted`; `Score.formattedOutOf10` keeps the stored value for tests |
+
+## Product overhaul (November 2026)
+
+The overhaul on branch `kieran/roam-product-overhaul` replaced several decisions above. `docs/product-overhaul.md` is
+the authority for current behaviour, and `docs/design-language.md` for UI. The main changes:
+
+| Replaces | Now |
+|---|---|
+| C08 one-way follows, public profiles | Two-way friend requests; no member profile pages; names and avatars don't open anything |
+| C07 / D12 public by default | Each log picks who can see it: Only me, Friends or Public (Public is the default) |
+| D10 five tabs | Three tabs, Discover, Friends and My Places, under Roam's own floating glass tab bar |
+| D08 Want to Go | Wishlists at every level (place, city, state, country); been always beats wishlist |
+| D14 up to six photos | No photo limit per visit |
+| D16 New experiences this year, D18 shared Want to Go | Removed with the profile pages |
+| Visible 0–10 scores | Roam scores hidden (`Score.isShown == false`) except friends' stars and your own, out of 5; storage and ranking stay out of 10 (D04 unchanged) |
+| Feed of activity cards | The Friends tab shows one card per friend and city, made from dated visits only |
+| Planning places | Only cities and countries are planned on trips; places are saved |
+

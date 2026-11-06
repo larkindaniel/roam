@@ -1,5 +1,17 @@
 # Roam build-run instructions
 
+> **Current work is the product overhaul** on branch `kieran/roam-product-overhaul`. Before anything else, read
+> `docs/product-overhaul.md` (how we work, the app's model and screens) and `docs/design-language.md` (the visual rules
+> and shared components every screen must reuse). They, and Kieran's latest instructions, override this file, SPEC,
+> MILESTONES, DECISIONS and PLAN wherever they disagree. In short:
+> - commit locally and never push
+> - no AI attribution in commits (no `Co-Authored-By` trailer)
+> - don't run the full test suites
+> - build with `./scripts/build.sh <simulator-id>`, then install and launch for Kieran to check
+>
+> The rest of this file describes the original M1–M8 build run and still applies where the overhaul hasn't changed
+> anything (data rules, security, secrets, no destructive remote commands).
+
 Repository: `/Users/daniellarkin/Desktop/projects/capstone`.
 
 These instructions govern the **separate implementation run** once the user requests it. Writing these documents did not start implementation. Read `SPEC.md`, `MILESTONES.md` and `DECISIONS.md` before code; use `PLAN.md` for confirmed background and `docs/roam-reference-map.md` for screenshot lookup. Latest explicit user instructions override documents; SPEC is the current v1 contract. Historical inventory/capture-gap prose and PLAN's old draft milestone list cannot reintroduce deferred features.

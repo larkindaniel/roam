@@ -1,180 +1,169 @@
 # Roam product overhaul: working context
 
-Context for anyone (including a fresh Claude session) picking up the product overhaul on branch
-`kieran/roam-product-overhaul`. It covers what the app is now, the design direction, how the screens fit
-together, and how we work. It is not a changelog; `git log` has that.
+Start here if you're picking up work on branch `kieran/roam-product-overhaul`, whether you're a person or an agent. This
+page covers what the app is now, how its screens fit together and how we work. Two companion docs go with it:
 
-The overhaul deliberately departs from the original v1 contract in `SPEC.md` and `MILESTONES.md`. Where this
-document and those disagree, this document and the latest instructions from Kieran win. `DECISIONS.md` records
-the individual product decisions as they are made.
+- `docs/design-language.md`: the visual rules and the shared components. Read it before touching UI.
+- `docs/overhaul-changelog.md`: a plain-English list of everything the overhaul changed.
+
+The overhaul deliberately departs from the original v1 contract (`SPEC.md`, `MILESTONES.md`, `DECISIONS.md`, `PLAN.md`,
+`CLAUDE.md`'s milestone run). Where they disagree, this page, the design language and Kieran's latest instructions win.
+The older documents still hold for things the overhaul didn't touch, such as the ranking formula, the data rules and
+the security model.
 
 ## How we work
 
-- **Branch:** `kieran/roam-product-overhaul`, branched from `codex/sol-max-handoff`. Commit locally after each
-  round of changes. **Never push.**
-- **Speed over ceremony:** don't run the full test suites. Build with `./scripts/build.sh <simulator-id>`
-  (it runs XcodeGen and then builds), install, and check by eye in the simulator. The unit and UI tests are
-  out of date with the overhaul and aren't kept green right now.
-- **Simulator:** iPhone 17, `CC85E084-8AB2-46F6-ABF7-12546336CCF5`, with its location set to Waterloo.
-  Simulator taps are often delivered late or dropped, so take a screenshot to confirm what actually happened.
-- **Backend:** local Supabase in Docker. Tools live in `~/.local/bin` (`export PATH="$HOME/.local/bin:$PATH"`).
-  - Schema changes are forward-only migrations in `supabase/migrations/`; apply them with
+- **Branch:** `kieran/roam-product-overhaul`, cut from `codex/sol-max-handoff`.
+  - Commit locally after each round of changes. **Never push.**
+  - Commit messages are plain English describing what changed for the user (see `git log`).
+  - **No AI attribution:** no `Co-Authored-By` trailer. Kieran is the only author and committer.
+- **Speed over ceremony.** Don't run the full test suites.
+  - Build with `./scripts/build.sh <simulator-id>` (it runs XcodeGen and then builds).
+  - Then `xcrun simctl install … build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` and
+    `xcrun simctl launch --terminate-running-process … com.daniellarkin.roam`.
+  - When you change shared types or remove code, compile the tests with `xcodebuild … build-for-testing`. Don't run
+    them.
+- **Simulator:** iPhone 17, `CC85E084-8AB2-46F6-ABF7-12546336CCF5`, located in Waterloo. Kieran checks screens himself:
+  build, install and launch, but don't tap through the app unless he asks.
+- **Backend:** local Supabase in Docker. The tools are in `~/.local/bin` (`export PATH="$HOME/.local/bin:$PATH"`).
+  - Schema changes are forward-only migrations in `supabase/migrations/`. Apply them with
     `supabase migration up --local`.
-  - A newly added edge function is only served after `supabase stop` and `supabase start`. Data survives
-    the restart.
-  - The base demo seed in `scripts/fixtures/demo.py` isn't idempotent. To re-run only its plans part
-    (trips, home cities, visited cities), call `plans_sql()`.
-  - Demo login: `kieran@roam.test`. The password is in `scripts/fixtures/setup.py`.
-- **Secrets:** the Google Places key is in `supabase/functions/.env` (gitignored) as `GOOGLE_PLACES_KEY`.
-  `.env.example` documents it. Never put keys in the app.
-- **Feedback loop:** Kieran sends many small UI notes in quick succession, often while you're mid-task. Fold
-  each one in, rebuild, screenshot, and commit in small batches.
-
-## Design direction: "Apple, Liquid Glass"
-
-The goal is for Roam to look and feel like a first-party iOS 26 app. Prefer system patterns and Liquid Glass
-(`glassEffect`) over custom styling, and don't invent decoration.
-
-- **Colour:** Apple neutral greys. The background is the grouped grey (`#F2F2F7`) and cards are off-white
-  (`Roam.paperRaised`). Cards are set apart by a soft shadow all round, not borders. The only colours are
-  photos and the three place-state colours:
-  - **Green = been** (visited)
-  - **Blue = going** (planned, on a trip)
-  - **Yellow = saved** (wishlist)
-
-  Use these colours consistently for buttons, pins, globe country fills and tabs.
-- **Shape:** continuous "squircle" corners everywhere. `Theme.cornerRadius` is 26. Elements nested inside a
-  card get a smaller radius so the curves stay concentric. Corners of a sheet that sit at the bottom of the
-  screen follow the screen's own rounded corners.
-- **Floating controls:** glass circles and pills (`floatingBubble(_:)` in `ExploreRootView.swift`) sit over
-  full-bleed maps. A screen's top bar is a row of glass buttons rather than a navigation title.
-- **Tab bar:** Roam draws its own floating glass tab bar (`RoamTabBar` in `MainTabView.swift`) so it can
-  match the screen's margins (wider at the sides than below, because the screen corners curve in) and step
-  aside per screen. To hide it, use `.roamTabBar(hidden:)`, not `.toolbar(.hidden, for: .tabBar)`.
-- **Swipe-up cards** (`GlobeSheetLayout`) follow the Apple Maps place sheet:
-  1. **Bubble:** a short floating pill with wide margins and the grab bar, most see-through.
-  2. **Half:** narrow margins, less see-through. Cards inside it are a see-through grey.
-  3. **Full:** solid and edge to edge, stopping just below the top buttons. Cards inside it turn white.
-
-  The header (grab bar, title, main action) stays fixed. On place pages and My Places, scrolling replaces it
-  with a dark fade at the top showing just the name, small, white and centred. Scrolling up raises the card;
-  pulling down past the top lowers it.
-- **Copy:** short and plain. No explanation paragraphs, no place counts on countries or cities, and no
-  repeated information.
-- **Scores:** shown out of 5 (`Score.formatted`). They are still stored and ranked out of 10
-  (`formattedOutOf10`, formula `roam-category-v1`).
+  - To look at data, run `docker exec supabase_db_roam psql -U postgres`.
+  - A new edge function is only served after `supabase stop && supabase start`. Data survives the restart.
+  - Demo login: `kieran@roam.test`. The password is in `scripts/fixtures/setup.py`. The demo seed is
+    `scripts/fixtures/demo.py` and isn't idempotent (`plans_sql()` re-runs only trips, homes and visited cities).
+- **Secrets:** the Google Places key lives in `supabase/functions/.env` (gitignored) as `GOOGLE_PLACES_KEY`. Never commit
+  it, paste it anywhere or put any key in the app.
+- **Feedback loop:** Kieran sends many small UI notes, often mid-task. Fold each one in, rebuild, install, and commit in
+  small batches. When a note reverses an earlier one, the latest note wins. Remove the old version rather than keeping
+  both behind a flag.
 
 ## What the app is
 
-Roam is a travel memory and discovery app for friends. You log places you've been, rank them, plan trips, save
-places you want to go, and discover places through what your friends loved. It is MapKit only; Google is used
-only server-side for place photos and star ratings.
+Roam is a travel memory and discovery app for friends. You log places you've been, rank them, plan trips by city, save
+places you want to go, and see where your friends went. Maps are MapKit. Google is used only server-side, for place,
+city and country photos and for star ratings.
 
-### Core model
+### Model
 
-- **Place → city → country.** Grouping by city and country is automatic.
-- **Place states:** been (a logged visit), going (on an upcoming trip), saved (bookmarked).
-- **Planning is by city:** only cities go on trips; places are saved, and a trip shows what you've saved in its cities.
-- **Trips** cover one or more cities and take their status from their dates: planning (no dates), upcoming,
-  now, or past. Trips without dates sort after dated ones. Places on a trip are planned. Logging a visit can
-  attach it to a trip.
-- **Home cities:** one or more per person. Anything within 100 km of a home city counts as home and stays off
-  the travel timeline. When logging, the visit defaults to the nearest home; you can pick a trip instead.
-- **Visited cities:** you can mark a city as visited without logging any place. It appears only in your
-  passport, never in friends' feeds.
-- **Passport:** every country and city you've been to. A friend sees your whole passport but can only open the
-  places you've shared with friends; private ones show as "Kept private".
-- **Friends** are two-way friend requests. The Friends feed is grouped by country.
-- **Lists:** custom lists exist in the backend but are hidden from My Places for now; saved places are grouped by country.
-- **Scores:** each place card shows three sources separately, never blended: You, Friends (the average of
-  your friends' scores), and Google (★ out of 5 with a review count, when Google has the place).
-- **Photos:**
-  - Places: a photo from a Roam visit, else Google's photo (with its credit), else a full-colour map with a
-    red pin showing the category icon.
-  - Cities, trips and saved countries: Wikipedia's lead photo (`CityGuide`, `WikipediaPhoto`). Saved
-    countries use their main city's photo, because a country's article leads with its flag.
-  - Look Around is a binoculars button on a place page's map.
-
-### Backend pieces added in the overhaul
-
-| Migration or function | Adds |
-|---|---|
-| `20261101001100_country_feed` | `country_feed()` and `country_updates(owner, country)`, the Friends feed grouped by country |
-| `20261102000100_home_cities_trip_cities` | `home_cities` and `trip_cities` tables; `my_home_cities`, `set_home_city`, `set_trip_city`; `trip_json` now includes `cities` |
-| `20261102000200_passport` | `visited_cities` table; `set_city_visited`; `passport(owner)`, available to yourself and friends |
-| `20261102000300_google_place_details` | Google rating and count columns on places; service-only `google_lookup_targets` and `save_google_lookup` |
-| `supabase/functions/google-place` | Places API (New) text search near the place (match within 750 m), first photo and rating, refreshed about weekly; the app calls it via `refreshGoogleDetails` |
+- **Place → city → state → country.** Grouping is automatic from a place's address.
+  - Mountains and lakes without a town take their municipality as their city.
+  - Countries, states and towns are never place results.
+- **States:**
+  - **Been:** a logged visit, a logged city or a home.
+  - **Going:** on an upcoming trip.
+  - **Saved:** wishlisted. Places, cities, states and whole countries can all be saved.
+- **Been beats wishlist** at every level. Being somewhere removes it from your wishlist (database triggers in
+  `20261105001200_been_beats_wishlist`). Saving a place also puts its city and country on your wishlist until you've
+  been.
+- **Planning is by city:** trips hold cities (or whole countries). Places are saved, and a trip shows what you've saved
+  in its cities. Trip status comes from its dates.
+- **Homes:** one or more home cities. A home counts as been. When logging, "Part of" defaults to a trip happening now
+  near the place, otherwise to Home.
+- **Logging:**
+  - A visit has a feeling (Didn't like, Neutral or Liked it; new logs start at Neutral), an optional date, a trip or
+    home, photos (no limit), a note and an audience (Only me, Friends or Public; Public is the default).
+  - Ranking uses comparisons, and the score is stored out of 10.
+  - Cities can be logged too, with the places you went there.
+  - Countries and states ask "Where in Norway?".
+- **Friends** are two-way friend requests. There are no member profile pages: names and avatars don't open anything.
+- **Scores** are hidden app-wide (`Score.isShown == false`), except friends' stars and your own on a place page, shown
+  out of 5. Google's rating is shown separately as `★ 4.6 (1.2K)`.
+- **Photos:** your own photos come first. After that, a place uses Google, then a map with a pin. Cities, states and
+  countries use Google's photo, cached and retried daily when missing, then Wikipedia.
+- **Set aside, not deleted:** custom lists (backend only), sending places (the Send button is greyed), the unit and UI
+  test suites (out of date). Member profiles, the passport, shared wishlists and the Explore tab were removed.
 
 ## Screen tree
 
 ```
-App
-├── Floating tab bar: Discover · Friends · My Places  (Roam's own; hidden on place pages,
-│   Explore-style full maps, and My Places until its card is fully up)
+App (Roam's own floating glass tab bar: Discover · Friends · My Places; each tab button returns to its home)
 │
-├── Discover  (ForYouRootView)
-│   ├── Top row of glass buttons: [+ Log] [Search] [Map · Profile]
-│   │   ├── Tapping Search hides the other buttons; results list cities, Roam places and Apple Maps places
-│   │   └── The row tucks away when you scroll down and returns when you scroll up
-│   ├── "Places we think you'd enjoy": suggested city cards with Wikipedia photos and "Dhyan has been"
-│   └── → City page (below)
+├── Discover  (Features/ForYou/ForYouRootView)
+│   ├── Search bar (cities, countries, places) · settings cog
+│   └── "Places we think you'd enjoy": big city photo cards (loading: SkeletonCards) → City page
 │
-├── Friends  (FeedRootView)
-│   ├── Country cards per friend  →  Country updates (that friend's places in that country)
-│   ├── Friend requests, notifications, profile
-│   └── Friend profile  →  globe, Passport (countries → cities → shared places)
+├── Friends  (Features/Feed/FeedRootView)
+│   ├── Top right: friends and requests · notifications · settings
+│   └── One card per friend and city, newest visit first (undated visits left out):
+│       avatar, name and dates → the city's photo with "Japan 🇯🇵" (opens the city) → each place as a row with a chevron
 │
-├── My Places  (MyPlacesRootView: full-screen satellite globe with a swipe-up card)
-│   ├── Top left: back to Discover (bubble and half) or + Log (full), then recenter
-│   ├── Top right: map (Explore for the country in view) · profile
-│   ├── Bubble: "My Places" with a green "+ Add a place"
-│   ├── Segmented toggle; the globe shows and turns to the chosen tab's places
-│   │   ├── Been (green): "N countries · N cities", passport stamps (→ passport country → city),
-│   │   │   "Add a city", home cities (→ home city spots), past timeline (trips and journeys by country)
-│   │   ├── Going (blue): next trip as a large photo card with a countdown, other trips, New trip
-│   │   └── Saved (yellow): home cities, then country photo tiles (→ wishlist country). Custom lists are set aside for now.
-│   └── Tapping or panning to a country you have places in flies there; the card switches to that country
+├── My Places  (Features/Lists: full-screen globe with a swipe-up card)
+│   ├── Search bubble when minimised; the globe always shows every place's dot (been > going > saved)
+│   ├── Saved (left, opens first): homes, upcoming trips with + New trip, saved countries/states as photo cards or a grid
+│   └── Been (right): homes, countries you've been to as photo cards or a grid, past trips
 │
-├── Place page  (ExperienceDetailView: full-screen map with a swipe-up card, tab bar hidden)
-│   ├── Map: red category pin, freely movable; Look Around binoculars at the bottom left
-│   ├── Bubble: name and a round blue directions button (asks Apple Maps or Google Maps)
-│   └── Card: category · area; action buttons (green Log, blue Plan, yellow Save, Send; once the place is
-│       been, planned or saved, that button fills in and the other two hide); photo gallery;
-│       friends' visits; You / Friends / Google scores; private note; memories
+├── City page  (Features/ForYou/CityPageView): the app's explorer, shared by every tab
+│   ├── Full-screen map showing only your places (green been, yellow saved), with Apple Maps–style icons
+│   ├── Minimised: "Search <city>" in the tab bar's spot, with the blue directions circle beside it
+│   ├── Open: name with Set as home, round buttons Log · Wishlist · Trip · Send · Plan; Start → End when been;
+│   │   photo and blurb; untitled wishlist and been cards; suggested places as big photo cards
+│   └── Opening a place stays on this map: the card swaps to the place (no slide), and back returns the city
 │
-├── Trip page  (TripDetailView): cities, dates, places by country then city, add from wishlist, add a city
-├── City page  (CityPageView, shared by Discover, My Places, friends' passports, and every map button)
-│   ├── Full-screen map: your spots green, suggestions red; Apple Maps–style icons from Apple's place types
-│   ├── Opening a place stays on this one map (Apple Maps style): the map glides to it, the card stays put and its
-│   │   content switches to the place, always halfway up; back returns the city card. No new screen, no slide.
-│   ├── Bubble (minimised, in the tab bar's spot): "Search <city>", results limited to the city and around it
-│   ├── Half / full: search at the top, then name · Set as home · Plan (trip or Plan with AI) on one line,
-│   │   Wikipedia photo and blurb, your spots, places we think you'd enjoy; searching swaps in results
-│   ├── Tab bar only when the card is fully up; back button top left
-│   └── Map buttons open the city you're in (Discover) or the country-in-view's main city (My Places)
-└── Sheets: Log a place → rating flow ("Part of": home or trip), Add to trip, Destination picker,
-    New trip (optional side-by-side start and end dates), Share, Plan with AI
+├── Country / state page  (CountryPageView): name and flag, Been · Wishlist · Trip · Plan, photo and blurb,
+│   homes, trips, wishlist and been city rows, suggested cities
+│
+├── Place page  (Features/Experience/ExperienceDetailView): map with a swipe-up card
+│   ├── Header: name, city chip, ★ Google rating, directions; buttons Log/Been · Save · Send
+│   │   (Been offers only Delete)
+│   └── Card: photo gallery (dots), Wikipedia blurb, your visits (rows; tap to edit, swipe to delete,
+│       + Add visit), then a titleless card with You first, then friends with their stars, then everyone else
+│
+├── Trip page  (Features/Plans/TripViews): name with an edit icon, date bubbles, cities as photo cards
+│   (several countries: a country card with city rows), swipe to delete, Add to trip at the bottom, bin to delete
+│
+├── Settings  (cog): profile row → Edit profile (photo, name, handle, bio, home cities), account, privacy
+│
+└── Sheets
+    ├── Log (RatingFlowView): name, feeling, date chip, Part of, photos, note, glass Save
+    │   ├── then comparisons: "Which did you like more?", two cards, Undo · Too tough · Skip
+    │   └── the same screen, filled in, edits a visit (it can change trip, date, photos, note, audience)
+    ├── City log: the same, plus places you went (rows) and photos
+    ├── New trip: name, Start → End, cities, × with discard
+    └── Plan with AI (pink): ChatGPT · Claude · copy
 ```
+
+## Backend added in the overhaul
+
+These are the migrations from `20261101…` on in `supabase/migrations/`, each named for what it adds:
+
+- **Friendships and audience:** `friendships`, `audience_trips_lists_shares_taste`, `friend_memories`
+- **Homes, trips and cities:**
+  - `home_cities_trip_cities`, `home_marks_visited`, `trip_countries`, `trip_places_to_saved`
+  - `set_visit_trip` (change a visit's trip; it must be yours)
+- **Passport and been:**
+  - `passport`, `visited_city_dates`, `passport_marked_dates`, `city_logs`, `city_log_photos`
+  - `been_beats_wishlist` (triggers that clear wishlists of anywhere you've been)
+- **Wishlists:** `saved_cities`, `saved_countries`, `saved_regions*`
+- **Photos:** `google_place_details`, `country_photos`, `area_photos`, `photo_misses_retry_daily`, `my_photos`,
+  `no_photo_limit`
+- **Friends tab:** `friends_feed()` returns friends' dated visits you may see; the app groups them per friend and city
+  (`Roam/Domain/FriendFeed.swift`).
+- **Edge function:** `supabase/functions/google-place` looks up Google photos and ratings near a place, refreshed about
+  weekly.
 
 ## Key files
 
 | Area | File |
 |---|---|
-| Tab bar and routes | `Roam/App/MainTabView.swift`, `Roam/App/AppRouter.swift` |
+| Tokens, cards, buttons | `Roam/DesignSystem/Theme.swift`, `RoamMarks.swift`, `PlaceMapMarkers.swift` |
+| Tab bar, routes | `Roam/App/MainTabView.swift`, `Roam/App/AppRouter.swift` |
 | Swipe-up card | `Roam/DesignSystem/GlobeSheetLayout.swift` |
-| Tokens, cards, pills | `Roam/DesignSystem/Theme.swift`, `RoamMarks.swift` |
-| Globe | `Roam/Features/Globe/GlobeMapView.swift`, `Roam/Geography/CountryGeometry.swift` |
-| My Places | `Roam/Features/Lists/ListsRootView.swift` (model and root), `MyPlacesTabs.swift`, `MyPlacesSections.swift` |
-| Discover | `Roam/Features/ForYou/ForYouRootView.swift` |
-| City page (the app's explorer) | `Roam/Features/ForYou/CityPageView.swift` |
-| Place page | `Roam/Features/Experience/ExperienceDetailView.swift` |
-| Photos and Wikipedia | `Roam/Places/PlaceBackground.swift` |
+| Standard rows, date row | `Roam/Features/Lists/MyPlacesSections.swift` |
+| Photo cards, My Places tabs | `Roam/Features/Lists/MyPlacesTabs.swift` |
+| Photos, gallery, Wikipedia | `Roam/Places/PlaceBackground.swift` |
+| Discover / city / country | `Roam/Features/ForYou/` |
+| Place page | `Roam/Features/Experience/ExperienceDetailView.swift`, `MyVisitsCard.swift` |
+| Friends on a place | `Roam/Features/Memories/PublicMemoriesSection.swift` |
+| Friends tab | `Roam/Features/Feed/FeedRootView.swift`, `Roam/Domain/FriendFeed.swift` |
+| Log screen | `Roam/Features/Rating/RatingFlowView.swift`, `RatingFlowModel.swift` |
 | Trips | `Roam/Features/Plans/TripViews.swift` |
+| Search | `Roam/Features/Search/PlaceSearchResults.swift` |
 
 ## Open ends
 
-- The unit and UI tests haven't been updated for the overhaul.
-- The fixture backend (`FixtureBackend`) only stubs the newer features.
-- iOS 18 still needs a runtime check: Liquid Glass falls back to frosted material before iOS 26.
-- Place photos come from Google when there's no visit photo. Google's terms require the photo credit and
-  limit how long its data is kept (we refresh about weekly).
+- The unit and UI tests haven't caught up with the overhaul. They compile but aren't kept green.
+- The fixture backend only stubs the newer features.
+- iOS 18 still needs a runtime check (Liquid Glass falls back to frosted material before iOS 26).
+- Google's terms require its photo credit and limit how long its data is kept. We refresh about weekly.
+- Friends' profiles may come back later as a rebuilt page.
