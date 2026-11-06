@@ -1,6 +1,12 @@
 -- M5: inspected uploads, attachment authorization, memory edits, private notes, retained public
 -- memories, standalone post removal, storage read/delete policy and durable cleanup leases.
 begin;
+-- This file covers content published to all members and reads over friend edges. Audience and the
+-- friend request flow have their own coverage in 07_friends_audience_plans_test.sql.
+create function public.test_publish_to_all() returns trigger language plpgsql as $test$ begin new.audience:='public'; return new; end $test$;
+create trigger zz_test_publish_to_all before insert on public.visits for each row execute function public.test_publish_to_all();
+create trigger zz_test_publish_to_all before insert on public.ratings for each row execute function public.test_publish_to_all();
+
 create extension if not exists pgtap with schema extensions;
 select plan(93);
 

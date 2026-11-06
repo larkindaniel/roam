@@ -119,7 +119,7 @@ final class ProfileSetupModelTests: XCTestCase {
         await model.loadSuggestions()
         XCTAssertFalse(model.suggestions.value?.isEmpty ?? true)
         XCTAssertTrue(model.following.isEmpty)
-        XCTAssertTrue(model.suggestions.value?.allSatisfy { !$0.isFollowing } ?? false)
+        XCTAssertTrue(model.suggestions.value?.allSatisfy { $0.friendState != .friends } ?? false)
     }
 }
 

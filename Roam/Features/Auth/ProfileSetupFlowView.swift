@@ -74,7 +74,7 @@ private struct SetupSteps: View {
     @ViewBuilder private var content: some View {
         switch model.step {
         case .name:
-            question("What should we call you?", "This is how other travellers see you. You can change it later.")
+            question("What should we call you?", "This is how other people see you. You can change it later.")
             RoamTextField(title: "Display name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
                 .onChange(of: model.displayName) { _, _ in model.saveDraft() }
             Button("Continue") { model.continueFromName() }
@@ -96,7 +96,7 @@ private struct SetupSteps: View {
             Button {
                 Task { await model.createProfile() }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text("Continue") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Continue") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(Validation.handle(model.handle) != nil || model.busy || model.handleState == .checking)
@@ -122,10 +122,11 @@ private struct SetupSteps: View {
             .buttonStyle(SecondaryButtonStyle())
             .disabled(model.avatarBusy)
             .accessibilityIdentifier("choose-avatar")
-            Button(model.avatarPath == nil ? "Not now" : "Continue") { model.finishPhotoStep() }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.avatarBusy)
-                .accessibilityIdentifier("setup-continue")
+            if model.avatarPath == nil {
+                Button("Not now") { model.finishPhotoStep() }.buttonStyle(QuietButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+            } else {
+                Button("Continue") { model.finishPhotoStep() }.buttonStyle(PrimaryButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+            }
         case .home:
             question("Where's home?", "Optional. Roam uses it as your starting point for search. Home never counts as a place you've visited.")
             Button {
@@ -145,26 +146,43 @@ private struct SetupSteps: View {
             Button {
                 Task { await model.saveHomeAndContinue() }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text(model.homeCity == nil ? "Skip" : "Continue") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text(model.homeCity == nil ? "Skip" : "Continue") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.busy)
             .accessibilityIdentifier("setup-continue")
         case .people:
-            question("Find travellers to follow", "Optional. Following someone puts their ratings in your feed. Nobody is followed unless you choose.")
+            question("Find friends", "Optional. Friends see each other's places once both of you agree. Nobody is added unless you choose.")
             peopleList
-            Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .visibility }
+            Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .tastes }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("setup-continue")
+        case .tastes:
+            question("What do you like?", "Optional. These answers go into research briefs, and you can change them any time in Your Tastes.")
+            ForEach(TasteProfile.questions) { item in
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(item.title).font(.subheadline.weight(.semibold))
+                    Picker(item.title, selection: Binding(get: { model.taste[keyPath: item.keyPath] ?? "" },
+                                                          set: { model.taste[keyPath: item.keyPath] = $0.isEmpty ? nil : $0 })) {
+                        Text("Skip").tag("")
+                        ForEach(item.options, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("setup-taste-\(item.title)")
+                }
+            }
+            Button(model.taste == .empty ? "Skip for now" : "Continue") { Task { await model.saveTastes() } }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("setup-tastes-continue")
         case .visibility:
-            question("Your profile is public", "Roam is social by design. Here's what other signed-in members can see.")
+            question("You choose who sees what", "Each entry can be for friends, only you, or everyone. Your name, photo and bio are visible to members.")
             VisibilityExplainer()
             Button {
                 Task {
                     if let profile = await model.finish() { session.completeSetup(profile) }
                 }
             } label: {
-                if model.busy { ProgressView().tint(.white) } else { Text("Start using Roam") }
+                if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Start using Roam") }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.busy)
@@ -205,9 +223,9 @@ private struct SetupSteps: View {
         case .loaded(let rows):
             VStack(spacing: 0) {
                 ForEach(rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,
+                    MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
                                   followState: model.pendingFollows.contains(row.member.id) ? .pending
-                                      : (model.following.contains(row.member.id) ? .following : (row.followsViewer ? .followBack : .follow)),
+                                      : (model.following.contains(row.member.id) ? .requested : FollowButtonState(row.friendState)),
                                   onToggleFollow: { Task { await model.toggleFollow(row.member) } })
                     Divider()
                 }
@@ -220,8 +238,8 @@ private struct SetupSteps: View {
 struct VisibilityExplainer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            row("person.crop.circle", "Visible to members", "Your name, handle, photo, bio, home city, rankings and scores, Want to Go list, travel globe, and the public notes and photos on your visits.")
-            row("dot.radiowaves.left.and.right", "Shared automatically", "When you finish ranking or add a visit, it appears on your profile and in your followers' feeds.")
+            row("person.crop.circle", "Visible to everyone on Roam", "Your name, handle, photo, bio, home city and wishlist, plus any visit you mark Public.")
+            row("dot.radiowaves.left.and.right", "Shared with friends", "Visits are for friends unless you choose otherwise, and appear in their Friends tab.")
             row("lock.fill", "Only you", "Private notes, your email, your settings and who you've blocked or muted.")
         }
         .roamCard()

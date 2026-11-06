@@ -4,6 +4,9 @@ import SwiftUI
 /// "Use current location" asks for permission only when tapped.
 struct DestinationPickerSheet: View {
     let purpose: DestinationPickerPurpose
+    var title: String?
+    /// When set, the chosen city goes here instead of the shared destination store.
+    var onPick: ((Destination) -> Void)?
 
     @Environment(AppServices.self) private var services
     @Environment(DestinationStore.self) private var store
@@ -12,10 +15,11 @@ struct DestinationPickerSheet: View {
     @State private var results: LoadPhase<[Destination]> = .idle
     @State private var locationMessage: String?
     @State private var locating = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 if purpose != .homeCity {
                     Section {
                         Button {
@@ -38,7 +42,7 @@ struct DestinationPickerSheet: View {
                 Section {
                     switch results {
                     case .idle:
-                        Text("Type a city or town, like “Portland” or “Kyoto”.").foregroundStyle(Theme.secondaryText)
+                        EmptyView()
                     case .loading:
                         HStack { ProgressView(); Text("Searching…").foregroundStyle(Theme.secondaryText) }
                     case .failed(let message):
@@ -49,7 +53,7 @@ struct DestinationPickerSheet: View {
                     case .loaded(let destinations):
                         ForEach(destinations) { destination in
                             Button {
-                                store.select(destination, for: purpose)
+                                pick(destination)
                                 dismiss()
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -66,14 +70,38 @@ struct DestinationPickerSheet: View {
                     }
                 }
             }
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "City or town")
-            .navigationTitle(purpose == .homeCity ? "Home city" : "Choose destination")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }.accessibilityIdentifier("close-destination-picker")
-                }
+            .listRowBackground(Roam.paperRaised)
             }
+            // Just a search bar with an × beside it that closes the sheet; no title bar.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: Theme.Spacing.s) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+                        TextField(title ?? "City or town", text: $query)
+                            .focused($searchFocused)
+                            .submitLabel(.search)
+                            // Type as you like: no capitalising or correcting.
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("destination-search")
+                    }
+                    .padding(.horizontal, Theme.Spacing.m)
+                    .frame(height: 44)
+                    .background(Capsule().fill(Roam.ink.opacity(0.08)))
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .floatingBubble(Circle())
+                    .accessibilityLabel("Close")
+                    .accessibilityIdentifier("close-destination-picker")
+                }
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.l)
+                .padding(.bottom, Theme.Spacing.s)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .onAppear { searchFocused = true }
             .task(id: query) {
                 // 300 ms debounce; a newer query cancels this task, so stale results never land.
                 let current = query
@@ -83,10 +111,16 @@ struct DestinationPickerSheet: View {
                 await search(current)
             }
         }
+        .roamSheetStyle()
         .screenIdentifier("destination-picker")
     }
 
+    private func pick(_ destination: Destination) {
+        if let onPick { onPick(destination) } else { store.select(destination, for: purpose) }
+    }
+
     private func search(_ text: String) async {
+        services.location.requestAccessIfNeeded()
         results = .loading
         do {
             let found = try await services.places.searchDestinations(query: text)
@@ -106,7 +140,7 @@ struct DestinationPickerSheet: View {
         switch outcome {
         case .located(let coordinate, _):
             if let destination = try? await services.places.destination(for: coordinate) {
-                store.select(destination, for: purpose)
+                pick(destination)
                 locationMessage = outcome.message
                 dismiss()
             } else {

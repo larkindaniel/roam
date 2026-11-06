@@ -15,9 +15,12 @@ extension SupabaseBackend {
 }
 
 extension SupabaseBackend: SocialService {
-    /// Desired-state follow; retries are safe.
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool {
-        try await rpc("set_follow", ["p_user_id": RPC.uuid(userID), "p_following": RPC.bool(following)])
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState {
+        try await rpc("friend_action", ["p_user_id": RPC.uuid(userID), "p_action": RPC.string(action.rawValue)])
+    }
+
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow> {
+        try await page("incoming_friend_requests", ["p_cursor": RPC.string(cursor)])
     }
 
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> {

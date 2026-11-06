@@ -7,14 +7,14 @@ extension FixtureBackend: MemoryService {
     func visit(visitID: UUID) async throws -> Visit {
         let me = try await authenticatedActor()
         if scenario == "gallery-read-failure", injectedContentFaults.insert("visit-read").inserted { throw RoamError.timeout }
-        guard let row = visits[visitID], row.owner == me || isVisibleMember(row.owner, to: me) else { throw RoamError.notFound }
+        guard let row = visits[visitID], audienceAllows(owner: row.owner, audience: row.audience, viewer: me) else { throw RoamError.notFound }
         return visitModel(row)
     }
 
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
         let me = try await authenticatedActor()
         guard experiences[experienceID] != nil else { throw RoamError.notFound }
-        var rows = visits.values.filter { $0.experience == experienceID && ($0.owner == me || isVisibleMember($0.owner, to: me)) }
+        var rows = visits.values.filter { $0.experience == experienceID && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
             .sorted { ($0.createdAt, $0.id.uuidString) > ($1.createdAt, $1.id.uuidString) }
         if let cursor {
             guard let (date, id) = Self.parseCursor(cursor) else { throw RoamError.validation("Refresh these memories and try again.") }

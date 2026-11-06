@@ -131,3 +131,11 @@ deletion.
 ```sh
 supabase stop   # stops only the roam containers
 ```
+
+## Google photos and ratings
+
+`google-place` looks a place up on Google Places (New) for a photo and star rating, using `GOOGLE_PLACES_KEY`
+from the ignored `supabase/functions/.env` (see `.env.example`). The app calls it when a Discover city or a
+place page shows places without one; each place is looked up at most about once a week. Without a key it
+returns nothing and places keep their visit photos or map. Like any new function, it is served after
+`supabase stop` / `supabase start`.

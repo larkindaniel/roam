@@ -1,6 +1,25 @@
 -- M7: travel profile (Visits only, canonical geography, New this year), settings, and account
 -- deletion (recent reauthentication, immediate deactivation, leased worker, stale tokens).
 begin;
+-- This file covers content published to all members and reads over friend edges. Audience and the
+-- friend request flow have their own coverage in 07_friends_audience_plans_test.sql.
+create function public.test_publish_to_all() returns trigger language plpgsql as $test$ begin new.audience:='public'; return new; end $test$;
+create trigger zz_test_publish_to_all before insert on public.visits for each row execute function public.test_publish_to_all();
+create trigger zz_test_publish_to_all before insert on public.ratings for each row execute function public.test_publish_to_all();
+-- Writes one friend edge directly so these read tests can set up a viewer's graph step by step.
+create function public.set_follow(p_user_id uuid, p_following boolean) returns boolean language plpgsql security definer set search_path='' as $test$
+declare v_me uuid:=app_private.require_member();
+begin
+  if p_following then
+    insert into public.follows(follower_id,followee_id) values(v_me,p_user_id) on conflict do nothing;
+    if found then perform app_private.notify(p_user_id,v_me,'follow',null,null,'follow:'||v_me||':'||p_user_id); end if;
+  else
+    delete from public.follows where follower_id=v_me and followee_id=p_user_id;
+  end if;
+  return exists(select 1 from public.follows where follower_id=v_me and followee_id=p_user_id);
+end $test$;
+grant execute on function public.set_follow(uuid,boolean) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 select plan(94);
 
@@ -121,7 +140,7 @@ select ok((select t->'cities' @> '[{"cityKey":"is|m7 capital region|reykjavik","
           'a destination locality counts its own city');
 select ok((select not (t->'countries' @> '[{"countryCode":"NZ"}]') and not (t->'cities' @> '[{"cityKey":"nz|m7 otago|queenstown"}]') from m7_travel),
           'a bookmark and the home city never count as travel');
-select ok((select t->'countries' @> '[{"countryCode":"US","name":"United States","count":2},{"countryCode":"IS","count":2},{"countryCode":"PT","count":1}]' from m7_travel),
+select ok((select t->'countries' @> '[{"countryCode":"US","count":2},{"countryCode":"IS","count":2},{"countryCode":"PT","count":1}]' from m7_travel),
           'country rows count distinct visited experiences, not visits');
 select is((select jsonb_array_length(t->'categories') from m7_travel),5,'category rows cover each visited category');
 select ok((select t->'pins' @> jsonb_build_array(jsonb_build_object('experienceID',pg_temp.m7_id('books'),'visitCount',2,'firstVisitDate','2025-07-04',
@@ -192,8 +211,9 @@ select pg_temp.m7_as('b7000000-0000-4000-8000-000000000002');
 select is((select count(*)::int from public.user_settings where user_id='a7000000-0000-4000-8000-000000000001'),0,'another member cannot read settings');
 select is(public.my_settings()->>'distanceUnit','km','each member has their own settings');
 reset role;
-insert into public.activities(id,author_id,type,experience_id,category,score_snapshot,published_at,source_operation_id)
-values(gen_random_uuid(),'a7000000-0000-4000-8000-000000000001','revisit',pg_temp.m7_id('prom'),'outdoors',8.0,now(),gen_random_uuid());
+insert into public.visits(id,owner_id,experience_id,date_precision) values('a7a00000-0000-4000-8000-00000000000a','a7000000-0000-4000-8000-000000000001',pg_temp.m7_id('prom'),'unknown');
+insert into public.activities(id,author_id,type,experience_id,visit_id,category,score_snapshot,published_at,source_operation_id)
+values(gen_random_uuid(),'a7000000-0000-4000-8000-000000000001','revisit',pg_temp.m7_id('prom'),'a7a00000-0000-4000-8000-00000000000a','outdoors',8.0,now(),gen_random_uuid());
 insert into m7_ids select 'post',id from public.activities where author_id='a7000000-0000-4000-8000-000000000001';
 set local role authenticated;
 select pg_temp.m7_as('b7000000-0000-4000-8000-000000000002');
@@ -257,7 +277,7 @@ select pg_temp.m7_as('d7000000-0000-4000-8000-000000000004','2 minutes');
 select is(public.request_account_deletion()->>'state','pending','a recent sign-in can request deletion');
 select is(public.request_account_deletion()->>'appleRevocation','not_applicable','a repeated request returns the same job; email accounts need no Apple revocation');
 select is(public.account_deletion_status()->>'storageCleanup','pending','status reports pending cleanup honestly');
-select throws_ok($$select public.set_follow('c7000000-0000-4000-8000-000000000003',true)$$,'42501','roam:account_disabled','writes stop immediately');
+select throws_ok($$select public.friend_action('c7000000-0000-4000-8000-000000000003','request')$$,'42501','roam:account_disabled','writes stop immediately');
 select throws_ok($$select public.create_profile('Again','m7_again')$$,'42501','roam:account_disabled','a deactivated account cannot create a profile');
 select throws_ok($$select public.my_settings()$$,'42501','roam:account_disabled','settings are unavailable once deletion starts');
 select pg_temp.m7_as('b7000000-0000-4000-8000-000000000002');

@@ -40,6 +40,8 @@ struct Visit: Codable, Hashable, Identifiable, Sendable {
     var media: [MediaRef]
     var createdAt: Date
     var updatedAt: Date
+    var audience: Audience = .friends
+    var tripID: UUID? = nil
 
     /// Newest by visit date, unknown dates last, stable ID tie-break.
     static func historyOrder(_ lhs: Visit, _ rhs: Visit) -> Bool {
@@ -67,6 +69,8 @@ struct PublicMemory: Codable, Hashable, Identifiable, Sendable {
     var isOwn: Bool
     /// Latest feed post for this Visit; nil once rating activity was removed.
     var activityID: UUID? = nil
+    /// A friend's current score for this place, when they ranked it.
+    var score: Score? = nil
 }
 
 struct PrivateNote: Codable, Hashable, Sendable {
@@ -108,7 +112,7 @@ struct ExperienceDetail: Codable, Hashable, Sendable {
     var publicActivity: [ActivityItem]
 }
 
-/// A row in Been / Want to Go / Shared Want to Go.
+/// A row in Been / Wishlist / Shared Wishlist.
 struct ListEntry: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary
     /// Owner's category score and rank (owner may be another member on public lists).
@@ -175,8 +179,7 @@ struct Comment: Codable, Hashable, Identifiable, Sendable {
 
 struct MemberRow: Codable, Hashable, Identifiable, Sendable {
     var member: MemberSummary
-    var isFollowing: Bool
-    var followsViewer: Bool
+    var friendState: FriendState
     var isSelf: Bool
 
     var id: UUID { member.id }
@@ -191,6 +194,8 @@ struct Page<Item: Hashable & Sendable>: Hashable, Sendable {
 
 enum NotificationType: String, Codable, Hashable, Sendable {
     case follow
+    case friendRequest = "friend_request"
+    case friendAccept = "friend_accept"
     case like
     case comment
 }

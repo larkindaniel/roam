@@ -74,11 +74,13 @@ struct PublicMemoriesSection: View {
     let onOpenAuthor: (UUID) -> Void
     let onOpenPhotos: (UUID?) -> Void
     let onReport: (ReportTarget) -> Void
+    /// Friends' entries, already shown in their own section above.
+    var excludedIDs: Set<UUID> = []
 
-    private var others: [PublicMemory] { model.memories.filter { !$0.isOwn } }
+    private var others: [PublicMemory] { model.memories.filter { !$0.isOwn && !excludedIDs.contains($0.id) } }
 
     private var header: some View {
-        Text("From travellers").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+        Text("From everyone else").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder private var allPhotos: some View {
@@ -105,7 +107,7 @@ struct PublicMemoriesSection: View {
             if !model.hasLoaded && model.isLoading {
                 SkeletonList(rows: 2)
             } else if model.hasLoaded && others.isEmpty {
-                Text("No public memories from other travellers yet. When people log or revisit this place, their notes and photos appear here.")
+                Text("Nobody else has shared anything about this place yet.")
                     .font(.subheadline).foregroundStyle(Theme.secondaryText)
                     .accessibilityIdentifier("memories-empty")
             } else {
@@ -127,6 +129,105 @@ struct PublicMemoriesSection: View {
         .roamCard()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-public-memories")
+    }
+}
+
+/// Friends who've been here, as a card with no title: one row each, their name with when they last went tucked right
+/// under it, and their stars at the far right when they ranked it.
+struct FriendMemoriesSection: View {
+    /// Your own row at the top, when you've ranked the place.
+    struct Yours {
+        let member: MemberSummary
+        let score: Score
+        let lastVisit: VisitDate?
+    }
+
+    let memories: [PublicMemory]
+    var yours: Yours? = nil
+    /// Opens a friend's profile from their row.
+    var onOpenAuthor: ((UUID) -> Void)? = nil
+    let onReport: (ReportTarget) -> Void
+
+    /// Each friend once, with their latest visit.
+    private var latest: [PublicMemory] {
+        let byFriend = Dictionary(grouping: memories) { $0.author.id }
+        return byFriend.values.compactMap { $0.sorted(by: Self.newer).first }.sorted(by: Self.newer)
+    }
+
+    private static func newer(_ a: PublicMemory, _ b: PublicMemory) -> Bool {
+        switch (a.visitDate.date, b.visitDate.date) {
+        case let (x?, y?) where x != y: return x > y
+        case (nil, _?): return false
+        case (_?, nil): return true
+        default: return a.createdAt > b.createdAt
+        }
+    }
+
+    var body: some View {
+        if memories.isEmpty && yours == nil {
+            Label("None of your friends have been here yet.", systemImage: "person.2")
+                .font(.footnote).foregroundStyle(Theme.secondaryText)
+                .accessibilityIdentifier("friend-memories-empty")
+        } else {
+            let rows = latest
+            VStack(spacing: 0) {
+                if let yours {
+                    ownRow(yours)
+                    if !rows.isEmpty { RowSeparator() }
+                }
+                ForEach(rows) { memory in
+                    row(memory)
+                    if memory.id != rows.last?.id { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-friend-memories")
+        }
+    }
+
+    private func stars(_ value: String) -> some View {
+        Label(value, systemImage: "star.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Roam.ink)
+            .labelStyle(.titleAndIcon)
+    }
+
+    /// You, laid out like a friend: your stars from your ranking.
+    private func ownRow(_ yours: Yours) -> some View {
+        line(member: yours.member, name: "You", date: yours.lastVisit, score: yours.score)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("detail-own-review")
+    }
+
+    private func line(member: MemberSummary, name: String, date: VisitDate?, score: Score?) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            AvatarView(member: member, size: 48)
+            VStack(alignment: .leading, spacing: -2) {
+                Text(name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                Text(date?.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
+                    .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if let score {
+                stars(score.formatted)
+                    .accessibilityLabel("Rated \(score.formatted) out of 5")
+            }
+        }
+        .padding(.vertical, Theme.Spacing.s)
+        .contentShape(Rectangle())
+    }
+
+    private func row(_ memory: PublicMemory) -> some View {
+        line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
+        // Profiles are set aside for now (MemberProfiles), so the row only opens one once they're back.
+        .onTapGesture { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
+        .accessibilityAddTraits(MemberProfiles.available && onOpenAuthor != nil ? .isButton : [])
+        .contextMenu {
+            Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("memory-card-\(memory.id.uuidString)")
     }
 }
 
@@ -152,16 +253,17 @@ struct PublicMemoryCard: View {
                     .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)
                 }
                 .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
-                .accessibilityHint("Opens the profile")
+                .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
                 Spacer(minLength: 0)
-                Menu {
-                    Button { onReport() } label: { Label("Report memory", systemImage: "flag") }
-                } label: {
-                    Image(systemName: "ellipsis").frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                if Score.isShown, let score = memory.score {
+                    Text(score.formatted)
+                        .font(.system(.body, design: .rounded).bold())
+                        .monospacedDigit()
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .accessibilityLabel("Rated \(score.formatted) out of 5")
                 }
-                .accessibilityLabel("More for \(memory.author.displayName)'s memory")
-                .accessibilityIdentifier("memory-overflow-\(memory.id.uuidString)")
             }
             if !memory.publicNote.isEmpty {
                 Text(memory.publicNote)

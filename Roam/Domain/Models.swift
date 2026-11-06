@@ -20,7 +20,7 @@ struct Destination: Codable, Hashable, Identifiable, Sendable {
 
     /// "Portland, Oregon, United States" style disambiguation.
     var subtitle: String {
-        [region, countryName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+        [region, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     var displayName: String {
@@ -32,6 +32,8 @@ enum PlaceProviderKind: String, Codable, Hashable, Sendable {
     case mapkit
     /// Deterministic fictional places for tests/debug only; never produced in Release builds.
     case fixture
+    /// Added by a member because no provider had it.
+    case custom
 }
 
 /// A place returned by a provider before (or after) it becomes a Roam experience.
@@ -66,7 +68,7 @@ struct PlaceCandidate: Codable, Hashable, Identifiable, Sendable {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 
     var areaLine: String {
-        [locality, region, countryName].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
+        [locality, region, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
     }
 }
 
@@ -110,15 +112,54 @@ struct OwnProfile: Codable, Hashable, Identifiable, Sendable {
     var summary: MemberSummary { MemberSummary(id: id, handle: handle, displayName: displayName, avatarPath: avatarPath) }
 }
 
+/// Where the viewer stands with another member. Friendship is two-way: a request stays
+/// pending until the other member accepts.
+enum FriendState: String, Codable, Hashable, Sendable {
+    case none
+    case sent
+    case received
+    case friends
+}
+
+enum FriendAction: String, Codable, Hashable, Sendable {
+    case request
+    case accept
+    case decline
+    case cancel
+    case remove
+}
+
+extension FriendState {
+    /// What tapping the friend button does in this state.
+    var primaryAction: FriendAction {
+        switch self {
+        case .none: return .request
+        case .sent: return .cancel
+        case .received: return .accept
+        case .friends: return .remove
+        }
+    }
+
+    /// The state to show while `action` is in flight.
+    func applying(_ action: FriendAction) -> FriendState {
+        switch action {
+        case .request: return self == .received ? .friends : (self == .none ? .sent : self)
+        case .accept: return self == .received ? .friends : self
+        case .decline: return self == .received ? .none : self
+        case .cancel: return self == .sent ? .none : self
+        case .remove: return self == .friends ? .none : self
+        }
+    }
+}
+
 struct Relationship: Codable, Hashable, Sendable {
     var isSelf: Bool
-    var isFollowing: Bool
-    var followsViewer: Bool
+    var friendState: FriendState
     var isMuted: Bool
     var isBlocked: Bool
 
-    static let selfRelationship = Relationship(isSelf: true, isFollowing: false, followsViewer: false, isMuted: false, isBlocked: false)
-    static let none = Relationship(isSelf: false, isFollowing: false, followsViewer: false, isMuted: false, isBlocked: false)
+    static let selfRelationship = Relationship(isSelf: true, friendState: .none, isMuted: false, isBlocked: false)
+    static let none = Relationship(isSelf: false, friendState: .none, isMuted: false, isBlocked: false)
 }
 
 /// Public profile header data; every count is a server-derived all-time total.
@@ -168,11 +209,19 @@ struct ExperienceSummary: Codable, Hashable, Identifiable, Sendable {
     var followingScore: Score?
     var followingCount: Int
     var viewer: ViewerExperienceState
+    /// A linked photo and its required credit, loaded from its source.
+    var photoURL: URL? = nil
+    var photoCredit: String? = nil
+    /// Google's star rating out of 5 and how many reviews it's from, shown beside Roam's scores, never mixed in.
+    var googleRating: Double? = nil
+    var googleRatingCount: Int? = nil
+    /// Apple's own place type (MKPOICategory…), for detailed icons.
+    var providerCategory: String? = nil
 
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 
     var areaLine: String {
-        [locality, countryName].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
+        [locality, CountryName.display(countryName, code: countryCode)].compactMap { $0 }.filter { !$0.isEmpty }.uniqued().joined(separator: ", ")
     }
 }
 
@@ -207,7 +256,7 @@ enum RoamError: Error, Equatable, LocalizedError {
         case .unavailable: return "This content isn't available."
         case .validation(let message): return message
         case .conflict(let message): return message
-        case .staleRevision: return "Your list changed since you started. Refresh the comparisons to place this experience."
+        case .staleRevision: return "Your list changed since you started. Refresh the comparisons to place this one."
         case .alreadyRated: return "Already been — add a visit instead."
         case .lastVisitConfirmationRequired: return "This is now your last visit. Confirm deleting it and its ranking before continuing."
         case .mediaExpired: return "This upload expired. Your photo is kept; retry uploads it again."
@@ -237,5 +286,13 @@ extension Array where Element: Hashable {
     func uniqued() -> [Element] {
         var seen = Set<Element>()
         return filter { seen.insert($0).inserted }
+    }
+}
+
+extension Array {
+    /// The first element for each key, in order.
+    func uniqued<Key: Hashable>(by key: (Element) -> Key) -> [Element] {
+        var seen = Set<Key>()
+        return filter { seen.insert(key($0)).inserted }
     }
 }

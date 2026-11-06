@@ -13,6 +13,8 @@ final class DestinationCompleter: NSObject, MKLocalSearchCompleterDelegate {
         completer.delegate = self
         completer.resultTypes = .address
         completer.addressFilter = MKAddressFilter(including: [.locality])
+        // Towns near you come first, as in Apple Maps.
+        if let nearby = MapKitPlaceSearchProvider.nearbyRegion() { completer.region = nearby }
     }
 
     func completions(for query: String) async throws -> [MKLocalSearchCompletion] {

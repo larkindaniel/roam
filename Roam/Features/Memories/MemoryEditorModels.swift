@@ -78,7 +78,6 @@ final class VisitMemoryEditorModel {
         if pending == nil {
             guard Validation.characterCount(note) <= 5_000 else { error = "Public notes can have up to 5,000 characters."; return }
             guard date.date.map({ $0 <= today }) ?? true else { error = "Choose today or an earlier visit date."; return }
-            guard mediaIDs.count <= 6 else { error = "A visit can have up to six photos."; return }
             pending = VisitEditPayload(operationID: UUID(), visitID: original.id, note: note, date: date, mediaIDs: mediaIDs)
         }
         persist()

@@ -1,6 +1,25 @@
 -- M6: follow graph, chronological feed and cursors, following score, likes, flat comments,
 -- mute (feed only), block (mutual exclusion everywhere), Shared Want to Go and notifications.
 begin;
+-- This file covers content published to all members and reads over friend edges. Audience and the
+-- friend request flow have their own coverage in 07_friends_audience_plans_test.sql.
+create function public.test_publish_to_all() returns trigger language plpgsql as $test$ begin new.audience:='public'; return new; end $test$;
+create trigger zz_test_publish_to_all before insert on public.visits for each row execute function public.test_publish_to_all();
+create trigger zz_test_publish_to_all before insert on public.ratings for each row execute function public.test_publish_to_all();
+-- Writes one friend edge directly so these read tests can set up a viewer's graph step by step.
+create function public.set_follow(p_user_id uuid, p_following boolean) returns boolean language plpgsql security definer set search_path='' as $test$
+declare v_me uuid:=app_private.require_member();
+begin
+  if p_following then
+    insert into public.follows(follower_id,followee_id) values(v_me,p_user_id) on conflict do nothing;
+    if found then perform app_private.notify(p_user_id,v_me,'follow',null,null,'follow:'||v_me||':'||p_user_id); end if;
+  else
+    delete from public.follows where follower_id=v_me and followee_id=p_user_id;
+  end if;
+  return exists(select 1 from public.follows where follower_id=v_me and followee_id=p_user_id);
+end $test$;
+grant execute on function public.set_follow(uuid,boolean) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 select plan(97);
 
@@ -75,13 +94,13 @@ select ok(not has_function_privilege('authenticated','app_private.follow_page(uu
 -- 2. Follow graph -------------------------------------------------------------------------------
 set local role authenticated;
 set local request.jwt.claims to '{"sub":"b6000000-0000-4000-8000-000000000002","role":"authenticated"}';
-select throws_ok($$select public.set_follow('b6000000-0000-4000-8000-000000000002',true)$$,'22023',null,'members cannot follow themselves');
+select throws_ok($$select public.friend_action('b6000000-0000-4000-8000-000000000002','request')$$,'22023',null,'members cannot add themselves');
 select is(public.set_follow('a6000000-0000-4000-8000-000000000001',true),true,'a member follows another');
 select is(public.set_follow('a6000000-0000-4000-8000-000000000001',true),true,'repeating a follow is a harmless desired state');
 select is((select count(*)::int from public.follows where follower_id='b6000000-0000-4000-8000-000000000002' and followee_id='a6000000-0000-4000-8000-000000000001'),1,
           'a follow is one directional edge');
 select is((public.public_profile('a6000000-0000-4000-8000-000000000001')->>'followerCount')::int,1,'follower counts persist');
-select is((public.public_profile('a6000000-0000-4000-8000-000000000001')->'relationship'->>'followsViewer')::boolean,false,'follows are one-way');
+select is((public.public_profile('a6000000-0000-4000-8000-000000000001')->'relationship'->>'friendState'),'friends','an edge from the viewer reads as friends');
 set local request.jwt.claims to '{"sub":"e6000000-0000-4000-8000-000000000005","role":"authenticated"}';
 select is(public.set_follow('a6000000-0000-4000-8000-000000000001',true),true,'a second member follows the author');
 set local request.jwt.claims to '{"sub":"c6000000-0000-4000-8000-000000000003","role":"authenticated"}';
@@ -94,9 +113,8 @@ select is((select jsonb_agg(i->'member'->>'handle' order by ordinal) from jsonb_
           '["m6_blocked","m6_follower","m6_muter"]'::jsonb,'followers are visible members in stable handle order');
 select is((select jsonb_agg(i->'member'->>'handle') from jsonb_array_elements(public.followers('a6000000-0000-4000-8000-000000000001','MUT',null)->'items') i),
           '["m6_muter"]'::jsonb,'follower search is a case-insensitive literal filter');
-select ok((public.followers('a6000000-0000-4000-8000-000000000001','m6_follower',null)->'items'->0->>'followsViewer')::boolean
-          and not (public.followers('a6000000-0000-4000-8000-000000000001','m6_follower',null)->'items'->0->>'isFollowing')::boolean,
-          'rows report follow state both ways (follows you, not followed back)');
+select is(public.followers('a6000000-0000-4000-8000-000000000001','m6_follower',null)->'items'->0->>'friendState','none',
+          'rows report the viewer''s friend state');
 select is((public.following('a6000000-0000-4000-8000-000000000001','',null)->'items'->0->'member'->>'handle'),'m6_blocked','following lists the members someone follows');
 
 -- 3. Feed ----------------------------------------------------------------------------------------
@@ -127,7 +145,7 @@ set local request.jwt.claims to '{"sub":"e6000000-0000-4000-8000-000000000005","
 select is(public.set_mute('a6000000-0000-4000-8000-000000000001',true),true,'a member mutes someone they follow');
 select is(jsonb_array_length(public.feed(null)->'items'),0,'muted members disappear from the feed');
 select ok(jsonb_array_length(public.profile_activity('a6000000-0000-4000-8000-000000000001',null)->'items')>0,'a muted member''s profile still shows their posts');
-select is((public.public_profile('a6000000-0000-4000-8000-000000000001')->'relationship'->>'isFollowing')::boolean,true,'muting keeps the follow');
+select is((public.public_profile('a6000000-0000-4000-8000-000000000001')->'relationship'->>'friendState'),'friends','muting keeps the friendship');
 select is((select jsonb_agg(m->>'handle') from jsonb_array_elements(public.muted_members()) m),'["m6_author"]'::jsonb,'the muter sees their muted list');
 select is(public.set_mute('a6000000-0000-4000-8000-000000000001',false),false,'unmuting');
 select ok(jsonb_array_length(public.feed(null)->'items')>0,'unmuting restores eligible feed history');
@@ -256,7 +274,7 @@ select throws_ok(format('select public.post_comment(%L,%L,%L)',pg_temp.m6_id('a-
 select throws_ok($$select public.public_profile('a6000000-0000-4000-8000-000000000001')$$,'P0002',null,'or open the blocker''s profile');
 select throws_ok($$select public.want_list('a6000000-0000-4000-8000-000000000001')$$,'P0002',null,'or read the blocker''s lists');
 select throws_ok($$select public.shared_wants('a6000000-0000-4000-8000-000000000001')$$,'P0002',null,'or compare Want to Go lists');
-select throws_ok($$select public.set_follow('a6000000-0000-4000-8000-000000000001',true)$$,'P0002',null,'or follow again');
+select throws_ok($$select public.friend_action('a6000000-0000-4000-8000-000000000001','request')$$,'P0002',null,'or send a request');
 select ok(not exists(select 1 from jsonb_array_elements(public.search_members('m6_author',null)->'items') i where i->'member'->>'handle'='m6_author'),
           'member search excludes the blocker');
 set local request.jwt.claims to '{"sub":"a6000000-0000-4000-8000-000000000001","role":"authenticated"}';

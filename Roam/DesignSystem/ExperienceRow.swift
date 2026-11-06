@@ -26,6 +26,7 @@ struct ExperienceRow: View {
     var onOpen: (() -> Void)?
     var onSave: (() -> Void)?
     var onLog: (() -> Void)?
+    var thumbnailURL: URL? = nil
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -36,6 +37,12 @@ struct ExperienceRow: View {
                 badges
             } else {
                 HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                    if let thumbnailURL {
+                        AsyncImage(url: thumbnailURL) { image in image.resizable().scaledToFill() } placeholder: { Roam.fill }
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .accessibilityHidden(true)
+                    }
                     info.frame(maxWidth: .infinity, alignment: .leading)
                     badges
                 }
@@ -97,7 +104,7 @@ struct ExperienceRow: View {
     }
 
     private var titleText: Text {
-        if let rank { return Text("\(rank). ").monospacedDigit() + Text(name) }
+        if Score.isShown, let rank { return Text("\(rank). ").monospacedDigit() + Text(name) }
         return Text(name)
     }
 
@@ -144,13 +151,13 @@ struct ExperienceRow: View {
             }
             .buttonStyle(PillButtonStyle(isSelected: saved))
             .roamHaptic(.impact(weight: .light), trigger: saved)
-            .accessibilityLabel(saved ? "Saved to Want to Go. Remove \(name)" : "Save \(name) to Want to Go")
+            .accessibilityLabel(saved ? "Saved to Wishlist. Remove \(name)" : "Save \(name) to Wishlist")
             .accessibilityIdentifier("save-\(name)")
         }
     }
 }
 
-/// Member row with avatar, name, handle and an optional follow control.
+/// Member row with avatar, name, handle and an optional friend control.
 struct MemberRowView: View {
     let member: MemberSummary
     var subtitle: String?
@@ -172,10 +179,10 @@ struct MemberRowView: View {
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
-            .onTapGesture { onOpen?() }
+            .onTapGesture { if MemberProfiles.available { onOpen?() } }
             .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { onOpen?() }
+            .accessibilityAddTraits(MemberProfiles.available && onOpen != nil ? .isButton : [])
+            .accessibilityAction { if MemberProfiles.available { onOpen?() } }
             if let followState {
                 FollowButton(state: followState, name: member.displayName) { onToggleFollow?() }
             }
@@ -186,34 +193,65 @@ struct MemberRowView: View {
 }
 
 enum FollowButtonState: Hashable {
-    case follow
-    case followBack
-    case following
+    case addFriend
+    case accept
+    case requested
+    case friends
     case pending
+
+    init(_ state: FriendState, pending: Bool = false) {
+        if pending { self = .pending; return }
+        switch state {
+        case .none: self = .addFriend
+        case .sent: self = .requested
+        case .received: self = .accept
+        case .friends: self = .friends
+        }
+    }
 }
 
 struct FollowButton: View {
     let state: FollowButtonState
     let name: String
     let action: () -> Void
+    @State private var confirmingRemoval = false
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            if state == .friends { confirmingRemoval = true } else { action() }
+        } label: {
             switch state {
             case .pending:
                 ProgressView().controlSize(.small).frame(minWidth: 70)
-            case .follow:
-                Text("Follow").frame(minWidth: 70)
-            case .followBack:
-                Text("Follow back").frame(minWidth: 70)
-            case .following:
-                Text("Following").frame(minWidth: 70)
+            case .addFriend:
+                Text("Add friend").frame(minWidth: 70)
+            case .accept:
+                Text("Accept").frame(minWidth: 70)
+            case .requested:
+                Text("Requested").frame(minWidth: 70)
+            case .friends:
+                Text("Friends").frame(minWidth: 70)
             }
         }
-        .buttonStyle(PillButtonStyle(isSelected: state == .follow || state == .followBack))
+        .buttonStyle(PillButtonStyle(isSelected: state == .addFriend || state == .accept))
         .disabled(state == .pending)
-        .roamHaptic(.impact(weight: .light), trigger: state == .following)
-        .accessibilityLabel(state == .following ? "Following \(name). Unfollow" : "Follow \(name)")
+        .roamHaptic(.impact(weight: .light), trigger: state == .friends)
+        .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier("follow-button")
+        .confirmationDialog("Remove \(name) as a friend?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+            Button("Remove friend", role: .destructive, action: action)
+        } message: {
+            Text("You'll stop seeing each other's friends-only places.")
+        }
+    }
+
+    private var accessibilityText: String {
+        switch state {
+        case .addFriend: return "Add \(name) as a friend"
+        case .accept: return "Accept friend request from \(name)"
+        case .requested: return "Friend request sent to \(name). Cancel request"
+        case .friends: return "Friends with \(name). Remove friend"
+        case .pending: return "Updating friendship with \(name)"
+        }
     }
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Whose score a badge shows. Missing scores read "Not rated"/"No following ratings", never 0.
+/// Whose score a badge shows. Missing scores read "Not rated"/"No friend ratings", never 0.
 enum ScoreSource: Hashable {
     case you
     case following(count: Int)
@@ -10,7 +10,7 @@ enum ScoreSource: Hashable {
     var label: String {
         switch self {
         case .you: return "You"
-        case .following: return "Following"
+        case .following: return "Friends"
         case .owner(let name): return name
         case .snapshot: return "Score when posted"
         }
@@ -26,27 +26,26 @@ struct ScoreBadge: View {
     @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
 
     var body: some View {
+        if Score.isShown { badge }
+    }
+
+    private var badge: some View {
         VStack(spacing: 3) {
-            ZStack {
-                Circle()
-                    .fill(score.map { Theme.fill(for: $0.band) } ?? Theme.subtleFill)
-                Circle()
-                    .strokeBorder(score.map { Theme.color(for: $0.band) } ?? Color.secondary.opacity(0.35), lineWidth: 2)
+            Group {
                 if let score {
                     Text(score.formatted)
-                        .font(.system(size: size * 0.36 * min(scale, 1.6), weight: .bold, design: .rounded))
+                        .font(.system(size: size * 0.42 * min(scale, 1.6), weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.color(for: score.band))
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                        .padding(4)
+                        .foregroundStyle(Roam.ink)
                 } else {
                     Image(systemName: "minus")
                         .font(.system(size: size * 0.3, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
                 }
             }
-            .frame(width: size * min(scale, 1.6), height: size * min(scale, 1.6))
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
+            .frame(minWidth: size * min(scale, 1.6) * 0.8)
             if showsLabel {
                 Text(caption)
                     .font(.caption2.weight(.medium))
@@ -66,24 +65,24 @@ struct ScoreBadge: View {
     private var caption: String {
         if score == nil {
             switch source {
-            case .following: return "No following"
+            case .following: return "No friends"
             case .you: return "Not rated"
             default: return source.label
             }
         }
-        if case .following(let count) = source { return "Following · \(count)" }
+        if case .following(let count) = source { return "Friends · \(count)" }
         return source.label
     }
 
     private var accessibilityText: String {
         switch (source, score) {
-        case (.you, let score?): return "Your score \(score.formatted) out of 10"
+        case (.you, let score?): return "Your score \(score.formatted) out of 5"
         case (.you, nil): return "Not rated"
-        case (.following(let count), let score?): return "Following score \(score.formatted) out of 10 from \(count) \(count == 1 ? "person" : "people")"
-        case (.following, nil): return "No following ratings"
-        case (.owner(let name), let score?): return "\(name)'s score \(score.formatted) out of 10"
+        case (.following(let count), let score?): return "Friends score \(score.formatted) out of 5 from \(count) \(count == 1 ? "person" : "people")"
+        case (.following, nil): return "No friend ratings"
+        case (.owner(let name), let score?): return "\(name)'s score \(score.formatted) out of 5"
         case (.owner(let name), nil): return "\(name) has not rated this"
-        case (.snapshot, let score?): return "Score when posted \(score.formatted) out of 10"
+        case (.snapshot, let score?): return "Score when posted \(score.formatted) out of 5"
         case (.snapshot, nil): return "No score"
         }
     }
@@ -95,14 +94,13 @@ struct CategoryBadge: View {
     var compact = false
 
     var body: some View {
-        Label {
-            Text(category?.title ?? "Uncategorized")
-        } icon: {
+        HStack(spacing: 4) {
             Image(systemName: category?.symbolName ?? "questionmark.circle")
+            Text(category?.title ?? "Uncategorized")
         }
         .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
         .foregroundStyle(Theme.accent)
-        .labelStyle(.titleAndIcon)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Category: \(category?.title ?? "Uncategorized")")
     }
 }

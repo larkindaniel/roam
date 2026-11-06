@@ -42,7 +42,7 @@ protocol LocationManaging: AnyObject {
 
 extension CLLocationManager: LocationManaging {}
 
-/// Requests "when in use" location only when the member taps a location action. Never background.
+/// Requests "when in use" location when the member searches or taps a location action. Never background.
 @MainActor
 @Observable
 final class LocationService: NSObject, CLLocationManagerDelegate {
@@ -96,6 +96,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                 if self.waiters.isEmpty { self.stopRequest() }
             }
         }
+    }
+
+    /// Asks once for "when in use" location so searches can start near you. Does nothing after an answer.
+    func requestAccessIfNeeded() {
+        guard simulated == nil, manager.authorizationStatus == .notDetermined else { return }
+        manager.requestWhenInUseAuthorization()
     }
 
     private func requestIfAuthorized() {

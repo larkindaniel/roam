@@ -1,5 +1,8 @@
 # Roam v1 implementation specification
 
+> The app has moved on from parts of this original v1 contract. README's "How the app works" describes it as it is,
+> and the "Current product" section of `DECISIONS.md` lists what changed.
+
 **Ready for the separate build run. Updated October 13, 2026. No implementation has started in this documentation task.** This is the app to build, with eight milestones in [MILESTONES.md](MILESTONES.md) and execution instructions in [CLAUDE.md](CLAUDE.md).
 
 ## Authority, scope and reference boundary

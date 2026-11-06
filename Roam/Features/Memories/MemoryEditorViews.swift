@@ -12,6 +12,8 @@ struct VisitMemoryEditor: View {
     @State private var showsPhotos = false
     @State private var showsPendingClose = false
     @State private var photoError: String?
+    @State private var audience: Audience?
+    @State private var audienceError: String?
 
     var body: some View {
         NavigationStack {
@@ -50,19 +52,34 @@ struct VisitMemoryEditor: View {
                                          existingMedia: visit.media, storage: services.storage, media: services.media,
                                          currentAccount: { account.userID })
             }
-        }.screenIdentifier("memory-editor")
+        }
+        .roamSheetStyle().screenIdentifier("memory-editor")
     }
 
     private func form(_ model: VisitMemoryEditorModel) -> some View {
         @Bindable var model = model
-        return Form {
+        return Form { Group {
             Section {
-                TextEditor(text: $model.note).frame(minHeight: 180).disabled(!model.canEdit)
+                TextEditor(text: $model.note).textInputAutocapitalization(.never).frame(minHeight: 180).disabled(!model.canEdit)
                     .accessibilityIdentifier("memory-note-text")
                 Text("\(Validation.characterCount(model.note)) / 5,000 characters")
                     .foregroundStyle(Validation.characterCount(model.note) > 5_000 ? Theme.disliked : .secondary)
-            } header: { Text("Public note") }
-            footer: { Text("This note is visible to other signed-in members. Editing it does not publish a new activity.") }
+            } header: { Text("Note") }
+            footer: { Text("Only the people you choose below can see this note. Editing it does not publish a new activity.") }
+            Section("Who can see this") {
+                Picker("Who can see this", selection: Binding(get: { audience ?? visit.audience }, set: { value in
+                    audience = value
+                    Task {
+                        do { try await services.plans.setVisitAudience(visitID: visit.id, audience: value); audienceError = nil }
+                        catch { audience = visit.audience; audienceError = error.roamMessage }
+                    }
+                })) {
+                    ForEach(Audience.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("memory-audience")
+                if let audienceError { Text(audienceError).foregroundStyle(Roam.signal) }
+            }
             Section("Visit date") {
                 Toggle("Date unknown", isOn: Binding(get: { model.date.date == nil }, set: { unknown in
                     model.date = VisitDate(date: unknown ? nil : model.today, timeZoneIdentifier: model.zone.identifier)
@@ -85,6 +102,8 @@ struct VisitMemoryEditor: View {
             if let error = photoError ?? model.persistenceError ?? model.error {
                 Section { Text(error).foregroundStyle(Theme.disliked).accessibilityIdentifier("memory-editor-error") }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
         .sheet(isPresented: $showsPhotos) {
@@ -164,16 +183,17 @@ struct PrivateNoteEditor: View {
                 }
                 await model?.load()
             }
-        }.screenIdentifier("private-note-editor")
+        }
+        .roamSheetStyle().screenIdentifier("private-note-editor")
     }
 
     private func form(_ model: PrivateNoteEditorModel) -> some View {
         @Bindable var model = model
-        return Form {
+        return Form { Group {
             Section {
                 Label("Only you can see this note", systemImage: "lock.fill").accessibilityIdentifier("private-note-warning")
                 if model.loaded {
-                    TextEditor(text: $model.text).frame(minHeight: 240).disabled(!model.canEdit)
+                    TextEditor(text: $model.text).textInputAutocapitalization(.never).frame(minHeight: 240).disabled(!model.canEdit)
                         .accessibilityIdentifier("private-note-text")
                     Text("\(Validation.characterCount(model.text)) / 10,000 characters")
                         .foregroundStyle(Validation.characterCount(model.text) > 10_000 ? Theme.disliked : .secondary)
@@ -195,6 +215,8 @@ struct PrivateNoteEditor: View {
                         .disabled(model.isSaving).accessibilityIdentifier("private-note-delete")
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }.onChange(of: model.authError) { _, error in if let error { _ = account.handle(error) } }
     }
 

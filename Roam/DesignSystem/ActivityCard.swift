@@ -37,6 +37,7 @@ struct ActivityCardView: View {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
                 Button { onOpenAuthor?() } label: { AvatarView(member: item.author, size: 40) }
                     .buttonStyle(.plain)
+                    .allowsHitTesting(MemberProfiles.available)
                     .accessibilityLabel("Open \(item.author.displayName)'s profile")
                 VStack(alignment: .leading, spacing: 2) {
                     (Text(item.author.displayName).bold() + Text(" \(item.type.verb) ") + Text(item.experience.name).bold())

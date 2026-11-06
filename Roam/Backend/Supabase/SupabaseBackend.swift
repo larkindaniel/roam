@@ -22,7 +22,7 @@ final class SupabaseBackend: @unchecked Sendable {
             supabaseKey: config.publishableKey,
             options: SupabaseClientOptions(
                 db: .init(encoder: RoamJSON.encoder, decoder: RoamJSON.decoder),
-                auth: .init(storage: authStorage ?? KeychainLocalStorage(service: "com.daniellarkin.roam.auth"),
+                auth: .init(storage: authStorage ?? defaultAuthStorage(),
                             redirectToURL: AppConfig.authCallbackURL,
                             flowType: .pkce,
                             emitLocalSessionAsInitialSession: true),
@@ -174,3 +174,20 @@ struct BackendRequestSnapshot: Sendable {
     let userID: UUID?
     let headers: [String: String]
 }
+
+private func defaultAuthStorage() -> any AuthLocalStorage {
+    #if DEBUG && targetEnvironment(simulator)
+    // Command-line simulator builds are unsigned, and an unsigned app can't use the Keychain.
+    SimulatorAuthStorage()
+    #else
+    KeychainLocalStorage(service: "com.daniellarkin.roam.auth")
+    #endif
+}
+
+#if DEBUG && targetEnvironment(simulator)
+private struct SimulatorAuthStorage: AuthLocalStorage {
+    func store(key: String, value: Data) throws { UserDefaults.standard.set(value, forKey: "roam.auth." + key) }
+    func retrieve(key: String) throws -> Data? { UserDefaults.standard.data(forKey: "roam.auth." + key) }
+    func remove(key: String) throws { UserDefaults.standard.removeObject(forKey: "roam.auth." + key) }
+}
+#endif

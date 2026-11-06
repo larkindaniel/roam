@@ -69,7 +69,8 @@ private actor SocialTestService: FeedService, NotificationService, SocialService
     func markRead(id: UUID) async throws { readIDs.append(id) }
     func markAllRead() async throws { try next(&notificationOutcomes); markAllCount += 1 }
 
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool { try next(&followOutcomes); return following }
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState { try next(&followOutcomes); return FriendState.none.applying(action) == .none ? FriendState.received.applying(action) : FriendState.none.applying(action) }
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow> { memberPages["|"] ?? .empty }
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow> {
         memberRequests.append((query, cursor)); return memberPages[query + "|" + (cursor ?? "")] ?? .empty
     }
@@ -251,19 +252,237 @@ final class M6SocialModelTests: XCTestCase {
 
     func testFollowListLatestQueryWinsAndFollowRollsBack() async throws {
         let service = SocialTestService()
-        let lena = MemberRow(member: member("lena"), isFollowing: false, followsViewer: true, isSelf: false)
-        let sam = MemberRow(member: member("sam"), isFollowing: false, followsViewer: true, isSelf: false)
+        let lena = MemberRow(member: member("lena"), friendState: .received, isSelf: false)
+        let sam = MemberRow(member: member("sam"), friendState: .received, isSelf: false)
         await service.setMembers(Page(items: [lena, sam], nextCursor: nil), query: "|")
         await service.setMembers(Page(items: [sam], nextCursor: nil), query: "sa|")
-        let model = FollowListModel(userID: UUID(), segment: .followers, service: service)
+        let model = FollowListModel(userID: UUID(), segment: .friends, service: service)
         await model.load(query: "")
         XCTAssertEqual(model.rows.count, 2)
         await model.load(query: " sa ")
         XCTAssertEqual(model.rows.map(\.id), [sam.id], "The trimmed latest query defines the rows")
         await service.script(follows: [.offline])
-        await model.setFollow(sam, following: true)
-        XCTAssertEqual(model.rows.first?.isFollowing, false, "A failed follow rolls back")
-        await model.setFollow(sam, following: true)
-        XCTAssertEqual(model.rows.first?.isFollowing, true)
+        await model.apply(.accept, to: sam)
+        XCTAssertEqual(model.rows.first?.friendState, .received, "A failed accept rolls back")
+        await model.apply(.accept, to: sam)
+        XCTAssertEqual(model.rows.first?.friendState, .friends)
+    }
+}
+
+final class FriendStateTests: XCTestCase {
+    func testTappingTheFriendButtonFollowsTheRequestFlow() {
+        XCTAssertEqual(FriendState.none.primaryAction, .request)
+        XCTAssertEqual(FriendState.sent.primaryAction, .cancel)
+        XCTAssertEqual(FriendState.received.primaryAction, .accept)
+        XCTAssertEqual(FriendState.friends.primaryAction, .remove)
+    }
+
+    func testARequestToSomeoneWhoAlreadyAskedBecomesAFriendship() {
+        XCTAssertEqual(FriendState.received.applying(.request), .friends)
+        XCTAssertEqual(FriendState.none.applying(.request), .sent)
+    }
+
+    func testActionsThatDoNotFitTheStateChangeNothing() {
+        XCTAssertEqual(FriendState.none.applying(.accept), .none)
+        XCTAssertEqual(FriendState.sent.applying(.remove), .sent)
+        XCTAssertEqual(FriendState.friends.applying(.decline), .friends)
+    }
+}
+
+final class TripRulesTests: XCTestCase {
+    func testATripNeedsAName() {
+        XCTAssertNotNil(TripDraft(name: "   ").validationMessage)
+        XCTAssertNil(TripDraft(name: "Portugal").validationMessage)
+    }
+
+    func testDatesAreOptionalButMustBeInOrder() {
+        let early = LocalDate(year: 2026, month: 1, day: 1)
+        let late = LocalDate(year: 2026, month: 2, day: 1)
+        XCTAssertNil(TripDraft(name: "Open", startDate: nil, endDate: late).validationMessage)
+        XCTAssertNil(TripDraft(name: "Ordered", startDate: early, endDate: late).validationMessage)
+        XCTAssertNotNil(TripDraft(name: "Backwards", startDate: late, endDate: early).validationMessage)
+    }
+
+    func testAPlaceOnATripReadsAsSavedUntilAVisitExists() {
+        // Only cities are planned; a place on a trip is one you've saved there.
+        let place = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 0,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: false).state, .wishlist)
+        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: true).state, .visited)
+    }
+}
+
+final class ForYouSectionsTests: XCTestCase {
+    private func place(_ name: String, score: Int, friends: [String] = [], mine: Int? = nil) -> DiscoverPlace {
+        let summary = ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: 0, longitude: 0, followingCount: friends.count,
+                                        viewer: ViewerExperienceState(isBookmarked: false, myScore: mine.map(Score.init(tenths:)), hasVisits: mine != nil))
+        return DiscoverPlace(experience: summary, communityScore: Score(tenths: score), communityCount: 1, friendNames: friends, coverPath: nil)
+    }
+
+    func testAPlaceNoFriendRatedIsNeverPresentedAsAFriendsFind() {
+        let sections = ForYouSections(places: [place("Friend pick", score: 80, friends: ["Theo"]), place("Stranger", score: 90)])
+        XCTAssertEqual(sections.friends.map(\.experience.name), ["Friend pick"])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Stranger"])
+    }
+
+    func testOnlyHighlyRatedPlacesAreListed() {
+        let sections = ForYouSections(places: [place("Good", score: 70), place("Middling", score: 69)])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Good"])
+    }
+
+    func testAFriendsPlaceShowsEvenBelowTheThreshold() {
+        XCTAssertEqual(ForYouSections(places: [place("Okay", score: 50, friends: ["Sam"])]).friends.count, 1)
+    }
+
+    func testPlacesYouAlreadyRatedAreNotRecommended() {
+        let sections = ForYouSections(places: [place("Been", score: 90, friends: ["Theo"], mine: 70)])
+        XCTAssertTrue(sections.friends.isEmpty && sections.highlyRated.isEmpty)
+    }
+
+    func testBestPlacesComeFirst() {
+        let sections = ForYouSections(places: [place("Lower", score: 75), place("Higher", score: 95)])
+        XCTAssertEqual(sections.highlyRated.map(\.experience.name), ["Higher", "Lower"])
+    }
+
+    func testFriendEvidenceNamesRealPeople() {
+        XCTAssertEqual(place("A", score: 80, friends: ["Theo Park"]).friendEvidence, "Theo has been")
+        XCTAssertEqual(place("A", score: 80, friends: ["Sam Rivera", "Theo Park"]).friendEvidence, "Sam and Theo have been")
+        XCTAssertNil(place("A", score: 80).friendEvidence)
+    }
+}
+
+final class ResearchBriefTests: XCTestCase {
+    private let lisbon = Destination(name: "Lisbon", region: nil, countryCode: "PT", countryName: "Portugal", latitude: 0, longitude: 0, radiusMeters: 1)
+
+    func testOnlyAnsweredTastesAreIncluded() {
+        let text = ResearchBrief.text(destination: lisbon, taste: TasteProfile(atmosphere: "Quiet"), liked: [])
+        XCTAssertTrue(text.contains("Atmosphere: Quiet"))
+        XCTAssertFalse(text.contains("Budget"))
+        XCTAssertFalse(text.contains("Places I've enjoyed"))
+    }
+}
+
+final class DiscoverResultsTests: XCTestCase {
+    private func candidate(_ name: String, isLocality: Bool) -> PlaceCandidate {
+        PlaceCandidate(provider: .fixture, providerPlaceID: name, name: name, address: nil, locality: nil, region: nil, countryCode: nil, countryName: nil,
+                       latitude: 0, longitude: 0, phone: nil, website: nil, providerCategory: nil, timeZoneIdentifier: nil, isLocality: isLocality, suggestedCategory: nil)
+    }
+
+    func testTownsAreNotListedAsPlaces() {
+        let results = DiscoverResults(candidates: [candidate("Cafe", isLocality: false), candidate("Porto", isLocality: true)])
+        XCTAssertEqual(results.places.map(\.candidate.name), ["Cafe"])
+    }
+
+    func testAKnownPlaceKeepsItsFriendData() {
+        let cafe = candidate("Cafe", isLocality: false)
+        let known = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 2,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        XCTAssertEqual(DiscoverResults(candidates: [cafe], matches: [cafe.id: known]).places.first?.experience?.followingCount, 2)
+    }
+
+    func testNoMatchesIsEmpty() {
+        XCTAssertTrue(DiscoverResults().isEmpty)
+    }
+}
+
+final class DiscoverCityTests: XCTestCase {
+    private func place(_ city: String?, score: Int, friends: [String] = []) -> DiscoverPlace {
+        let summary = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Place", locality: city, latitude: 10, longitude: 20, followingCount: friends.count,
+                                        viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        return DiscoverPlace(experience: summary, communityScore: Score(tenths: score), communityCount: 1, friendNames: friends, coverPath: nil)
+    }
+
+    func testPlacesGroupIntoOneCity() {
+        let cities = DiscoverCity.cities(from: [place("Lisbon", score: 80), place("Lisbon", score: 90)])
+        XCTAssertEqual(cities.count, 1)
+        XCTAssertEqual(cities.first?.placeCount, 2)
+        XCTAssertEqual(cities.first?.bestScore, Score(tenths: 90))
+    }
+
+    func testCitiesYourFriendsVisitedComeFirst() {
+        let cities = DiscoverCity.cities(from: [place("Kyoto", score: 95), place("Lisbon", score: 70, friends: ["Theo Park"])])
+        XCTAssertEqual(cities.map(\.destination.name), ["Lisbon", "Kyoto"])
+    }
+
+    func testPlacesWithNoCityAreLeftOut() {
+        XCTAssertTrue(DiscoverCity.cities(from: [place(nil, score: 90)]).isEmpty)
+    }
+}
+
+final class TripTitleTests: XCTestCase {
+    private let tokyo = TripLocation(city: "Tokyo", countryCode: "JP", country: "Japan")
+    private let kyoto = TripLocation(city: "Kyoto", countryCode: "JP", country: "Japan")
+    private let porto = TripLocation(city: "Porto", countryCode: "PT", country: "Portugal")
+
+    func testOneCityShowsTheCityAndFlag() {
+        XCTAssertEqual(TripTitle.from([tokyo]), "Tokyo 🇯🇵")
+    }
+
+    func testSeveralCitiesInACountryShowTheCountry() {
+        XCTAssertEqual(TripTitle.from([tokyo, kyoto]), "Japan 🇯🇵")
+    }
+
+    func testSeveralCountriesListEach() {
+        XCTAssertEqual(TripTitle.from([tokyo, porto]), "Japan 🇯🇵 · Portugal 🇵🇹")
+    }
+
+    func testUnknownLocationsGiveNoTitle() {
+        XCTAssertNil(TripTitle.from([]))
+    }
+}
+
+final class SearchDedupeTests: XCTestCase {
+    func testAPlaceAlreadyOnRoamIsNotListedTwice() {
+        let candidate = PlaceCandidate(provider: .mapkit, providerPlaceID: "x", name: "Casa Loma", address: nil, locality: nil, region: nil, countryCode: nil, countryName: nil,
+                                       latitude: 0, longitude: 0, phone: nil, website: nil, providerCategory: nil, timeZoneIdentifier: nil, isLocality: false, suggestedCategory: nil)
+        let known = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Casa Loma", latitude: 0, longitude: 0, followingCount: 1,
+                                      viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+        let results = DiscoverResults(candidates: [candidate], onRoam: [known])
+        XCTAssertEqual(results.onRoam.count, 1)
+        XCTAssertTrue(results.places.isEmpty)
+    }
+}
+
+final class TripTopPicksTests: XCTestCase {
+    private let place = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 0,
+                                          viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+
+    private func entry(_ score: Int?, place: ExperienceSummary? = nil) -> TripFeedEntry {
+        var value = place ?? self.place
+        if place == nil { value = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Place", latitude: 0, longitude: 0, followingCount: 0, viewer: self.place.viewer) }
+        return TripFeedEntry(id: UUID(), experience: value, publicNote: "", visitDate: VisitDate(date: nil, timeZoneIdentifier: nil), media: [],
+                             createdAt: Date(), score: score.map(Score.init(tenths:)), activityID: nil)
+    }
+
+    func testBestRankedVisitsComeFirstAndUnrankedOnesAreLeftOut() {
+        let picks = TripText.topPicks([entry(60), entry(nil), entry(90)])
+        XCTAssertEqual(picks.map(\.score?.tenths), [90, 60])
+    }
+
+    func testARepeatVisitCountsOnce() {
+        XCTAssertEqual(TripText.topPicks([entry(80, place: place), entry(70, place: place)]).count, 1)
+    }
+}
+
+final class PlaceMapRulesTests: XCTestCase {
+    private func place(_ name: String, latitude: Double = 0, longitude: Double = 0) -> ExperienceSummary {
+        ExperienceSummary(id: UUID(), placeID: UUID(), name: name, latitude: latitude, longitude: longitude, followingCount: 0, viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
+    }
+
+    func testAPlaceGetsOneMarkerInItsMostAdvancedState() {
+        let cafe = place("Cafe")
+        XCTAssertEqual(PlaceMapItem.items(been: [cafe], planned: [cafe], wishlist: [cafe, place("Park")]).map(\.state), [.visited, .wishlist])
+    }
+
+    func testMarkersFollowZoomAndSelection() {
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: false, latitudeSpan: 1), .dot)
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: false, latitudeSpan: 0.01), .marker)
+        XCTAssertEqual(PlaceMarkerStage.stage(isSelected: true, latitudeSpan: 1), .pin)
+    }
+
+    func testTheMapStartsOnTheLargestGroupOfPlaces() {
+        let items = [place("A", latitude: 43.6, longitude: -79.4), place("B", latitude: 43.7, longitude: -79.3), place("Far", latitude: 1.3, longitude: 103.8)]
+            .map { PlaceMapItem(experience: $0, state: .visited) }
+        XCTAssertEqual(PlaceMapItem.startingRegion(items).center.latitude, 43.65, accuracy: 0.01)
     }
 }

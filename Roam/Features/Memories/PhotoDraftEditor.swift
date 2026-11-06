@@ -18,16 +18,15 @@ struct PhotoDraftEditor: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section {
-                    PhotosPicker(selection: $selectedItems, maxSelectionCount: max(1, 6 - model.assets.count),
-                                 selectionBehavior: .ordered, matching: .images) {
+                    PhotosPicker(selection: $selectedItems, selectionBehavior: .ordered, matching: .images) {
                         Label("Choose photos", systemImage: "photo.on.rectangle.angled")
                             .frame(minHeight: Theme.minimumHitTarget)
                     }
-                    .disabled(model.assets.count >= 6 || importing || restoring)
+                    .disabled(importing || restoring)
                     .accessibilityIdentifier("photo-picker")
-                    Text("\(model.assets.count) of 6 photos").accessibilityIdentifier("photo-count")
+                    Text(model.assets.count == 1 ? "1 photo" : "\(model.assets.count) photos").accessibilityIdentifier("photo-count")
                     if importing { ProgressView("Reading selected photos…").accessibilityIdentifier("photo-reading") }
                 } footer: {
                     Text("Only photos you choose are read. Photos are private until your visit is saved. Failed photos must be retried or removed.")
@@ -80,6 +79,8 @@ struct PhotoDraftEditor: View {
                     Section { Text(message).foregroundStyle(Theme.disliked).accessibilityIdentifier("photo-editor-error") }
                 }
             }
+            .listRowBackground(Roam.paperRaised)
+            }
             .accessibilityIdentifier("photo-editor-list")
             .navigationTitle("Visit photos")
             .navigationBarTitleDisplayMode(.inline)
@@ -131,6 +132,7 @@ struct PhotoDraftEditor: View {
             }
             .onDisappear { importGeneration += 1; importTask?.cancel() }
         }
+        .roamSheetStyle()
         .screenIdentifier("photo-editor")
     }
 
@@ -156,5 +158,130 @@ struct PhotoDraftEditor: View {
         case .existing: return "Saved photo"
         case .failed: return "Upload failed · Retry or remove"
         }
+    }
+}
+
+/// A photo in a draft: what was picked on this device, else the uploaded copy.
+struct PhotoDraftImage: View {
+    let model: PhotoDraftModel
+    let asset: PhotoDraftAsset
+
+    var body: some View {
+        if let data = model.thumbnailData(assetID: asset.id), let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill().accessibilityLabel("Selected visit photo")
+        } else if let existing = asset.existing {
+            RemoteImageView(path: existing.path)
+        } else if let staged = asset.staged {
+            RemoteImageView(path: staged.path)
+        } else {
+            Image(systemName: "photo").font(.largeTitle).foregroundStyle(Theme.secondaryText)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.subtleFill)
+                .accessibilityLabel("Selected photo not ready")
+        }
+    }
+}
+
+/// Reads photos picked in the system picker into a draft, which uploads them.
+@MainActor
+enum PhotoImport {
+    static func add(_ items: [PhotosPickerItem], to model: PhotoDraftModel) async {
+        for item in items {
+            guard !Task.isCancelled else { break }
+            if let data = try? await item.loadTransferable(type: Data.self) { await model.add(data: data) }
+            else { model.addFailure(message: "This selected photo couldn't be read. Remove it or choose it again.") }
+        }
+    }
+}
+
+/// A visit's photos one at a time, swiping for the next. The ✕ (for the photo showing) and any accessory (adding more)
+/// sit on the frame itself, well inside it whatever shape the photo is.
+struct PhotoCarousel<Accessory: View>: View {
+    let model: PhotoDraftModel
+    var height: CGFloat = 240
+    @ViewBuilder var accessory: () -> Accessory
+    @State private var current: UUID?
+
+    var body: some View {
+        TabView(selection: $current) {
+            ForEach(model.assets) { asset in
+                PhotoDraftImage(model: model, asset: asset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .overlay {
+                        if asset.status == .preparing || asset.status == .uploading { ProgressView().tint(.white) }
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        if asset.status == .failed {
+                            Button("Retry") { Task { await model.retry(assetID: asset.id) } }
+                                .font(.subheadline.weight(.semibold))
+                                .buttonStyle(.borderedProminent)
+                                .padding(Theme.Spacing.l)
+                        }
+                    }
+                    .tag(Optional(asset.id))
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: model.assets.count > 1 ? .always : .never))
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Button {
+                guard let id = current ?? model.assets.first?.id else { return }
+                Task { await model.remove(assetID: id) }
+            } label: {
+                Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.white)
+                    .frame(width: 32, height: 32).background(Circle().fill(.black.opacity(0.5)))
+            }
+            .buttonStyle(.plain)
+            .padding(Theme.Spacing.l)
+            .accessibilityLabel("Remove this photo")
+        }
+        .overlay(alignment: .bottomTrailing) { accessory().padding(Theme.Spacing.l) }
+        .onChange(of: model.assets.map(\.id)) { _, ids in
+            // After adding or removing, show a photo that's there.
+            if current.map({ !ids.contains($0) }) ?? true { current = ids.last }
+        }
+        .onAppear { current = current ?? model.assets.first?.id }
+        .accessibilityIdentifier("photo-carousel")
+    }
+}
+
+/// Your own photos of somewhere, one at a time, swiping for the next; shown to you ahead of Google's photo.
+struct MyPhotoCarousel: View {
+    let paths: [String]
+    var height: CGFloat = 220
+
+    var body: some View {
+        TabView {
+            ForEach(paths, id: \.self) { path in
+                RemoteImageView(path: path, accessibilityLabel: "Your photo")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: paths.count > 1 ? .always : .never))
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .accessibilityIdentifier("my-photos")
+    }
+}
+
+/// A log's note: a roomy box where Return starts a new line, with "Add a note" until you type.
+struct NoteBox: View {
+    @Binding var text: String
+
+    var body: some View {
+        TextEditor(text: $text)
+            .scrollContentBackground(.hidden)
+            .textInputAutocapitalization(.never)
+            .frame(minHeight: 110)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text("Add a note").foregroundStyle(.tertiary)
+                        .padding(.top, 8).padding(.leading, 5)
+                        .allowsHitTesting(false)
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
     }
 }

@@ -228,12 +228,16 @@ enum FixtureSeed {
         (FixtureIDs.jonas, "juniper", 4),
     ]
 
-    /// follower → followee
-    static let follows: [(UUID, UUID)] = [
-        (FixtureIDs.maya, FixtureIDs.theo), (FixtureIDs.theo, FixtureIDs.maya),
+    /// Accepted friendships, stored in both directions.
+    static let friends: [(UUID, UUID)] = [
+        (FixtureIDs.maya, FixtureIDs.theo),
+        (FixtureIDs.sam, FixtureIDs.maya),
+    ]
+
+    /// Pending requests: the first member asked the second.
+    static let friendRequests: [(UUID, UUID)] = [
         (FixtureIDs.maya, FixtureIDs.jonas),
         (FixtureIDs.lena, FixtureIDs.maya),
-        (FixtureIDs.sam, FixtureIDs.maya),
     ]
 }
 #endif

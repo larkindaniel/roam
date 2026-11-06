@@ -57,13 +57,13 @@ final class M8JourneyIntegrationTests: BackendTestCase {
         XCTAssertEqual(ranking.groups(for: .liked).count, 1, "One tie group")
 
         // Following exposes both automatic posts, newest first; a comment notifies the author.
-        _ = try await theo.setFollow(userID: mayaID, following: true)
+        try await befriend(theo, maya)
         let feed = try await theo.feed(cursor: nil)
         XCTAssertEqual(feed.items.map(\.id), [tied.activityID, first.activityID])
         XCTAssertEqual(feed.items.last?.scoreSnapshot, Score(tenths: 84), "Posts carry the score when posted")
         let comment = try await theo.postComment(activityID: first.activityID, body: "Saving this for Lisbon!", operationID: UUID())
         let notices = try await maya.notifications(cursor: nil)
-        XCTAssertEqual(Set(notices.items.map(\.type)), [.follow, .comment])
+        XCTAssertEqual(Set(notices.items.map(\.type)), [.comment])
         XCTAssertTrue(notices.items.allSatisfy { $0.actor.id == theoID })
 
         // A repeat visit posts without reranking; Rank again moves it to fine, alone at 5.0.

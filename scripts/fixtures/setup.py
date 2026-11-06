@@ -3,11 +3,12 @@
 
 - Creates fictional accounts through the local Auth admin API (service-role key read from the
   git-ignored scripts/.fixture-env; never printed, never shipped in the app or seed).
-- Builds profiles, settings and follows through the same RPCs the app uses, signed in as each user.
+- Builds profiles, settings and friendships through the same RPCs the app uses, signed in as each user.
 - Loads fictional places, public memories and private notes with SQL as the local `postgres` role.
 
 Refuses to run against anything but a loopback API URL. Usage: scripts/fixtures/setup.py
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -30,7 +31,8 @@ USERS = [
     ("00000010-0000-4000-8000-000000000006", "sam@roam.test", "samexplores", "Sam Rivera", "Weekend explorer.", None),
 ]
 
-FOLLOWS = [("maya", "theo"), ("theo", "maya"), ("maya", "jonas"), ("lena", "maya"), ("sam", "maya")]
+# (first, second, accepted): the first asks, and the second accepts when accepted is True.
+FRIENDS = [("maya", "theo", True), ("maya", "jonas", False), ("lena", "maya", False), ("sam", "maya", True)]
 
 
 def load_env():
@@ -104,6 +106,29 @@ def run_sql(path):
         sys.exit(f"Fixture SQL failed ({os.path.basename(path)}):\n{result.stderr.decode()}")
 
 
+def attach_photos(env):
+    """Uploads the generated sample art and attaches one picture to the newest visit of each place."""
+    folder = os.path.join(ROOT, "supabase", "fixtures", "photos")
+    statements = ["begin;", "delete from public.media where object_path like '%/sample-%';"]
+    for filename in sorted(os.listdir(folder)):
+        key = filename.rsplit(".", 1)[0]
+        with open(os.path.join(folder, filename), "rb") as handle:
+            data = handle.read()
+        request_ = urllib.request.Request(f"{env['ROAM_API_URL']}/storage/v1/object/visit-media/fixture/sample-{filename}", data=data, method="POST", headers={
+            "Authorization": "Bearer " + env["ROAM_SERVICE_ROLE_KEY"], "apikey": env["ROAM_SERVICE_ROLE_KEY"],
+            "Content-Type": "image/jpeg", "x-upsert": "true"})
+        urllib.request.urlopen(request_, timeout=30).read()
+        statements.append(f"""insert into public.media (owner_id, purpose, visit_id, bucket, object_path, position, state, byte_size, width, height, attached_at, inspected_at, content_sha256)
+select v.owner_id, 'visit', v.id, 'visit-media', 'fixture/sample-{filename}', 0, 'attached', {len(data)}, 1200, 800, now(), now(), '{hashlib.sha256(data).hexdigest()}'
+from public.visits v join public.experiences e on e.id = v.experience_id join public.places p on p.id = e.place_id
+where p.provider_place_id = 'fixture-{key}' and v.audience = 'public' order by v.created_at desc limit 1;""")
+    statements.append("commit;")
+    result = subprocess.run(["docker", "exec", "-i", "supabase_db_roam", "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-q"],
+                            input="\n".join(statements).encode(), capture_output=True)
+    if result.returncode != 0:
+        sys.exit("Fixture photos failed:\n" + result.stderr.decode())
+
+
 def main():
     env = load_env()
     tokens = {}
@@ -122,11 +147,14 @@ def main():
         rpc(env, token, "set_setup_checkpoint", {"p_checkpoint": "complete"})
         rpc(env, token, "mark_been_intro_seen", {})
         print(f"  {email:<18} {state}")
-    for follower, followee in FOLLOWS:
-        followee_id = next(u[0] for u in USERS if u[1].startswith(followee))
-        rpc(env, tokens[follower], "set_follow", {"p_user_id": followee_id, "p_following": True})
+    ids = {u[1].split("@")[0]: u[0] for u in USERS}
+    for first, second, accepted in FRIENDS:
+        rpc(env, tokens[first], "friend_action", {"p_user_id": ids[second], "p_action": "request"})
+        if accepted:
+            rpc(env, tokens[second], "friend_action", {"p_user_id": ids[first], "p_action": "accept"})
     run_sql(os.path.join(ROOT, "supabase", "fixtures", "fixture-data.sql"))
-    print(f"Fixture accounts ready (password in scripts/fixtures/setup.py), {len(FOLLOWS)} follows, places and memories loaded.")
+    attach_photos(env)
+    print(f"Fixture accounts ready (password in scripts/fixtures/setup.py), {len(FRIENDS)} friend links, places and memories loaded.")
 
 
 if __name__ == "__main__":

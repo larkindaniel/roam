@@ -29,7 +29,7 @@ struct RootView: View {
             destinations.reset()
             activityChanges.reset()
             settingsStore.reset()
-            router.reset(initialTab: services.options.initialTab ?? .feed)
+            router.reset(initialTab: services.options.initialTab ?? .forYou)
         }
     }
 
@@ -61,7 +61,7 @@ struct RootView: View {
                             destinations.load(userID: userID, home: session.profile?.homeCity)
                         }
                         if session.consumeJustCompletedSetup() {
-                            router.reset(initialTab: .lists)
+                            router.reset(initialTab: .myPlaces)
                         }
                         if let retained = session.pendingRouteAfterReauth {
                             session.pendingRouteAfterReauth = nil
@@ -70,6 +70,12 @@ struct RootView: View {
                         #if ROAM_FIXTURES
                         if services.options.initialRoute == "globe", let userID = session.userID {
                             router.push(.globe(userID))
+                        }
+                        switch services.options.initialRoute {
+                        case "search": router.openSearch()
+                        case "explore": router.openExplore()
+                        case "profile": router.push(.ownProfile)
+                        default: break
                         }
                         #endif
                     }
@@ -84,7 +90,7 @@ struct LaunchView: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
             Text("Roam")
-                .font(.system(size: wordmarkSize, weight: .bold, design: .serif))
+                .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.accent)
             ProgressView("Opening your travels…")
         }

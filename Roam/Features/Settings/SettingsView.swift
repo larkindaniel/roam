@@ -15,7 +15,7 @@ struct SettingsView: View {
     @State private var confirmSignOut = false
 
     var body: some View {
-        List {
+        List { Group {
             Section("Profile") {
                 Button { router.push(.editProfile) } label: {
                     HStack(spacing: Theme.Spacing.m) {
@@ -32,30 +32,21 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings-edit-profile")
             }
+            // Kept to the essentials for now; preferences, notifications and safety come back later.
             accountSection
-            preferencesSection
-            notificationsSection
-            Section("Safety") {
-                NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked members", systemImage: "hand.raised") }
-                    .accessibilityIdentifier("settings-blocked")
-                NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted members", systemImage: "speaker.slash") }
-                    .accessibilityIdentifier("settings-muted")
-                NavigationLink(value: AppRoute.reportHistory) { Label("Your reports", systemImage: "flag") }
-                    .accessibilityIdentifier("settings-reports")
-            }
-            Section("About & help") {
-                NavigationLink(value: AppRoute.help(.ranking)) { Label("How ranking and posts work", systemImage: "list.number") }
-                    .accessibilityIdentifier("settings-help-ranking")
+            Section("About") {
                 NavigationLink(value: AppRoute.help(.privacy)) { Label("Privacy", systemImage: "lock") }
                     .accessibilityIdentifier("settings-help-privacy")
                 NavigationLink(value: AppRoute.help(.terms)) { Label("Terms of use", systemImage: "doc.text") }
                     .accessibilityIdentifier("settings-help-terms")
-                NavigationLink(value: AppRoute.help(.support)) { Label("Support", systemImage: "questionmark.bubble") }
-                    .accessibilityIdentifier("settings-help-support")
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
             }
         }
+        .listRowBackground(Roam.paperRaised)
+        }
         .navigationTitle("Settings")
+        // Just the back button here, no tab bar.
+        .roamTabBar(hidden: true)
         .safeAreaInset(edge: .bottom) {
             if let error = settings.saveError {
                 HStack(alignment: .top, spacing: Theme.Spacing.m) {
@@ -89,7 +80,7 @@ struct SettingsView: View {
                     destinations.reset()
                     activityChanges.reset()
                     settings.reset()
-                    router.reset(initialTab: .feed)
+                    router.reset(initialTab: .forYou)
                 }
             }
         } message: {
@@ -103,14 +94,6 @@ struct SettingsView: View {
         Section("Account") {
             if let email = session.session?.email {
                 LabeledContent("Email", value: email)
-            }
-            LabeledContent("Signed in with", value: providerText)
-            if session.session?.providers.contains(.email) == true {
-                Button("Email me a password reset code") { Task { await sendReset() } }
-                    .accessibilityIdentifier("settings-password-reset")
-                if let resetMessage {
-                    Text(resetMessage).font(.footnote).foregroundStyle(Theme.secondaryText)
-                }
             }
             // Theme red rather than system red, which is 3.6:1 on white.
             Button { confirmSignOut = true } label: { Text("Sign out").foregroundStyle(Theme.disliked) }
@@ -142,7 +125,7 @@ struct SettingsView: View {
 
     private var notificationsSection: some View {
         Section {
-            Toggle("New followers", isOn: Binding(get: { settings.displayed.notifyFollows },
+            Toggle("Friend requests", isOn: Binding(get: { settings.displayed.notifyFollows },
                                                   set: { value in Task { await settings.update { $0.notifyFollows = value } } }))
                 .accessibilityIdentifier("settings-notify-follows")
             Toggle("Likes on your posts", isOn: Binding(get: { settings.displayed.notifyLikes },
@@ -165,7 +148,7 @@ struct SettingsView: View {
         } else if let error = settings.loadError, !settings.hasLoaded {
             Text("Showing your last saved settings. \(error)")
         } else {
-            Text("Distances in lists use this unit. Haptics are the small taps when you like, follow, save or compare.")
+            Text("Distances in lists use this unit. Haptics are the small taps when you like, add a friend, save or compare.")
         }
     }
 

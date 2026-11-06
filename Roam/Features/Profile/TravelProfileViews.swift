@@ -112,7 +112,7 @@ struct TravelProfileSection: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if isSelf {
-                Button("Find a place to log") { router.selectedTab = .search }
+                Button("Find a place to log") { router.openSearch() }
                     .buttonStyle(SecondaryButtonStyle())
                     .accessibilityIdentifier("travel-empty-log")
             }
@@ -210,7 +210,7 @@ struct TravelProfileSection: View {
 
     /// Name, area and count side by side; stacked at accessibility sizes so nothing squeezes.
     private func rowLabel(_ row: TravelRow) -> some View {
-        let count = Text("\(row.count) \(row.count == 1 ? "place" : "places")").font(.subheadline).monospacedDigit().foregroundStyle(Theme.secondaryText)
+        let count = Text("")
         return HStack(spacing: Theme.Spacing.m) {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {
@@ -278,7 +278,7 @@ struct NewThisYearView: View {
     private func list(_ travel: TravelProfile) -> some View {
         let byID = Dictionary(uniqueKeysWithValues: travel.pins.map { ($0.experienceID, $0) })
         let pins = travel.newThisYear.experienceIDs.compactMap { byID[$0] }
-        return List {
+        return List { Group {
             Section {
                 if pins.isEmpty {
                     Text(verbatim: "No places were first visited in \(year) yet.")
@@ -313,6 +313,8 @@ struct NewThisYearView: View {
                     }
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
     }
 }

@@ -66,13 +66,13 @@ struct WelcomeView: View {
                     .accessibilityHidden(true)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("Roam")
-                        .font(.system(size: wordmarkSize, weight: .bold, design: .serif))
+                        .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.accent)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Rank the places that made your trips.")
+                    Text("Find places you'll love, starting with people you trust.")
                         .font(.roamTitle(.title2))
                         .multilineTextAlignment(.center)
-                    Text("Log trails, cafés, museums, stays and day trips. Compare them two at a time and Roam gives each a score out of 10.")
+                    Text("See where your friends have been, save what you want to try, and keep track of the countries you've been to.")
                         .font(.body)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
@@ -95,8 +95,7 @@ struct WelcomeView: View {
                         .accessibilityIdentifier("continue-with-email")
 
                     Button("I already have an account") { model.path.append(.signIn) }
-                        .font(.headline)
-                        .frame(minHeight: Theme.minimumHitTarget)
+                        .buttonStyle(QuietButtonStyle())
                         .accessibilityIdentifier("existing-account")
                 }
                 .padding(.horizontal, Theme.Spacing.xl)
@@ -112,7 +111,7 @@ struct WelcomeView: View {
                         .accessibilityIdentifier("deletion-notice")
                 }
 
-                Text("Profiles, ratings and public visit notes and photos are visible to other signed-in members. Private notes stay private.")
+                Text("You choose who sees each place you log: friends, only you, or everyone.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
@@ -201,7 +200,7 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
                 Text(message).font(.body).foregroundStyle(Theme.secondaryText)
                 fields
                 Button(action: action) {
-                    if busy { ProgressView().tint(.white) } else { Text(actionTitle) }
+                    if busy { ProgressView().tint(Roam.onInk) } else { Text(actionTitle) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!actionEnabled || busy)

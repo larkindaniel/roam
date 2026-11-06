@@ -20,6 +20,16 @@ class BackendTestCase: XCTestCase {
         config = try XCTUnwrap(AppConfig.fromBundle(Bundle(for: AppServices.self)), "Run scripts/configure-local.sh before building")
     }
 
+    /// One member asks and the other accepts, as the app does.
+    func befriend(_ first: SupabaseBackend, _ second: SupabaseBackend) async throws {
+        let firstProfile = try await first.ownProfile()
+        let secondProfile = try await second.ownProfile()
+        let firstID = try XCTUnwrap(firstProfile?.id)
+        let secondID = try XCTUnwrap(secondProfile?.id)
+        _ = try await first.friendAction(userID: secondID, action: .request)
+        _ = try await second.friendAction(userID: firstID, action: .accept)
+    }
+
     func makeBackend() -> SupabaseBackend {
         SupabaseBackend(config: config, authStorage: InMemoryAuthStorage())
     }

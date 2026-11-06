@@ -54,9 +54,12 @@ struct LaunchOptions: Equatable, Sendable {
         options.resetLocalState = arguments.contains("-roam-reset-state")
         options.uiTesting = arguments.contains("-roam-ui-testing")
         options.showComponentCatalog = arguments.contains("-roam-component-catalog")
-        options.initialTab = value(after: "-roam-initial-tab").flatMap(AppTab.init(rawValue:))
+        let startingPoint = value(after: "-roam-initial-tab")
+        options.initialTab = startingPoint.flatMap(AppTab.init(rawValue:))
         options.simulateLocation = value(after: "-roam-location")
         options.initialRoute = value(after: "-roam-initial-route")
+        // Search, Explore and Profile are screens within Discover, so a test can start on one directly.
+        if let startingPoint, ["search", "explore", "profile"].contains(startingPoint) { options.initialRoute = startingPoint }
         #endif
         return options
     }

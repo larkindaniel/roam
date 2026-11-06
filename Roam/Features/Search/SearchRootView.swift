@@ -136,7 +136,7 @@ struct ExperienceSearchView: View {
         switch model.phase {
         case .idle:
             ScrollView {
-                EmptyStateView(systemImage: "magnifyingglass", title: "Find an experience",
+                EmptyStateView(systemImage: "magnifyingglass", title: "Find a place",
                                message: "Search by name or type — a café, a trail, a museum, a town for a day trip. Results come from Apple Maps.")
             }
         case .loading:
@@ -153,7 +153,7 @@ struct ExperienceSearchView: View {
                     .accessibilityIdentifier("search-no-results")
             }
         case .results:
-            List {
+            List { Group {
                 if let message = model.refreshError {
                     InlineRetryView(message: message) { Task { await model.search(model.query, near: destinations.search) } }
                         .accessibilityIdentifier("experience-search-refresh-error")
@@ -169,6 +169,8 @@ struct ExperienceSearchView: View {
                     row(hit)
                         .listRowBackground(Theme.raisedCard)
                 }
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .listStyle(.plain)
             .scrollDismissesKeyboard(.immediately)
@@ -243,7 +245,7 @@ struct MemberSearchView: View {
             switch model.phase {
             case .idle:
                 ScrollView {
-                    EmptyStateView(systemImage: "person.2", title: "Find people", message: "Search for travellers by name or @handle and follow them to see their ratings in your feed.")
+                    EmptyStateView(systemImage: "person.2", title: "Find people", message: "Search by name or @handle, then add them as a friend.")
                 }
             case .loading:
                 ScrollView { SkeletonList(rows: 5) }
@@ -251,12 +253,12 @@ struct MemberSearchView: View {
                 ScrollView { InlineRetryView(message: message) { Task { await model.search(model.query) } } }
             case .loaded where model.rows.isEmpty:
                 ScrollView {
-                    EmptyStateView(systemImage: "person.crop.circle.badge.questionmark", title: "No members found",
+                    EmptyStateView(systemImage: "person.crop.circle.badge.questionmark", title: "Nobody found",
                                    message: "No one matches “\(model.lastQuery)”.")
                         .accessibilityIdentifier("member-no-results")
                 }
             case .loaded:
-                List {
+                List { Group {
                     if let message = model.refreshError {
                         InlineRetryView(message: message) { Task { await model.search(model.query) } }
                             .accessibilityIdentifier("member-search-refresh-error")
@@ -269,9 +271,8 @@ struct MemberSearchView: View {
                         HStack { ProgressView(); Text("Updating…").font(.footnote).foregroundStyle(Theme.secondaryText) }
                     }
                     ForEach(model.rows) { row in
-                        MemberRowView(member: row.member, subtitle: row.followsViewer ? "Follows you" : nil,
-                                      followState: model.pendingFollows.contains(row.id) ? .pending
-                                          : (row.isFollowing ? .following : (row.followsViewer ? .followBack : .follow)),
+                        MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
+                                      followState: FollowButtonState(row.friendState, pending: model.pendingFollows.contains(row.id)),
                                       onOpen: { router.push(.member(row.id)) },
                                       onToggleFollow: { Task { await model.toggleFollow(row) } })
                     }
@@ -279,6 +280,8 @@ struct MemberSearchView: View {
                                      hasMore: model.nextCursor != nil && !model.isRefreshing) {
                         Task { await model.loadMore() }
                     }
+                }
+                .listRowBackground(Roam.paperRaised)
                 }
                 .listStyle(.plain)
                 .accessibilityIdentifier("member-results")

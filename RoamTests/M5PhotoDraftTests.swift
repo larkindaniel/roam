@@ -162,19 +162,17 @@ final class M5PhotoDraftTests: XCTestCase {
         XCTAssertEqual(try model.attachmentIDs().count, 2)
     }
 
-    func testSixPhotoLimitAndPickerFailuresStayVisibleUntilRemoved() async throws {
+    func testNoPhotoLimitAndPickerFailuresStayVisibleUntilRemoved() async throws {
         let media = PhotoTestMedia(clock: clock)
         let model = makeModel(media)
-        for index in 0..<5 { await model.add(data: try Self.sampleJPEG(hue: CGFloat(index) / 10)) }
+        for index in 0..<7 { await model.add(data: try Self.sampleJPEG(hue: CGFloat(index) / 10)) }
         model.addFailure(message: "This selected photo couldn't be read.")
-        XCTAssertEqual(model.assets.count, 6)
-        await model.add(data: try Self.sampleJPEG())
-        XCTAssertEqual(model.assets.count, 6, "A seventh photo is refused")
-        XCTAssertEqual(model.error, "A visit can have up to six photos.")
+        XCTAssertEqual(model.assets.count, 8, "A visit can have any number of photos")
+        XCTAssertNil(model.error)
         XCTAssertFalse(model.canCommit, "A failed picker item cannot silently disappear from the draft")
         await model.remove(assetID: try XCTUnwrap(model.assets.first { $0.status == .failed }).id)
         XCTAssertTrue(model.canCommit)
-        XCTAssertEqual(try model.attachmentIDs().count, 5)
+        XCTAssertEqual(try model.attachmentIDs().count, 7)
     }
 
     func testCancelRestoresTheCheckpointAndRetiresUploadsMadeInTheEditor() async throws {

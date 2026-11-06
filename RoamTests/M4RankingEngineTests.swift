@@ -427,7 +427,7 @@ final class M4RankingEngineTests: XCTestCase {
         }
         XCTAssertEqual(ScoreMath.mean(of: [Score(tenths: 0), Score(tenths: 1)])?.tenths, 1)
         XCTAssertEqual(ScoreMath.mean(of: [Score(tenths: 100), Score(tenths: 67)])?.tenths, 84)
-        XCTAssertEqual(ScoreMath.mean(of: [Score(tenths: 0)])?.formatted, "0.0", "A real zero score is not missing")
+        XCTAssertEqual(ScoreMath.mean(of: [Score(tenths: 0)])?.formattedOutOf10, "0.0", "A real zero score is not missing")
         XCTAssertNil(ScoreMath.mean(of: []))
     }
 
@@ -436,7 +436,7 @@ final class M4RankingEngineTests: XCTestCase {
             let score = Score(tenths: tenths)
             let encoded = try JSONEncoder().encode(score)
             XCTAssertEqual(try JSONDecoder().decode(Score.self, from: encoded), score)
-            XCTAssertEqual(score.formatted, String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), Double(tenths) / 10))
+            XCTAssertEqual(score.formattedOutOf10, String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), Double(tenths) / 10))
         }
         XCTAssertNil(Score(decimal: try XCTUnwrap(Decimal(string: "-0.04"))))
         XCTAssertNil(Score(decimal: try XCTUnwrap(Decimal(string: "10.04"))))

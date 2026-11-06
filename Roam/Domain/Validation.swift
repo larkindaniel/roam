@@ -11,7 +11,8 @@ enum Limits {
     static let privateNoteMax = 10_000
     static let commentMax = 2_000
     static let reportTextMax = 1_000
-    static let photosPerVisit = 6
+    /// No set number of photos on a visit (the server has no cap either).
+    static let photosPerVisit = Int.max
     static let photoLongestSide = 2_048
     static let photoMaxBytes = 3 * 1_024 * 1_024
     static let pageSize = 30

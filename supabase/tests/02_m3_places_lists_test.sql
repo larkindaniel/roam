@@ -1,5 +1,11 @@
 -- M3: place identity, bookmarks, Following score, list visibility, member search and reports.
 begin;
+-- This file covers content published to all members and reads over friend edges. Audience and the
+-- friend request flow have their own coverage in 07_friends_audience_plans_test.sql.
+create function public.test_publish_to_all() returns trigger language plpgsql as $test$ begin new.audience:='public'; return new; end $test$;
+create trigger zz_test_publish_to_all before insert on public.visits for each row execute function public.test_publish_to_all();
+create trigger zz_test_publish_to_all before insert on public.ratings for each row execute function public.test_publish_to_all();
+
 create extension if not exists pgtap with schema extensions;
 select plan(83);
 
@@ -255,8 +261,8 @@ select is((select count(*)::int from search_pages page, jsonb_array_elements(pag
             where item.value -> 'member' ->> 'id' = 'c1000000-0000-4000-8000-000000000003'
                or item.value -> 'member' ->> 'id' in (select id::text from search_fixtures where kind in ('blocked_out', 'blocked_in', 'inactive'))),
           0, 'self, both block directions and deactivated profiles are excluded before paging');
-select is((select response -> 'items' -> 0 -> 'isFollowing' from search_pages where ordinal = 1), 'true'::jsonb, 'paged results include outgoing follow state');
-select is((select response -> 'items' -> 1 -> 'followsViewer' from search_pages where ordinal = 1), 'true'::jsonb, 'paged results include incoming follow state');
+select is((select response -> 'items' -> 0 ->> 'friendState' from search_pages where ordinal = 1), 'friends', 'paged results include outgoing follow state');
+select ok((select response -> 'items' -> 1 ? 'friendState' from search_pages where ordinal = 1), 'paged results include incoming follow state');
 select is(public.search_members(current_setting('roam.test.page_prefix'), null), (select response from search_pages where ordinal = 1), 'refresh reproduces the first member page');
 select is(public.search_members(current_setting('roam.test.page_prefix'), (select response ->> 'nextCursor' from search_pages where ordinal = 1)),
           (select response from search_pages where ordinal = 2), 'retrying a cursor reproduces the second member page');

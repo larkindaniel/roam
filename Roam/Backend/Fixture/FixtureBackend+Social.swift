@@ -2,21 +2,47 @@
 import Foundation
 
 extension FixtureBackend: SocialService {
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool {
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState {
         let me = try await authenticatedActor()
-        guard userID != me else { throw RoamError.validation("You can't follow yourself.") }
+        guard userID != me else { throw RoamError.validation("You can't add yourself as a friend.") }
         guard isVisibleMember(userID, to: me) else { throw RoamError.notFound }
-        let key = Pair(a: me, b: userID)
-        if following {
-            if follows[key] == nil {
-                follows[key] = Date()
-                notify(recipient: userID, actor: me, type: .follow, activity: nil, comment: nil, eventKey: "follow:\(me):\(userID)", now: Date())
-            }
-        } else {
-            follows[key] = nil
-            notifications = notifications.filter { $0.value.eventKey != "follow:\(me):\(userID)" }
+        let mine = Pair(a: me, b: userID)
+        let theirs = Pair(a: userID, b: me)
+        switch (action, friendState(viewer: me, member: userID)) {
+        case (.request, .none):
+            friendRequests[mine] = Date()
+            notify(recipient: userID, actor: me, type: .friendRequest, activity: nil, comment: nil, eventKey: "friend_request:\(me):\(userID)", now: Date())
+        case (.request, .received), (.accept, .received):
+            friendRequests[theirs] = nil
+            follows[mine] = Date()
+            follows[theirs] = Date()
+            notifications = notifications.filter { $0.value.eventKey != "friend_request:\(userID):\(me)" }
+            notify(recipient: userID, actor: me, type: .friendAccept, activity: nil, comment: nil, eventKey: "friend_accept:\(me):\(userID)", now: Date())
+        case (.decline, .received):
+            friendRequests[theirs] = nil
+            notifications = notifications.filter { $0.value.eventKey != "friend_request:\(userID):\(me)" }
+        case (.cancel, .sent):
+            friendRequests[mine] = nil
+            notifications = notifications.filter { $0.value.eventKey != "friend_request:\(me):\(userID)" }
+        case (.remove, .friends):
+            follows[mine] = nil
+            follows[theirs] = nil
+        default:
+            break
         }
-        return follows[key] != nil
+        return friendState(viewer: me, member: userID)
+    }
+
+    func friendState(viewer: UUID, member: UUID) -> FriendState {
+        if follows[Pair(a: viewer, b: member)] != nil { return .friends }
+        if friendRequests[Pair(a: viewer, b: member)] != nil { return .sent }
+        if friendRequests[Pair(a: member, b: viewer)] != nil { return .received }
+        return .none
+    }
+
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow> {
+        let me = try await authenticatedActor()
+        return memberRows(friendRequests.keys.filter { $0.b == me && isVisibleMember($0.a, to: me) }.map(\.a), viewer: me, query: "", cursor: cursor)
     }
 
     private func memberRows(_ ids: [UUID], viewer: UUID, query: String, cursor: String?) -> Page<MemberRow> {
@@ -29,8 +55,7 @@ extension FixtureBackend: SocialService {
         let slice = Array(after.prefix(Limits.pageSize))
         let next = after.count > Limits.pageSize ? slice.last?.handle : nil
         return Page(items: slice.map { member in
-            MemberRow(member: member, isFollowing: follows[Pair(a: viewer, b: member.id)] != nil,
-                      followsViewer: follows[Pair(a: member.id, b: viewer)] != nil, isSelf: member.id == viewer)
+            MemberRow(member: member, friendState: friendState(viewer: viewer, member: member.id), isSelf: member.id == viewer)
         }, nextCursor: next)
     }
 
@@ -66,6 +91,8 @@ extension FixtureBackend: SocialService {
             blocks.insert(Pair(a: me, b: userID))
             follows[Pair(a: me, b: userID)] = nil
             follows[Pair(a: userID, b: me)] = nil
+            friendRequests[Pair(a: me, b: userID)] = nil
+            friendRequests[Pair(a: userID, b: me)] = nil
         } else {
             blocks.remove(Pair(a: me, b: userID))
         }
@@ -101,7 +128,7 @@ extension FixtureBackend: FeedService {
         let me = try await authenticatedActor()
         let followed = Set(follows.keys.filter { $0.a == me }.map(\.b))
         let rows = activities.values.filter { row in
-            row.author == me || (followed.contains(row.author) && !mutes.contains(Pair(a: me, b: row.author)) && isVisibleMember(row.author, to: me))
+            row.author == me || (followed.contains(row.author) && !mutes.contains(Pair(a: me, b: row.author)) && isVisibleMember(row.author, to: me) && activityAllowed(row, viewer: me))
         }
         return page(of: rows, cursor: cursor, viewer: me)
     }
@@ -109,7 +136,7 @@ extension FixtureBackend: FeedService {
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem> {
         let me = try await authenticatedActor()
         guard userID == me || isVisibleMember(userID, to: me) else { throw RoamError.notFound }
-        return page(of: activities.values.filter { $0.author == userID }, cursor: cursor, viewer: me)
+        return page(of: activities.values.filter { $0.author == userID && activityAllowed($0, viewer: me) }, cursor: cursor, viewer: me)
     }
 
     func activity(id: UUID) async throws -> ActivityItem {
@@ -205,7 +232,7 @@ extension FixtureBackend: NotificationService {
                                    experienceName: activity.map { placeName($0.experience) },
                                    commentPreview: row.comment.flatMap { comments[$0]?.body },
                                    createdAt: row.createdAt, readAt: row.readAt,
-                                   targetAvailable: row.type == .follow ? isVisibleMember(row.actor, to: me) : activity != nil)
+                                   targetAvailable: [.follow, .friendRequest, .friendAccept].contains(row.type) ? isVisibleMember(row.actor, to: me) : activity != nil)
         }, nextCursor: next)
     }
 

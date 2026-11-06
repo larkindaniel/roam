@@ -37,6 +37,12 @@ class RoamUITestCase: XCTestCase {
         app.tabBars.buttons[title].firstMatch
     }
 
+    /// Search, Explore and Profile open from Discover's navigation bar.
+    func openFromDiscover(_ identifier: String) {
+        tab("Discover").tap()
+        element(identifier).tap()
+    }
+
     func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier].firstMatch
     }

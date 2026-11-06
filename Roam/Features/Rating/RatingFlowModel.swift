@@ -4,6 +4,7 @@ import Observation
 enum RatingFlowCompletion: Hashable {
     case rating(RatingCommitResult)
     case visit(AddVisitResult)
+    case edited
 }
 
 enum RatingFlowStep: String, Codable {
@@ -39,6 +40,7 @@ final class RatingFlowModel {
     private(set) var category: ExperienceCategory?
     private(set) var sentiment: Sentiment?
     private(set) var visit: VisitPayload
+    private(set) var skipsRanking = false
     private(set) var operationID: UUID
     private(set) var session: InsertionSession?
     private(set) var completion: RatingFlowCompletion?
@@ -48,21 +50,28 @@ final class RatingFlowModel {
     private var ranking: CategoryRanking?
     private var pendingRating: RatingCommitRequest?
     private var pendingVisit: AddVisitRequest?
-    private let initialVisit: VisitPayload
+    private var initialVisit: VisitPayload
+    /// The feeling the log opened with (Neutral for a new one), so leaving it there isn't an edit.
+    private var startingSentiment: Sentiment?
     private let service: any RankingService
     private let storage: AccountStorage
     private let currentAccount: () -> UUID?
     private let now: () -> Date
     private var generation = 0
+    /// Saves an edited visit over the one it came from (edit mode only).
+    var saveEdit: ((VisitPayload) async throws -> Void)?
 
     var draftName: String { "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)" }
-    var categoryLocked: Bool { request.mode != .firstLog || request.categoryLocked }
+    /// What the place already is, from Roam or from Apple's place type.
+    private var knownCategory: ExperienceCategory? { request.experience.category ?? request.suggestedCategory }
+    /// A place that's already categorised isn't asked again; only one with no category gets the picker.
+    var categoryLocked: Bool { request.mode != .firstLog || request.categoryLocked || knownCategory != nil }
     var isBusy: Bool { step == .saving || step == .loading }
     var hasPendingSave: Bool { pendingRating != nil || pendingVisit != nil }
     var canEdit: Bool { !isBusy && !hasPendingSave && completion == nil }
     var canUndo: Bool { step == .comparison && session?.canUndo == true }
     var hasNonemptyDraft: Bool {
-        sentiment != nil || visit != initialVisit || hasPendingSave
+        sentiment != startingSentiment || visit != initialVisit || hasPendingSave
             || category != (request.experience.category ?? request.suggestedCategory)
             || photos?.assets.contains(where: { $0.status != .existing }) == true
             || (photos.map { $0.assets.compactMap { $0.existing?.id } != initialVisit.mediaIDs } ?? false)
@@ -84,20 +93,28 @@ final class RatingFlowModel {
         self.now = now
         let date = VisitDate.today(destinationTimeZone: request.destinationTimeZone, now: now())
         let initial: VisitPayload
-        if request.mode == .rerank, let anchor = request.existingVisit {
+        if request.mode == .editVisit, let anchor = request.existingVisit {
+            initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
+                                   publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id), audience: anchor.audience,
+                                   tripID: anchor.tripID)
+        } else if request.mode == .rerank, let anchor = request.existingVisit {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id))
         } else {
-            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [])
+            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .public)
         }
         let name = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)"
         storage.purgeExpired(userID: accountID, prefix: "rating-draft-", lifetime: 30 * 86_400, now: now())
         if let draft = storage.read(RatingFlowDraft.self, name: name, userID: accountID),
            draft.accountID == accountID, draft.experienceID == request.experience.id, draft.mode == request.mode.rawValue,
-           now().timeIntervalSince(draft.updatedAt) <= 30 * 86_400 {
+           now().timeIntervalSince(draft.updatedAt) <= 30 * 86_400,
+           // No drafts: a log always starts fresh, except one whose save was sent but not confirmed (checked safely).
+           draft.pendingRating != nil || draft.pendingVisit != nil {
             operationID = draft.operationID
-            category = (request.mode != .firstLog || request.categoryLocked) ? request.experience.category : draft.category
-            sentiment = draft.sentiment
+            let known = request.experience.category ?? request.suggestedCategory
+            category = (request.mode != .firstLog || request.categoryLocked || known != nil) ? known : draft.category
+            // A first log always has a feeling: one saved without (from before Neutral was the default) starts at Neutral.
+            sentiment = draft.sentiment ?? (request.mode == .firstLog ? .fine : nil)
             visit = draft.visit
             initialVisit = draft.initialVisit
             ranking = draft.ranking
@@ -114,7 +131,7 @@ final class RatingFlowModel {
                 ranking = nil
                 session = nil
                 step = .details
-                message = "This experience is now ranked in \(canonical.title). Your details are kept; tap Okay to refresh comparisons."
+                message = "This place is now ranked in \(canonical.title). Your details are kept; tap Okay to refresh comparisons."
             }
             if step == .comparison, let categoryRanking = draft.ranking, let chosen = draft.sentiment {
                 let base = request.mode == .rerank ? categoryRanking.removing(experienceID: request.experience.id) : categoryRanking
@@ -136,11 +153,44 @@ final class RatingFlowModel {
             storage.remove(name: name, userID: accountID)
             operationID = UUID()
             category = request.experience.category ?? request.suggestedCategory
-            sentiment = nil
+            // A new log starts at Neutral (it's ranked, comparing as usual); you can change it before saving.
+            sentiment = request.mode == .firstLog ? .fine : nil
             visit = initial
             initialVisit = initial
             step = request.mode == .addVisit ? .details : .sentiment
         }
+        // One screen: the feeling slider sits with the details, so logging and ranking both open there.
+        if step == .sentiment { step = .details }
+        // A visit with no feeling chosen is an unranked log, including one restored from a draft.
+        skipsRanking = request.mode == .firstLog && step == .details && sentiment == nil
+        startingSentiment = sentiment
+    }
+
+    /// Logging never requires ranking: the visit saves now and can be ranked later.
+    func logWithoutRanking() {
+        guard canEdit, category != nil, request.mode == .firstLog else { return }
+        skipsRanking = true
+        step = .details
+        persist()
+    }
+
+    func setTrip(_ tripID: UUID?) {
+        guard canEdit else { return }
+        visit.tripID = tripID
+        persist()
+    }
+
+    /// The trip guessed for a new log: filled in for you, so it isn't an edit to discard.
+    func suggestTrip(_ tripID: UUID) {
+        guard canEdit, visit == initialVisit else { setTrip(tripID); return }
+        visit.tripID = tripID
+        initialVisit.tripID = tripID
+    }
+
+    func setAudience(_ audience: Audience) {
+        guard canEdit else { return }
+        visit.audience = audience
+        persist()
     }
 
     func selectCategory(_ value: ExperienceCategory) {
@@ -148,6 +198,17 @@ final class RatingFlowModel {
         category = value
         session = nil
         ranking = nil
+        persist()
+    }
+
+    /// The slider on the details screen: choosing a feeling means saving will rank the place; with none, it's just logged.
+    func setFeeling(_ value: Sentiment) {
+        guard canEdit, category != nil, request.mode != .addVisit else { return }
+        sentiment = value
+        skipsRanking = false
+        session = nil
+        ranking = nil
+        message = nil
         persist()
     }
 
@@ -167,7 +228,6 @@ final class RatingFlowModel {
         guard Validation.characterCount(note) <= 5_000 else { message = "Public notes can have up to 5,000 characters."; return false }
         guard date.map({ $0 <= today }) ?? true else { message = "Choose today or an earlier visit date."; return false }
         let assets = mediaIDs ?? visit.mediaIDs
-        guard assets.count <= 6 else { message = "A visit can have up to six photos."; return false }
         visit.publicNote = note
         visit.date = date
         if date != nil && visit.timeZoneIdentifier == nil { visit.timeZoneIdentifier = timeZone.identifier }
@@ -179,6 +239,7 @@ final class RatingFlowModel {
 
     func backToSentiment() {
         guard canEdit, request.mode != .addVisit else { return }
+        skipsRanking = false
         step = .sentiment
         session = nil
         ranking = nil
@@ -195,8 +256,11 @@ final class RatingFlowModel {
             message = "Check the note length and choose today or an earlier visit date."
             return
         }
-        if request.mode == .addVisit {
-            pendingVisit = AddVisitRequest(operationID: operationID, experienceID: request.experience.id, visit: visit)
+        if request.mode == .editVisit {
+            await submitEdit()
+        } else if request.mode == .addVisit || skipsRanking {
+            pendingVisit = AddVisitRequest(operationID: operationID, experienceID: request.experience.id, visit: visit,
+                                           category: skipsRanking ? category : nil)
             await submitPending()
         } else {
             await refreshComparisons()
@@ -260,6 +324,24 @@ final class RatingFlowModel {
                                             baseRevision: ranking.revision, answers: session.answers,
                                             visit: request.mode == .rerank && visit == initialVisit ? nil : visit)
         await submitPending()
+    }
+
+    /// An edit saves straight over the visit; nothing is ranked.
+    private func submitEdit() async {
+        guard let saveEdit else { return }
+        step = .saving
+        message = nil
+        do {
+            try await saveEdit(visit)
+            guard accountMatches() else { step = .details; return }
+            completion = .edited
+            step = .result
+            photos?.committed()
+            storage.remove(name: draftName, userID: accountID)
+        } catch {
+            step = .details
+            record(error)
+        }
     }
 
     func retrySave() async {

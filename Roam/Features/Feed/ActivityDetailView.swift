@@ -80,7 +80,7 @@ struct ActivityDetailView: View {
             ScrollView {
                 VStack {
                     EmptyStateView(systemImage: "eye.slash", title: "This post isn't available",
-                                   message: "It was removed, or you can no longer see this member's posts.",
+                                   message: "It was removed, or you can no longer see it.",
                                    primaryTitle: "Go back", primaryAction: { dismiss() })
                 }
                 .accessibilityElement(children: .contain)
@@ -204,6 +204,7 @@ struct CommentRow: View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
             Button(action: onOpenAuthor) { AvatarView(member: comment.author, size: 32) }
                 .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("Open \(comment.author.displayName)'s profile")
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

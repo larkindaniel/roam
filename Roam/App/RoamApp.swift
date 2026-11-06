@@ -16,9 +16,13 @@ struct RoamApp: App {
         _services = State(initialValue: services)
         _session = State(initialValue: SessionStore(services: services))
         _library = State(initialValue: LibraryStore(services: services))
-        _router = State(initialValue: AppRouter(initialTab: services.options.initialTab ?? .feed))
+        _router = State(initialValue: AppRouter(initialTab: services.options.initialTab ?? .forYou))
         _destinations = State(initialValue: DestinationStore(storage: services.storage))
         _settingsStore = State(initialValue: SettingsStore(service: services.settings, storage: services.storage))
+        let largeTitle = UIFont.preferredFont(forTextStyle: .largeTitle)
+        if let rounded = largeTitle.fontDescriptor.withSymbolicTraits(.traitBold)?.withDesign(.rounded) {
+            UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: rounded, size: 0)]
+        }
         if services.options.uiTesting {
             UIView.setAnimationsEnabled(false)
         }
@@ -35,7 +39,8 @@ struct RoamApp: App {
                 .environment(activityChanges)
                 .environment(settingsStore)
                 .environment(services.images)
-                .tint(Theme.accent)
+                .tint(Roam.ink)
+                .background(Roam.paper)
                 .onOpenURL { url in
                     Task { await handleOpenURL(url) }
                 }

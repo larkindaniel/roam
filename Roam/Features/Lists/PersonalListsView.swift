@@ -92,11 +92,13 @@ final class PersonalListsModel {
     }
 }
 
-/// S12: Been / Want to Go for the signed-in member or another member (read-only, viewer Save/Log).
+/// S12: Been / Wishlist for the signed-in member or another member (read-only, viewer Save/Log).
 struct PersonalListsView: View {
     let ownerID: UUID
     var initialKind: ListKind = .been
     var isRoot = false
+    /// Set by My Places, whose own control chooses the list.
+    var externalKind: ListKind?
 
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
@@ -113,13 +115,14 @@ struct PersonalListsView: View {
     var body: some View {
         Group {
             if let model {
-                ListsContent(model: model, isOwn: isOwn, ownerName: ownerName, showsFilters: $showsFilters, selectedPin: $selectedPin)
+                ListsContent(model: model, isOwn: isOwn, ownerName: ownerName, showsKindPicker: externalKind == nil, showsFilters: $showsFilters, selectedPin: $selectedPin)
             } else {
                 SkeletonList(rows: 5).padding()
             }
         }
         .background(Theme.groupedCanvas)
-        .navigationTitle(isOwn ? "Your Lists" : "\(ownerName ?? "Member")'s lists")
+        .onChange(of: externalKind) { _, kind in if let kind { model?.kind = kind } }
+        .navigationTitle(isOwn ? (isRoot ? "My Places" : "Your Lists") : "\(ownerName ?? "Their")'s lists")
         .navigationBarTitleDisplayMode(isRoot ? .large : .inline)
         .task {
             if model == nil { model = PersonalListsModel(ownerID: ownerID, kind: initialKind, services: services) }
@@ -140,6 +143,7 @@ private struct ListsContent: View {
     @Bindable var model: PersonalListsModel
     let isOwn: Bool
     let ownerName: String?
+    var showsKindPicker = true
     @Binding var showsFilters: Bool
     @Binding var selectedPin: String?
 
@@ -161,9 +165,6 @@ private struct ListsContent: View {
             }
             ZStack(alignment: .bottomTrailing) {
                 if model.showsMap { mapView } else { listView }
-                if model.phase.value?.isEmpty == false {
-                    MapListToggle(showsMap: $model.showsMap).padding(Theme.Spacing.l)
-                }
             }
         }
         .screenIdentifier(isOwn ? "lists-root" : "member-lists")
@@ -171,28 +172,33 @@ private struct ListsContent: View {
 
     private var controls: some View {
         VStack(spacing: Theme.Spacing.s) {
-            Picker("List", selection: $model.kind) {
-                ForEach(ListKind.allCases) { Text($0.title).tag($0) }
+            if showsKindPicker {
+                Picker("List", selection: $model.kind) {
+                    ForEach(ListKind.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("list-kind")
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("list-kind")
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     facetControls
                     sortControl
                 }
             } else {
-                ViewThatFits(in: .horizontal) {
+                ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.s) {
+                        if model.phase.value?.isEmpty == false {
+                            Button { model.showsMap.toggle() } label: {
+                                PillLabel(title: model.showsMap ? "List" : "Map", systemImage: model.showsMap ? "list.bullet" : "map")
+                            }
+                            .buttonStyle(PillButtonStyle(isSelected: model.showsMap))
+                            .accessibilityIdentifier("map-list-toggle")
+                        }
                         facetControls
                         sortControl
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        HStack(spacing: Theme.Spacing.s) { facetControls }
-                        sortControl
-                    }
                 }
+                .scrollClipDisabled()
             }
             SearchField(prompt: "Search names and places", text: $model.query, identifier: "list-search-field")
             if model.sort == .distance, let note = distanceNote ?? model.reference.map({ "Distance \($0.label)" }) {
@@ -281,7 +287,7 @@ private struct ListsContent: View {
             ScrollView { InlineRetryView(message: message) { Task { await model.load() } }.padding() }
         case .loaded(let entries):
             let visible = model.visibleEntries
-            if entries.isEmpty || (model.kind == .been && entries.allSatisfy({ !$0.isRanked }) && model.filter.isEmpty && model.query.isEmpty) && visible.isEmpty {
+            if entries.isEmpty {
                 ScrollView { emptyState }
             } else if visible.isEmpty {
                 ScrollView {
@@ -291,13 +297,16 @@ private struct ListsContent: View {
                         .accessibilityIdentifier("filtered-empty")
                 }
             } else {
-                List {
+                List { Group {
                     ForEach(visible) { entry in
                         row(entry)
                             .listRowBackground(selectedPin == entry.id.uuidString ? Theme.accentFill : Theme.raisedCard)
                     }
                 }
-                .listStyle(.plain)
+                .listRowBackground(Roam.paperRaised)
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
                 .refreshable { await model.load() }
                 .accessibilityIdentifier("list-rows")
             }
@@ -307,18 +316,18 @@ private struct ListsContent: View {
     @ViewBuilder private var emptyState: some View {
         if isOwn {
             if model.kind == .been {
-                EmptyStateView(systemImage: "checkmark.seal", title: "Nothing ranked yet",
-                               message: "Log a place you've been and Roam ranks it within its category.",
-                               primaryTitle: "Search experiences", primaryAction: { router.selectedTab = .search })
+                EmptyStateView(systemImage: "checkmark.seal", title: "Nowhere yet",
+                               message: "Log a place you've been and it appears here.",
+                               primaryTitle: "Log a place", primaryAction: { router.sheet = .logPlace })
             } else {
-                EmptyStateView(systemImage: "bookmark", title: "No saved experiences",
-                               message: "Save places you want to go. They'll wait here until you've been.",
-                               primaryTitle: "Explore places", primaryAction: { router.selectedTab = .explore })
+                EmptyStateView(systemImage: "bookmark", title: "Your wishlist is empty",
+                               message: "Save places you want to try. They stay here until you've been.",
+                               primaryTitle: "Discover places", primaryAction: { router.selectedTab = .forYou })
             }
         } else {
             EmptyStateView(systemImage: model.kind == .been ? "checkmark.seal" : "bookmark",
-                           title: model.kind == .been ? "No rankings yet" : "Nothing saved yet",
-                           message: "\(ownerName ?? "This member") hasn't \(model.kind == .been ? "ranked any places" : "saved any places") yet.")
+                           title: model.kind == .been ? "Nowhere yet" : "Nothing saved yet",
+                           message: "\(ownerName ?? "This person") hasn't \(model.kind == .been ? "shared any places" : "saved any places") yet.")
         }
     }
 
@@ -326,6 +335,7 @@ private struct ListsContent: View {
         let experience = entry.experience
         let viewerRated = library.ratedCategory(experience.id) != nil || experience.viewer.isRated
         let saveState: SaveActionState = viewerRated ? .alreadyBeen : library.saveState(for: experience.id)
+        let ownBeen = isOwn && model.kind == .been
         let scopeIsCategory: Bool = { if case .category = model.beenScope { return true } else { return false } }()
         return ExperienceRow(
             name: experience.name,
@@ -335,13 +345,13 @@ private struct ListsContent: View {
             score: model.kind == .been ? entry.ownerScore : (isOwn ? nil : experience.viewer.myScore),
             scoreSource: model.kind == .been ? (isOwn ? .you : .owner(name: ownerName ?? "Owner")) : .you,
             statusLine: status(entry),
-            saveState: saveState, logTitle: viewerRated ? "Add visit" : "Log",
+            saveState: ownBeen ? nil : saveState, logTitle: viewerRated ? "Add visit" : "Log",
             onOpen: { router.push(.experience(experience.id)) },
             onSave: { Task { await library.setBookmark(experience.id, saved: !library.isBookmarked(experience.id)) } },
-            onLog: { Task {
+            onLog: ownBeen ? nil : { Task {
                 do { router.sheet = .log(try await services.makeLogRequest(experienceID: experience.id)) }
                 catch { actionError = error.roamMessage }
-            } })
+            } }, thumbnailURL: experience.photoURL)
     }
 
     private func status(_ entry: ListEntry) -> String {

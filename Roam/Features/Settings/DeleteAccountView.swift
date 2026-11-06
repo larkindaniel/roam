@@ -106,7 +106,7 @@ final class DeleteAccountModel {
             lines.append("Your account and its data have been deleted.")
         } else {
             lines.append("Your profile is hidden from everyone and you've been signed out on every device.")
-            lines.append("Roam is deleting your rankings, visits, notes, photos, follows and posts. This is still in progress.")
+            lines.append("Roam is deleting your rankings, visits, notes, photos, friends and posts. This is still in progress.")
         }
         switch status.appleRevocation {
         case "pending": lines.append("Roam will also revoke its Sign in with Apple access when deletion finishes.")
@@ -142,7 +142,7 @@ struct DeleteAccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(isFinished)
         // After the request the account can't act anywhere; Done is the only way on.
-        .toolbar(isFinished ? .hidden : .automatic, for: .tabBar)
+        .roamTabBar(hidden: isFinished)
         .task {
             if model == nil {
                 model = DeleteAccountModel(auth: services.auth, account: services.account, providers: session.session?.providers ?? [])
@@ -182,7 +182,7 @@ struct DeleteAccountView: View {
             .roamCard()
             errorText(model)
             Button("Delete my account", role: .destructive) { showsFinalConfirmation = true }
-                .buttonStyle(PrimaryButtonStyle(fill: Theme.disliked))
+                .buttonStyle(PrimaryButtonStyle(fill: Theme.destructive))
                 .accessibilityIdentifier("delete-account-confirm")
         case .deleting:
             ProgressView("Deleting your account…")
@@ -211,8 +211,8 @@ struct DeleteAccountView: View {
     private var explanation: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             Text("Deleting your account permanently removes:").font(.headline)
-            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your Want to Go list",
-                     "Your follows and followers", "Your posts, likes and comments"], id: \.self) { item in
+            ForEach(["Your rankings and scores", "Your visits, public and private notes, and photos", "Your wishlist, plans and lists",
+                     "Your friends and friend requests", "Your posts, likes and comments"], id: \.self) { item in
                 Label(item, systemImage: "minus.circle").foregroundStyle(.primary)
             }
             Text("Your profile disappears for everyone straight away and you're signed out on every device. Text you've already shared outside Roam can't be recalled. Reports you've filed stay with Roam's operators without your name.")
@@ -242,7 +242,7 @@ struct DeleteAccountView: View {
                 Button {
                     Task { await model.confirmPassword() }
                 } label: {
-                    if model.busy { ProgressView().tint(.white) } else { Text("Confirm password") }
+                    if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Confirm password") }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.password.isEmpty || model.busy)
@@ -269,7 +269,7 @@ struct DeleteAccountView: View {
         if let error = model.error {
             Text(error)
                 .font(.subheadline)
-                .foregroundStyle(Theme.disliked)
+                .foregroundStyle(Theme.destructive)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("delete-account-error")
         }
@@ -284,7 +284,7 @@ struct DeleteAccountView: View {
         destinations.reset()
         activityChanges.reset()
         settings.reset()
-        router.reset(initialTab: .feed)
+        router.reset(initialTab: .forYou)
         await session.accountDeleted(notice: notice)
     }
 }

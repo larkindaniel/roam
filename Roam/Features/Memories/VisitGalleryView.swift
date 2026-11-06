@@ -66,7 +66,7 @@ struct VisitGalleryView: View {
                 ScrollView {
                     VStack {
                         EmptyStateView(systemImage: "photo.on.rectangle", title: "No photos yet",
-                                       message: visitID == nil ? "Photos appear here when travellers add them to their visits."
+                                       message: visitID == nil ? "Photos appear here when people add them to their visits."
                                                                : "This visit has no photos.")
                     }
                     .accessibilityElement(children: .contain)
@@ -165,6 +165,7 @@ private struct GalleryPhotoViewer: View {
                     ReportSheet(target: target, title: "Report photo")
                 }
         }
+        .roamSheetStyle()
         .screenIdentifier("photo-viewer")
     }
 
@@ -204,7 +205,8 @@ private struct GalleryPhotoViewer: View {
                 .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Opens the profile")
+            .allowsHitTesting(MemberProfiles.available)
+            .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
             .accessibilityIdentifier("viewer-author")
             if let error = model.error {
                 Text(error).font(.footnote).foregroundStyle(Theme.disliked).accessibilityIdentifier("viewer-error")

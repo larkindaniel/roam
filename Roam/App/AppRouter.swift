@@ -2,29 +2,23 @@ import Observation
 import SwiftUI
 
 enum AppTab: String, CaseIterable, Hashable, Sendable {
-    case feed
-    case lists
-    case search
-    case explore
-    case profile
+    case forYou = "foryou"
+    case friends
+    case myPlaces = "myplaces"
 
     var title: String {
         switch self {
-        case .feed: return "Feed"
-        case .lists: return "Your Lists"
-        case .search: return "Search"
-        case .explore: return "Explore"
-        case .profile: return "Profile"
+        case .forYou: return "Discover"
+        case .friends: return "Friends"
+        case .myPlaces: return "My Places"
         }
     }
 
     var symbolName: String {
         switch self {
-        case .feed: return "house"
-        case .lists: return "list.bullet"
-        case .search: return "magnifyingglass"
-        case .explore: return "map"
-        case .profile: return "person.crop.circle"
+        case .forYou: return "safari"
+        case .friends: return "person.2"
+        case .myPlaces: return "mappin.and.ellipse"
         }
     }
 }
@@ -34,20 +28,39 @@ enum ListKind: String, Hashable, Sendable, CaseIterable, Identifiable {
     case want
 
     var id: String { rawValue }
-    var title: String { self == .been ? "Been" : "Want to Go" }
+    var title: String { self == .been ? "Been there" : "Wishlist" }
 }
 
 enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
-    case followers
-    case following
+    case friends
+    case requests
 
     var id: String { rawValue }
-    var title: String { self == .followers ? "Followers" : "Following" }
+    var title: String { self == .friends ? "Friends" : "Requests" }
 }
 
 /// Stable-ID routes pushed onto a tab's navigation stack. Deferred features have no case here.
 enum AppRoute: Hashable, Sendable {
     case experience(UUID)
+    case search
+    case ownProfile
+    case trip(UUID)
+    case placeGroup(title: String, subtitle: String?, ids: [UUID])
+    case homeCity(Destination)
+    /// A city's page, shared by Discover and My Places; `ownerID` is whose spots it shows (nil for yours).
+    case city(Destination, ownerID: UUID? = nil)
+    /// The city page for whatever city is at a point; nil for wherever you are now.
+    case cityAt(latitude: Double?, longitude: Double?)
+    case wishlistCountry(code: String, title: String)
+    case country(String)
+    /// A state or province: its name, its code in `region` ("ON"), its country and middle.
+    case region(Destination)
+    case passport(ownerID: UUID, name: String)
+    case passportCountry(ownerID: UUID, country: PassportCountry)
+    case passportCity(ownerID: UUID, city: PassportCity)
+    case lists
+    case list(UUID)
+    case taste
     case member(UUID)
     case activity(UUID)
     case notifications
@@ -67,6 +80,12 @@ enum AppRoute: Hashable, Sendable {
     case deleteAccount
 }
 
+/// Other members' profile pages are set aside until they're rebuilt: nothing opens one, and names and avatars
+/// aren't tappable. Turn this back on to bring them back.
+enum MemberProfiles {
+    static let available = false
+}
+
 enum SafetyListKind: String, Hashable, Sendable {
     case blocked
     case muted
@@ -84,12 +103,22 @@ enum HelpTopic: String, Hashable, Sendable, CaseIterable, Identifiable {
 /// Modal presentations; dismissing returns to the invoker.
 enum SheetRoute: Identifiable, Hashable {
     case log(LogRequest)
+    case logPlace
     case destinationPicker(DestinationPickerPurpose)
+    case addToTrip(experienceID: UUID, name: String)
+    case addToList(experienceID: UUID, name: String)
+    case share(ShareTarget, title: String)
+    case researchBrief(Destination)
 
     var id: String {
         switch self {
         case .log(let request): return "log-\(request.id)"
+        case .logPlace: return "log-place"
         case .destinationPicker(let purpose): return "destination-\(purpose.rawValue)"
+        case .addToTrip(let id, _): return "trip-\(id)"
+        case .addToList(let id, _): return "list-\(id)"
+        case .share(let target, _): return "share-\(target)"
+        case .researchBrief(let destination): return "research-\(destination.id)"
         }
     }
 }
@@ -106,6 +135,8 @@ struct LogRequest: Hashable, Identifiable, Sendable {
         case firstLog
         case rerank
         case addVisit
+        /// Changing a visit you logged: the same screen, filled in with it, saving over it.
+        case editVisit
     }
 
     let id = UUID()
@@ -115,6 +146,8 @@ struct LogRequest: Hashable, Identifiable, Sendable {
     var destinationTimeZone: String?
     var categoryLocked = false
     var existingVisit: Visit? = nil
+    /// Opens on the visit details, with ranking offered rather than required.
+    var startsWithDetails = false
 }
 
 @MainActor
@@ -126,7 +159,7 @@ final class AppRouter {
     /// Requests the Search tab to show a segment (e.g. Find people → Members).
     var searchSegmentRequest: SearchSegment?
 
-    init(initialTab: AppTab = .feed) {
+    init(initialTab: AppTab = .forYou) {
         self.selectedTab = initialTab
     }
 
@@ -138,17 +171,41 @@ final class AppRouter {
 
     func push(_ route: AppRoute, on tab: AppTab? = nil) {
         let target = tab ?? selectedTab
+        if case .member = route, !MemberProfiles.available { return }
+        // A double tap shouldn't stack the same screen twice (back would then seem to do nothing).
+        guard paths[target]?.last != route else { return }
         paths[target, default: []].append(route)
+    }
+
+    /// Steps back one screen; false when there's nothing to go back to.
+    @discardableResult func pop(_ tab: AppTab? = nil) -> Bool {
+        let target = tab ?? selectedTab
+        guard paths[target]?.isEmpty == false else { return false }
+        paths[target]?.removeLast()
+        return true
     }
 
     func popToRoot(_ tab: AppTab? = nil) {
         paths[tab ?? selectedTab] = []
     }
 
+    /// Bumped each time a tab's button is tapped; its home page scrolls back to the top when it changes.
+    private(set) var scrollToTopRequests: [AppTab: Int] = [:]
+
+    func requestTop(_ tab: AppTab) {
+        scrollToTopRequests[tab, default: 0] += 1
+    }
+
     func showFindPeople() {
         searchSegmentRequest = .members
-        selectedTab = .search
+        openSearch()
     }
+
+    /// Search and Explore are screens within a tab, not tabs of their own.
+    func openSearch() { push(.search) }
+
+    /// The map is a city's page: the one you're in.
+    func openExplore() { push(.cityAt(latitude: nil, longitude: nil)) }
 
     func reset(initialTab: AppTab) {
         paths = [:]
@@ -162,5 +219,5 @@ enum SearchSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
     case members
 
     var id: String { rawValue }
-    var title: String { self == .experiences ? "Experiences" : "Members" }
+    var title: String { self == .experiences ? "Places" : "People" }
 }

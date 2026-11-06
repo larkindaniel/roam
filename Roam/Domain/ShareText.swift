@@ -11,7 +11,7 @@ enum ShareText {
         let place = [category?.title, summary.areaLine.isEmpty ? nil : summary.areaLine].compactMap { $0 }.joined(separator: " · ")
         if !place.isEmpty { lines.append(place) }
         if let ownRating {
-            lines.append("My Roam score: \(ownRating.score.formatted)/10 in \(ownRating.category.title)")
+            lines.append("My Roam score: \(ownRating.score.formatted)/5 in \(ownRating.category.title)")
         }
         lines.append(appleMapsURL(name: summary.name, latitude: summary.latitude, longitude: summary.longitude).absoluteString)
         return lines.joined(separator: "\n")

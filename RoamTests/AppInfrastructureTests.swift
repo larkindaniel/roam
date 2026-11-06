@@ -4,32 +4,32 @@ import XCTest
 @MainActor
 final class AppRouterTests: XCTestCase {
     func testEachTabKeepsItsOwnStack() {
-        let router = AppRouter(initialTab: .feed)
+        let router = AppRouter(initialTab: .friends)
         let id = UUID()
-        router.push(.globe(id), on: .profile)
-        router.push(.notifications, on: .feed)
-        router.selectedTab = .search
-        XCTAssertEqual(router.path(for: .profile), [.globe(id)])
-        XCTAssertEqual(router.path(for: .feed), [.notifications])
-        XCTAssertTrue(router.path(for: .search).isEmpty)
-        router.popToRoot(.feed)
-        XCTAssertTrue(router.path(for: .feed).isEmpty)
-        XCTAssertEqual(router.path(for: .profile), [.globe(id)], "Popping one tab never affects another")
+        router.push(.globe(id), on: .myPlaces)
+        router.push(.notifications, on: .friends)
+        router.selectedTab = .forYou
+        XCTAssertEqual(router.path(for: .myPlaces), [.globe(id)])
+        XCTAssertEqual(router.path(for: .friends), [.notifications])
+        XCTAssertTrue(router.path(for: .forYou).isEmpty)
+        router.popToRoot(.friends)
+        XCTAssertTrue(router.path(for: .friends).isEmpty)
+        XCTAssertEqual(router.path(for: .myPlaces), [.globe(id)], "Popping one tab never affects another")
     }
 
     func testFindPeopleRoutesToMembersSegment() {
-        let router = AppRouter(initialTab: .feed)
+        let router = AppRouter(initialTab: .friends)
         router.showFindPeople()
-        XCTAssertEqual(router.selectedTab, .search)
         XCTAssertEqual(router.searchSegmentRequest, .members)
+        XCTAssertEqual(router.path(for: .friends), [.search], "Search opens within the current tab")
     }
 
     func testResetAfterSetupLandsInYourLists() {
-        let router = AppRouter(initialTab: .feed)
+        let router = AppRouter(initialTab: .friends)
         router.push(.notifications)
-        router.reset(initialTab: .lists)
-        XCTAssertEqual(router.selectedTab, .lists)
-        XCTAssertTrue(router.path(for: .feed).isEmpty)
+        router.reset(initialTab: .myPlaces)
+        XCTAssertEqual(router.selectedTab, .myPlaces)
+        XCTAssertTrue(router.path(for: .friends).isEmpty)
     }
 }
 
@@ -75,7 +75,8 @@ final class LaunchOptionsTests: XCTestCase {
                                                         "-roam-initial-tab", "explore", "-roam-location", "denied"])
         XCTAssertEqual(options.backend, .fixture)
         XCTAssertEqual(options.fixtureAccount, "maya")
-        XCTAssertEqual(options.initialTab, .explore)
+        XCTAssertNil(options.initialTab)
+        XCTAssertEqual(options.initialRoute, "explore")
         XCTAssertEqual(options.simulateLocation, "denied")
     }
 

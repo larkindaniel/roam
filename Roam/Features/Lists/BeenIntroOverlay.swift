@@ -19,12 +19,12 @@ struct BeenIntroCard: View {
                 }
             }
             .accessibilityHidden(true)
-            Text("Your Been list").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text("Every place you log is ranked within its category — Food & Drink, Outdoors, Day Trips, Culture, Nightlife, Activities and Stays — so your favourites rise to the top. Your first rating gets a score right away.")
+            Text("Welcome to My Places").font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+            Text("Keep the places you've been, plan to go and want to try together here, by country.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.secondaryText)
             Button("Let's go", action: onContinue)
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(PrimaryButtonStyle(compact: true))
                 .accessibilityIdentifier("been-intro-continue")
         }
         .padding(Theme.Spacing.xl)
@@ -40,14 +40,14 @@ struct LogCoachmark: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(.white).accessibilityHidden(true)
+            Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(Roam.onInk).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Log your first place").font(.headline).foregroundStyle(.white)
-                Text("Open Search, find somewhere you've been and tap Log.").font(.subheadline).foregroundStyle(.white.opacity(0.9))
+                Text("Log your first place").font(.headline).foregroundStyle(Roam.onInk)
+                Text("Tap + Log a place and find somewhere you've been.").font(.subheadline).foregroundStyle(Roam.onInk)
             }
             Spacer(minLength: 0)
             Button(action: onDismiss) {
-                Image(systemName: "xmark").font(.footnote.bold()).foregroundStyle(.white).frame(width: 44, height: 44)
+                Image(systemName: "xmark").font(.footnote.bold()).foregroundStyle(Roam.onInk).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Dismiss tip")
         }

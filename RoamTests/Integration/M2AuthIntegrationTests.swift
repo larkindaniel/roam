@@ -100,7 +100,7 @@ final class M2AuthIntegrationTests: BackendTestCase {
         let theo = try await signedIn("theo@roam.test")
         let maya = try await theo.publicProfile(userID: Self.maya)
         XCTAssertEqual(maya.member.handle, "mayaroams")
-        XCTAssertEqual(maya.relationship.isFollowing, true)
+        XCTAssertEqual(maya.relationship.friendState, .friends)
         let token = try await theo.client.auth.session.accessToken
         let (_, notes) = try await rest("rest/v1/private_notes", token: token)
         let theoNotes = try JSONSerialization.jsonObject(with: notes) as? [[String: Any]] ?? []

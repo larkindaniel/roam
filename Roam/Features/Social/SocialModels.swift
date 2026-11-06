@@ -377,7 +377,7 @@ final class NotificationsModel {
             return nil
         }
         switch notification.type {
-        case .follow: return .member(notification.actor.id)
+        case .follow, .friendRequest, .friendAccept: return .member(notification.actor.id)
         case .like, .comment: return notification.activityID.map(AppRoute.activity)
         }
     }
@@ -414,8 +414,8 @@ final class FollowListModel {
     }
 
     private func fetch(_ query: String, _ cursor: String?) async throws -> Page<MemberRow> {
-        segment == .followers ? try await service.followers(of: userID, query: query, cursor: cursor)
-                              : try await service.following(of: userID, query: query, cursor: cursor)
+        segment == .friends ? try await service.following(of: userID, query: query, cursor: cursor)
+                            : try await service.incomingFriendRequests(cursor: cursor)
     }
 
     /// Latest query wins; an older response never overwrites a newer one.
@@ -459,15 +459,15 @@ final class FollowListModel {
         }
     }
 
-    func setFollow(_ row: MemberRow, following: Bool) async {
+    func apply(_ action: FriendAction, to row: MemberRow) async {
         guard !row.isSelf, !pendingFollow.contains(row.id), let index = rows.firstIndex(where: { $0.id == row.id }) else { return }
         let before = rows[index]
         pendingFollow.insert(row.id)
         defer { pendingFollow.remove(row.id) }
-        rows[index].isFollowing = following
+        rows[index].friendState = before.friendState.applying(action)
         do {
-            let persisted = try await service.setFollow(userID: row.id, following: following)
-            if let current = rows.firstIndex(where: { $0.id == row.id }) { rows[current].isFollowing = persisted }
+            let persisted = try await service.friendAction(userID: row.id, action: action)
+            if let current = rows.firstIndex(where: { $0.id == row.id }) { rows[current].friendState = persisted }
             actionError = nil
         } catch {
             if let current = rows.firstIndex(where: { $0.id == row.id }) { rows[current] = before }
@@ -481,7 +481,7 @@ final class FollowListModel {
     }
 }
 
-/// S22: the exact intersection of two Want to Go lists. A failed refresh keeps the last results.
+/// S22: the exact intersection of two Wishlist lists. A failed refresh keeps the last results.
 @MainActor
 @Observable
 final class SharedWantsModel {

@@ -45,7 +45,7 @@ struct NotificationsView: View {
             ScrollView {
                 VStack {
                     EmptyStateView(systemImage: "bell", title: "No notifications yet",
-                                   message: "New followers, likes and comments on your posts appear here.")
+                                   message: "Friend requests, likes and comments on your posts appear here.")
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("notifications-empty")
@@ -53,7 +53,7 @@ struct NotificationsView: View {
             }
             .refreshable { await model.load() }
         } else {
-            List {
+            List { Group {
                 if let error = model.actionError {
                     Text(error).foregroundStyle(Theme.disliked).accessibilityIdentifier("notifications-action-error")
                 }
@@ -70,6 +70,8 @@ struct NotificationsView: View {
                     Task { await model.loadMore() }
                 }
                 .listRowBackground(Color.clear)
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .refreshable { await model.load() }
             .accessibilityIdentifier("notifications-list")
@@ -107,6 +109,8 @@ struct NotificationsView: View {
         let name = notification.actor.displayName
         switch notification.type {
         case .follow: return "\(name) started following you."
+        case .friendRequest: return "\(name) wants to be friends."
+        case .friendAccept: return "\(name) accepted your friend request."
         case .like: return "\(name) liked your post about \(notification.experienceName ?? "a place")."
         case .comment:
             if let preview = notification.commentPreview { return "\(name) commented on \(notification.experienceName ?? "your post"): “\(preview)”" }
@@ -137,19 +141,24 @@ struct FollowListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("List", selection: $segment) {
-                ForEach(FollowSegment.allCases) { Text($0.title).tag($0) }
+            if isOwn {
+                Picker("List", selection: $segment) {
+                    ForEach(FollowSegment.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.vertical, Theme.Spacing.s)
+                .accessibilityIdentifier("follow-segment")
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.vertical, Theme.Spacing.s)
-            .accessibilityIdentifier("follow-segment")
             if let model { list(model) } else { Spacer() }
         }
         .background(Theme.groupedCanvas)
         .navigationTitle(segment.title)
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search by name or handle")
+        // Type as you like: no capitalising or correcting.
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
         .task(id: "\(segment.rawValue)|\(query)") {
             if model == nil { model = FollowListModel(userID: userID, segment: segment, service: services.social) }
             model?.segment = segment
@@ -166,7 +175,7 @@ struct FollowListView: View {
             ScrollView { SkeletonList(rows: 6).padding() }
         } else if !model.hasLoaded, let error = model.error {
             ScrollView {
-                EmptyStateView(systemImage: "person.2.slash", title: "Couldn't load members", message: error,
+                EmptyStateView(systemImage: "person.2.slash", title: "Couldn't load this list", message: error,
                                primaryTitle: "Try again", primaryAction: { Task { await model.load(query: query) } })
             }
         } else if model.rows.isEmpty {
@@ -177,19 +186,26 @@ struct FollowListView: View {
                     .padding(.top, Theme.Spacing.xl)
             }
         } else {
-            List {
+            List { Group {
                 if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: query) } } }
                 if let error = model.actionError { Text(error).foregroundStyle(Theme.disliked) }
                 ForEach(model.rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.followsViewer && !row.isSelf ? "Follows you" : nil,
+                    MemberRowView(member: row.member, subtitle: row.friendState == .received && !row.isSelf ? "Wants to be friends" : nil,
                                   followState: followState(row, model: model),
                                   onOpen: { router.push(.member(row.id)) },
-                                  onToggleFollow: { Task { await model.setFollow(row, following: !row.isFollowing) } })
+                                  onToggleFollow: { Task { await model.apply(row.friendState.primaryAction, to: row) } })
+                    .swipeActions {
+                        if row.friendState == .received {
+                            Button("Decline", role: .destructive) { Task { await model.apply(.decline, to: row) } }
+                        }
+                    }
                 }
                 PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
                     Task { await model.loadMore() }
                 }
                 .listRowBackground(Color.clear)
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .accessibilityIdentifier("follow-list-rows")
         }
@@ -197,30 +213,26 @@ struct FollowListView: View {
 
     private func followState(_ row: MemberRow, model: FollowListModel) -> FollowButtonState? {
         if row.isSelf { return nil }
-        if model.pendingFollow.contains(row.id) { return .pending }
-        if row.isFollowing { return .following }
-        return row.followsViewer ? .followBack : .follow
+        return FollowButtonState(row.friendState, pending: model.pendingFollow.contains(row.id))
     }
 
     @ViewBuilder private func emptyState(_ model: FollowListModel) -> some View {
         if !model.loadedQuery.isEmpty {
             EmptyStateView(systemImage: "magnifyingglass", title: "No matches",
                            message: "No one here matches “\(model.loadedQuery)”. Check the spelling or clear the search.")
-        } else if segment == .followers {
-            EmptyStateView(systemImage: "person.2", title: "No followers yet",
-                           message: isOwn ? "When people follow you, they appear here. Your profile and posts are visible to signed-in members."
-                                          : "No one follows this member yet.")
+        } else if segment == .requests {
+            EmptyStateView(systemImage: "person.2", title: "No requests", message: "When someone asks to be your friend, they appear here.")
         } else if isOwn {
-            EmptyStateView(systemImage: "person.badge.plus", title: "You're not following anyone",
-                           message: "Follow travellers to see their rankings in your feed.",
+            EmptyStateView(systemImage: "person.badge.plus", title: "No friends yet",
+                           message: "Add friends to see their places here.",
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
         } else {
-            EmptyStateView(systemImage: "person.2", title: "Not following anyone", message: "This member isn't following anyone yet.")
+            EmptyStateView(systemImage: "person.2", title: "No friends yet", message: "They haven't added any friends yet.")
         }
     }
 }
 
-/// S22: read-only intersection of your Want to Go with one other member's.
+/// S22: read-only intersection of your Wishlist with one other member's.
 struct SharedWantsView: View {
     let otherID: UUID
 
@@ -238,7 +250,7 @@ struct SharedWantsView: View {
             if let model { content(model) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background(Theme.groupedCanvas)
-        .navigationTitle("Shared Want to Go")
+        .navigationTitle("Shared Wishlist")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if model == nil { model = SharedWantsModel(otherID: otherID, service: services.lists) }
@@ -251,7 +263,7 @@ struct SharedWantsView: View {
         .screenIdentifier("shared-wants")
     }
 
-    private var otherName: String { other?.member.displayName ?? "this member" }
+    private var otherName: String { other?.member.displayName ?? "this person" }
 
     @ViewBuilder private func content(_ model: SharedWantsModel) -> some View {
         VStack(spacing: 0) {
@@ -267,8 +279,8 @@ struct SharedWantsView: View {
                 ScrollView {
                     VStack {
                         EmptyStateView(systemImage: "bookmark", title: "Nothing shared yet",
-                                       message: "You and \(otherName) haven't saved the same place. Neither Want to Go list is changed by comparing.",
-                                       primaryTitle: "See \(otherName)'s Want to Go", primaryAction: { router.push(.memberList(otherID, .want)) })
+                                       message: "You and \(otherName) haven't saved the same place. Neither Wishlist list is changed by comparing.",
+                                       primaryTitle: "See \(otherName)'s Wishlist", primaryAction: { router.push(.memberList(otherID, .want)) })
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("shared-wants-empty")
@@ -276,13 +288,13 @@ struct SharedWantsView: View {
             } else if showsMap {
                 sharedMap(model)
             } else {
-                List {
+                List { Group {
                     if let error = model.error {
                         InlineRetryView(message: "Couldn't refresh. Showing the last shared list. \(error)") { Task { await model.load() } }
                     }
                     ForEach(model.entries) { entry in
                         let experience = entry.experience
-                        // Same row as Want to Go: removing your own bookmark here refreshes the intersection.
+                        // Same row as Wishlist: removing your own bookmark here refreshes the intersection.
                         ExperienceRow(name: experience.name, category: experience.category, area: experience.areaLine,
                                       score: experience.viewer.myScore, scoreSource: .you,
                                       statusLine: entry.savedAt.map { "You saved \($0.formatted(date: .abbreviated, time: .omitted))" },
@@ -295,6 +307,8 @@ struct SharedWantsView: View {
                                           catch { _ = session.handle(error) }
                                       } })
                     }
+                }
+                .listRowBackground(Roam.paperRaised)
                 }
                 .accessibilityIdentifier("shared-wants-list")
             }
@@ -325,7 +339,7 @@ struct SharedWantsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Same map as Want to Go: the UIKit-backed map fits every pin (SwiftUI `Map` could not zoom out
+    /// Same map as Wishlist: the UIKit-backed map fits every pin (SwiftUI `Map` could not zoom out
     /// far enough to show places on opposite sides of the world), and a pin opens its place card.
     private func sharedMap(_ model: SharedWantsModel) -> some View {
         let pins = model.entries.map { MapPin(id: $0.id.uuidString, name: $0.experience.name, category: $0.experience.category,

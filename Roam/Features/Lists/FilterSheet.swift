@@ -15,7 +15,7 @@ struct FilterSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            List { Group {
                 Section("Category") {
                     FlowChips(items: ExperienceCategory.allCases.map { ($0.rawValue, $0.title, $0.symbolName) },
                               selected: Set(draft.categories.map(\.rawValue))) { raw in
@@ -26,15 +26,18 @@ struct FilterSheet: View {
                 }
                 if kind == .been {
                     Section {
-                        Toggle("Memories without a rating", isOn: $draft.unrankedMemories)
+                        Toggle("Unranked places only", isOn: $draft.unrankedMemories)
                             .accessibilityIdentifier("filter-unranked")
                     } footer: {
-                        Text("Places you've visited whose ranking was removed. They're kept, labelled Unranked, and don't count toward your ranked total.")
+                        Text("Show only places you've visited but not ranked.")
                     }
                 }
                 Section("City") {
                     if cities.count > 6 {
                         TextField("Search cities", text: $citySearch)
+                            // Type as you like: no capitalising or correcting.
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
                     }
                     if cities.isEmpty { Text("No cities yet").foregroundStyle(Theme.secondaryText) }
                     ForEach(cities.filter { citySearch.isEmpty || $0.title.localizedCaseInsensitiveContains(citySearch) }) { option in
@@ -51,6 +54,8 @@ struct FilterSheet: View {
                         }
                     }
                 }
+            }
+            .listRowBackground(Roam.paperRaised)
             }
             .accessibilityIdentifier("filter-options")
             .navigationTitle("Filters")
@@ -81,6 +86,7 @@ struct FilterSheet: View {
             }
             .onAppear { draft = applied }
         }
+        .roamSheetStyle()
         .screenIdentifier("filter-sheet")
     }
 

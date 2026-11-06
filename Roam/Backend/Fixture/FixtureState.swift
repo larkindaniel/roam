@@ -13,6 +13,7 @@ struct FixtureState {
     var media: [UUID: B.MediaRow] = [:]
     var activities: [UUID: B.ActivityRow] = [:]
     var follows: [B.Pair: Date] = [:]
+    var friendRequests: [B.Pair: Date] = [:]
     var likes: [B.Pair: Date] = [:]
     var comments: [UUID: B.CommentRow] = [:]
     var notifications: [UUID: B.NotificationRow] = [:]
@@ -118,8 +119,12 @@ struct FixtureState {
         for seed in FixtureSeed.bookmarks {
             bookmarks[B.Pair(a: seed.owner, b: experienceID(for: seed.place))] = FixtureSeed.daysAgo(seed.savedDaysAgo)
         }
-        for (index, pair) in FixtureSeed.follows.enumerated() {
+        for (index, pair) in FixtureSeed.friends.enumerated() {
             follows[B.Pair(a: pair.0, b: pair.1)] = FixtureSeed.daysAgo(Double(60 - index * 7))
+            follows[B.Pair(a: pair.1, b: pair.0)] = FixtureSeed.daysAgo(Double(60 - index * 7))
+        }
+        for (index, pair) in FixtureSeed.friendRequests.enumerated() {
+            friendRequests[B.Pair(a: pair.0, b: pair.1)] = FixtureSeed.daysAgo(Double(20 - index))
         }
         // Interactions on Maya's newest Harbor Lantern rating.
         if let harborActivity = activities.values.first(where: { $0.author == FixtureIDs.maya && $0.type == .rating && placeKey($0.experience) == "harbor" }) {
@@ -135,10 +140,10 @@ struct FixtureState {
             add(notification: .comment, recipient: FixtureIDs.maya, actor: FixtureIDs.theo, activity: harborActivity.id, comment: commentID,
                 key: "comment:\(commentID)", daysAgo: 1.4, read: false)
         }
-        add(notification: .follow, recipient: FixtureIDs.maya, actor: FixtureIDs.lena, activity: nil, comment: nil,
-            key: "follow:\(FixtureIDs.lena):\(FixtureIDs.maya)", daysAgo: 40, read: true)
-        add(notification: .follow, recipient: FixtureIDs.maya, actor: FixtureIDs.sam, activity: nil, comment: nil,
-            key: "follow:\(FixtureIDs.sam):\(FixtureIDs.maya)", daysAgo: 30, read: true)
+        add(notification: .friendRequest, recipient: FixtureIDs.maya, actor: FixtureIDs.lena, activity: nil, comment: nil,
+            key: "friend_request:\(FixtureIDs.lena):\(FixtureIDs.maya)", daysAgo: 40, read: true)
+        add(notification: .friendAccept, recipient: FixtureIDs.maya, actor: FixtureIDs.sam, activity: nil, comment: nil,
+            key: "friend_accept:\(FixtureIDs.sam):\(FixtureIDs.maya)", daysAgo: 30, read: true)
         if scenario == "stress" { seedStress() }
     }
 

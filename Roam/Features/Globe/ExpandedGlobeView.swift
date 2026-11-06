@@ -45,7 +45,7 @@ struct ExpandedGlobeView: View {
             }
         }
         .background(Theme.groupedCanvas)
-        .navigationTitle(isSelf ? "Your travels" : "\(ownerName ?? "Member")'s travels")
+        .navigationTitle(isSelf ? "Your travels" : "\(ownerName ?? "Their")'s travels")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -228,7 +228,7 @@ struct ExpandedGlobeView: View {
 
     private func list(_ value: TravelProfile) -> some View {
         let pins = visiblePins(value)
-        return List {
+        return List { Group {
             if filter == nil {
                 Section("Countries (all-time)") {
                     ForEach(value.countries) { country in
@@ -258,6 +258,8 @@ struct ExpandedGlobeView: View {
                     .accessibilityIdentifier("globe-list-row-\(pin.name)")
                 }
             }
+        }
+        .listRowBackground(Roam.paperRaised)
         }
         .accessibilityIdentifier("globe-list")
     }

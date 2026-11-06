@@ -108,6 +108,12 @@ protocol PlaceSearchProviding: AnyObject, Sendable {
     func searchDestinations(query: String) async throws -> [Destination]
     func pointsOfInterest(in region: MKCoordinateRegion, category: ExperienceCategory?) async throws -> [PlaceCandidate]
     func destination(for coordinate: CLLocationCoordinate2D) async throws -> Destination?
+    /// States and provinces named like the search (Ontario, Kerala), framed to their whole area.
+    func searchRegions(query: String) async throws -> [Destination]
+}
+
+extension PlaceSearchProviding {
+    func searchRegions(query: String) async throws -> [Destination] { [] }
 }
 
 protocol ExperienceService: AnyObject, Sendable {
@@ -150,6 +156,9 @@ struct VisitPayload: Codable, Hashable, Sendable {
     var timeZoneIdentifier: String?
     var publicNote: String
     var mediaIDs: [UUID]
+    /// Nil keeps a visit's current audience; a new visit then defaults to friends on the server.
+    var audience: Audience? = nil
+    var tripID: UUID? = nil
 }
 
 struct RatingCommitRequest: Codable, Hashable, Sendable {
@@ -180,6 +189,8 @@ struct AddVisitRequest: Codable, Hashable, Sendable {
     let operationID: UUID
     let experienceID: UUID
     let visit: VisitPayload
+    /// Required only when the member logs a place they haven't ranked.
+    var category: ExperienceCategory? = nil
 }
 
 struct AddVisitResult: Codable, Hashable, Sendable {
@@ -256,7 +267,9 @@ extension MediaService {
 // MARK: People, feed and notifications
 
 protocol SocialService: AnyObject, Sendable {
-    func setFollow(userID: UUID, following: Bool) async throws -> Bool
+    /// Desired-state friend change; safe to retry. Returns the resulting state.
+    func friendAction(userID: UUID, action: FriendAction) async throws -> FriendState
+    func incomingFriendRequests(cursor: String?) async throws -> Page<MemberRow>
     func followers(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow>
     func following(of userID: UUID, query: String, cursor: String?) async throws -> Page<MemberRow>
     func searchMembers(query: String, cursor: String?) async throws -> Page<MemberRow>
@@ -284,6 +297,65 @@ protocol NotificationService: AnyObject, Sendable {
     func unreadCount() async throws -> Int
     func markRead(id: UUID) async throws
     func markAllRead() async throws
+}
+
+// MARK: Trips, lists, direct shares and taste
+
+protocol PlanService: AnyObject, Sendable {
+    func myTrips() async throws -> [TripSummary]
+    func trip(id: UUID) async throws -> TripDetail
+    func saveTrip(_ draft: TripDraft) async throws -> TripSummary
+    func deleteTrip(id: UUID) async throws
+    func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws
+    func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws
+    /// Adds a whole country to a trip (or takes it off), before any of its cities are picked.
+    func setTripCountry(tripID: UUID, code: String, name: String, present: Bool) async throws
+    func homeCities() async throws -> [Destination]
+    func setHomeCity(_ city: Destination, present: Bool) async throws -> [Destination]
+    func setCityVisited(_ city: Destination, present: Bool) async throws
+    /// Marks a city as been, with when you were there (either date optional).
+    func markCityVisited(_ city: Destination, start: LocalDate?, end: LocalDate?) async throws
+    /// Logs a city like a place: been, with when, how it was and a note (all optional).
+    func logCity(_ city: Destination, start: LocalDate?, end: LocalDate?, sentiment: Sentiment?, note: String, mediaIDs: [UUID]) async throws
+    /// Cities on your wishlist, saved as a whole.
+    func savedCities() async throws -> [Destination]
+    func setCitySaved(_ city: Destination, present: Bool) async throws -> [Destination]
+    /// Countries on your wishlist, as ISO codes.
+    func savedCountries() async throws -> [String]
+    func setCountrySaved(code: String, name: String, present: Bool) async throws -> [String]
+    func passport(ownerID: UUID) async throws -> [PassportCountry]
+    /// Looks places up on Google for a photo and star rating, at most about once a week each. True when any changed.
+    func refreshGoogleDetails(experienceIDs: [UUID]) async -> Bool
+    /// A country's photo from its own Google entry, with its credit; nil when there isn't one.
+    func countryPhoto(code: String, region: String?, name: String) async -> (url: URL, credit: String?)?
+    /// A town or city's photo from its own Google entry; `fullName` is "Waterloo, Ontario, Canada".
+    func cityPhoto(fullName: String) async -> (url: URL, credit: String?)?
+    /// States and provinces on your wishlist, each as "CA|ON".
+    func savedRegions() async throws -> [String]
+    /// Your own photos (storage paths, newest first) for a place, or rolled up for a city, state or country.
+    func myPhotos(experienceID: UUID?, country: String?, region: String?, regionName: String?, city: String?) async -> [String]
+    func savedRegionList() async throws -> [SavedRegion]
+    /// `area` is the state itself (its middle and size), kept so it can open from a list.
+    func setRegionSaved(country: String, region: String, name: String, area: Destination?, present: Bool) async throws -> [String]
+    func myLists() async throws -> [PlaceList]
+    func list(id: UUID) async throws -> PlaceListDetail
+    func saveList(id: UUID?, title: String, description: String) async throws -> PlaceList
+    func deleteList(id: UUID) async throws
+    func setListItem(listID: UUID, experienceID: UUID, note: String, present: Bool) async throws
+    func share(_ target: ShareTarget, with recipient: UUID, message: String, operationID: UUID) async throws
+    func sharedWithMe() async throws -> [DirectShare]
+    func searchRoamPlaces(query: String) async throws -> [ExperienceSummary]
+    func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary
+    func setVisitAudience(visitID: UUID, audience: Audience) async throws
+    /// Which of your trips a visit was part of; nil for none.
+    func setVisitTrip(visitID: UUID, tripID: UUID?) async throws
+    func tripFeed() async throws -> [TripFeedCard]
+    func friendsFeed() async throws -> [FriendFeedVisit]
+    func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
+    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
+    func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
+    func taste() async throws -> TasteProfile
+    func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile
 }
 
 // MARK: Settings, travel and account

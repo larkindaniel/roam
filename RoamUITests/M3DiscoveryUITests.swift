@@ -106,7 +106,7 @@ final class M3DiscoveryUITests: RoamUITestCase {
         XCTAssertTrue(element("detail-save").label.contains("Saved"))
         capture("m3-05-detail-saved", settle: 1.5)
 
-        tab("Your Lists").tap()
+        tab("My Places").tap()
         waitFor(element("list-kind")).buttons["Want to Go"].tap()
         waitFor(element("experience-row-Terrace Steps Café"))
         capture("m3-06-want-list")
@@ -135,7 +135,7 @@ final class M3DiscoveryUITests: RoamUITestCase {
     }
 
     func testListsCategoryOrderFiltersAndUnrankedMemories() {
-        launch(tab: "lists")
+        launch(tab: "myplaces")
         waitFor(element("experience-row-Harbor Lantern Café"), timeout: 10)
         capture("m3-10-been-all")
         XCTAssertFalse(app.staticTexts["1. Harbor Lantern Café"].exists, "All mode shows no combined ordinal")
@@ -216,7 +216,7 @@ final class M3DiscoveryUITests: RoamUITestCase {
     }
 
     func testFilterControlsRemainReachableAtAccessibilityTextSize() {
-        launch(tab: "lists", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
+        launch(tab: "myplaces", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         let open = waitFor(element("open-filters"))
         XCTAssertTrue(open.isHittable, "Filters stays reachable before opening the sheet at large text sizes")
         XCTAssertTrue(element("sort-menu").isHittable)

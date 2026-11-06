@@ -205,7 +205,7 @@ final class M7ShareTextTests: XCTestCase {
                             categoryCount: 4, firstRatedAt: Date())
         let text = ShareText.experience(summary(), ownRating: mine)
         let scoreLines = text.split(separator: "\n").filter { $0.localizedCaseInsensitiveContains("score") }
-        XCTAssertEqual(scoreLines, ["My Roam score: 8.4/10 in Food & Drink"], "Only your own labelled score; never the Following 9.1")
+        XCTAssertEqual(scoreLines, ["My Roam score: 4.2/5 in Food & Drink"], "Only your own labelled score, out of 5; never the Following 9.1")
     }
 
     func testProfileTextIsPlainPublicValuesWithoutALink() {
@@ -283,8 +283,8 @@ final class M7DeleteAccountModelTests: XCTestCase {
     }
 }
 
-/// Profile edits validate locally, survive a restart as an account-scoped draft, keep every field
-/// when a save fails and send nothing on Cancel.
+/// Profile edits validate locally, keep every field when a save fails, aren't kept as a draft and send nothing on
+/// Cancel.
 @MainActor
 final class M7EditProfileModelTests: XCTestCase {
     private func services(_ backend: FixtureBackend) -> AppServices {
@@ -296,7 +296,7 @@ final class M7EditProfileModelTests: XCTestCase {
                            healthCheck: nil)
     }
 
-    func testUnsavedEditsSurviveARestartAndCancelDiscardsThemWithoutAWrite() async throws {
+    func testUnsavedEditsAreNotKeptAndCancelSendsNothing() async throws {
         let backend = FixtureBackend(scenario: "default", signedInHandle: "maya", latencyMilliseconds: 0)
         let services = services(backend)
         let loaded = try await backend.ownProfile()
@@ -304,12 +304,10 @@ final class M7EditProfileModelTests: XCTestCase {
         let editor = EditProfileModel(services: services, profile: profile)
         XCTAssertFalse(editor.canSave, "Nothing to save before a change")
         editor.draft.bio = "Night trains and day hikes."
-        let restored = EditProfileModel(services: services, profile: profile)
-        XCTAssertTrue(restored.restoredDraft)
-        XCTAssertEqual(restored.draft.bio, "Night trains and day hikes.")
-        restored.discard()
+        XCTAssertTrue(editor.canSave)
+        editor.discard()
         let fresh = EditProfileModel(services: services, profile: profile)
-        XCTAssertFalse(fresh.restoredDraft)
+        XCTAssertFalse(fresh.restoredDraft, "Unsaved changes aren't kept as a draft")
         XCTAssertEqual(fresh.draft, fresh.original)
         let stored = try await backend.ownProfile()
         XCTAssertEqual(stored?.bio, profile.bio, "Cancel sent nothing")
@@ -345,7 +343,6 @@ final class M7EditProfileModelTests: XCTestCase {
         XCTAssertEqual(editor.draft.displayName, "Maya C.", "A failed save keeps every field")
         XCTAssertEqual(editor.draft.bio, "  Harbours and late jazz.\n", "The draft keeps exactly what was typed")
         XCTAssertNotNil(editor.handleIssue)
-        XCTAssertTrue(EditProfileModel(services: services, profile: profile).restoredDraft, "The draft is still on disk")
         editor.draft.handle = "maya_roams_on"
         await editor.checkHandle()
         let saved = await editor.save()

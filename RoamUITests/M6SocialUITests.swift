@@ -25,7 +25,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     private func openProfile(handle: String) {
-        tab("Search").tap()
+        element("log-place").tap()
         waitFor(app.buttons["Members"]).tap()
         let field = waitFor(element("member-search-field"))
         field.tap()
@@ -39,7 +39,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testFeedShowsFollowedPostsNewestFirstAndLikesOptimistically() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         let newest = first("feed-card-")
         XCTAssertTrue(newest.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Jonas Weber")).firstMatch.exists,
@@ -55,7 +55,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testCommentFailureKeepsTextAndRetryPostsOnce() {
-        launch(scenario: "comment-uncertain", tab: "feed")
+        launch(scenario: "comment-uncertain", tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         let harbor = card(containing: "Custard tarts")
         reveal(harbor, in: "feed-list", maxSwipes: 8)
@@ -78,7 +78,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testNotificationsGroupUnreadRouteToPostAndMarkAllRead() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         let bell = waitFor(element("open-notifications"))
         XCTAssertTrue(bell.label.contains("2 unread"))
         bell.tap()
@@ -97,7 +97,7 @@ final class M6SocialUITests: RoamUITestCase {
 
     func testFollowersFollowingSearchAndFollowBack() {
         launch(tab: "profile")
-        waitFor(element("profile-followers")).tap()
+        waitFor(element("profile-friends")).tap()
         waitFor(element("follow-list"))
         waitFor(element("member-row-lenaeats"), timeout: 10)
         XCTAssertTrue(element("member-row-samexplores").exists)
@@ -120,7 +120,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testMuteHidesFeedPostsButKeepsProfileActivity() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         XCTAssertTrue(card(containing: "Jonas Weber").exists)
         openProfile(handle: "jonashikes")
@@ -130,14 +130,14 @@ final class M6SocialUITests: RoamUITestCase {
         reveal(element("profile-activity"), in: "profile-root")
         XCTAssertTrue(first("feed-card-").exists, "A muted member's profile still shows their posts")
         capture("m6-09-muted-profile")
-        tab("Feed").tap()
+        tab("Friends").tap()
         waitFor(element("feed-list"), timeout: 10)
         waitForDisappearance(card(containing: "Jonas Weber"), timeout: 10)
         capture("m6-10-feed-without-muted")
     }
 
     func testBlockRemovesTheMemberFromFeedAndSearch() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         openProfile(handle: "theowanders")
         waitFor(element("profile-overflow")).tap()
@@ -150,14 +150,14 @@ final class M6SocialUITests: RoamUITestCase {
         field.typeText(XCUIKeyboardKey.delete.rawValue + "o")
         XCTAssertFalse(element("member-row-theowanders").waitForExistence(timeout: 3), "A blocked member is excluded from search")
         field.typeText("\n")
-        tab("Feed").tap()
+        tab("Friends").tap()
         waitFor(element("feed-list"), timeout: 10)
         XCTAssertFalse(card(containing: "Theo Park").waitForExistence(timeout: 3), "The blocked member's posts leave the feed")
         capture("m6-12-feed-after-block")
     }
 
     func testSharedWantToGoListMapAndHonestEmptyState() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         openProfile(handle: "theowanders")
         waitFor(element("profile-shared-wants")).tap()
         waitFor(element("shared-wants"))
@@ -177,7 +177,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testOwnerRemovesPostButKeepsTheRanking() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         let own = card(containing: "Back again")
         reveal(own, in: "feed-list", maxSwipes: 8)
@@ -189,7 +189,7 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("confirm-remove-post")).tap()
         waitForDisappearance(element("activity-detail"), timeout: 10)
         XCTAssertFalse(card(containing: "Back again").waitForExistence(timeout: 3))
-        tab("Search").tap()
+        element("log-place").tap()
         let search = waitFor(element("experience-search-field"))
         search.tap()
         search.typeText("harbor")
@@ -199,7 +199,7 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testLargeTextFeedAndPostKeepActionsReachable() {
-        launch(tab: "feed", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
+        launch(tab: "friends", extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         waitFor(element("feed-list"), timeout: 10)
         capture("m6-18-large-text-feed")
         let comments = first("feed-card-").buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'feed-comments-'")).firstMatch
@@ -211,16 +211,16 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     func testFollowersEmptyStateForAMemberWithoutFollowers() {
-        launch(tab: "feed")
+        launch(tab: "friends")
         openProfile(handle: "priyaplans")
-        waitFor(element("profile-followers")).tap()
+        waitFor(element("profile-friends")).tap()
         waitFor(element("follow-list-empty"), timeout: 10)
         XCTAssertTrue(app.staticTexts["No one follows this member yet."].exists)
         capture("m6-20-followers-empty")
     }
 
     func testEmptyFeedOffersFindPeople() {
-        launch(scenario: "empty", tab: "feed")
+        launch(scenario: "empty", tab: "friends")
         waitFor(element("feed-empty"), timeout: 10)
         capture("m6-17-feed-empty")
         app.buttons["Find people"].tap()

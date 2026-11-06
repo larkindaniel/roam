@@ -109,8 +109,9 @@ extension FixtureBackend: ListService {
     func been(ownerID: UUID) async throws -> [ListEntry] {
         let me = try await authenticatedActor()
         guard ownerID == me || isVisibleMember(ownerID, to: me) else { throw RoamError.notFound }
-        let experienceIDs = Set(ratings.values.filter { $0.owner == ownerID }.map(\.experience))
-            .union(visits.values.filter { $0.owner == ownerID }.map(\.experience))
+        let visible = visits.values.filter { $0.owner == ownerID && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }.map(\.experience)
+        let hidden = Set(visits.values.filter { $0.owner == ownerID && !audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }.map(\.experience))
+        let experienceIDs = Set(ratings.values.filter { $0.owner == ownerID && !hidden.contains($0.experience) }.map(\.experience)).union(visible)
         return experienceIDs.compactMap { listEntry($0, owner: ownerID, viewer: me, savedAt: nil) }
     }
 
@@ -203,7 +204,7 @@ extension FixtureBackend: RankingService {
             let payload = request.visit ?? VisitPayload(date: nil, timeZoneIdentifier: nil, publicNote: "", mediaIDs: [])
             visits[newVisit] = VisitRow(id: newVisit, owner: me, experience: request.experienceID, date: payload.date,
                                         timeZone: payload.timeZoneIdentifier, note: payload.publicNote, mediaIDs: payload.mediaIDs,
-                                        createdAt: now, updatedAt: now)
+                                        createdAt: now, updatedAt: now, audience: payload.audience ?? .friends, tripID: payload.tripID)
             for (index, mediaID) in payload.mediaIDs.enumerated() {
                 media[mediaID]?.attached = true
                 media[mediaID]?.visit = newVisit
@@ -250,9 +251,11 @@ extension FixtureBackend: RankingService {
             }
             return result
         }
-        guard let rating = ratings.values.first(where: { $0.owner == me && $0.experience == request.experienceID }) else {
-            throw RoamError.validation("Rank this experience first, then add more visits.")
+        let rating = ratings.values.first(where: { $0.owner == me && $0.experience == request.experienceID })
+        guard let category = rating?.category ?? request.category ?? experiences[request.experienceID]?.category else {
+            throw RoamError.validation("Choose a category for this place.")
         }
+        if experiences[request.experienceID]?.category == nil { experiences[request.experienceID]?.category = category }
         if let issue = Validation.publicNote(request.visit.publicNote) { throw RoamError.validation(issue.localizedDescription) }
         let zone = try visitTimeZone(request.visit.timeZoneIdentifier)
         if Validation.visitDate(request.visit.date, today: LocalDate.today(in: zone)) != nil { throw RoamError.validation(ValidationIssue.futureDate.localizedDescription) }
@@ -264,16 +267,16 @@ extension FixtureBackend: RankingService {
         let visitID = UUID()
         visits[visitID] = VisitRow(id: visitID, owner: me, experience: request.experienceID, date: request.visit.date,
                                    timeZone: request.visit.timeZoneIdentifier, note: request.visit.publicNote, mediaIDs: request.visit.mediaIDs,
-                                   createdAt: now, updatedAt: now)
+                                   createdAt: now, updatedAt: now, audience: request.visit.audience ?? .friends, tripID: request.visit.tripID)
         for (index, mediaID) in request.visit.mediaIDs.enumerated() {
             media[mediaID]?.attached = true
             media[mediaID]?.visit = visitID
             media[mediaID]?.position = index
         }
-        let placement = ranking(owner: me, category: rating.category).placement(forExperience: request.experienceID)
+        let placement = ranking(owner: me, category: category).placement(forExperience: request.experienceID)
         let activityID = UUID()
         activities[activityID] = ActivityRow(id: activityID, author: me, type: .revisit, experience: request.experienceID, visit: visitID,
-                                             rating: rating.id, category: rating.category, score: placement?.score, rank: placement?.rank,
+                                             rating: rating?.id, category: category, score: placement?.score, rank: placement?.rank,
                                              sentiment: placement?.sentiment, publishedAt: now)
         let result = AddVisitResult(visitID: visitID, activityID: activityID)
         receipts[key] = (digest, result)

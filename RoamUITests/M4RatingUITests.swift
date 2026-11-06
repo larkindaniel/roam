@@ -254,7 +254,7 @@ final class M4RatingUITests: RoamUITestCase {
         for _ in 0..<6 where !memory.isHittable { app.swipeUp() }
         XCTAssertTrue(memory.exists, "Removing the ranking keeps the populated visit memory")
         capture("m4-16-ranking-removed-memory-retained")
-        tab("Your Lists").tap()
+        tab("My Places").tap()
         waitFor(element("list-kind")).buttons["Want to Go"].tap()
         XCTAssertFalse(element("experience-row-Harbor Lantern Café").exists, "Removal does not recreate a Want bookmark")
     }
