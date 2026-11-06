@@ -373,6 +373,8 @@ struct CityGuideCard: View {
     var showsPhoto = true
     /// How far the article's own coordinates may be from here; a country's sit at its capital.
     var within: CLLocationDistance = 80_000
+    /// The gap its stack puts before it, taken back while there's no article so nothing shows (a place's page).
+    var emptySpacing: CGFloat = 0
 
     @State private var guide: CityGuide?
     @Environment(\.openURL) private var openURL
@@ -415,6 +417,7 @@ struct CityGuideCard: View {
                 .accessibilityIdentifier("city-guide")
             }
         }
+        .padding(.top, guide == nil ? -emptySpacing : 0)
         .task(id: "\(name)|\(region ?? "")|\(country ?? "")") {
             guide = await CityGuide.load(name: name, region: region, country: country, coordinate: coordinate, within: within)
         }

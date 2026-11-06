@@ -392,7 +392,7 @@ struct ExperienceDetailView: View {
                 // outdoor place's pin can sit kilometres from ours, so it may be further off.
                 if !detail.isLocality {
                     CityGuideCard(name: summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate,
-                                  showsPhoto: false, within: summary.category == .outdoors ? 30_000 : 3_000)
+                                  showsPhoto: false, within: summary.category == .outdoors ? 30_000 : 3_000, emptySpacing: Theme.Spacing.xl)
                 }
                 // What you logged here comes first, right under the photos and blurb.
                 memories(detail)
@@ -528,7 +528,7 @@ struct ExperienceDetailView: View {
                     }
                     .confirmationDialog("Been here", isPresented: $choosingBeen, titleVisibility: .hidden) {
                         // The one confirmation: picking it here removes it.
-                        Button("Remove from places I've been", role: .destructive) { Task { await removeBeen(detail) } }
+                        Button("Delete", role: .destructive) { Task { await removeBeen(detail) } }
                     } message: {
                         Text("Removing deletes your visits here, with their notes and photos, and your ranking.")
                     }
