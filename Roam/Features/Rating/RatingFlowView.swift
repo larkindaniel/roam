@@ -32,9 +32,7 @@ struct RatingFlowView: View {
                         guard let model else { dismiss(); return }
                         if model.completion != nil { dismiss() }
                         else if model.hasNonemptyDraft { showsCancel = true }
-                        else {
-                            Task { await model.photos?.discard(); model.discardDraft(); dismiss() }
-                        }
+                        else { close(model) }
                     }
                     label: { Image(systemName: "xmark") }
                     .accessibilityLabel("Close")
@@ -46,13 +44,7 @@ struct RatingFlowView: View {
                         if model?.hasPendingSave == true {
                             Button("Keep it to check later") { model?.keepDraft(); dismiss() }
                         } else {
-                            Button("Discard", role: .destructive) {
-                                Task {
-                                    await model?.photos?.discard()
-                                    model?.discardDraft()
-                                    dismiss()
-                                }
-                            }
+                            Button("Discard", role: .destructive) { if let model { close(model) } }
                         }
                         Button("Keep editing", role: .cancel) {}
                     } message: {
@@ -77,6 +69,9 @@ struct RatingFlowView: View {
                         if let audience = visit.audience, audience != original.audience {
                             try await services.plans.setVisitAudience(visitID: original.id, audience: audience)
                         }
+                        if visit.tripID != original.tripID {
+                            try await services.plans.setVisitTrip(visitID: original.id, tripID: visit.tripID)
+                        }
                     }
                 }
                 model = flow
@@ -88,6 +83,14 @@ struct RatingFlowView: View {
 
     private func savingFromComparison(_ model: RatingFlowModel) -> Bool {
         fromComparison && (model.step == .saving || model.step == .result)
+    }
+
+    /// Closes first, then tidies up: clearing the photos before closing showed the form changing for a moment.
+    private func close(_ model: RatingFlowModel) {
+        model.discardDraft()
+        let photos = model.photos
+        dismiss()
+        Task { await photos?.discard() }
     }
 
     /// A town or city logged as somewhere you've been, rather than a place within one.
@@ -188,11 +191,6 @@ struct RatingFlowView: View {
             guard model.canEdit, let photos = model.photos, photos.canCommit, let ids = try? photos.attachmentIDs() else { return }
             _ = model.updateDetails(note: model.visit.publicNote, date: model.visit.date, mediaIDs: ids)
         }
-        .sheet(isPresented: $showsDate) {
-            RatingDateEditor(date: model.visit.date, zone: model.timeZone, today: model.today, failureMessage: { model.persistenceError ?? model.message }) { date in
-                model.updateDetails(note: model.visit.publicNote, date: date)
-            }
-        }
     }
 
     /// One bubble's contents: an icon, its value, and optionally a hint it opens something. The same height and text as
@@ -210,6 +208,50 @@ struct RatingFlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 44)
         .contentShape(Rectangle())
+    }
+
+    /// The date, filled in (today for a new log), with a small × at the right to clear it; tapping anywhere else opens
+    /// a calendar right there.
+    private func dateBubble(_ model: RatingFlowModel) -> some View {
+        let zone = model.timeZone
+        return HStack(spacing: 5) {
+            Image(systemName: "calendar").font(.footnote).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            Text(model.visit.date?.displayString ?? "Date").font(.footnote.weight(.semibold))
+                .foregroundStyle(model.visit.date == nil ? Roam.inkMuted : Roam.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            if model.visit.date != nil {
+                Button { model.updateDetails(note: model.visit.publicNote, date: nil) } label: {
+                    Image(systemName: "xmark.circle.fill").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                        .frame(width: 32, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove date")
+                .accessibilityIdentifier("rating-clear-date")
+            }
+        }
+        .padding(.leading, Theme.Spacing.m)
+        .padding(.trailing, model.visit.date == nil ? Theme.Spacing.m : Theme.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 44)
+        .contentShape(Rectangle())
+        .onTapGesture { showsDate = true }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("rating-edit-date")
+        .roamCard(padding: 0)
+        .popover(isPresented: $showsDate) {
+            DatePicker("Visit date", selection: Binding(
+                get: { (model.visit.date ?? model.today).date(in: zone) },
+                set: { picked in
+                    model.updateDetails(note: model.visit.publicNote, date: LocalDate(date: picked, timeZone: zone))
+                    showsDate = false
+                }), in: ...model.today.date(in: zone), displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .environment(\.timeZone, zone)
+                .padding(Theme.Spacing.m)
+                .frame(width: 320)
+                .presentationCompactAdaptation(.popover)
+        }
     }
 
     private func pickerRow<Control: View>(_ title: String, symbol: String, @ViewBuilder control: () -> Control) -> some View {
@@ -275,13 +317,8 @@ struct RatingFlowView: View {
             }
             // Three rows: the date beside which trip it was part of, then photos across the width, then the note.
             HStack(spacing: Theme.Spacing.m) {
-                Button { showsDate = true } label: {
-                    bubbleLabel(symbol: "calendar", text: model.visit.date?.displayString ?? "Date")
-                }
-                .buttonStyle(.plain)
-                .roamCard(padding: 0)
-                .accessibilityIdentifier("rating-edit-date")
-                if request.mode != .rerank && request.mode != .editVisit {
+                dateBubble(model)
+                if request.mode != .rerank {
                     Menu {
                         // Icons say which is which: a house for home, a plane for each trip.
                         Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
@@ -364,7 +401,8 @@ struct RatingFlowView: View {
         let today = MyTimeline.today()
         trips = all.sorted { ($0.phase(today: today) == .past ? 1 : 0, $0.name) < ($1.phase(today: today) == .past ? 1 : 0, $1.name) }
         home = CityMatch.home(for: request.experience, homes: homes)
-        guard model.visit.tripID == nil else { return }
+        // A visit being edited keeps what it was part of; only a new one gets a guess.
+        guard model.visit.tripID == nil, request.mode != .editVisit else { return }
         // A trip happening now that covers this place comes first: it's in one of the trip's cities or within 100 km of
         // one (a day out from it), or in a country the trip is to. Otherwise, near a home, it goes with that home.
         let place = request.experience
@@ -431,42 +469,6 @@ struct RatingFlowView: View {
         .accessibilityIdentifier(identifier)
     }
 
-}
-
-private struct RatingDateEditor: View {
-    @State private var date: Date
-    @State private var unknown: Bool
-    @State private var error: String?
-    let zone: TimeZone
-    let today: LocalDate
-    let failureMessage: () -> String?
-    let onDone: (LocalDate?) -> Bool
-    @Environment(\.dismiss) private var dismiss
-    init(date: LocalDate?, zone: TimeZone, today: LocalDate, failureMessage: @escaping () -> String?, onDone: @escaping (LocalDate?) -> Bool) {
-        self.zone = zone; self.today = today; self.failureMessage = failureMessage; self.onDone = onDone
-        _date = State(initialValue: (date ?? today).date(in: zone))
-        _unknown = State(initialValue: date == nil)
-    }
-    var body: some View {
-        NavigationStack {
-            Form { Group {
-                Toggle("Date unknown", isOn: $unknown).accessibilityIdentifier("rating-date-unknown")
-                if !unknown { DatePicker("Visit date", selection: $date, in: ...today.date(in: zone), displayedComponents: .date).environment(\.timeZone, zone) }
-                if let error { Text(error).foregroundStyle(Theme.secondaryText).accessibilityIdentifier("rating-editor-error") }
-            }
-            .listRowBackground(Roam.paperRaised)
-            }.navigationTitle("Visit date").toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.accessibilityIdentifier("rating-editor-cancel") }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        if onDone(unknown ? nil : LocalDate(date: date, timeZone: zone)) { dismiss() }
-                        else { error = failureMessage() ?? "Your changes couldn't be kept. Try again." }
-                    }.accessibilityIdentifier("rating-editor-done")
-                }
-            }
-        }
-        .roamSheetStyle()
-    }
 }
 
 /// Didn't like · Neutral · Liked it, as a track with a knob that slides to the stop you tap or drag to.

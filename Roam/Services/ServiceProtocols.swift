@@ -347,6 +347,8 @@ protocol PlanService: AnyObject, Sendable {
     func searchRoamPlaces(query: String) async throws -> [ExperienceSummary]
     func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary
     func setVisitAudience(visitID: UUID, audience: Audience) async throws
+    /// Which of your trips a visit was part of; nil for none.
+    func setVisitTrip(visitID: UUID, tripID: UUID?) async throws
     func tripFeed() async throws -> [TripFeedCard]
     func countryFeed() async throws -> [CountryFeedCard]
     func countryUpdates(ownerID: UUID, countryCode: String?) async throws -> [TripFeedEntry]

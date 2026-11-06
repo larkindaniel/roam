@@ -276,6 +276,12 @@ extension FixtureBackend: PlanService {
         visits[visitID]?.audience = audience
     }
 
+    func setVisitTrip(visitID: UUID, tripID: UUID?) async throws {
+        let me = try await authenticatedActor()
+        guard visits[visitID]?.owner == me else { throw RoamError.notFound }
+        visits[visitID]?.tripID = tripID
+    }
+
     func tripFeed() async throws -> [TripFeedCard] {
         let me = try await authenticatedActor()
         let visible = visits.values.filter {
