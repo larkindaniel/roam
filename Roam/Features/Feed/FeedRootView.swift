@@ -200,10 +200,15 @@ struct FriendGroupView: View {
             LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 // Whose it is and when, under the title as on their card.
                 FriendGroupByline(group: group)
-                ForEach(group.cities, id: \.name) { city in cityCard(city) }
+                let cities = group.cities
+                // The country and flag on each city only when the cities are in more than one country.
+                let countries = Set(cities.map { $0.countryCode?.uppercased() })
+                ForEach(cities, id: \.name) { city in cityCard(city, showsCountry: countries.count > 1) }
             }
             .padding(Theme.Spacing.l)
         }
+        // Clear of the floating tab bar at the bottom.
+        .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
         .background(Roam.paper)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
@@ -218,13 +223,14 @@ struct FriendGroupView: View {
         }
     }
 
-    private func cityCard(_ city: (name: String, countryCode: String?, countryName: String?, places: [TripFeedEntry])) -> some View {
+    private func cityCard(_ city: (name: String, countryCode: String?, countryName: String?, places: [TripFeedEntry]), showsCountry: Bool) -> some View {
         let first = city.places.first?.experience
         let destination = Destination(name: city.name, region: first?.region, countryCode: city.countryCode, countryName: city.countryName,
                                       latitude: first?.latitude ?? 0, longitude: first?.longitude ?? 0, radiusMeters: 15_000)
         return VStack(spacing: 0) {
             Button { router.push(.city(destination, ownerID: nil)) } label: {
-                CityHeroCard(city: destination, subtitle: [TripTitle.flag(city.countryCode), city.countryName].compactMap { $0 }.joined(separator: " "),
+                CityHeroCard(city: destination,
+                             subtitle: showsCountry ? [TripTitle.flag(city.countryCode), city.countryName].compactMap { $0 }.joined(separator: " ") : "",
                              cornerRadius: Theme.cornerRadius - margin)
             }
             .buttonStyle(.plain)
