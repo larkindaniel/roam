@@ -86,13 +86,7 @@ struct FriendGroupCard: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 HStack(spacing: Theme.Spacing.s) {
-                    AvatarView(member: group.author, size: 36)
-                    VStack(alignment: .leading, spacing: -2) {
-                        Text(group.author.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
-                        if let dates = MyTimeline.range(group.firstVisit, group.lastVisit) {
-                            Text(dates).font(.caption).foregroundStyle(Roam.inkMuted)
-                        }
-                    }
+                    FriendGroupByline(group: group)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                 }
@@ -133,6 +127,24 @@ struct FriendPlaceRow: View {
         }
         .padding(.vertical, Theme.Spacing.s)
         .contentShape(Rectangle())
+    }
+}
+
+/// Whose it is and when: their avatar, with their name and dates beside it.
+struct FriendGroupByline: View {
+    let group: FriendFeedGroup
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            AvatarView(member: group.author, size: 36)
+            VStack(alignment: .leading, spacing: -2) {
+                Text(group.author.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
+                if let dates = MyTimeline.range(group.firstVisit, group.lastVisit) {
+                    Text(dates).font(.caption).foregroundStyle(Roam.inkMuted)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -186,14 +198,15 @@ struct FriendGroupView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                Text([group.author.displayName, MyTimeline.range(group.firstVisit, group.lastVisit)].compactMap { $0 }.joined(separator: " · "))
-                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+                // Whose it is and when, under the title as on their card.
+                FriendGroupByline(group: group)
                 ForEach(group.cities, id: \.name) { city in cityCard(city) }
             }
             .padding(Theme.Spacing.l)
         }
         .background(Roam.paper)
         .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.large)
         .screenIdentifier("friend-group")
     }
 
