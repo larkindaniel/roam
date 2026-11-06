@@ -401,6 +401,8 @@ struct ExperienceDetailView: View {
                     CityGuideCard(name: summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate,
                                   showsPhoto: false, within: summary.category == .outdoors ? 30_000 : 3_000)
                 }
+                // What you logged here comes first, right under the photos and blurb.
+                memories(detail)
                 if let refreshError = model?.refreshError {
                     InlineRetryView(message: refreshError) { Task { await model?.load() } }
                 }
@@ -411,7 +413,6 @@ struct ExperienceDetailView: View {
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
-                memories(detail)
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
