@@ -355,6 +355,7 @@ struct ExperienceDetailView: View {
                                 .accessibilityLabel("Open \(city)")
                                 .accessibilityIdentifier("detail-open-city")
                             }
+                            googleRating(summary)
                         }
                         .padding(.top, 2)
                     }
@@ -542,7 +543,6 @@ struct ExperienceDetailView: View {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
-                googleRating(detail.summary)
             }
             .animation(.spring(duration: 0.3), value: anyState)
             .task(id: "\(id)-\(library.revision)") { plannedTrips = await PlannedPlaces.trips(holding: id, services: services) }
@@ -599,21 +599,22 @@ struct ExperienceDetailView: View {
         }
     }
 
-    /// Google's stars at the right end of the buttons, with how many reviews they're from under them in place of a
-    /// caption.
+    /// Google's stars on one line beside the city, with how many reviews they're from.
     @ViewBuilder private func googleRating(_ summary: ExperienceSummary) -> some View {
         if let rating = summary.googleRating {
             let value = String(format: "%.1f", rating)
-            VStack(alignment: .trailing, spacing: 6) {
-                Label(value, systemImage: "star.fill")
-                    .labelStyle(.titleAndIcon)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Roam.ink)
-                    .monospacedDigit()
-                    .frame(height: 38)
-                Text(summary.googleRatingCount.map { "\($0.formatted(.number.notation(.compactName))) on Google" } ?? "Google")
-                    .font(.caption2).foregroundStyle(Roam.inkMuted).lineLimit(1).fixedSize()
+            HStack(spacing: 3) {
+                Image(systemName: "star.fill").font(.caption)
+                Text(value).fontWeight(.semibold)
+                if let count = summary.googleRatingCount {
+                    Text("(\(count.formatted(.number.notation(.compactName))))").foregroundStyle(Roam.inkMuted)
+                }
             }
+            .font(.subheadline)
+            .foregroundStyle(Roam.ink)
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Google rating \(value) out of 5\(summary.googleRatingCount.map { " from \($0) reviews" } ?? "")")
             .accessibilityIdentifier("detail-google-rating")
