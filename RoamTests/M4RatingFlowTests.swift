@@ -397,6 +397,19 @@ final class M4RatingFlowTests: XCTestCase {
         XCTAssertEqual(visits.first?.visit.publicNote, "A return visit")
     }
 
+    func testOnlyYourOwnEditsCountAsSomethingToDiscard() throws {
+        let model = RatingFlowModel(request: request(), accountID: UUID(), ranking: RatingFlowTestService(), storage: try storage())
+        XCTAssertFalse(model.hasNonemptyDraft, "Neutral and today's date are filled in for you, so closing asks nothing")
+        model.suggestTrip(UUID())
+        XCTAssertFalse(model.hasNonemptyDraft, "A guessed trip isn't an edit either")
+        model.setFeeling(.liked)
+        XCTAssertTrue(model.hasNonemptyDraft)
+        model.setFeeling(.fine)
+        XCTAssertFalse(model.hasNonemptyDraft)
+        XCTAssertTrue(model.updateDetails(note: "Something typed", date: model.visit.date))
+        XCTAssertTrue(model.hasNonemptyDraft)
+    }
+
     func testClosingAnUnsavedLogWritesNothingAndLeavesNothingBehind() async throws {
         let service = RatingFlowTestService(), owner = UUID(), other = UUID(), request = request(), storage = try storage()
         let model = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage)

@@ -415,7 +415,7 @@ struct RatingFlowView: View {
             }
             return nearCity || place.countryCode.map { trip.covers(country: $0) } == true
         }) {
-            model.setTrip(match.id)
+            model.suggestTrip(match.id)
         }
     }
 

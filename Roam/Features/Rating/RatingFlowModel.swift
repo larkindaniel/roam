@@ -50,7 +50,9 @@ final class RatingFlowModel {
     private var ranking: CategoryRanking?
     private var pendingRating: RatingCommitRequest?
     private var pendingVisit: AddVisitRequest?
-    private let initialVisit: VisitPayload
+    private var initialVisit: VisitPayload
+    /// The feeling the log opened with (Neutral for a new one), so leaving it there isn't an edit.
+    private var startingSentiment: Sentiment?
     private let service: any RankingService
     private let storage: AccountStorage
     private let currentAccount: () -> UUID?
@@ -69,7 +71,7 @@ final class RatingFlowModel {
     var canEdit: Bool { !isBusy && !hasPendingSave && completion == nil }
     var canUndo: Bool { step == .comparison && session?.canUndo == true }
     var hasNonemptyDraft: Bool {
-        sentiment != nil || visit != initialVisit || hasPendingSave
+        sentiment != startingSentiment || visit != initialVisit || hasPendingSave
             || category != (request.experience.category ?? request.suggestedCategory)
             || photos?.assets.contains(where: { $0.status != .existing }) == true
             || (photos.map { $0.assets.compactMap { $0.existing?.id } != initialVisit.mediaIDs } ?? false)
@@ -161,6 +163,7 @@ final class RatingFlowModel {
         if step == .sentiment { step = .details }
         // A visit with no feeling chosen is an unranked log, including one restored from a draft.
         skipsRanking = request.mode == .firstLog && step == .details && sentiment == nil
+        startingSentiment = sentiment
     }
 
     /// Logging never requires ranking: the visit saves now and can be ranked later.
@@ -175,6 +178,13 @@ final class RatingFlowModel {
         guard canEdit else { return }
         visit.tripID = tripID
         persist()
+    }
+
+    /// The trip guessed for a new log: filled in for you, so it isn't an edit to discard.
+    func suggestTrip(_ tripID: UUID) {
+        guard canEdit, visit == initialVisit else { setTrip(tripID); return }
+        visit.tripID = tripID
+        initialVisit.tripID = tripID
     }
 
     func setAudience(_ audience: Audience) {
