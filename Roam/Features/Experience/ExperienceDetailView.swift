@@ -598,50 +598,19 @@ struct ExperienceDetailView: View {
         }
     }
 
+    /// Your logs of it, as rows like My Places' trips; swiping one away deletes it straight away.
     @ViewBuilder private func memories(_ detail: ExperienceDetail) -> some View {
         if !detail.myVisits.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                Text("Your memories").font(.roamTitle(.title3))
-                ForEach(detail.myVisits) { visit in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(visit.visitDate.displayString).font(.subheadline.weight(.semibold))
-                        if !visit.publicNote.isEmpty { Text(visit.publicNote).font(.body) }
-                        if !visit.media.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack {
-                                    ForEach(Array(visit.media.sorted { $0.position < $1.position }.enumerated()), id: \.element.id) { index, media in
-                                        Button { router.push(.gallery(experienceID: experienceID, visitID: visit.id)) } label: {
-                                            RemoteImageView(path: media.path, accessibilityLabel: "Photo \(index + 1) from your visit")
-                                                .frame(width: 96, height: 96).clipShape(RoundedRectangle(cornerRadius: 10))
-                                        }
-                                        .buttonStyle(.plain)
-                                        .accessibilityIdentifier("detail-visit-photo-\(visit.id.uuidString)-\(index)")
-                                    }
-                                }
-                            }
-                        }
-                        HStack(spacing: Theme.Spacing.l) {
-                            Button { editingVisit = visit } label: { Label("Edit", systemImage: "pencil") }
-                                .frame(minHeight: Theme.minimumHitTarget)
-                                .disabled(deleting || failedDeletion != nil)
-                                .accessibilityLabel("Edit note, date and photos for this visit")
-                                .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
-                            Button(role: .destructive) {
-                                pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: visit.id,
-                                                                 lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)
-                            } label: { Text("Delete visit").foregroundStyle(Theme.disliked) }
-                            .frame(minHeight: Theme.minimumHitTarget)
-                            .disabled(deleting || failedDeletion != nil)
-                            .accessibilityIdentifier("detail-delete-visit-\(visit.id.uuidString)")
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .contain)
-                    Divider()
-                }
-            }
-            .roamCard()
-            .accessibilityIdentifier("detail-memories")
+            let summary = detail.summary
+            MyVisitsCard(visits: detail.myVisits, sentiment: detail.myRating?.sentiment, placePhotoURL: summary.photoURL,
+                         coordinate: summary.coordinate, symbol: summary.iconName, disabled: deleting || failedDeletion != nil,
+                         onAdd: { Task { await openLog(detail.myRating != nil ? .addVisit : .firstLog) } },
+                         onEdit: { editingVisit = $0 },
+                         onDelete: { visit in
+                             Task { await confirmDeletion(DetailDeletion(experienceID: experienceID, visitID: visit.id,
+                                                                         lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)) }
+                         },
+                         onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0.id)) })
         }
     }
 
