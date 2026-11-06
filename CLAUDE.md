@@ -19,7 +19,7 @@ build run below) wherever they disagree.
   - screenshots of each changed screen (`xcrun simctl io <simulator-id> screenshot <file>.png`)
   - screen recordings of anything that moves or flows (`xcrun simctl io <simulator-id> recordVideo <file>.mov`)
 - **No AI attribution** in commits or PRs: no `Co-Authored-By` trailer and no "Generated with" line.
-- **Don't run the full test suites.**
+- **Don't run the full test suites** day to day (unit and database tests pass; run them when you change logic).
   - Build with `./scripts/build.sh <simulator-id>` (XcodeGen, then build).
   - Install with `xcrun simctl install`, and launch to check.
   - When you change shared types or remove code, compile the tests with `xcodebuild … build-for-testing`.

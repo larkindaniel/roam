@@ -140,7 +140,10 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 
 ### Not done yet
 
-- The unit and UI tests haven't caught up with the current app. They compile but aren't kept green.
+- Unit tests and the database tests pass. The real-backend integration tests and the UI journey tests haven't been
+  updated for the current app.
+- The Friends tab is due to be reworked. Posts, comments and likes are no longer visible anywhere in the app; their code
+  and backend are still here as dead code until the Friends tab is rebuilt.
 - The fixture backend only stubs the newer features.
 - iOS 18 still needs a runtime check (Liquid Glass falls back to frosted material before iOS 26).
 - Google's terms require its photo credit and limit how long its data is kept. We refresh about weekly.
