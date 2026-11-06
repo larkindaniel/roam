@@ -213,7 +213,7 @@ final class M6SocialModelTests: XCTestCase {
         XCTAssertNil(none, "A removed target never routes")
         XCTAssertEqual(model.actionError, "This is no longer available.")
         let profile = await model.open(follow)
-        XCTAssertEqual(profile, .member(actor.id))
+        XCTAssertNil(profile, "There's no member profile for a friend notification to open")
         let reads = await service.readIDs
         XCTAssertEqual(Set(reads), [unread.id, gone.id], "Already-read notifications are not re-marked")
     }

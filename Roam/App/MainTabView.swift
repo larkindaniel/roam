@@ -190,12 +190,6 @@ struct RouteDestinationView: View {
             CountryPageView(code: code)
         case .region(let area):
             CountryPageView(code: area.countryCode ?? "", region: area)
-        case .passport(let ownerID, let name):
-            PassportView(ownerID: ownerID, name: name)
-        case .passportCountry(let ownerID, let country):
-            PassportCountryView(ownerID: ownerID, country: country)
-        case .passportCity(let ownerID, let city):
-            PassportCityView(ownerID: ownerID, city: city)
         case .lists:
             PlaceListsView()
         case .list(let id):
@@ -204,10 +198,6 @@ struct RouteDestinationView: View {
             TasteEditorView()
         case .globe(let userID):
             ExpandedGlobeView(userID: userID)
-        case .travelFilter(let userID, let filter):
-            ExpandedGlobeView(userID: userID, initialFilter: filter)
-        case .newThisYear(let userID, let year):
-            NewThisYearView(userID: userID, year: year)
         case .settings:
             SettingsView()
         case .editProfile:
@@ -222,10 +212,6 @@ struct RouteDestinationView: View {
             DeleteAccountView()
         case .experience(let id):
             PlaceBrowserView(startID: id)
-        case .member(let id):
-            ProfileView(userID: id)
-        case .memberList(let id, let kind):
-            PersonalListsView(ownerID: id, initialKind: kind)
         case .gallery(let experienceID, let visitID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID)
         case .activity(let id):
@@ -234,8 +220,6 @@ struct RouteDestinationView: View {
             NotificationsView()
         case .followGraph(let id, let segment):
             FollowListView(userID: id, initialSegment: segment)
-        case .sharedWants(let id):
-            SharedWantsView(otherID: id)
         }
     }
 }

@@ -377,7 +377,8 @@ final class NotificationsModel {
             return nil
         }
         switch notification.type {
-        case .follow, .friendRequest, .friendAccept: return .member(notification.actor.id)
+        // Friend notifications have nowhere to go: there's no member profile page.
+        case .follow, .friendRequest, .friendAccept: return nil
         case .like, .comment: return notification.activityID.map(AppRoute.activity)
         }
     }
@@ -478,42 +479,5 @@ final class FollowListModel {
 
     private func authCheck(_ error: Error) {
         if let error = error as? RoamError, error == .sessionExpired || error == .notSignedIn { authError = error }
-    }
-}
-
-/// S22: the exact intersection of two Wishlist lists. A failed refresh keeps the last results.
-@MainActor
-@Observable
-final class SharedWantsModel {
-    let otherID: UUID
-    private(set) var entries: [ListEntry] = []
-    private(set) var hasLoaded = false
-    private(set) var isLoading = false
-    private(set) var error: String?
-    private(set) var authError: RoamError?
-    private let service: any ListService
-    private var generation = 0
-
-    init(otherID: UUID, service: any ListService) {
-        self.otherID = otherID
-        self.service = service
-    }
-
-    func load() async {
-        generation += 1
-        let token = generation
-        isLoading = true
-        defer { if token == generation { isLoading = false } }
-        do {
-            let loaded = try await service.sharedWants(with: otherID)
-            guard token == generation else { return }
-            entries = loaded
-            hasLoaded = true
-            error = nil
-        } catch {
-            guard token == generation, !(error is CancellationError) else { return }
-            self.error = error.roamMessage
-            if let error = error as? RoamError, error == .sessionExpired || error == .notSignedIn { authError = error }
-        }
     }
 }

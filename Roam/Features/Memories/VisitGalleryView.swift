@@ -33,10 +33,7 @@ struct VisitGalleryView: View {
         .onChange(of: model?.removedPhotoID) { _, removed in if removed != nil { library.noteChanged() } }
         .fullScreenCover(item: $viewer) { selection in
             if let model {
-                GalleryPhotoViewer(model: model, selectedID: selection.photoID) { authorID in
-                    viewer = nil
-                    router.push(.member(authorID))
-                }
+                GalleryPhotoViewer(model: model, selectedID: selection.photoID)
             }
         }
         .screenIdentifier("visit-gallery")
@@ -125,16 +122,13 @@ private struct GalleryViewerSelection: Identifiable, Hashable {
 /// Full-screen paged viewer. Removal states exactly what is changed; reports say they are stored, not reviewed.
 private struct GalleryPhotoViewer: View {
     let model: VisitGalleryModel
-    let onOpenAuthor: (UUID) -> Void
-
     @Environment(\.dismiss) private var dismiss
     @State private var selectedID: UUID
     @State private var confirmingRemoval: GalleryPhoto?
     @State private var reportTarget: ReportTarget?
 
-    init(model: VisitGalleryModel, selectedID: UUID, onOpenAuthor: @escaping (UUID) -> Void) {
+    init(model: VisitGalleryModel, selectedID: UUID) {
         self.model = model
-        self.onOpenAuthor = onOpenAuthor
         _selectedID = State(initialValue: selectedID)
     }
 
@@ -196,17 +190,13 @@ private struct GalleryPhotoViewer: View {
 
     private func footer(_ photo: GalleryPhoto) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            Button { onOpenAuthor(photo.ownerID) } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(photo.isOwn ? "Your visit" : photo.authorName).font(.headline)
-                    Text(photo.date.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
-                        .font(.subheadline).foregroundStyle(Theme.secondaryText)
-                }
-                .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(photo.isOwn ? "Your visit" : photo.authorName).font(.headline)
+                Text(photo.date.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
+                    .font(.subheadline).foregroundStyle(Theme.secondaryText)
             }
-            .buttonStyle(.plain)
-            .allowsHitTesting(MemberProfiles.available)
-            .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
+            .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("viewer-author")
             if let error = model.error {
                 Text(error).font(.footnote).foregroundStyle(Theme.disliked).accessibilityIdentifier("viewer-error")

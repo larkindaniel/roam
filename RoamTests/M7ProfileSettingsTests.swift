@@ -132,16 +132,6 @@ final class M7TravelProfileTests: XCTestCase {
                        "A place without a city is still found through its country")
     }
 
-    func testRowsSortByCountThenNameOrByName() {
-        let travel = TravelProfile(pins: [], countryCount: 3, cityCount: 0, categories: [],
-                                   cities: [], countries: [CountryCount(countryCode: "JP", name: "Japan", count: 2),
-                                                           CountryCount(countryCode: "DK", name: "Denmark", count: 2),
-                                                           CountryCount(countryCode: "PT", name: "Portugal", count: 5)],
-                                   placesWithoutCity: 0, newThisYear: NewThisYear(year: 2026, count: 0, unknownDateCount: 0, experienceIDs: []))
-        XCTAssertEqual(TravelRow.rows(travel, breakdown: .countries, sort: .count).map(\.title), ["Portugal", "Denmark", "Japan"])
-        XCTAssertEqual(TravelRow.rows(travel, breakdown: .countries, sort: .name).map(\.title), ["Denmark", "Japan", "Portugal"])
-    }
-
     /// Maya's fixture travels cover the M7 geography cases: two Portlands, a Greenland place with no
     /// city, Singapore (no bundled boundary), a repeated visit, an unknown-date-only place, and
     /// bookmarks and a home city that never count.

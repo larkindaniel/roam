@@ -402,7 +402,7 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                FriendMemoriesSection(memories: friendMemories, onOpenAuthor: { router.push(.member($0)) },
+                FriendMemoriesSection(memories: friendMemories,
                                       onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
@@ -414,7 +414,7 @@ struct ExperienceDetailView: View {
                         .font(.footnote).foregroundStyle(Theme.fine)
                 }
                 if let memoriesModel, !memoriesModel.hasLoaded || memoriesModel.memories.contains(where: { !$0.isOwn && !friendMemories.map(\.id).contains($0.id) }) {
-                    PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
+                    PublicMemoriesSection(model: memoriesModel,
                                           onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                           onReport: { target in reportReason = nil; reportTarget = target },
                                           excludedIDs: Set(friendMemories.map(\.id)))
