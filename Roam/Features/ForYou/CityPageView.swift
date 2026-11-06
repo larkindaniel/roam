@@ -428,7 +428,7 @@ struct CityPageView: View {
         if !spots.isEmpty { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
         switch model?.phase ?? .loading {
         case .idle, .loading:
-            SkeletonList(rows: 3)
+            SkeletonCards()
         case .failed(let message):
             InlineRetryView(message: message) { Task { await model?.load(destination) } }
         case .loaded:

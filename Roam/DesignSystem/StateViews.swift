@@ -139,6 +139,40 @@ struct SkeletonList: View {
     }
 }
 
+/// Placeholder photo cards, the shape of the big photo cards (Discover's cities and places): a 210pt rounded block
+/// with the title and subtitle bars at its bottom left. Respects Reduce Motion.
+struct SkeletonCards: View {
+    var count = 3
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.l) {
+            ForEach(0..<count, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .fill(Theme.subtleFill)
+                    .frame(height: 210)
+                    .overlay(alignment: .bottomLeading) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            RoundedRectangle(cornerRadius: 4).frame(width: 170, height: 18)
+                            RoundedRectangle(cornerRadius: 4).frame(width: 110, height: 11)
+                        }
+                        .foregroundStyle(Theme.subtleFill)
+                        .padding(Theme.Spacing.l)
+                    }
+            }
+        }
+        .opacity(reduceMotion ? 0.8 : (pulse ? 0.5 : 1))
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Loading")
+        .accessibilityIdentifier("loading-skeleton")
+    }
+}
+
 /// Footer shown when the next page fails; existing rows stay visible.
 struct PaginationFooter: View {
     let isLoading: Bool

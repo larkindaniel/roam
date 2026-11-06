@@ -317,7 +317,7 @@ struct ForYouRootView: View {
             if let model, !model.picks.isEmpty { picksSection(model.picks) }
             switch model?.phase ?? .loading {
             case .idle, .loading:
-                SkeletonList(rows: 3)
+                SkeletonCards()
             case .failed(let message):
                 InlineRetryView(message: message) { Task { await model?.load(nil) } }
             case .loaded:
