@@ -179,10 +179,10 @@ struct MemberRowView: View {
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
-            .onTapGesture { onOpen?() }
+            .onTapGesture { if MemberProfiles.available { onOpen?() } }
             .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { onOpen?() }
+            .accessibilityAddTraits(MemberProfiles.available && onOpen != nil ? .isButton : [])
+            .accessibilityAction { if MemberProfiles.available { onOpen?() } }
             if let followState {
                 FollowButton(state: followState, name: member.displayName) { onToggleFollow?() }
             }

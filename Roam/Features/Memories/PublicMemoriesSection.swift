@@ -183,8 +183,9 @@ struct PublicMemoryCard: View {
                     .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)
                 }
                 .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
-                .accessibilityHint("Opens the profile")
+                .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
                 Spacer(minLength: 0)
                 if Score.isShown, let score = memory.score {
                     Text(score.formatted)

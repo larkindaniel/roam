@@ -204,6 +204,7 @@ struct CommentRow: View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
             Button(action: onOpenAuthor) { AvatarView(member: comment.author, size: 32) }
                 .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("Open \(comment.author.displayName)'s profile")
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

@@ -81,6 +81,12 @@ enum AppRoute: Hashable, Sendable {
     case deleteAccount
 }
 
+/// Other members' profile pages are set aside until they're rebuilt: nothing opens one, and names and avatars
+/// aren't tappable. Turn this back on to bring them back.
+enum MemberProfiles {
+    static let available = false
+}
+
 enum SafetyListKind: String, Hashable, Sendable {
     case blocked
     case muted
@@ -166,6 +172,7 @@ final class AppRouter {
 
     func push(_ route: AppRoute, on tab: AppTab? = nil) {
         let target = tab ?? selectedTab
+        if case .member = route, !MemberProfiles.available { return }
         // A double tap shouldn't stack the same screen twice (back would then seem to do nothing).
         guard paths[target]?.last != route else { return }
         paths[target, default: []].append(route)

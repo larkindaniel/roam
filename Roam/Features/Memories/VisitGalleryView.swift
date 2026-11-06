@@ -205,7 +205,8 @@ private struct GalleryPhotoViewer: View {
                 .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Opens the profile")
+            .allowsHitTesting(MemberProfiles.available)
+            .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
             .accessibilityIdentifier("viewer-author")
             if let error = model.error {
                 Text(error).font(.footnote).foregroundStyle(Theme.disliked).accessibilityIdentifier("viewer-error")
