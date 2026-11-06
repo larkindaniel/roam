@@ -43,6 +43,16 @@ remote commands still apply.
 
 Repository: `/Users/daniellarkin/Desktop/projects/capstone`.
 
+## Hosted beta setup authorization (October 14, 2026)
+
+The user subsequently authorized hosted beta setup and signed archive/export verification.
+For that work only, the original local-only restrictions below are superseded for Supabase
+project `xnjzuotytfzyppubjcfi` (`roam-beta`) and Apple team `H5V24G3F3D`, bundle
+`com.daniellarkin.roam`. See `docs/hosted-beta.md` and `docs/apple-deployment-setup.md`.
+Preserve all other environments and remote data. Fixture/reset commands remain local-only.
+The user subsequently authorized uploading version 1.0 build 1 and enabling their internal TestFlight
+access. Invitations to other people and external/public beta distribution require further instructions.
+
 These instructions govern the **separate implementation run** once the user requests it. Writing these documents did not start implementation. Read `SPEC.md`, `MILESTONES.md` and `DECISIONS.md` before code; use `PLAN.md` for confirmed background and `docs/roam-reference-map.md` for screenshot lookup. Latest explicit user instructions override documents; SPEC is the current v1 contract. Historical inventory/capture-gap prose and PLAN's old draft milestone list cannot reintroduce deferred features.
 
 ## Execution rules

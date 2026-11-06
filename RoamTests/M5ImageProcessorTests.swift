@@ -77,6 +77,72 @@ final class M5ImageProcessorTests: XCTestCase {
         XCTAssertEqual(image.height, prepared.height)
     }
 
+    /// Only the APPn segments the server inspector accepts may be uploaded (APP0 JFIF/JFXX,
+    /// APP2 ICC_PROFILE, APP14 Adobe). Anything else is rejected there as "unsupported metadata".
+    private func appSegmentsAreServerAllowed(_ data: Data) -> Bool {
+        let bytes = [UInt8](data)
+        var offset = 2
+        while offset + 4 <= bytes.count, bytes[offset] == 0xff {
+            let marker = bytes[offset + 1]
+            if marker == 0xda { return true }
+            let length = Int(bytes[offset + 2]) * 256 + Int(bytes[offset + 3])
+            let payload = Array(bytes[(offset + 4)..<min(bytes.count, offset + 2 + length)])
+            let tag = { (text: String) in payload.starts(with: Array(text.utf8)) }
+            if marker == 0xfe || marker == 0xe1 || marker == 0xed { return false }
+            if (0xe0...0xef).contains(marker) {
+                let allowed = (marker == 0xe0 && (tag("JFIF\0") || tag("JFXX\0"))) || (marker == 0xe2 && tag("ICC_PROFILE\0"))
+                    || (marker == 0xee && tag("Adobe"))
+                if !allowed { return false }
+            }
+            offset += 2 + length
+        }
+        return false
+    }
+
+    /// iPhone photos (HEIC, Display P3) re-encode with Apple's private APP10 "AROT" segment on
+    /// large images; the server rejected those uploads as "unsupported photo metadata".
+    func testPrivateAppSegmentsAreStrippedSoTheServerAcceptsThePhoto() throws {
+        let prepared = try ImageProcessor.prepare(try cameraJPEG(width: 64, height: 64, orientation: 1))
+        var withPrivate = [UInt8](prepared.data.prefix(2))
+        let arot = Array("AROT\0\0".utf8) + [UInt8](repeating: 0x7f, count: 8)
+        withPrivate += [0xff, 0xea, UInt8((arot.count + 2) >> 8), UInt8((arot.count + 2) & 0xff)] + arot
+        withPrivate += [UInt8](prepared.data.dropFirst(2))
+        let injected = Data(withPrivate)
+        XCTAssertFalse(appSegmentsAreServerAllowed(injected), "The fixture really carries a private APP10 segment")
+        XCTAssertThrowsError(try ImageProcessor.preparedJPEG(injected), "Unstripped private segments never reach the upload")
+        let stripped = try ImageProcessor.stripMetadataSegments(injected)
+        XCTAssertEqual(stripped, prepared.data, "Only the private segment is removed")
+        XCTAssertTrue(appSegmentsAreServerAllowed(stripped))
+    }
+
+    /// A 10-bit Display P3 HEIC (iPhone HDR photo) must convert, and every source uploads only
+    /// segments the server accepts.
+    func testWideGamutLargePhotoUploadsOnlyServerAllowedSegments() throws {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.preferredRange = .extended
+        let size = CGSize(width: 4_032, height: 3_024)
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor(displayP3Red: 1, green: 0.2, blue: 0.1, alpha: 1).setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            var generator = SystemRandomNumberGenerator()
+            for _ in 0..<20_000 {
+                UIColor(displayP3Red: .random(in: 0...1, using: &generator), green: .random(in: 0...1, using: &generator),
+                        blue: .random(in: 0...1, using: &generator), alpha: 1).setFill()
+                context.fill(CGRect(x: Int.random(in: 0..<4_032, using: &generator), y: Int.random(in: 0..<3_024, using: &generator), width: 6, height: 6))
+            }
+        }
+        for type in [UTType.heic, UTType.jpeg] {
+            let output = NSMutableData()
+            guard let destination = CGImageDestinationCreateWithData(output, type.identifier as CFString, 1, nil) else { continue }
+            CGImageDestinationAddImage(destination, try XCTUnwrap(image.cgImage), nil)
+            guard CGImageDestinationFinalize(destination) else { continue }
+            let prepared = try ImageProcessor.prepare(output as Data)
+            XCTAssertTrue(appSegmentsAreServerAllowed(prepared.data), "\(type.identifier) source uploads only server-allowed segments")
+            XCTAssertEqual(try ImageProcessor.preparedJPEG(prepared.data), prepared)
+        }
+    }
+
     func testImpossibleByteLimitFailsHonestly() throws {
         let source = try cameraJPEG(width: 64, height: 64, orientation: 1)
         XCTAssertThrowsError(try ImageProcessor.prepare(source, maxBytes: 100)) { error in

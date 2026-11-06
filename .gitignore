@@ -9,6 +9,7 @@ xcuserdata/
 *.xcodeproj
 # Local, secrets-bearing configuration (examples are checked in)
 Config/Local.xcconfig
+Config/Beta.xcconfig
 supabase/.env
 supabase/functions/.env
 scripts/.fixture-env

@@ -55,6 +55,7 @@ private struct WelcomeNavigation: View {
 struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
+    @Environment(AppServices.self) private var services
     /// The wordmark scales with Dynamic Type like the large title it replaces.
     @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 46
 
@@ -72,10 +73,6 @@ struct WelcomeView: View {
                     Text("Find places you'll love, starting with people you trust.")
                         .font(.roamTitle(.title2))
                         .multilineTextAlignment(.center)
-                    Text("See where your friends have been, save what you want to try, and keep track of the countries you've been to.")
-                        .font(.body)
-                        .foregroundStyle(Theme.secondaryText)
-                        .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal)
 
@@ -90,9 +87,13 @@ struct WelcomeView: View {
                     .clipShape(Capsule())
                     .accessibilityIdentifier("sign-in-with-apple")
 
-                    Button("Continue with email") { model.path.append(.signUp) }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .accessibilityIdentifier("continue-with-email")
+                    // Email sign-up is hidden for the beta (no hosted email sender yet). The flow stays
+                    // in the app; Debug UI tests still reach it to keep it covered.
+                    if showsEmailSignUp {
+                        Button("Continue with email") { model.path.append(.signUp) }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .accessibilityIdentifier("continue-with-email")
+                    }
 
                     Button("I already have an account") { model.path.append(.signIn) }
                         .buttonStyle(QuietButtonStyle())
@@ -110,18 +111,20 @@ struct WelcomeView: View {
                         .padding(.horizontal, Theme.Spacing.xl)
                         .accessibilityIdentifier("deletion-notice")
                 }
-
-                Text("You choose who sees each place you log: friends, only you, or everyone.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Theme.Spacing.xl)
             }
             .padding(.vertical, Theme.Spacing.xl)
         }
         .background(Theme.groupedCanvas)
         .toolbar(.hidden, for: .navigationBar)
         .screenIdentifier("welcome")
+    }
+
+    private var showsEmailSignUp: Bool {
+        #if ROAM_FIXTURES
+        return services.options.uiTesting
+        #else
+        return false
+        #endif
     }
 }
 
