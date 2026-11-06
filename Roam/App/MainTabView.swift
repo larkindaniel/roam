@@ -247,7 +247,7 @@ struct SheetContent: View {
     private func saved(_ request: LogRequest, _ completion: RatingFlowCompletion) {
         switch completion {
         case .rating(let result): library.applyRated(request.experience.id, category: result.category)
-        case .visit: library.noteChanged()
+        case .visit, .edited: library.noteChanged()
         }
         Task { await library.refresh() }
     }

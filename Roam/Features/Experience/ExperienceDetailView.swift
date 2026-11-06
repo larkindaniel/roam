@@ -192,7 +192,6 @@ struct ExperienceDetailView: View {
     @State private var myPhotos: [String] = []
     @State private var model: ExperienceDetailModel?
     @State private var memoriesModel: PublicMemoriesModel?
-    @State private var editingVisit: Visit?
     @State private var reportTarget: ReportTarget?
     @State private var reportReason: ReportReason?
     @State private var pendingDeletion: DetailDeletion?
@@ -285,12 +284,6 @@ struct ExperienceDetailView: View {
         .roamTabBar(hidden: overMap && sheetDetent != .full)
         .sheet(item: $reportTarget) { target in
             ReportSheet(target: target, title: reportTitle(target), suggestedReason: reportReason)
-        }
-        .sheet(item: $editingVisit) { visit in
-            VisitMemoryEditor(visit: visit, destinationTimeZone: model?.detail?.timeZoneIdentifier) { _ in
-                library.noteChanged()
-                Task { await reload() }
-            }
         }
         .alert(pendingDeletion?.title ?? "Confirm removal", isPresented: Binding(
             get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { action in
@@ -605,7 +598,13 @@ struct ExperienceDetailView: View {
             MyVisitsCard(visits: detail.myVisits, sentiment: detail.myRating?.sentiment, placePhotoURL: summary.photoURL,
                          coordinate: summary.coordinate, symbol: summary.iconName, disabled: deleting || failedDeletion != nil,
                          onAdd: { Task { await openLog(detail.myRating != nil ? .addVisit : .firstLog) } },
-                         onEdit: { editingVisit = $0 },
+                         // Editing is the log screen again, filled in with the visit.
+                         onEdit: { visit in
+                             router.sheet = .log(LogRequest(experience: summary, mode: .editVisit,
+                                                            suggestedCategory: detail.myRating?.category ?? summary.category,
+                                                            destinationTimeZone: detail.timeZoneIdentifier, categoryLocked: true,
+                                                            existingVisit: visit))
+                         },
                          onDelete: { visit in
                              Task { await confirmDeletion(DetailDeletion(experienceID: experienceID, visitID: visit.id,
                                                                          lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)) }

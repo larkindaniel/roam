@@ -4,6 +4,7 @@ import Observation
 enum RatingFlowCompletion: Hashable {
     case rating(RatingCommitResult)
     case visit(AddVisitResult)
+    case edited
 }
 
 enum RatingFlowStep: String, Codable {
@@ -55,6 +56,8 @@ final class RatingFlowModel {
     private let currentAccount: () -> UUID?
     private let now: () -> Date
     private var generation = 0
+    /// Saves an edited visit over the one it came from (edit mode only).
+    var saveEdit: ((VisitPayload) async throws -> Void)?
 
     var draftName: String { "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)" }
     /// What the place already is, from Roam or from Apple's place type.
@@ -88,7 +91,11 @@ final class RatingFlowModel {
         self.now = now
         let date = VisitDate.today(destinationTimeZone: request.destinationTimeZone, now: now())
         let initial: VisitPayload
-        if request.mode == .rerank, let anchor = request.existingVisit {
+        if request.mode == .editVisit, let anchor = request.existingVisit {
+            initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
+                                   publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id), audience: anchor.audience,
+                                   tripID: anchor.tripID)
+        } else if request.mode == .rerank, let anchor = request.existingVisit {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id))
         } else {
@@ -239,7 +246,9 @@ final class RatingFlowModel {
             message = "Check the note length and choose today or an earlier visit date."
             return
         }
-        if request.mode == .addVisit || skipsRanking {
+        if request.mode == .editVisit {
+            await submitEdit()
+        } else if request.mode == .addVisit || skipsRanking {
             pendingVisit = AddVisitRequest(operationID: operationID, experienceID: request.experience.id, visit: visit,
                                            category: skipsRanking ? category : nil)
             await submitPending()
@@ -305,6 +314,24 @@ final class RatingFlowModel {
                                             baseRevision: ranking.revision, answers: session.answers,
                                             visit: request.mode == .rerank && visit == initialVisit ? nil : visit)
         await submitPending()
+    }
+
+    /// An edit saves straight over the visit; nothing is ranked.
+    private func submitEdit() async {
+        guard let saveEdit else { return }
+        step = .saving
+        message = nil
+        do {
+            try await saveEdit(visit)
+            guard accountMatches() else { step = .details; return }
+            completion = .edited
+            step = .result
+            photos?.committed()
+            storage.remove(name: draftName, userID: accountID)
+        } catch {
+            step = .details
+            record(error)
+        }
     }
 
     func retrySave() async {

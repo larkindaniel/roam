@@ -130,6 +130,8 @@ struct LogRequest: Hashable, Identifiable, Sendable {
         case firstLog
         case rerank
         case addVisit
+        /// Changing a visit you logged: the same screen, filled in with it, saving over it.
+        case editVisit
     }
 
     let id = UUID()

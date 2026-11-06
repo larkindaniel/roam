@@ -65,10 +65,21 @@ struct RatingFlowView: View {
                 guard model == nil, let userID = account.userID else { return }
                 let draftID = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)-photos"
                 let photos = PhotoDraftModel(ownerID: userID, draftID: draftID,
-                                             existingMedia: request.mode == .rerank ? request.existingVisit?.media ?? [] : [],
+                                             existingMedia: [.rerank, .editVisit].contains(request.mode) ? request.existingVisit?.media ?? [] : [],
                                              storage: services.storage, media: services.media, currentAccount: { account.userID })
-                model = RatingFlowModel(request: request, accountID: userID, ranking: services.ranking,
-                                        storage: services.storage, currentAccount: { account.userID }, photos: photos)
+                let flow = RatingFlowModel(request: request, accountID: userID, ranking: services.ranking,
+                                           storage: services.storage, currentAccount: { account.userID }, photos: photos)
+                if request.mode == .editVisit, let original = request.existingVisit {
+                    flow.saveEdit = { [services] visit in
+                        let date = VisitDate(date: visit.date, timeZoneIdentifier: visit.timeZoneIdentifier)
+                        _ = try await services.memories.updateVisit(visitID: original.id, note: visit.publicNote, date: date,
+                                                                    mediaIDs: visit.mediaIDs, operationID: UUID())
+                        if let audience = visit.audience, audience != original.audience {
+                            try await services.plans.setVisitAudience(visitID: original.id, audience: audience)
+                        }
+                    }
+                }
+                model = flow
             }
         }
         .roamSheetStyle()
@@ -91,6 +102,7 @@ struct RatingFlowView: View {
         case .firstLog: return "Log a place"
         case .rerank: return "Rank again"
         case .addVisit: return "Add a visit"
+        case .editVisit: return "Edit visit"
         }
     }
 
@@ -244,7 +256,7 @@ struct RatingFlowView: View {
     private func details(_ model: RatingFlowModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
             // How it was, always first. Picking a feeling ranks the place when you save; leaving it logs it unranked.
-            if request.mode != .addVisit {
+            if request.mode != .addVisit && request.mode != .editVisit {
                 FeelingSlider(selection: Binding(get: { model.sentiment }, set: { _ in }), enabled: model.category != nil) { picked in
                     model.setFeeling(picked)
                 }
@@ -269,7 +281,7 @@ struct RatingFlowView: View {
                 .buttonStyle(.plain)
                 .roamCard(padding: 0)
                 .accessibilityIdentifier("rating-edit-date")
-                if request.mode != .rerank {
+                if request.mode != .rerank && request.mode != .editVisit {
                     Menu {
                         // Icons say which is which: a house for home, a plane for each trip.
                         Picker("Part of", selection: Binding(get: { model.visit.tripID }, set: { model.setTrip($0) })) {
