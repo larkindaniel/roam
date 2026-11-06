@@ -402,9 +402,7 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                FriendMemoriesSection(memories: friendMemories,
-                                      onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
-                                      onReport: { target in reportReason = nil; reportTarget = target })
+                FriendMemoriesSection(memories: friendMemories, onReport: { target in reportReason = nil; reportTarget = target })
                 scores(detail)
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)

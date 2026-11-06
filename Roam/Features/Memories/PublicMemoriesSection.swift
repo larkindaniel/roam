@@ -131,11 +131,26 @@ struct PublicMemoriesSection: View {
     }
 }
 
-/// What friends said about this place, kept apart from other travellers.
+/// Friends who've been here, as a card with no title: one row each, their name with when they last went tucked right
+/// under it, and their stars at the far right when they ranked it.
 struct FriendMemoriesSection: View {
     let memories: [PublicMemory]
-    let onOpenPhotos: (UUID?) -> Void
     let onReport: (ReportTarget) -> Void
+
+    /// Each friend once, with their latest visit.
+    private var latest: [PublicMemory] {
+        let byFriend = Dictionary(grouping: memories) { $0.author.id }
+        return byFriend.values.compactMap { $0.sorted(by: Self.newer).first }.sorted(by: Self.newer)
+    }
+
+    private static func newer(_ a: PublicMemory, _ b: PublicMemory) -> Bool {
+        switch (a.visitDate.date, b.visitDate.date) {
+        case let (x?, y?) where x != y: return x > y
+        case (nil, _?): return false
+        case (_?, nil): return true
+        default: return a.createdAt > b.createdAt
+        }
+    }
 
     var body: some View {
         if memories.isEmpty {
@@ -143,19 +158,43 @@ struct FriendMemoriesSection: View {
                 .font(.footnote).foregroundStyle(Theme.secondaryText)
                 .accessibilityIdentifier("friend-memories-empty")
         } else {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                Text("From your friends").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
-                ForEach(memories) { memory in
-                    PublicMemoryCard(memory: memory,
-                                     onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
-                    if memory.id != memories.last?.id { Divider() }
+            let rows = latest
+            VStack(spacing: 0) {
+                ForEach(rows) { memory in
+                    row(memory)
+                    if memory.id != rows.last?.id { RowSeparator() }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .roamCard()
+            .roamCard(padding: Theme.Spacing.m)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("detail-friend-memories")
         }
+    }
+
+    private func row(_ memory: PublicMemory) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            AvatarView(member: memory.author, size: 48)
+            VStack(alignment: .leading, spacing: -2) {
+                Text(memory.author.displayName).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                Text(memory.visitDate.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
+                    .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if let score = memory.score {
+                Label(score.formatted, systemImage: "star.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Roam.ink)
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityLabel("Rated \(score.formatted) out of 5")
+            }
+        }
+        .padding(.vertical, Theme.Spacing.s)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("memory-card-\(memory.id.uuidString)")
     }
 }
 
