@@ -200,25 +200,3 @@ struct PhotoCard<Content: View>: View {
         .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
     }
 }
-
-/// "★ 4.6 Google · 1,240 reviews", shown beside Roam's own scores when Google has rated the place.
-struct GoogleRatingLine: View {
-    let experience: ExperienceSummary
-
-    var body: some View {
-        if let rating = experience.googleRating {
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill").foregroundStyle(.orange)
-                Text(String(format: "%.1f", rating)).fontWeight(.semibold).foregroundStyle(Roam.ink).monospacedDigit()
-                Text("Google").foregroundStyle(Roam.inkMuted)
-                if let count = experience.googleRatingCount {
-                    Text("· \(count.formatted()) \(count == 1 ? "review" : "reviews")").foregroundStyle(Roam.inkMuted)
-                }
-            }
-            .font(.footnote)
-            .lineLimit(1)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Google rating \(String(format: "%.1f", rating)) out of 5\(experience.googleRatingCount.map { " from \($0) reviews" } ?? "")")
-        }
-    }
-}

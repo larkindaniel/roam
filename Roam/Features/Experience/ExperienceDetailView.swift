@@ -402,8 +402,8 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                FriendMemoriesSection(memories: friendMemories, onReport: { target in reportReason = nil; reportTarget = target })
-                scores(detail)
+                // Google's rating first, then friends'.
+                FriendMemoriesSection(memories: friendMemories, place: summary, onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
@@ -577,16 +577,6 @@ struct ExperienceDetailView: View {
         .accessibilityIdentifier(identifier)
     }
 
-
-    /// For now only Google's rating is shown; Roam's own scores are set aside.
-    @ViewBuilder private func scores(_ detail: ExperienceDetail) -> some View {
-        if detail.summary.googleRating != nil {
-            GoogleRatingLine(experience: detail.summary).font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .roamCard()
-                .accessibilityIdentifier("detail-google-rating")
-        }
-    }
 
     /// Your logs of it, as rows like My Places' trips; swiping one away deletes it straight away.
     @ViewBuilder private func memories(_ detail: ExperienceDetail) -> some View {
