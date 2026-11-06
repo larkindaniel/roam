@@ -28,6 +28,8 @@ struct CityPageView: View {
     @State private var search: ExperienceSearchModel?
     @State private var query = ""
     @FocusState private var searching: Bool
+    @Environment(\.openURL) private var openURL
+    @State private var choosingMapsApp = false
     @State private var opening: String?
     @State private var openError: String?
     @State private var detent = GlobeSheetDetent.half
@@ -167,14 +169,22 @@ struct CityPageView: View {
         } header: {
             // Minimised, the bubble is the search bar. Opened up, a see-through search bar sits over the city's name; scroll
             // and both give way to the city's name, small and white; scroll back up and they come back down.
+            // Directions sit to the right of the search, as on a place's page.
             if detent == .peek {
-                searchField
+                HStack(spacing: Theme.Spacing.s) {
+                    searchField
+                    // In the bubble's rounded end: the same gap on the right as above and below.
+                    directionsButton.padding(.trailing, -(Theme.Spacing.l - Theme.Spacing.s))
+                }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    searchField
-                        .padding(.horizontal, Theme.Spacing.m)
-                        // A darker grey field inside the card, the same as My Places' search.
-                        .background(Capsule().fill(Roam.ink.opacity(0.12)))
+                    HStack(spacing: Theme.Spacing.s) {
+                        searchField
+                            .padding(.horizontal, Theme.Spacing.m)
+                            // A darker grey field inside the card, the same as My Places' search.
+                            .background(Capsule().fill(Roam.ink.opacity(0.12)))
+                        directionsButton
+                    }
                     cityHeader(showsPhoto: false)
                     if showsDates { logDates }
                 }
@@ -246,6 +256,39 @@ struct CityPageView: View {
     }
 
     // MARK: Search
+
+    /// The blue directions circle a place's page has, here to the city, in Apple or Google Maps. A tap handler, like the
+    /// place's: buttons in this card's header didn't get their taps.
+    private var directionsButton: some View {
+        Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(width: 38, height: 38)
+            .background(Circle().fill(PlaceState.planned.markerColor))
+            .contentShape(Circle().inset(by: -4))
+            .onTapGesture { choosingMapsApp = true }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { choosingMapsApp = true }
+            .accessibilityLabel("Directions to \(destination.name)")
+            .accessibilityIdentifier("city-directions")
+            .confirmationDialog("Directions", isPresented: $choosingMapsApp, titleVisibility: .hidden) {
+                Button("Apple Maps") { openInAppleMaps() }
+                Button("Google Maps") { openInGoogleMaps() }
+            }
+    }
+
+    private func openInAppleMaps() {
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
+        item.name = destination.name
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDefault])
+    }
+
+    private func openInGoogleMaps() {
+        var parts = URLComponents(string: "https://www.google.com/maps/dir/")!
+        parts.queryItems = [URLQueryItem(name: "api", value: "1"),
+                            URLQueryItem(name: "destination", value: "\(destination.latitude),\(destination.longitude)")]
+        if let url = parts.url { openURL(url) }
+    }
 
     private var searchField: some View {
         HStack(spacing: Theme.Spacing.s) {
