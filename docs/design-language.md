@@ -1,7 +1,8 @@
 # Roam design language
 
-How Roam's visible screens look and the shared pieces they're built from. Read this before building or changing any UI.
-It describes what's in the app now; README's "How the app works" covers the product model and screens.
+How Roam's screens look, the shared pieces they're built from, and how to make new components so they match. Read this
+before building or changing any UI. Reuse what's here first. When something new is needed, build it from these tokens
+and patterns, then add it to this page. `docs/screens.md` describes each screen and how it behaves.
 
 ## Principles
 

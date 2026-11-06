@@ -1,23 +1,29 @@
 # Roam agent instructions
 
-Read `README.md` ("How the app works") for the app's model and screens, and `docs/design-language.md` before touching
-any UI: every screen reuses its components. Those two, and Kieran's latest instructions, override the original v1
-contract (SPEC, MILESTONES, PLAN and the build run below) wherever they disagree.
+Before you start, read:
+- `README.md` → "How the app works": the model, backend and key files.
+- `docs/screens.md`: every screen and what each tap does. Update it when you change a screen.
+- `docs/design-language.md` **before building or changing any UI**. It's how to make new components: reuse the
+  existing rows, cards, buttons and chips, and build anything new from its tokens and patterns so it matches.
 
-## Working on Roam now
+These, and the latest instructions from the team, override the original v1 contract (SPEC, MILESTONES, PLAN and the
+build run below) wherever they disagree.
 
-- **Branch:** `kieran/roam-product-overhaul`, cut from `codex/sol-max-handoff`.
-  - Commit locally after each round of changes. **Never push.**
-  - Commit messages are plain English describing what changed for the user (see `git log`).
-  - **No AI attribution:** no `Co-Authored-By` trailer. Kieran is the only author and committer.
-- **Speed over ceremony.** Don't run the full test suites.
-  - Build with `./scripts/build.sh <simulator-id>` (it runs XcodeGen and then builds).
-  - Then `xcrun simctl install … build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` and
-    `xcrun simctl launch --terminate-running-process … com.daniellarkin.roam`.
-  - When you change shared types or remove code, compile the tests with `xcodebuild … build-for-testing`. Don't run
-    them.
-- **Simulator:** iPhone 17, `CC85E084-8AB2-46F6-ABF7-12546336CCF5`, located in Waterloo. Kieran checks screens himself:
-  build, install and launch, but don't tap through the app unless he asks.
+## How to work
+
+- **Branch off `main`** with a short descriptive name (for example `kieran/friends-tab-cards`). Don't commit to `main`
+  directly, and never force-push a shared branch.
+- **Commit as you go,** with plain-English messages that say what changed for the user.
+- **When you're done, push your branch and open a PR against `main`.** The description should be:
+  - a concise, human-readable list of what changed, written for someone who uses the app
+  - screenshots of each changed screen (`xcrun simctl io <simulator-id> screenshot <file>.png`)
+  - screen recordings of anything that moves or flows (`xcrun simctl io <simulator-id> recordVideo <file>.mov`)
+- **No AI attribution** in commits or PRs: no `Co-Authored-By` trailer and no "Generated with" line.
+- **Don't run the full test suites.**
+  - Build with `./scripts/build.sh <simulator-id>` (XcodeGen, then build).
+  - Install with `xcrun simctl install`, and launch to check.
+  - When you change shared types or remove code, compile the tests with `xcodebuild … build-for-testing`.
+- **Simulator:** iPhone 17, `CC85E084-8AB2-46F6-ABF7-12546336CCF5`, located in Waterloo.
 - **Backend:** local Supabase in Docker. The tools are in `~/.local/bin` (`export PATH="$HOME/.local/bin:$PATH"`).
   - Schema changes are forward-only migrations in `supabase/migrations/`. Apply them with
     `supabase migration up --local`.
@@ -27,9 +33,8 @@ contract (SPEC, MILESTONES, PLAN and the build run below) wherever they disagree
     `scripts/fixtures/demo.py` and isn't idempotent (`plans_sql()` re-runs only trips, homes and visited cities).
 - **Secrets:** the Google Places key lives in `supabase/functions/.env` (gitignored) as `GOOGLE_PLACES_KEY`. Never commit
   it, paste it anywhere or put any key in the app.
-- **Feedback loop:** Kieran sends many small UI notes, often mid-task. Fold each one in, rebuild, install, and commit in
-  small batches. When a note reverses an earlier one, the latest note wins. Remove the old version rather than keeping
-  both behind a flag.
+- **Feedback:** UI notes often come in quick succession. When a note reverses an earlier one, the latest wins. Remove
+  the old version rather than keeping both behind a flag.
 
 ## The original build run (M1–M8, complete)
 

@@ -5,8 +5,9 @@ you want to go, and see where your friends went. It looks and behaves like a fir
 Apple's greys, colour only for place states). It's built with SwiftUI and MapKit on a local Supabase backend in Docker.
 Google is used only server-side, for photos and star ratings.
 
-- How the app works now: [How the app works](#how-the-app-works) below.
-- How screens look and which shared components to use: `docs/design-language.md`.
+- How the app works now: [How the app works](#how-the-app-works) below, and every screen and what each tap does in
+  `docs/screens.md`.
+- How screens look, and how to build new components so they match: `docs/design-language.md`.
 - Working rules for agents: `CLAUDE.md`.
 - The original v1 contract: `SPEC.md`, `MILESTONES.md` and `DECISIONS.md`. Where the app has moved on, the "Current
   product" section at the end of `DECISIONS.md` says what changed.
@@ -98,52 +99,7 @@ Real Sign in with Apple (token exchange, reauthentication and revocation) needs 
 
 ### Screens
 
-```
-App (Roam's own floating glass tab bar: Discover · Friends · My Places; each tab button returns to its home)
-│
-├── Discover  (Features/ForYou/ForYouRootView)
-│   ├── Search bar (cities, countries, places) · settings cog
-│   └── "Places we think you'd enjoy": big city photo cards (loading: SkeletonCards) → City page
-│
-├── Friends  (Features/Feed/FeedRootView)
-│   ├── Top right: friends and requests · notifications · settings
-│   └── One card per friend and city, newest visit first (undated visits left out):
-│       avatar, name and dates → the city's photo with "Japan 🇯🇵" (opens the city) → each place as a row with a chevron
-│
-├── My Places  (Features/Lists: full-screen globe with a swipe-up card)
-│   ├── Search bubble when minimised; the globe always shows every place's dot (been > going > saved)
-│   ├── Saved (left, opens first): homes, upcoming trips with + New trip, saved countries/states as photo cards or a grid
-│   └── Been (right): homes, countries you've been to as photo cards or a grid, past trips
-│
-├── City page  (Features/ForYou/CityPageView): the app's explorer, shared by every tab
-│   ├── Full-screen map showing only your places (green been, yellow saved), with Apple Maps–style icons
-│   ├── Minimised: "Search <city>" in the tab bar's spot, with the blue directions circle beside it
-│   ├── Open: name with Set as home, round buttons Log · Wishlist · Trip · Send · Plan; Start → End when been;
-│   │   photo and blurb; untitled wishlist and been cards; suggested places as big photo cards
-│   └── Opening a place stays on this map: the card swaps to the place (no slide), and back returns the city
-│
-├── Country / state page  (CountryPageView): name and flag, Been · Wishlist · Trip · Plan, photo and blurb,
-│   homes, trips, wishlist and been city rows, suggested cities
-│
-├── Place page  (Features/Experience/ExperienceDetailView): map with a swipe-up card
-│   ├── Header: name, city chip, ★ Google rating, directions; buttons Log/Been · Save · Send
-│   │   (Been offers only Delete)
-│   └── Card: photo gallery (dots), Wikipedia blurb, your visits (rows; tap to edit, swipe to delete,
-│       + Add visit), then a titleless card with You first, then friends with their stars, then everyone else
-│
-├── Trip page  (Features/Plans/TripViews): name with an edit icon, date bubbles, cities as photo cards
-│   (several countries: a country card with city rows), swipe to delete, Add to trip at the bottom, bin to delete
-│
-├── Settings  (cog): profile row → Edit profile (photo, name, handle, bio, home cities), account, privacy
-│
-└── Sheets
-    ├── Log (RatingFlowView): name, feeling, date chip, Part of, photos, note, glass Save
-    │   ├── then comparisons: "Which did you like more?", two cards, Undo · Too tough · Skip
-    │   └── the same screen, filled in, edits a visit (it can change trip, date, photos, note, audience)
-    ├── City log: the same, plus places you went (rows) and photos
-    ├── New trip: name, Start → End, cities, × with discard
-    └── Plan with AI (pink): ChatGPT · Claude · copy
-```
+Every screen, what's on it and what each tap does: `docs/screens.md`.
 
 ### Backend
 
