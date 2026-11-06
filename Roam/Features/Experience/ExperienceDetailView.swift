@@ -403,7 +403,8 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                FriendMemoriesSection(memories: friendMemories, onReport: { target in reportReason = nil; reportTarget = target })
+                // Your own stars from your ranking come first, then friends'.
+                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
@@ -597,6 +598,13 @@ struct ExperienceDetailView: View {
                                                                          lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)) }
                          })
         }
+    }
+
+    private func yours(_ detail: ExperienceDetail) -> FriendMemoriesSection.Yours? {
+        guard let rating = detail.myRating, let me = session.profile?.summary else { return nil }
+        let latest = detail.myVisits.compactMap(\.visitDate.date).max()
+        return .init(member: me, score: rating.score,
+                     lastVisit: detail.myVisits.first { $0.visitDate.date == latest }?.visitDate)
     }
 
     /// Google's stars on one line beside the city, with how many reviews they're from.

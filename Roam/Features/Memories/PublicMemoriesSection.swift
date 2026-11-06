@@ -134,7 +134,15 @@ struct PublicMemoriesSection: View {
 /// Friends who've been here, as a card with no title: one row each, their name with when they last went tucked right
 /// under it, and their stars at the far right when they ranked it.
 struct FriendMemoriesSection: View {
+    /// Your own row at the top, when you've ranked the place.
+    struct Yours {
+        let member: MemberSummary
+        let score: Score
+        let lastVisit: VisitDate?
+    }
+
     let memories: [PublicMemory]
+    var yours: Yours? = nil
     let onReport: (ReportTarget) -> Void
 
     /// Each friend once, with their latest visit.
@@ -153,13 +161,17 @@ struct FriendMemoriesSection: View {
     }
 
     var body: some View {
-        if memories.isEmpty {
+        if memories.isEmpty && yours == nil {
             Label("None of your friends have been here yet.", systemImage: "person.2")
                 .font(.footnote).foregroundStyle(Theme.secondaryText)
                 .accessibilityIdentifier("friend-memories-empty")
         } else {
             let rows = latest
             VStack(spacing: 0) {
+                if let yours {
+                    ownRow(yours)
+                    if !rows.isEmpty { RowSeparator() }
+                }
                 ForEach(rows) { memory in
                     row(memory)
                     if memory.id != rows.last?.id { RowSeparator() }
@@ -178,22 +190,33 @@ struct FriendMemoriesSection: View {
             .labelStyle(.titleAndIcon)
     }
 
-    private func row(_ memory: PublicMemory) -> some View {
+    /// You, laid out like a friend: your stars from your ranking.
+    private func ownRow(_ yours: Yours) -> some View {
+        line(member: yours.member, name: "You", date: yours.lastVisit, score: yours.score)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("detail-own-review")
+    }
+
+    private func line(member: MemberSummary, name: String, date: VisitDate?, score: Score?) -> some View {
         HStack(spacing: Theme.Spacing.m) {
-            AvatarView(member: memory.author, size: 48)
+            AvatarView(member: member, size: 48)
             VStack(alignment: .leading, spacing: -2) {
-                Text(memory.author.displayName).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                Text(memory.visitDate.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
+                Text(name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                Text(date?.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
                     .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
             }
             Spacer(minLength: 0)
-            if let score = memory.score {
+            if let score {
                 stars(score.formatted)
                     .accessibilityLabel("Rated \(score.formatted) out of 5")
             }
         }
         .padding(.vertical, Theme.Spacing.s)
         .contentShape(Rectangle())
+    }
+
+    private func row(_ memory: PublicMemory) -> some View {
+        line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
         .contextMenu {
             Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
         }
