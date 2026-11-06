@@ -105,7 +105,7 @@ struct FriendCityCard: View {
             .accessibilityElement(children: .combine)
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.top, Theme.Spacing.m)
-            .padding(.bottom, Theme.Spacing.s)
+            .padding(.bottom, Theme.Spacing.m)
             Button { router.push(.city(destination, ownerID: nil)) } label: {
                 CityHeroCard(city: destination, subtitle: [group.countryName ?? group.countryCode, TripTitle.flag(group.countryCode)]
                                  .compactMap { $0 }.joined(separator: " "),
