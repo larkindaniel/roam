@@ -423,13 +423,14 @@ struct HeroPhotoCard: View {
 struct CityHeroCard: View {
     let city: Destination
     var subtitle: String?
+    var cornerRadius: CGFloat = Theme.cornerRadius
 
     @Environment(AppServices.self) private var services
     @State private var photo: AreaPhotos.Photo?
 
     var body: some View {
         HeroPhotoCard(url: photo?.url, title: city.name, subtitle: subtitle ?? city.subtitle, symbol: "signpost.right.and.left",
-                      location: city.coordinate)
+                      location: city.coordinate, cornerRadius: cornerRadius)
             .task(id: city.id) {
                 photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
             }
