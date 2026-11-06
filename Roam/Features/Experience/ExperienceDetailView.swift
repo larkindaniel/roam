@@ -595,7 +595,7 @@ struct ExperienceDetailView: View {
     @ViewBuilder private func memories(_ detail: ExperienceDetail) -> some View {
         if !detail.myVisits.isEmpty {
             let summary = detail.summary
-            MyVisitsCard(visits: detail.myVisits, sentiment: detail.myRating?.sentiment, placePhotoURL: summary.photoURL,
+            MyVisitsCard(visits: detail.myVisits, placePhotoURL: summary.photoURL,
                          coordinate: summary.coordinate, symbol: summary.iconName, disabled: deleting || failedDeletion != nil,
                          onAdd: { Task { await openLog(detail.myRating != nil ? .addVisit : .firstLog) } },
                          // Editing is the log screen again, filled in with the visit.
@@ -608,8 +608,7 @@ struct ExperienceDetailView: View {
                          onDelete: { visit in
                              Task { await confirmDeletion(DetailDeletion(experienceID: experienceID, visitID: visit.id,
                                                                          lastVisit: detail.myVisits.count == 1 && detail.myRating != nil)) }
-                         },
-                         onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0.id)) })
+                         })
         }
     }
 

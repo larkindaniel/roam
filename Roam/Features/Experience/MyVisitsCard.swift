@@ -1,12 +1,11 @@
 import MapKit
 import SwiftUI
 
-/// Your logs of a place, as rows like My Places' trips: the visit's first photo with the been mark, its date and how
-/// you felt, an edit button and a chevron. Opening a row shows the rest of its photos, its note and who can see it;
-/// swiping it left deletes it. + Add visit runs across the bottom.
+/// Your logs of a place, as rows like My Places' trips: the visit's first photo with the been mark, its date with the
+/// start of its note, and a chevron that opens it in the log screen; swiping it left deletes it. + Add visit runs across
+/// the bottom.
 struct MyVisitsCard: View {
     let visits: [Visit]
-    var sentiment: Sentiment?
     /// The place's own photo, for a visit with none of its own.
     var placePhotoURL: URL?
     let coordinate: CLLocationCoordinate2D
@@ -15,9 +14,6 @@ struct MyVisitsCard: View {
     let onAdd: () -> Void
     let onEdit: (Visit) -> Void
     let onDelete: (Visit) -> Void
-    let onOpenPhotos: (Visit) -> Void
-
-    @State private var open: Set<UUID> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,94 +29,33 @@ struct MyVisitsCard: View {
 
     private func photos(_ visit: Visit) -> [MediaRef] { visit.media.sorted { $0.position < $1.position } }
 
+    /// The first photo with the been mark, the date with the note's start under it, and a chevron; tapping opens the
+    /// log screen to change it.
     private func row(_ visit: Visit) -> some View {
-        let isOpen = open.contains(visit.id)
-        let media = photos(visit)
-        return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        Button { onEdit(visit) } label: {
             HStack(spacing: Theme.Spacing.m) {
                 ZStack(alignment: .bottomTrailing) {
-                    PlaceThumbnail(id: "visit-\(visit.id)", path: media.first?.path, url: placePhotoURL,
+                    PlaceThumbnail(id: "visit-\(visit.id)", path: photos(visit).first?.path, url: placePhotoURL,
                                    coordinate: coordinate, symbol: symbol, size: 48)
                     StatusMark(state: .visited).scaleEffect(0.75).offset(x: 6, y: 6)
                 }
-                HStack(spacing: 6) {
-                    Text(visit.visitDate.displayString).font(.headline).foregroundStyle(Roam.ink)
-                    if let sentiment {
-                        Image(systemName: sentiment.symbolName)
-                            .font(.subheadline)
-                            .foregroundStyle(color(sentiment))
-                            .accessibilityLabel(sentiment.shortTitle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(visit.visitDate.displayString).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    if !visit.publicNote.isEmpty {
+                        Text(visit.publicNote.replacingOccurrences(of: "\n", with: " "))
+                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1).truncationMode(.tail)
                     }
                 }
                 Spacer(minLength: 0)
-                Button { onEdit(visit) } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(Roam.ink)
-                        .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(disabled)
-                .accessibilityLabel("Edit this visit")
-                .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Roam.inkMuted)
-                    .rotationEffect(.degrees(isOpen ? 90 : 0))
-                    .accessibilityHidden(true)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             }
+            .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
-            .onTapGesture { withAnimation(.snappy) { if isOpen { open.remove(visit.id) } else { open.insert(visit.id) } } }
-            .accessibilityElement(children: .contain)
-            .accessibilityAction(named: isOpen ? "Hide details" : "Show details") {
-                if isOpen { open.remove(visit.id) } else { open.insert(visit.id) }
-            }
-            if isOpen { details(visit, media: media) }
         }
-        .padding(.vertical, Theme.Spacing.s)
-    }
-
-    /// The rest of the photos at the same size (the first is on the row), the note, and who can see it.
-    private func details(_ visit: Visit, media: [MediaRef]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            if media.count > 1 {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 48, maximum: 48), spacing: Theme.Spacing.s)],
-                          alignment: .leading, spacing: Theme.Spacing.s) {
-                    ForEach(Array(media.dropFirst().enumerated()), id: \.element.id) { index, item in
-                        Button { onOpenPhotos(visit) } label: {
-                            RemoteImageView(path: item.path, accessibilityLabel: "Photo \(index + 2) from this visit")
-                                .frame(width: 48, height: 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            if !visit.publicNote.isEmpty {
-                Text(visit.publicNote).font(.subheadline).foregroundStyle(Roam.ink).fixedSize(horizontal: false, vertical: true)
-            }
-            Label(visit.audience.title, systemImage: audienceSymbol(visit.audience))
-                .font(.footnote).foregroundStyle(Roam.inkMuted)
-        }
-        .padding(.leading, 48 + Theme.Spacing.m)
-        .transition(.opacity)
-    }
-
-    private func color(_ sentiment: Sentiment) -> Color {
-        switch sentiment {
-        case .liked: return PlaceState.visited.markerColor
-        case .fine: return Roam.inkMuted
-        case .disliked: return .red
-        }
-    }
-
-    private func audienceSymbol(_ audience: Audience) -> String {
-        switch audience {
-        case .onlyMe: return "lock.fill"
-        case .friends: return "person.2.fill"
-        case .public: return "globe"
-        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .accessibilityHint("Edit this visit")
+        .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
     }
 
     /// A light green bubble the full width, like + New trip's in blue.
