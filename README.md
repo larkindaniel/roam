@@ -147,10 +147,11 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 
 - Unit tests and the database tests pass. The real-backend integration tests and the UI journey tests haven't been
   updated for the current app.
-- The social side is being brought back into the new design. Daniel built friends, posts, comments, likes, finding
-  people and sharing; some of it isn't shown in the current Friends tab, but the code and backend are all still here.
-  Next up: comments and likes, a good way to make posts, searching for friends, sharing places with friends, and lists
-  you can share with friends.
+- Daniel's social features are being moved into the new design. He built friendships, posts, comments, likes,
+  finding people, sharing and profiles, and the current Friends tab runs on that work. Some of those screens are hidden
+  while the redesign settles; none of the code or backend was deleted. How they come back is to be decided together:
+  comments and likes, a good way to make posts, searching for friends, sharing places with friends, lists you can share
+  with friends, and friend profiles.
 - The fixture backend only stubs the newer features.
 - iOS 18 still needs a runtime check (Liquid Glass falls back to frosted material before iOS 26).
 - Google's terms require its photo credit and limit how long its data is kept. We refresh about weekly.
