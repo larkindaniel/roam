@@ -181,7 +181,7 @@ extension SupabaseBackend: PlanService {
 
     func tripFeed() async throws -> [TripFeedCard] { try await rpc("trip_feed") }
 
-    func friendsFeed() async throws -> FriendsFeed { try await rpc("friends_feed") }
+    func friendsFeed() async throws -> [FriendFeedVisit] { try await rpc("friends_feed") }
 
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry] {
         try await rpc("trip_updates", ["p_owner": RPC.uuid(ownerID), "p_trip_id": RPC.uuid(tripID)])

@@ -298,19 +298,13 @@ extension FixtureBackend: PlanService {
         }.sorted { $0.latestAt > $1.latestAt }
     }
 
-    func friendsFeed() async throws -> FriendsFeed {
+    func friendsFeed() async throws -> [FriendFeedVisit] {
         let me = try await authenticatedActor()
-        func homes(_ id: UUID) -> [String] { members[id]?.homeCity?.countryCode.map { [$0] } ?? [] }
         let visible = visits.values.filter {
-            $0.owner != me && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
+            $0.owner != me && $0.date != nil && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
                 && areFriends(me, $0.owner) && !mutes.contains(Pair(a: me, b: $0.owner))
         }.sorted { $0.createdAt > $1.createdAt }
-        return FriendsFeed(myHomeCountries: homes(me), visits: visible.compactMap { row in
-            tripFeedEntry(row, viewer: me).map {
-                FriendFeedVisit(author: memberSummary(row.owner), tripID: row.tripID, tripName: row.tripID.flatMap { trips[$0]?.draft.name },
-                                homeCountries: homes(row.owner), entry: $0)
-            }
-        })
+        return visible.compactMap { row in tripFeedEntry(row, viewer: me).map { FriendFeedVisit(author: memberSummary(row.owner), entry: $0) } }
     }
 
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry] {

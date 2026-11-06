@@ -44,7 +44,7 @@ struct FeedRootView: View {
     @ViewBuilder private var content: some View {
         switch cards {
         case .idle, .loading:
-            SkeletonList(rows: 4).accessibilityIdentifier("feed-loading")
+            SkeletonCards().accessibilityIdentifier("feed-loading")
         case .failed(let message):
             EmptyStateView(systemImage: "wifi.exclamationmark", title: "Couldn't load your friends' places", message: message,
                            primaryTitle: "Try again", primaryAction: { Task { await load() } })
@@ -55,9 +55,7 @@ struct FeedRootView: View {
                 .accessibilityIdentifier("feed-empty")
         case .loaded(let value):
             LazyVStack(spacing: Theme.Spacing.l) {
-                ForEach(value) { group in
-                    FriendGroupCard(group: group) { router.push(.friendGroup(group)) }
-                }
+                ForEach(value) { group in FriendCityCard(group: group) }
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("feed-list")
@@ -67,7 +65,7 @@ struct FeedRootView: View {
     private func load() async {
         if cards.value == nil { cards = .loading }
         do {
-            // A trip, a city or a country per card, newest first by when they were there (not when they posted).
+            // A card per friend and city, newest first by when they were there (not when they posted).
             cards = .loaded(FriendFeedGrouping.groups(try await services.plans.friendsFeed()))
         } catch {
             if cards.value == nil { cards = .failed(session.handle(error)) }
@@ -76,180 +74,70 @@ struct FeedRootView: View {
     }
 }
 
-/// A friend's trip, city or country: their name and when, what it is, then their three best-ranked places as rows with
-/// their stars at the right.
-struct FriendGroupCard: View {
+/// A friend's places in one city, right on the Friends tab: their avatar, name and how long they were there, the
+/// city's photo big (it opens the city) with its country and flag small under the name, then each place as a row
+/// with a chevron that opens it.
+struct FriendCityCard: View {
     let group: FriendFeedGroup
-    let onOpen: () -> Void
 
-    var body: some View {
-        Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                HStack(spacing: Theme.Spacing.s) {
-                    FriendGroupByline(group: group)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
-                }
-                FriendGroupTitle(kind: group.kind)
-                let rows = group.preview
-                VStack(spacing: 0) {
-                    ForEach(rows) { entry in
-                        FriendPlaceRow(entry: entry)
-                        if entry.id != rows.last?.id { RowSeparator() }
-                    }
-                }
-                let more = group.places.count - rows.count
-                if more > 0 {
-                    Text("+ \(more) more").font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .roamCard(padding: Theme.Spacing.m)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("friend-group-\(group.author.handle)-\(group.id)")
+    @Environment(AppRouter.self) private var router
+    /// The tight margin round the city's photo, as on a trip's page.
+    private let margin: CGFloat = 6
+
+    private var destination: Destination {
+        let first = group.places.first?.experience
+        return Destination(name: group.city, region: group.region, countryCode: group.countryCode, countryName: group.countryName,
+                           latitude: first?.latitude ?? 0, longitude: first?.longitude ?? 0, radiusMeters: 15_000)
     }
 
-}
-
-/// A place a friend went: its photo, its name, and their stars at the right.
-struct FriendPlaceRow: View {
-    let entry: TripFeedEntry
-
     var body: some View {
+        let places = group.places
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: Theme.Spacing.s) {
+                AvatarView(member: group.author, size: 36)
+                VStack(alignment: .leading, spacing: -2) {
+                    Text(group.author.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
+                    if let dates = MyTimeline.range(group.firstVisit, group.lastVisit) {
+                        Text(dates).font(.caption).foregroundStyle(Roam.inkMuted)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.top, Theme.Spacing.m)
+            .padding(.bottom, Theme.Spacing.s)
+            Button { router.push(.city(destination, ownerID: nil)) } label: {
+                CityHeroCard(city: destination, subtitle: [group.countryName ?? group.countryCode, TripTitle.flag(group.countryCode)]
+                                 .compactMap { $0 }.joined(separator: " "),
+                             cornerRadius: Theme.cornerRadius - margin)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, margin)
+            .accessibilityIdentifier("friend-city-\(group.author.handle)-\(group.city)")
+            VStack(spacing: 0) {
+                ForEach(places) { entry in
+                    Button { router.push(.experience(entry.experience.id)) } label: { row(entry) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("friend-place-\(entry.experience.name)")
+                    if entry.id != places.last?.id { RowSeparator() }
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.vertical, Theme.Spacing.xs)
+        }
+        .roamCard(padding: 0)
+    }
+
+    private func row(_ entry: TripFeedEntry) -> some View {
         HStack(spacing: Theme.Spacing.m) {
             PlaceThumbnail(id: "feed-\(entry.id)", path: entry.media.sorted { $0.position < $1.position }.first?.path,
                            url: entry.experience.photoURL, coordinate: entry.experience.coordinate, symbol: entry.experience.iconName, size: 48)
             Text(entry.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 0)
-            if let score = entry.score { FriendStars(score: score) }
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
         }
         .padding(.vertical, Theme.Spacing.s)
         .contentShape(Rectangle())
-    }
-}
-
-/// Whose it is and when: their avatar, with their name and dates beside it.
-struct FriendGroupByline: View {
-    let group: FriendFeedGroup
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            AvatarView(member: group.author, size: 36)
-            VStack(alignment: .leading, spacing: -2) {
-                Text(group.author.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink)
-                if let dates = MyTimeline.range(group.firstVisit, group.lastVisit) {
-                    Text(dates).font(.caption).foregroundStyle(Roam.inkMuted)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// What a friend's card is about: a trip's name, a country with its flag, or a city with its country and flag small
-/// under it.
-struct FriendGroupTitle: View {
-    let kind: FriendFeedGroup.Kind
-
-    var body: some View {
-        switch kind {
-        case .trip(let name):
-            Text(name).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(2)
-        case .country(let code, let name):
-            Text(country(code, name)).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
-        case .city(let name, let code, let countryName):
-            VStack(alignment: .leading, spacing: -2) {
-                Text(name).font(.roamTitle()).foregroundStyle(Roam.ink).lineLimit(1)
-                Text(country(code, countryName)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-            }
-        }
-    }
-
-    private func country(_ code: String?, _ name: String?) -> String {
-        [name ?? code ?? "Somewhere", TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
-    }
-}
-
-/// A friend's stars for a place, out of 5.
-struct FriendStars: View {
-    let score: Score
-    var color: Color = Roam.ink
-
-    var body: some View {
-        Label(score.formatted, systemImage: "star.fill")
-            .labelStyle(.titleAndIcon)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(color)
-            .accessibilityLabel("Rated \(score.formatted) out of 5")
-    }
-}
-
-/// All of a friend's places on a trip, in a city or in a country, laid out like a trip's page: each city a white card
-/// with its photo big on top and the places they went there as rows under it, their stars at the right.
-struct FriendGroupView: View {
-    let group: FriendFeedGroup
-
-    @Environment(AppRouter.self) private var router
-    /// The tight margin round a city's photo in its card, as on a trip's page.
-    private let margin: CGFloat = 6
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                // Whose it is and when, snug under the title as on their card, with more room before the first city.
-                FriendGroupByline(group: group)
-                    .padding(.bottom, Theme.Spacing.s)
-                let cities = group.cities
-                // The country and flag on each city only when the cities are in more than one country.
-                let countries = Set(cities.map { $0.countryCode?.uppercased() })
-                ForEach(cities, id: \.name) { city in cityCard(city, showsCountry: countries.count > 1) }
-            }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.bottom, Theme.Spacing.l)
-        }
-        // Clear of the floating tab bar at the bottom.
-        .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
-        .background(Roam.paper)
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.large)
-        .screenIdentifier("friend-group")
-    }
-
-    private var title: String {
-        switch group.kind {
-        case .trip(let name): return name
-        case .city(let name, _, _): return name
-        case .country(let code, let name): return [name ?? code, TripTitle.flag(code)].compactMap { $0 }.joined(separator: " ")
-        }
-    }
-
-    private func cityCard(_ city: (name: String, countryCode: String?, countryName: String?, places: [TripFeedEntry]), showsCountry: Bool) -> some View {
-        let first = city.places.first?.experience
-        let destination = Destination(name: city.name, region: first?.region, countryCode: city.countryCode, countryName: city.countryName,
-                                      latitude: first?.latitude ?? 0, longitude: first?.longitude ?? 0, radiusMeters: 15_000)
-        return VStack(spacing: 0) {
-            Button { router.push(.city(destination, ownerID: nil)) } label: {
-                CityHeroCard(city: destination,
-                             subtitle: showsCountry ? [city.countryName, TripTitle.flag(city.countryCode)].compactMap { $0 }.joined(separator: " ") : "",
-                             cornerRadius: Theme.cornerRadius - margin)
-            }
-            .buttonStyle(.plain)
-            .padding(margin)
-            .accessibilityIdentifier("friend-group-city-\(city.name)")
-            VStack(spacing: 0) {
-                ForEach(city.places) { entry in
-                    Button { router.push(.experience(entry.experience.id)) } label: { FriendPlaceRow(entry: entry) }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("friend-group-place-\(entry.experience.name)")
-                    if entry.id != city.places.last?.id { RowSeparator() }
-                }
-            }
-            .padding(.horizontal, Theme.Spacing.m)
-            .padding(.bottom, Theme.Spacing.s)
-        }
-        .roamCard(padding: 0)
     }
 }
 

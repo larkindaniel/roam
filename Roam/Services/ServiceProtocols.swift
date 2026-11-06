@@ -350,7 +350,7 @@ protocol PlanService: AnyObject, Sendable {
     /// Which of your trips a visit was part of; nil for none.
     func setVisitTrip(visitID: UUID, tripID: UUID?) async throws
     func tripFeed() async throws -> [TripFeedCard]
-    func friendsFeed() async throws -> FriendsFeed
+    func friendsFeed() async throws -> [FriendFeedVisit]
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
     func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
