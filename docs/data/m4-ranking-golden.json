@@ -1,0 +1,1680 @@
+{
+  "schemaVersion": 1,
+  "formulaVersion": "roam-category-v1",
+  "scoringCases": [
+    {
+      "name": "singleton_liked",
+      "category": "food_drink",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "singleton_fine",
+      "category": "culture",
+      "groups": {
+        "liked": [],
+        "fine": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "fine",
+          "scoreTenths": 50,
+          "rank": 1,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "singleton_disliked",
+      "category": "nightlife",
+      "groups": {
+        "liked": [],
+        "fine": [],
+        "disliked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ]
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "disliked",
+          "scoreTenths": 17,
+          "rank": 1,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "two_distinct_liked",
+      "category": "outdoors",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 2,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "three_distinct_liked",
+      "category": "day_trips",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 3,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "sole_tied_liked_group",
+      "category": "activities",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 2
+        }
+      ]
+    },
+    {
+      "name": "competition_1_1_3",
+      "category": "stays",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 3,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "mixed_partitions_competition",
+      "category": "food_drink",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ]
+        ],
+        "fine": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000005",
+              "experienceID": "40000000-0000-4000-8000-000000000005",
+              "name": "Golden place 5",
+              "firstRatedAtSeconds": 5
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ]
+        ],
+        "disliked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000006",
+              "experienceID": "40000000-0000-4000-8000-000000000006",
+              "name": "Golden place 6",
+              "firstRatedAtSeconds": 6
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000007",
+              "experienceID": "40000000-0000-4000-8000-000000000007",
+              "name": "Golden place 7",
+              "firstRatedAtSeconds": 7
+            }
+          ]
+        ]
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 3,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "fine",
+          "scoreTenths": 50,
+          "rank": 4,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000005",
+          "sentiment": "fine",
+          "scoreTenths": 50,
+          "rank": 4,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000006",
+          "sentiment": "disliked",
+          "scoreTenths": 33,
+          "rank": 6,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000007",
+          "sentiment": "disliked",
+          "scoreTenths": 0,
+          "rank": 7,
+          "groupSize": 1
+        }
+      ]
+    }
+  ],
+  "insertionCases": [
+    {
+      "name": "empty_liked",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 0,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "before_single_group",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_new"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 0,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 2,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "after_single_group",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_existing"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 1,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 2,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "exact_middle_three",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "prefer_new"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_existing"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 1,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 89,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 78,
+          "rank": 3,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 4,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "too_tough_four",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000003",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "join_group",
+        "position": 2,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 89,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 78,
+          "rank": 3,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 78,
+          "rank": 3,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 5,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "transitive_tie_three_groups",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "join_group",
+        "position": 1,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 2,
+          "groupSize": 3
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 2,
+          "groupSize": 3
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 2,
+          "groupSize": 3
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 5,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "skip_initial_four",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000003",
+          "choice": "skip"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 2,
+        "approximate": true
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 92,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 3,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 75,
+          "rank": 4,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 5,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "skip_narrowed_seven",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000005",
+              "experienceID": "40000000-0000-4000-8000-000000000005",
+              "name": "Golden place 5",
+              "firstRatedAtSeconds": 5
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000006",
+              "experienceID": "40000000-0000-4000-8000-000000000006",
+              "name": "Golden place 6",
+              "firstRatedAtSeconds": 6
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000007",
+              "experienceID": "40000000-0000-4000-8000-000000000007",
+              "name": "Golden place 7",
+              "firstRatedAtSeconds": 7
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000004",
+          "choice": "prefer_existing"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000006",
+          "choice": "prefer_new"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000005",
+          "choice": "skip"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 4,
+        "approximate": true
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 95,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 91,
+          "rank": 3,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "liked",
+          "scoreTenths": 86,
+          "rank": 4,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 81,
+          "rank": 5,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000005",
+          "sentiment": "liked",
+          "scoreTenths": 76,
+          "rank": 6,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000006",
+          "sentiment": "liked",
+          "scoreTenths": 72,
+          "rank": 7,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000007",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 8,
+          "groupSize": 1
+        }
+      ]
+    },
+    {
+      "name": "rerank_removes_old_tie_member",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000004",
+              "experienceID": "40000000-0000-4000-8000-000000000004",
+              "name": "Golden place 4",
+              "firstRatedAtSeconds": 4
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000001",
+        "experienceID": "40000000-0000-4000-8000-000000000001",
+        "name": "Golden place 1",
+        "firstRatedAtSeconds": 1
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000003",
+          "choice": "prefer_existing"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000004",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "join_group",
+        "position": 2,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "liked",
+          "scoreTenths": 100,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 2,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 3,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000004",
+          "sentiment": "liked",
+          "scoreTenths": 67,
+          "rank": 3,
+          "groupSize": 2
+        }
+      ],
+      "removingExperienceID": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "name": "rerank_sole_item_without_self_comparison",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000001",
+        "experienceID": "40000000-0000-4000-8000-000000000001",
+        "name": "Golden place 1",
+        "firstRatedAtSeconds": 1
+      },
+      "answers": [],
+      "expectedOutcome": {
+        "kind": "new_group",
+        "position": 0,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 1
+        }
+      ],
+      "removingExperienceID": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "name": "rerank_moves_sentiment_and_keeps_oldest_identity",
+      "category": "food_drink",
+      "sentiment": "fine",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000001",
+              "experienceID": "40000000-0000-4000-8000-000000000001",
+              "name": "Golden place 1",
+              "firstRatedAtSeconds": 1
+            }
+          ],
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000003",
+              "experienceID": "40000000-0000-4000-8000-000000000003",
+              "name": "Golden place 3",
+              "firstRatedAtSeconds": 3
+            }
+          ]
+        ],
+        "fine": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000002",
+              "experienceID": "40000000-0000-4000-8000-000000000002",
+              "name": "Golden place 2",
+              "firstRatedAtSeconds": 2
+            }
+          ]
+        ],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000001",
+        "experienceID": "40000000-0000-4000-8000-000000000001",
+        "name": "Golden place 1",
+        "firstRatedAtSeconds": 1
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "join_group",
+        "position": 0,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000003",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 1
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000001",
+          "sentiment": "fine",
+          "scoreTenths": 50,
+          "rank": 2,
+          "groupSize": 2
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000002",
+          "sentiment": "fine",
+          "scoreTenths": 50,
+          "rank": 2,
+          "groupSize": 2
+        }
+      ],
+      "removingExperienceID": "40000000-0000-4000-8000-000000000001"
+    },
+    {
+      "name": "oldest_then_uuid_representative",
+      "category": "food_drink",
+      "sentiment": "liked",
+      "groups": {
+        "liked": [
+          [
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000012",
+              "experienceID": "40000000-0000-4000-8000-000000000012",
+              "name": "Golden place 12",
+              "firstRatedAtSeconds": 50
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000011",
+              "experienceID": "40000000-0000-4000-8000-000000000011",
+              "name": "Golden place 11",
+              "firstRatedAtSeconds": 40
+            },
+            {
+              "ratingID": "30000000-0000-4000-8000-000000000010",
+              "experienceID": "40000000-0000-4000-8000-000000000010",
+              "name": "Golden place 10",
+              "firstRatedAtSeconds": 40
+            }
+          ]
+        ],
+        "fine": [],
+        "disliked": []
+      },
+      "newEntry": {
+        "ratingID": "30000000-0000-4000-8000-000000000100",
+        "experienceID": "40000000-0000-4000-8000-000000000100",
+        "name": "Golden place 100",
+        "firstRatedAtSeconds": 100
+      },
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000010",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedOutcome": {
+        "kind": "join_group",
+        "position": 0,
+        "approximate": false
+      },
+      "expectedPlacements": [
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000010",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 4
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000011",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 4
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000012",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 4
+        },
+        {
+          "ratingID": "30000000-0000-4000-8000-000000000100",
+          "sentiment": "liked",
+          "scoreTenths": 84,
+          "rank": 1,
+          "groupSize": 4
+        }
+      ]
+    }
+  ],
+  "rejectionCases": [
+    {
+      "name": "incomplete_without_answers",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ]
+      ],
+      "answers": [],
+      "expectedError": "incomplete"
+    },
+    {
+      "name": "wrong_first_representative",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_new"
+        }
+      ],
+      "expectedError": "answer_mismatch",
+      "expectedStep": 0
+    },
+    {
+      "name": "wrong_second_representative",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "prefer_new"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000003",
+          "choice": "prefer_existing"
+        }
+      ],
+      "expectedError": "answer_mismatch",
+      "expectedStep": 1
+    },
+    {
+      "name": "tie_member_is_not_representative",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          },
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedError": "answer_mismatch",
+      "expectedStep": 0
+    },
+    {
+      "name": "extra_answer_for_empty_partition",
+      "sentiment": "liked",
+      "groups": [],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_new"
+        }
+      ],
+      "expectedError": "extra_answers"
+    },
+    {
+      "name": "extra_answer_after_tie",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "too_tough"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_existing"
+        }
+      ],
+      "expectedError": "extra_answers"
+    },
+    {
+      "name": "extra_answer_after_skip",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000002",
+          "choice": "skip"
+        },
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "prefer_existing"
+        }
+      ],
+      "expectedError": "extra_answers"
+    },
+    {
+      "name": "incomplete_after_valid_prefix",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 1
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 2
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000003",
+            "experienceID": "40000000-0000-4000-8000-000000000003",
+            "name": "Golden place 3",
+            "firstRatedAtSeconds": 3
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000004",
+            "experienceID": "40000000-0000-4000-8000-000000000004",
+            "name": "Golden place 4",
+            "firstRatedAtSeconds": 4
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000005",
+            "experienceID": "40000000-0000-4000-8000-000000000005",
+            "name": "Golden place 5",
+            "firstRatedAtSeconds": 5
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000006",
+            "experienceID": "40000000-0000-4000-8000-000000000006",
+            "name": "Golden place 6",
+            "firstRatedAtSeconds": 6
+          }
+        ],
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000007",
+            "experienceID": "40000000-0000-4000-8000-000000000007",
+            "name": "Golden place 7",
+            "firstRatedAtSeconds": 7
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000004",
+          "choice": "prefer_new"
+        }
+      ],
+      "expectedError": "incomplete"
+    },
+    {
+      "name": "changed_oldest_representative",
+      "sentiment": "liked",
+      "groups": [
+        [
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000001",
+            "experienceID": "40000000-0000-4000-8000-000000000001",
+            "name": "Golden place 1",
+            "firstRatedAtSeconds": 2
+          },
+          {
+            "ratingID": "30000000-0000-4000-8000-000000000002",
+            "experienceID": "40000000-0000-4000-8000-000000000002",
+            "name": "Golden place 2",
+            "firstRatedAtSeconds": 1
+          }
+        ]
+      ],
+      "answers": [
+        {
+          "compared_rating_id": "30000000-0000-4000-8000-000000000001",
+          "choice": "too_tough"
+        }
+      ],
+      "expectedError": "answer_mismatch",
+      "expectedStep": 0
+    }
+  ]
+}

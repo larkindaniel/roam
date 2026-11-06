@@ -1,5 +1,16 @@
 # Roam reference map — implementation companion
 
+## Current v1 scope overlay — October 13, 2026
+
+[SPEC.md](../SPEC.md) now governs the trimmed build scope; [DECISIONS.md](../DECISIONS.md) resolves implementation defaults. The screenshot rows and review ledger below preserve historical evidence and the previous wider design, **not a requirement to build every referenced feature**. Their older “proposed”, threshold and capture-gate wording is superseded for Roam behavior by SPEC. No capture evidence is reclassified as observed merely because a Roam default was chosen.
+
+- Active: S01–S13, S18–S19, S21–S23, S25–S26.
+- Narrowed: S17 only native experience/profile text sharing; S28 only new experiences this year. No list sharing, goals/streaks, calendar or leaderboard.
+- Deferred: S14–S16 guides, S20 city insights/scoring, S24 requests and S27 imports. Curated/trending modules, predicted scores, remote push and referral/paid/service features are excluded.
+- S08–S11 preserve captured sentiment → optional details → comparison order. Roam shows an immediate numeric score, treats Too tough as a tie and automatically posts completed ratings; these are confirmed/default product choices, not newly observed Beli behavior. Companions/labels/dishes/stealth rows are removed from the v1 composer.
+- S19 city/country rows show counts and filter experiences, without city-score details. Shared Want to Go remains a read-only two-person intersection.
+
+
 **Reviewed boundary: original 01–322 plus new-account captures nc001–nc053 (in `reference/beli/`); capture complete.** See [SPEC.md](../SPEC.md) for behavior and persistence contracts, [inventory](beli-inventory.md), [live-capture addendum](beli-live-capture-addendum.md) for observed layouts and the per-file ledger, and [capture gaps](capture-gaps.md) for missing references. This is organized by Roam screen, not by the source app.
 
 248 original screenshots visually inspected; 74 repetitive-content captures represented by reviewed samples. Initial review used 19 grouped sheets for 225 captures plus full-size repeated examples 85/207; 172/297 were also checked individually. Addendum 302–322 was inspected in two sheets. All 53 local new-account captures were visually reviewed during the live session; their individual dispositions are in the addendum. Original-file dispositions and hashes are preserved in inventory and `beli-reference-snapshot.json`. Future captures remain pending.

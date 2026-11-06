@@ -1,5 +1,7 @@
 # Capstone plan: Roam, "Beli, but for experiences" (iOS)
 
+**Build handoff updated 2026-10-13:** [SPEC.md](SPEC.md) and the eight milestones in [MILESTONES.md](MILESTONES.md) now implement the confirmed v1 scope. [DECISIONS.md](DECISIONS.md) records effective defaults, including ties, revisits and Want removal; [CLAUDE.md](CLAUDE.md) contains the build/test/simulator runbook. Historical draft choices/open questions below are superseded where these documents settle them. No build has started.
+
 Saved 2026-10-04 from a planning session with Claude Code. This file holds everything decided so far, the workflow, and the open questions. Start a new session by asking Claude to read it (see "Resuming" at the bottom).
 
 ---
@@ -25,7 +27,11 @@ An iOS app that recreates nearly every screen and flow of **Beli** (the restaura
 | Capturing Beli's UI | iPhone Mirroring on the Mac. A computer-use agent (Codex) does the broad sweep; you capture the sensitive flows yourself (§5) |
 | Building | Spec first, then **one long build run at `/effort max`** that verifies its own work (§6) |
 | Project file | **XcodeGen** (`project.yml`). Never hand-edit `.pbxproj` |
-| Backend | **Recommended, not yet confirmed:** Supabase running locally via Docker (database, auth, photo storage, access rules for public profiles and private notes). The same code later deploys to hosted Supabase |
+| Score visibility (D01) | **A 0–10 score shows from the first rating** in a category, unlike Beli's 10-item threshold. Scores shift as more items are ranked (2026-10-13) |
+| Posting (D03) | **Every completed rating posts to followers' feeds automatically**, with notes/photos if added, like Beli (2026-10-13) |
+| v1 scope (D07) | **Core + adapted only**: the Keep and Adapt items in the §6 triage. Guides, list sharing, leaderboard, imports, curated/trending discovery and city insights/city scores are deferred past v1 (city-score principles below still stand for later) (2026-10-13) |
+| Sign-in (D06) | **Sign in with Apple + email.** No phone sign-in, so no SMS provider (2026-10-13) |
+| Backend | **Confirmed 2026-10-13:** Supabase running locally via Docker (database, auth, photo storage, access rules for public profiles and private notes). The same code later deploys to hosted Supabase |
 | Minimum iOS | **iOS 18** (2026-10-13). Wider device support; no Liquid Glass-only APIs |
 | App name | **Roam**, "Beli but for experiences" (2026-10-13) |
 | Categories | **7 broad categories**, each with its own ranked list: Food & Drink, Outdoors, Day Trips, Culture, Nightlife, Activities, Stays (2026-10-13) |
@@ -36,7 +42,7 @@ An iOS app that recreates nearly every screen and flow of **Beli** (the restaura
 
 ### Rating-flow fidelity (confirmed 2026-10-13)
 
-Roam must follow Beli’s user-facing rating flow. The user authorized defining Roam’s own comparison-selection, tie and score rules **after reviewing the missing captures**, while preserving that flow. This does not approve specific score bands, first-rating defaults, permanent ties, extra confirmation steps or a different manual scoring UI. See SPEC R05 for public-source research and pending interaction details. Historical algorithm claims in §3 remain unverified implementation hypotheses.
+Roam must follow Beli’s user-facing rating flow. The user authorized defining Roam’s own comparison-selection, tie and score rules **after reviewing the missing captures**, while preserving that flow. Subsequent user instructions confirm Too tough as a tie and authorize sensible defaults; SPEC R05 and DECISIONS now define Roam-owned score bands, first-rating values and tie/skip behavior. This does not authorize extra confirmation steps or a manual scoring UI. See SPEC R05 for public-source research and pending interaction details. Historical algorithm claims in §3 remain unverified implementation hypotheses.
 
 ### City scoring principles (confirmed 2026-10-13)
 
@@ -82,7 +88,7 @@ Sources:
 - `brew install supabase/tap/supabase` (if we confirm Supabase)
 - `git init` in this folder (it isn't a git repo yet)
 - Add **XcodeBuildMCP** to Claude Code (check its README for the current `claude mcp add …` command). It lets Claude build, launch, tap through and screenshot the simulator, which is the verification loop. Fallback without it: `xcrun simctl io booted screenshot`.
-- Find your **Team ID** (developer.apple.com → Membership) and choose a **bundle ID**, like `com.daniellarkin.<appname>`.
+- ~~Find Team ID and bundle ID~~ Done: `DEVELOPMENT_TEAM = H5V24G3F3D`, bundle ID `com.daniellarkin.roam` (see §9 #2).
 
 ## 5. Phase 0: capturing Beli (done 2026-10-13)
 
@@ -115,7 +121,7 @@ Sources:
 - a build-and-check loop the agent runs itself,
 - milestones, so it's never stuck in a broken state.
 
-### Draft feature triage (proposed 2026-10-13, not yet confirmed)
+### Feature triage (proposed 2026-10-13; v1 = Keep + Adapt, confirmed 2026-10-13)
 
 The test for each feature: does it help someone remember, rank or discover experiences, or see where friends have been? Only Keep and Adapt go into `SPEC.md`.
 
@@ -147,21 +153,49 @@ The test for each feature: does it help someone remember, rank or discover exper
 ## 8. Build prompt (run at `/effort max` once the spec files exist)
 
 ```
-Read CLAUDE.md, SPEC.md, MILESTONES.md and docs/beli-inventory.md.
-Reference screenshots are in reference/beli/.
+Read CLAUDE.md, SPEC.md, MILESTONES.md, DECISIONS.md and docs/beli-inventory.md.
+Reference screenshots are in reference/beli/ (01–322 and nc001–nc053).
+Test on the iOS 26.2 simulator only; iOS 18 validation comes later.
 
-Build the app one milestone at a time, in order. For each milestone:
+Build Roam one milestone at a time, M1 to M8, in order. For each milestone:
 1. Implement it per SPEC.md.
-2. Run xcodegen, build, and run the unit tests. Fix all errors before moving on.
+2. Run xcodegen, build, and run the tests. Fix all errors before moving on.
 3. Launch in the simulator, go through every screen in the milestone,
    and save a screenshot of each to screenshots/<milestone>/.
 4. Check each screen against its acceptance criteria and the matching
    reference screenshot. Fix what doesn't match.
 5. Commit, naming the milestone.
 
-Don't stop between milestones to ask me. If the spec is unclear, pick the
-option closest to Beli's behavior, log it in DECISIONS.md, and keep going.
-At the end, summarize what was built, what's left, and every DECISIONS.md entry.
+Don't stop between milestones to ask me. You have my authority to work
+autonomously:
+
+- Unblock yourself. If a build, tool, dependency, simulator or local
+  service fails, diagnose and fix it: install packages with brew/SPM,
+  restart Docker or Supabase, reset the local database, reboot or
+  recreate the simulator, clear DerivedData, try another approach.
+  Don't wait for me on anything you can solve on this machine.
+- Make your own calls. Where SPEC.md and DECISIONS.md are silent or
+  turn out to be wrong in practice, choose what makes the best product
+  for Roam (it doesn't have to match Beli), log the choice and why in
+  DECISIONS.md, and keep going. You may revise "Default" (D-numbered)
+  entries if implementation shows a better option; log the change.
+- If a milestone gets stuck, timebox it: ship the simplest version that
+  meets the core acceptance criteria, log what's missing, move on, and
+  come back at the end if there's time.
+- If something truly needs me (e.g. a real Apple sign-in), note it and
+  continue with everything else.
+
+Stay within these limits:
+- Don't change the confirmed decisions (C01–C12 in DECISIONS.md).
+- Don't push to any remote, publish anything, or spend money.
+- Don't sign in to, or change, any of my real accounts (Apple, Beli,
+  email). Sign with team H5V24G3F3D only.
+- Don't modify or delete anything in reference/.
+- Don't run destructive commands outside this project folder.
+
+When you're done, summarize: what was built per milestone, what's left
+or incomplete, anything that needs me, and every decision you added or
+changed in DECISIONS.md.
 ```
 
 ## 9. Open questions (answer before or during the spec phase)
@@ -170,7 +204,7 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 
 **Setup and identity**
 1. **App name:** decided 2026-10-13: **Roam**. Proposed bundle ID `com.daniellarkin.roam`.
-2. **Team ID and bundle ID.**
+2. **Team ID and bundle ID:** decided 2026-10-13. `DEVELOPMENT_TEAM = H5V24G3F3D` (Somang Larkin, Apple Developer Program — Individual, renews 2027-09-27; Apple ID sdaniellarkin@gmail.com). Never use the free personal team `6KKPN7P748`. Bundle ID `com.daniellarkin.roam`. Sign in with Apple stays in scope.
 3. **Backend:** confirm Supabase running locally. The alternatives are Firebase or CloudKit; CloudKit makes friend and feed queries awkward.
 4. **Minimum iOS:** iOS 18, for wider device support and newer MapKit place categories; or iOS 26 only, to use the new Liquid Glass design throughout.
 
@@ -207,12 +241,13 @@ At the end, summarize what was built, what's left, and every DECISIONS.md entry.
 - [x] Rating flow and onboarding captured on a new test account → `reference/beli/nc001`–`nc053` (screenshots, not video)
 - [x] Install tools, `git init`, add XcodeBuildMCP (done 2026-10-13: xcodegen 2.46.0, xcbeautify 3.2.1, supabase 2.120.0; MCP is now named MobileBuildMCP, pinned to 2.7.1, project-scoped)
 - [x] Inventory and drafts written: `docs/beli-inventory.md`, `docs/roam-*.md`, `docs/capture-gaps.md`, `SPEC.md`, `MILESTONES.md`
-- [ ] Resolve the remaining decisions (§9 leftovers and D01–D12 in `docs/capture-gaps.md` / end of `SPEC.md`)
-- [ ] Trim scope to the triage in §6, write `CLAUDE.md`, mark `SPEC.md` ready to build
-- [ ] Build run at `/effort max`
+- [x] Resolve v1 decisions and document effective defaults in `DECISIONS.md`; city formula stays deferred with city scoring
+- [x] Trim to Keep + Adapt, reduce to eight milestones, write `CLAUDE.md`, mark `SPEC.md` ready for the separate build run
+- [ ] Build run at `/effort max` (tests on iOS 26.2 simulator only)
+- [ ] After the build: install the iOS 18 simulator (`xcodebuild -downloadPlatform iOS -buildVersion 18.6`) and run a compatibility pass
 
 ## Resuming
 
 Start a new Claude Code session in this folder and say:
 
-> Read PLAN.md, SPEC.md, MILESTONES.md and docs/capture-gaps.md. Captures are done and the spec is drafted. Walk me through the remaining decisions (D01–D12) and the scope trim, then update the spec, write CLAUDE.md and mark it ready to build.
+> Read CLAUDE.md, SPEC.md, MILESTONES.md and DECISIONS.md. Build Roam v1 through the eight milestones, verify each milestone, record small implementation judgments, and preserve the confirmed scope. Use docs/roam-reference-map.md for visual references; historical capture gaps are not new product approval gates.

@@ -1,0 +1,4 @@
+Text clipped | single-line text field | id=experience-search-field | label= | frame={{56.333333333333336, 174}, {265.66666666666663, 22}} | Text of this UITextField may be clipped at larger Dynamic Type sizes.
+Element has no description | system keyboard | id= | label= | frame={{0, 539}, {134, 44}} | This TUIPredictionViewCell is missing useful accessibility information.
+Element has no description | system keyboard | id= | label= | frame={{134, 539}, {134, 44}} | This TUIPredictionViewCell is missing useful accessibility information.
+Element has no description | system keyboard | id= | label= | frame={{268, 539}, {134, 44}} | This TUIPredictionViewCell is missing useful accessibility information.

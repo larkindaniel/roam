@@ -1,0 +1,4 @@
+Contrast failed | disabled control | id= | label=I liked it | frame={{29.666666030883789, 360.5}, {84.000007629394531, 20.333343505859375}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | disabled control | id= | label=It was fine | frame={{29.333333969116211, 440.5}, {103.33333587646484, 20.333343505859375}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | disabled control | id= | label=I didn't like it | frame={{29.666666030883789, 520.5}, {121.99999237060547, 20.33331298828125}} | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=rating-close | label=Close | frame={{19.999999999999996, 82}, {67, 36}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode

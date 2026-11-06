@@ -1,203 +1,131 @@
-# Roam ordered implementation milestones — draft
+# Roam v1 — eight build milestones
 
-**No build has begun.** This is the proposed future sequence for [SPEC.md](SPEC.md). Approval of documentation is not a claim that pending captures or product decisions are resolved. Screen IDs S01–S28 and requirements R00–R13 resolve to SPEC; B IDs and filenames resolve through [Roam reference map](docs/roam-reference-map.md). Evidence includes original 01–322 and [53 visually reviewed new-account captures](docs/beli-live-capture-addendum.md); reconcile later captures before finalization.
+**Ready for the separate build run; no build performed by this documentation update.** [SPEC.md](SPEC.md) is the binding product contract; [DECISIONS.md](DECISIONS.md) records confirmed choices and effective defaults; [CLAUDE.md](CLAUDE.md) defines build/test/simulator commands. The former M0–M12 plan is superseded.
 
-Each milestone must leave a buildable app once implementation is authorized. Screenshots and fixtures use Roam branding and fictional travelers/experiences. Source references remain read-only. Build-time validation should include unit/service tests for meaningful logic, integration tests for authorization and persistence, and simulator walkthroughs for UI; do not create tests that only restate view constants.
+Work in order. Keep every milestone buildable, run meaningful logic/service tests and simulator walkthroughs, repair failures, save evidence under `screenshots/mN/` and `build/evidence/`, and commit only task-owned files. No routine approval stop between milestones. A missing credential/device can block the corresponding integration check without blocking unrelated work; report it and never label that integration passed. Capture evidence is read-only.
 
-## M0 — Finish decisions and reconcile references (pre-build gate)
+## M1 — Project, design system, local services and MapKit feasibility
 
-Dependencies: none. Scope: all R/S/B IDs; G01–G12 and D01–D12.
-
-Acceptance:
-
-- Capture completion status established; every new distinct layout/state visually reviewed with filename/provenance, repeated content explicitly sampled. Reconcile SPEC, milestones and the reference map; coordinate later updates to capture-owned inventory/gap documents without overwriting the running capture work. The new-account ledger is the current boundary for NC001–053.
-- Approve ranking interaction/math, ten-per-category threshold vs earlier provisional scores, deletion/relock and city-contribution eligibility, category-assignment/revisit policy, All-view order, posting policy, auth/backend/minimum iOS and proposed release deferrals. Uncaptured behavior can be an explicitly accepted Roam design; cannot be called verified Beli behavior.
-- Exact city formula remains deferred to M7, with confirmed balancing/confidence constraints retained; no numeric placeholder treated as production score.
-- Media/share/guide privacy and moderation scope have an owner and recorded decisions. Release phase chosen for challenges, generated/collaborative guides, goals/history/streak and member leaderboard.
-- Screen registry and scope matrix agree; no feature disappears solely because reference is inconvenient or gated.
-
-Exit evidence: approved decision register and reconciled draft. Only then request/start the separate implementation phase.
-
-## M1 — Project foundation, navigation and place/globe feasibility
-
-Depends on M0 technical choices. Scope: R00/R01, C platform and globe requirements; S02–S06/S18–S19 shells; B01/B13/B23/B05.
+Scope: R00/R01 foundation, confirmed stack; empty S02/S03/S05/S12/S18 roots. Depends on nothing beyond the build-run instruction.
 
 Acceptance:
 
-- `project.yml` generates project using XcodeGen; selected minimum iOS builds and launches. No manual `.pbxproj` edits.
-- Five tabs route correctly; present/dismiss/back preserve invoking tab. Fake provider fixture separates development data from production MapKit results.
-- MapKit spike resolves one POI and a locality for a Day Trip; stable identity/re-resolution strategy documented with actual API capabilities.
-- Globe spike demonstrates pins, country polygon shading and camera behavior on selected device/OS; measure an agreed representative dataset. If feasibility fails, obtain a product decision before substituting a flat map.
-- Reusable rows, cards, sheets, score labels, skeleton/empty/error states accommodate long travel titles, large text and accessible labels. No copied Beli artwork/content.
+- `project.yml` generates `Roam.xcodeproj`, shared `Roam` scheme, `Roam`, `RoamTests`, `RoamUITests` targets; iOS deployment target 18.0, bundle `com.daniellarkin.roam`, team `H5V24G3F3D`. No hand-edited generated project.
+- SwiftUI navigation has Feed, Your Lists, Search, Explore, Profile with independent stacks. Test back/modal routing and state restoration inside a tab. Deferred guide/city-insight/import/leaderboard routes are absent.
+- Feature service protocols, fixture injection and account-scoped configuration exist. Pin and record SPM dependencies. Client contains no privileged Supabase/Apple secret; ignored local config and checked-in example are clearly separate.
+- Local Docker/Supabase project `roam` starts, applies migration scaffolding and exposes a health/status check. Seed/reset scripts target this local project only. No remote deployment or database reset occurs.
+- Resolve a real MapKit POI and a locality; document ID availability, fallback dedup, fields/storage/attribution constraints and category resolution. Fictional UI fixtures cannot enter production provider results.
+- Demonstrate zoomed-out globe, pins and visited-country polygon shading with licensed sample geometry on the installed simulator. Test antimeridian geometry and pin selection. Use an MKMapView wrapper if needed; report a true renderer limitation rather than silently substituting a flat illustration.
+- Rows/cards/score badges/sheets/empty/skeleton/retry states support Dynamic Type and accessible labels; image/map missing-data fallbacks are usable.
 
-Evidence: build log, simulator routes and globe/MapKit feasibility note. No backend framework chosen implicitly.
+Evidence: generated-project build log, service start/health result, navigation and globe screenshots, feasibility note listing tested runtime and geometry source. Do not call iOS 18 runtime behavior verified merely because deployment target is 18.
 
-## M2 — Identity, persistence and authorization
+## M2 — Schema, authentication, public profiles and authorization
 
-Depends on M1 and approved providers. Scope: R02/R13, logical model, S01/S26; B32/B34/B38/B41, remaining G01 variants.
-
-Acceptance:
-
-- New account, session restoration, provider cancel/error and sign out work for chosen auth methods. Duplicate handle prevents save with retained form values. The observed progressive setup informs Roam's optional photo, home city, import and permission prompts; each optional step can be skipped and returning users do not repeat first-use education.
-- Optional avatar/home destination/import/member suggestions skip cleanly, with manual browsing/search after permission denial. Home city does not count as visited. No implicit inviter or default-selected follow; explicit selection persists directional edges with partial-failure feedback.
-- Authenticated setup resumes its saved checkpoint after relaunch; credentials are never stored in drafts. First-use card/Log coachmark dismiss once, creates no ranking, and leads to the category list. Returning users do not replay completed setup.
-- Persist profiles and canonical places/experiences with one-place constraint and seven categories; duplicate place reconciliation follows approved policy.
-- Public profile read works for a different account, while credentials/private notes/settings are inaccessible through service/database tests, not only hidden in UI.
-- Owner-only writes and public read subsets enforced; client cannot impersonate another user or forge notification/aggregate ownership.
-- Profile editing persists after relaunch, cancel does not save, network failure retains edits. Tests include new and expired sessions.
-
-Evidence: two-account authorization test results and simulator walkthrough compared to B41 where observed; Roam-specific providers, permission-granted variants and success paths remain labeled design choices.
-
-## M3 — Discovery → detail → Want to Go
-
-Depends on M2. Scope: R03/R04/R06, S03–S07/S12–S13; B07–B19/B22–B24/B26.
+Scope: R02, data model/RLS, S01 and account foundations in S26. Depends on M1.
 
 Acceptance:
 
-- Query + selected destination finds fixture/MapKit experiences; newer query wins over delayed older results. Members tab may use fixture until M8 but must be labeled development-only.
-- Place/guide/city result types route distinctly. Unmatched search offers query/location recovery; cannot create an invalid or multipin experience.
-- Detail handles full/missing metadata, long title, personal/followed/community score absence, open/closed/unknown hours and media failure without fabricated facts.
-- Save/unsave from search/detail/list share one persisted bookmark state after relaunch; retry cannot duplicate bookmark. It creates no visit/rating/city contribution/post.
-- Want empty/populated/search/filter/map states work. Apply changes staged filters; Cancel discards; facet logic and sort meet approved D04 contract. A no-results filter has Reset.
-- Manual-city map works after location denial; map marker/card/list identify the same experience. Permission failure leaves list usable.
+- Migrations implement v1 entities/constraints and access rules without deferred-feature tables. Local seed creates at least three fictional accounts, seven categories, public and private memories and graph relationships through a reproducible test-only setup.
+- Email sign-up/verification/sign-in/recovery/cancel/error and session restore work against local Supabase. Recovery callback targets the app and expires safely. Handle uniqueness/validation survives races; a duplicate does not lose entered profile data.
+- Native Sign in with Apple uses nonce validation and Supabase token exchange; cancellation and missing first-login name handled. Verify a real supported account/provider configuration, or record exact external blocker while completing fixture tests. Never remove the method or report a mock as a successful Apple login.
+- Progressive name/handle/optional avatar/home city setup resumes after interruption, permits skips, introduces public visibility and lands in Your Lists with one-time Log education. No implicit follows or permission-pressure flow. Home city does not count as visited.
+- Database/API tests prove another signed-in unblocked member can read public profile data but not auth contacts, settings, drafts or PrivateNote; anonymous read and foreign writes fail. Storage ownership and attachment validation are enforced server-side.
+- Tokens use secure storage; sign-out/expired session cannot submit pending writes as another user. Service-role/private keys absent from built client and tracked files.
 
-Evidence: search race test, bookmark persistence test, list/map navigation and permission walkthrough.
+Evidence: auth UI walkthrough, real-vs-fixture provider status, migration/pgTAP and unrelated-account authorization results. Record external SMTP/provider configuration requirements for release separately from local test results.
 
-## M4 — Category ranking design and engine
+## M3 — Search, experience detail, Explore and Want to Go
 
-Depends on M0 approved ranking rules and M2 model; can precede final UI. Scope: R05; B20/B42–B43 low-count flow, pending G02 variants and G03 numeric reveal.
-
-Acceptance:
-
-- After reviewing missing variants, define the now-authorized, versioned Roam ranking algorithm: sentiment bounds, numeric-score unlock threshold, candidate selection, tie/skip behavior, rerank, removal and rounding. Preserve the observed Beli sequence; explicitly distinguish own math from observed behavior.
-- Tests cover empty category, one item, multiple sentiments, exact/near ties, repeated comparisons, cancellation and all seven categories.
-- Numeric availability is separate from ordinal rank. If a threshold is adopted, test below/at/above threshold per category, removal below threshold, progress copy and the approved treatment of hidden scores in community/city aggregates. Missing scores are never zero.
-- Scores remain bounded/deterministic/monotonic with approved ties. Ranking one Outdoors experience does not change Food & Drink order or scores.
-- Atomic commit and optimistic version conflict handled; failed/retried commit does not create partial order or duplicate visit.
-- Revisit and rerank change one current contribution according to approved policy; removal recomputes expected affected scores.
-
-Evidence: algorithm decision plus meaningful property/fixture/concurrency tests. No guessed city formula introduced here.
-
-## M5 — Log visit, compare and ranking-result UI
-
-Depends on M3/M4. Scope: S08–S10/S12, R03/R05; B20/B26/B42–B44; NC031–051; G02 partially resolved, G03 numeric reveal still pending.
+Scope: R03/R04/R06, S03–S07/S12/S13 baseline. Depends on M2.
 
 Acceptance:
 
-- From an experience show category/sentiment, then optional visit enrichment and Okay **before** comparison, restricted to the chosen Roam category. No manual numeric input, unsupported extra confirmation screen or mandatory travel-metadata detour. First item bypasses comparison.
-- First category item reaches ordinal result without invalid comparison; numeric score presentation follows the approved unlock threshold. Repeated case exercises preference/Too tough/Skip/Undo/back/cancel contract. Display of missing photos and very long names remains usable.
-- Result/completion ordering matches B42–B43 for low counts, displays the correct category rank and locked/unlocked score state, and reaches updated Been list/detail. Any new numeric reveal design is labeled Roam-owned until G03 is resolved. Never report a successful save before acknowledgement.
-- Cancel changes no durable rank; failed save preserves draft and retry is idempotent. Concurrent rerank prompts approved recovery, not silent overwrite.
-- Remove ranking from own detail shows confirmation and preserves visits/notes/photos under the approved retention policy. Cancel/failure leaves the prior order; successful removal recomputes affected scores and city aggregates. Test retained memories remain accessible and globe counts follow Visit eligibility, including removal of the final ranking. Rank-again preserves existing memory and does not duplicate a Visit unless explicitly chosen.
-- Been selected category has correct ranks; All never presents a false combined category order. Visit/date/score history labels and Want removal/undo follow accepted policy.
+- Search by query/destination resolves one-place experiences, disambiguates localities, cancels stale queries and prevents a slow old response overwriting new results. MapKit identifier/fallback dedup behaves according to SPEC, including same-name distinct businesses.
+- Explore/manual-city map/list, category filters, selected pin/card, clusters, Search this area and known-place maps work without location permission. Current-location denial/timeout/approximate results keep manual browsing available.
+- Detail displays factual available metadata with missing/closed/unavailable states; website/phone/Maps utilities work where applicable. Score/media placeholders say unavailable, never invented data. No dish/reservation/hours-edit module.
+- Save/unsave from search/detail/list uses one persisted Bookmark with retry-safe desired state; no visit/activity/pin/count effect. Duplicate taps and relaunch preserve correctness. Already-rated records show Add visit rather than creating a Want bookmark.
+- Been/Want and public other-member lists distinguish own editing from viewer Save/Log. All mode has category badges and no combined ordinal; single-category order and memories-without-rating filter have test fixtures.
+- Staged filters Apply/Cancel/Clear obey specified OR/AND logic; stable sorts and no-results recovery work. Missing distance sorts last; list/detail/back preserves context. Empty states have no deferred import/guide/share CTA.
 
-Evidence: complete simulator journey and persistence assertions; screenshot comparison covers NC031–045 entry/details/comparison/rank results and NC049–051 removal. Uncaptured numeric reveal/failure states are labeled proposed Roam design.
+Evidence: search-race and place-identity tests, bookmark persistence/privacy checks, permission-denied and map/list simulator captures.
 
-## M6 — Remembering, media and optional activity publication
+## M4 — Ranking engine and complete rating transaction
 
-Depends on M5 and media/posting decisions. Scope: R04/R10, S07/S11/S23 draft paths; B17–B19/B21/B42; NC032–036; G04 partially resolved for editor layout only.
-
-Acceptance:
-
-- Add public note/photos/highlights through the reconciled completion/edit flow and retain a separate private-note entry. Automatic vs explicit activity creation must follow the accepted evidence-based policy; do not require a new Save/Share fork. Private notes cannot enter public output/share serialization.
-- Notes/companions/labels/date editors use Cancel/Done against the same local visit draft before comparisons. Done in an editor creates no public event; cancel restores previous values; app interruption retains nonsensitive draft. Date is optional, highlights fit the category, and a failed mention lookup does not erase prose.
-- Test the approved distribution choice at ranking completion and distinguish public profile/ranking visibility from feed distribution. Do not infer follower visibility from an empty own feed or claim locked stealth mode was exercised.
-- Photo picker cancel/limited access/denial, per-asset upload failure and retry work. Approved media limits enforced with clear errors; draft survives interruption.
-- Completion clearly communicates public output without an unsupported mandatory preview screen. The accepted completion event creates one Post, whether coupled to ranking or explicitly triggered; double tap/retry does not duplicate. Published score snapshot distinguished from current reranked score.
-- Edit/delete memory/post obeys approved separation: deleting a post does not unexpectedly delete a rating or guide. B44's Delete rating warning says notes/photos survive in Beli; decide Roam retention explicitly. Failed edits preserve draft and public old version.
-- Gallery grid/search/viewer has loading/no-photo/no-result/error states and functional reporting path if included.
-
-Evidence: privacy/serialization tests, retry tests and posting walkthrough labeled proposed Roam design until capture reconciled.
-
-## M7 — Geography, city scoring design and profile globe
-
-Depends on M5, M1 feasibility and explicit scoring design approval. Scope: R07/R08, S18–S20; B05/B25, Roam additions.
+Scope: R05, S08–S11/S10/S12 ranking; M3 details may use text-only visits until M5 media. Depends on M3.
 
 Acceptance:
 
-- Canonical geography policy handles same-name cities, locality Day Trip, remote experience, missing country/city and corrected place. Counts deduplicate; bookmarks never count as visits.
-- Own and other profiles show pins/shaded countries/city-country counts; selecting pin opens correct experience; expanded globe/list alternative works without location permission. Private notes absent.
-- Before numeric score implementation, approve formula/version, reviewer/category caps, baseline/sparse handling and confidence display. No direct city rating UI exists.
-- Tests prove repeated visits do not increase independent visitors; one prolific user and one huge category cannot dominate outside approved caps. Zero data shows no score, missing category is not zero, independent evidence changes confidence appropriately without popularity bonus.
-- Personal/global lenses and seven-category breakdown display source/sample/confidence. Rerank/removal/geography correction invalidates/recomputes affected aggregates; cache shows recalculating if asynchronous.
-- Numeric golden fixtures and confidence invariance tests established only after formula approval. Population changes can support high or low score.
+- Flow matches captured category/sentiment → optional details → Okay → comparison ordering. First item/empty sentiment partition terminates without a comparison. Cards retain place/category/sentiment, Undo/Too tough/Skip with accessible fallbacks; no manual score, ten-item lock, separate confirmation or publish step.
+- Implement `roam-category-v1` exactly: three sentiment partitions, binary insertion over groups, Too tough joins group, Skip inserts at remaining midpoint without tie, Undo restores draft history. Test bounds/termination for empty, 1, 2, 3 and large groups and all seven categories.
+- Golden fixtures: one liked/fine/disliked = 8.4/5.0/1.7; two distinct liked = 10.0/6.7; three = 10.0/8.4/6.7; two tied liked alone = 8.4 each. Competition ranks 1,1,3; deterministic Decimal half-up rounding and equal tie scores. Ranking Outdoors cannot change Food & Drink scores.
+- Authoritative RPC locks category revision and replays valid intent; client cannot forge score/actor/order. First log atomically creates Visit/Rating/activity and removes Want. Retry/duplicate timeout returns same mutation receipt. Simulated failure commits none of these effects.
+- Stale revision retains details but requests refreshed comparisons. Close before commit preserves/discards only local draft. Score result appears only after acknowledgement, shows correct rank/score from first rating, and returns to the invoking context.
+- Add visit creates one Visit/activity under existing Rating without changing order. Rank again changes current Rating and creates rerank activity without a duplicate Visit. Canonical category remains locked after first ranking.
+- Remove ranking reflows only its category, removes rating-linked activity and retains memories/Visits/private notes; no bookmark restoration. Delete last Visit removes Rating only after an explicit explanatory confirmation. Failure/cancel leaves prior durable state.
 
-Evidence: geography fixture matrix, approved formula, aggregation tests and own/other globe walkthrough. If formula still deferred, milestone cannot claim shipped city scoring; nonnumeric UI prototype alone is partial.
+Evidence: Swift engine and server golden-fixture parity, property/concurrency/idempotency tests, first/tied/subsequent/rerank/revisit/removal simulator journey. Activity records are already created atomically here even though feed UI arrives in M6.
 
-## M8 — Follows, social feed and interactions
+## M5 — Notes, photos, visit history and activity content
 
-Depends on M2/M6; M7 for full profile context. Scope: R08–R10, S02/S18/S21/S23; B03/B04/B18/B21/B25/B30/B34.
-
-Acceptance:
-
-- A follows B without reciprocity; duplicate/self-follow prevented; counts persist. Follow/unfollow failures roll back and retry cleanly. Public profile/Been/Want work for unrelated users.
-- Feed ordered by publish timestamp and stable tie-break with cursor paging; backdated visit does not change publication ordering. Empty/no-follow/refresh/paging/media-error states handled.
-- Likes deduplicate; comments/replies retain failed text, respect ownership and route mentions under approved scope. Editing/deletion updates detail/feed/profile consistently.
-- Mute excludes feed activity without deleting follows; Block/Report follow approved policy; two-account tests verify interactions and private-note protection.
-- Following recommendations recompute from eligible unique followed raters; unfollow updates source eligibility. No proprietary predicted score placeholder.
-
-Evidence: directional graph, feed pagination and authorization tests; walkthrough with fictional social fixtures.
-
-## M9 — Guides, list sharing and shared wants
-
-Depends on M3/M6/M8. Scope: R09/R11, S14–S17/S22/S24; B08/B23/B27–B29/B38. Core sharing cannot be deferred away.
+Scope: R04/R10 persistence and media; S06/S07/S11/S23 content. Depends on M4.
 
 Acceptance:
 
-- Create/edit/delete free guide, add resolved experiences, reorder/remove and persist across restart. Guide operations do not mutate personal rank order.
-- Directory/category/city filters route to accessible guide list/map; viewer progress accurately distinguishes saved vs visited. Generated/request/collaborative variations implemented only per approved scope, with every omitted variant recorded.
-- Share experience/profile/full list/selected subset/activity via preview/native sheet; zero selections disabled; cancel creates no post or unintended write. Public payload excludes private notes/contact values.
-- Live-link vs subset snapshot semantics tested; valid link routes to correct entity, deleted target shows unavailable; auth preserves target. Approved nonuser fallback tested if in scope.
-- Shared-wants picker applies/cancels correctly; exact-place group intersection yields expected fixture set and empty recovery. No location permission required for known map points.
-- Recommendation request/contribution and role tests prevent public viewers editing owner guides. Bulk save/challenge join, if accepted, do not create visits or duplicate existing bookmarks.
+- Public note/photos/optional date are editable before comparisons and later from detail. Cancel/Done updates local draft correctly; changing editor content does not publish independently. Interrupted drafts survive restart scoped to their owner; explicit discard/expiry/sign-out clears them.
+- Notes/date validation matches limits; unknown dates remain unknown, future completed visits rejected, destination/device timezone doesn't shift a stored date. PrivateNote remains separate from public activity/detail/share serialization.
+- System Photos picker handles cancellation/limited availability, up to six images, normalization/metadata stripping, ≤2,048 px and ≤3 MB limits. Per-asset retry/removal is accurate; save cannot claim a failed image succeeded.
+- Only completed owned uploads attach. Staged media inaccessible to others; publication makes authorized signed reads available through parent visibility. Orphan cleanup after 24 hours is implemented and testable; deleted media and account cleanup have durable retry.
+- Every committed rating/revisit/rerank has the specified automatic activity snapshot; completion clearly discloses public output. Later note/photo edits update its projection without moving feed publication time. Old score snapshot is labeled separately from current rating.
+- Removing ranking retains actual populated note/photo memories and public access through permitted detail; deleting Visit removes that Visit's memory/activity/media, and final-Visit deletion updates Rating. Standalone activity deletion leaves Rating/Visit intact.
+- Gallery/viewer loading/error/empty states and content-report submission work; report receipt never claims human review.
 
-Evidence: link/privacy/role/intersection tests and guide/share journeys. Collaboration/challenges not “complete” if only display cards exist.
+Evidence: populated-memory retention tests, storage authorization/cleanup/idempotency tests, interrupted-upload/draft walkthrough and private-data serialization checks.
 
-## M10 — Discovery depth, imports and approved breadth features
+## M6 — People, chronological feed, interactions and notifications
 
-Depends on M7–M9. Scope: R06/R08/R11/R12, S05/S14–S16/S24/S27–S28; B06/B10/B23/B24/B27/B37.
-
-Acceptance:
-
-- Trending implements an approved transparent window/unique-user policy; sparse destinations show honest empty/fallback; no arbitrary “trending” seed order in production.
-- Paste import resolves MapKit matches, stages ambiguous/unmatched rows, commits selected bookmarks only and reports partial failure/duplicates accurately. Retry adds no duplicates and creates no rating.
-- Category/subtype/city/country/open-now filters return correct fixtures, with unsupported metadata omitted rather than fabricated.
-- Each accepted optional feature (generated guides/challenges/goal/streak/history/member board) has its own confirmed policy and loading/empty/error/persistence criteria. Goal cancel saves nothing; repeated visit does not inflate distinct-experience goal or challenge progress.
-- Every proposed deferral is explicitly accepted or scheduled; restaurant booking/payments, paid guides, referral gates and predictive recs cannot quietly become incomplete buttons.
-
-Evidence: discovery/import fixtures and explicit scope-completion matrix.
-
-## M11 — Notifications, settings and account lifecycle
-
-Depends on M8/M9 and supported feature set. Scope: R13/R10/R02, S25–S26; B30–B36/B38–B40.
+Scope: R09/R10, S02/S18 identity/S21–S23/S25. Depends on M5.
 
 Acceptance:
 
-- In-app events deduplicate, read state persists and navigation opens correct target or safe unavailable state. Push denied does not block in-app feed; push enabled tested on suitable device if included.
-- Event preferences persist and govern actual supported events; backend failure is visible. Units/haptics apply across screens after relaunch.
-- Account edit/auth recovery/sign out/deletion match actual provider capabilities; no unsupported phone/password/billing controls.
-- Blocked/muted lists support empty/populated/recovery. Public profile explanation agrees with service authorization. FAQ answers reflect approved Roam rules.
-- Deletion/retention and link/media/aggregate cleanup follow accepted policy; stale session cannot write after account removal. Support/report destination operational, not a decorative CTA.
+- One-way follow/unfollow and counts persist; no self/duplicate follow. Member search/follower/following empty, filtered, loading and pagination states work. No default follow from setup.
+- With unrelated fixture accounts, following exposes eligible earlier and newly completed rating activity; feed sorts by server `(publishedAt,id)` descending with stable cursors. Backdated visit is ordered by publication time. Refresh/paging deduplicates and preserves content on failure.
+- Following score averages one latest Rating per eligible followed member; revisits do not increase sample count; rerank/unfollow/removal recompute; zero raters shows no score.
+- Like desired state is unique, flat comment posting retains failed text and prevents duplicates, owner comment/activity delete updates counts. No replies/mentions/request/guide UI.
+- Mute affects feed only; block removes both follow edges and enforces server-side mutual visibility/interaction exclusion, including lists/media/shared wants. Unblock does not restore follows. Test service queries, not just UI filters.
+- Shared Want to Go is the exact two-user Experience-ID intersection with list/map and an honest empty state. Updates to either bookmark list refresh it; no collaboration/list sharing or permanent group entity.
+- In-app follow/like/comment events deduplicate, skip self events, honor recipient preferences, persist read state and route safely. Removed targets/events don't leak content. No nonfunctional APNs prompt/toggle.
 
-Evidence: event/preferences/lifecycle tests and settings walkthrough.
+Evidence: multi-account graph/RLS, cursor pagination, notification and score aggregation tests; feed/comment/shared-wants and blocked-state screenshots.
 
-## M12 — End-to-end acceptance and release readiness
+## M7 — Profile globe, travel counts, settings and account lifecycle
 
-Depends on all accepted milestones. Scope: all R/S IDs; reference-map coverage matrix.
+Scope: R08/R11/R13, S17–S19/S26/S28. Depends on M6 and M1 map feasibility.
 
 Acceptance:
 
-- Walk through discover → detail → Want → visit → compare → reveal → notes/photos → publish → follow/comment → guide/share → city/globe using at least two unrelated fictional accounts and all seven categories. Also walk the captured ordering of optional notes/photos before comparison, the first-item rank-only/score policy, and rating removal with retained memories.
-- Validate chosen minimum and latest supported iOS/device sizes, accessibility, long text, missing geography/metadata, denied permissions, expired auth, offline draft, failed writes and media retries.
-- Meaningful unit/service/authorization/integration tests pass; simulator evidence demonstrates states and navigation against mapped references with documented Roam adaptations.
-- No pending capture is misrepresented as verified, no unapproved algorithm/omission, no private-data leak in public/API/share outputs, no real reference-account content in fixtures.
-- Record build/run/test commands only after toolchain verification; save milestone screenshots to `screenshots/<milestone>/`, never into `reference/`. Review remaining risks and deployment/signing/push/link configuration before release.
+- Own/other profiles expose the same public globe/list/activity/travel data with correct owner controls. Mini/expanded globe has pins, shaded countries and unique X countries · Y cities counts, selectable pin/cluster and equivalent list; works with device location denied.
+- Geography fixtures include same-name cities, destination locality, remote/no-city place, missing country geometry and repeated visits. Counts derive from persisted Visits only; bookmarks/home city don't count. Removing only a Rating retains travel counts; last Visit removal updates them.
+- Travel Profile category/city/country rows filter visited experiences and show counts only. No city scores/confidence/guide/leaderboard placeholders. New experiences this year counts first known visit per Experience; date edits/revisits/unknown dates/deletions exercise the specified rule.
+- Profile edit validates name/handle/bio/avatar/home city, persists across restart, retains failed edits and discards cancel. Units/haptics/in-app event settings apply consistently and roll back on failed save; only provider-supported account actions appear.
+- Experience/profile native text shares contain the specified public values and real Apple Maps URL where applicable. Cancel has no write; no fabricated profile link, private data or list-sharing surface.
+- Block/mute lists, help explaining actual scoring/ties/publication, stored reports and account sign-out function. Local operator inspection of reports and cleanup is documented.
+- Account deletion uses reauthentication, clear confirmation, immediate visibility/write restriction and server-owned durable relational/media/session cleanup; Apple revocation integration is verified or explicitly listed as a release blocker. Test only disposable local fixtures. Stale tokens cannot recreate deleted user data.
 
-Completion report must list implemented screens, approved deferrals, any unresolved blockers and evidence. Passing a UI build alone is not feature completion.
+Evidence: geography/year fixtures, globe comparison screenshots, settings persistence, share serialization and account-deletion authorization/cleanup tests.
 
+## M8 — Complete journeys, compatibility and build handoff
 
-## Evidence update and remaining finalization work — 2026-10-13
+Scope: every active screen/requirement. Depends on M1–M7; no deferred feature work.
 
-New-account captures change acceptance targets in M2 (setup/first use), M4–M5 (comparison controls and score availability), M6 (pre-comparison memory editors) and M7/M8 (retained visits, score eligibility and publication). They do not authorize a backend, formula, stealth-mode policy or new release omission. SPEC's prioritized D01/D03/D02/D06/D07 list is the decision order; city math stays deferred to M7.
+Acceptance:
 
-Documentation validation for this update: all NC001–053 visually reviewed, key controls inspected full size, per-file hashes recorded, three deliverables cross-checked for changed screen order and evidence status. Implementation tests above are future acceptance criteria, not tests already run. No app code, simulator run or live reference-account action is part of this update.
+- Two accounts walk search → detail → Want → sentiment/details → compare/tie → immediate score → automatic follower feed → comment → repeat visit/rerank → globe/counts → shared wants → removal with retained memories. Cover all seven categories and empty/no-follow conditions.
+- Exercise offline draft, expired session, failed save/upload, stale ranking revision, slow old search response, denied location, missing geography/media and deleted/blocked targets. No fallback fabricates success/data or removes a confirmed feature.
+- Meaningful unit, engine/server parity, pgTAP/RLS, local integration and UI tests pass; rerun only checks affected by later fixes plus final end-to-end suite. Save logs, `.xcresult`, simulator screenshots and concise visual comparison against the reference map.
+- Build with iOS 18 deployment target; run on installed iOS 26.2 and an iOS 18 simulator/device when available. Record missing iOS 18 runtime/device as compatibility validation outstanding; do not claim it passed on a newer simulator.
+- Check Dynamic Type/VoiceOver/Reduce Motion, small-screen layout, long names, large tie groups, clustered globe pins and accessibility of map alternatives. No real capture-account names/contacts/media in seed or shipped assets.
+- Verify real Apple sign-in separately from fixture auth, local startup/reset instructions and clean checkout generation. Record exact SDK/library/tool versions. No committed secrets, generated Xcode project, stale draft requirements or deferred-feature routes.
+- Final report names complete milestones/screens, test evidence, effective defaults, any specific external configuration/validation blockers, and remaining release setup (hosting/SMTP, legal/support destinations, moderation, revocation). No App Store upload or production migration during this run.
+
+Exit: reproducible local Roam app with all v1 requirements verified to the extent stated. “Build succeeds” alone is not completion; unresolved provider/runtime checks remain visible, and no partially tested feature is called production-ready.

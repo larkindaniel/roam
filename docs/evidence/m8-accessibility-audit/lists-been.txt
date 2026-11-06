@@ -1,0 +1,8 @@
+Contrast failed | scroll-edge zone | id= | label=View Map | frame={{256.66666666666663, 732}, {129.33333333333331, 42}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Text clipped | single-line text field | id=list-search-field | label= | frame={{56.333333333333336, 330}, {317.66666666666663, 22}} | Text of this UITextField may be clipped at larger Dynamic Type sizes.

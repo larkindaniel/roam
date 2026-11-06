@@ -1,0 +1,2 @@
+Contrast failed | scroll-edge zone | id= | label=View List | frame={{261.66666666666663, 732}, {124.33333333333331, 42}} | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are unsupported | MapKit cluster glyph | id= | label=5 | frame={{189.11861080593533, 504.44444698757599}, {17.7777777777778, 17.777777777777771}} | User will not be able to change the font size of this _MKUILabel

@@ -1,0 +1,11 @@
+Contrast failed | disabled control | id=edit-profile-save | label=Save | frame={{319.66666666666669, 66}, {62.333333333333314, 36}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast nearly passed | advisory contrast | id= | label=Name | frame={{16, 298.66666666666663}, {370, 40.333333333333314}} | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast nearly passed | advisory contrast | id=- | label=- | frame=- | Contrast is not high enough for SwiftUI.AccessibilityNode unless font size is larger.
+Contrast failed | scroll-edge zone | id=edit-profile-remove-home | label=Remove home city | frame={{16, 732}, {370, 52}} | Contrast failed for SwiftUI.AccessibilityNode
+Contrast failed | unattributed (no element reference) | id=- | label=- | frame=- | Contrast failed for SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=edit-profile-save | label=Save | frame={{319.66666666666669, 66}, {62.333333333333314, 36}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=edit-profile-cancel | label=Cancel | frame={{20, 66}, {76.666666666666671, 36}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id=edit-profile-remove-home | label=Remove home city | frame={{16, 732}, {370, 52}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode

@@ -1,0 +1,5 @@
+{
+  "imports": { "jpeg-js": "npm:jpeg-js@0.4.4" },
+  "compilerOptions": { "strict": true },
+  "tasks": { "test": "deno test inspector_test.ts" }
+}

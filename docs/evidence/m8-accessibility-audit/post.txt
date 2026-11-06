@@ -1,0 +1,4 @@
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=· Banff, Canada | frame={{177.33333333333334, 184}, {86.333333333333286, 14.333333333333343}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=8.4 | frame={{324.33333333333331, 155.83333333333334}, {25.333333333333371, 18.333333333333314}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=JW | frame={{32, 144}, {40, 40}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode
+Dynamic Type font sizes are partially unsupported | advisory dynamic type | id= | label=Score when posted | frame={{304, 189}, {66, 26.333333333333343}} | User will not be able to change the font size of this SwiftUI.AccessibilityNode

@@ -1,0 +1,12 @@
+// Checked-in base configuration for the Roam app target.
+// Only public client values belong here or in Local.xcconfig: the API URL and the
+// publishable (anon) key, which Row Level Security protects. Never put service-role
+// keys, Apple signing secrets or other credentials in any xcconfig.
+
+// Default local endpoint for the iOS Simulator (the Mac's loopback interface).
+// `$()` keeps xcconfig from treating `//` as a comment.
+ROAM_SUPABASE_URL = http:/$()/127.0.0.1:54321
+ROAM_SUPABASE_PUBLISHABLE_KEY =
+
+// Developer-specific values (ignored by git). Copy Local.xcconfig.example to create it.
+#include? "Local.xcconfig"
