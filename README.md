@@ -89,13 +89,18 @@ Real Sign in with Apple (token exchange, reauthentication and revocation) needs 
   - Ranking uses comparisons, and the score is stored out of 10.
   - Cities can be logged too, with the places you went there.
   - Countries and states ask "Where in Norway?".
-- **Friends** are two-way friend requests. There are no member profile pages: names and avatars don't open anything.
+- **Friends** are two-way friend requests. Friend profile pages are switched off for now (`MemberProfiles.available` in
+  `AppRouter.swift`), so names and avatars don't open anything.
 - **Scores** are hidden app-wide (`Score.isShown == false`), except friends' stars and your own on a place page, shown
   out of 5. Google's rating is shown separately as `★ 4.6 (1.2K)`.
 - **Photos:** your own photos come first. After that, a place uses Google, then a map with a pin. Cities, states and
   countries use Google's photo, cached and retried daily when missing, then Wikipedia.
-- **Set aside, not deleted:** custom lists (backend only), sending places (the Send button is greyed), the unit and UI
-  test suites (out of date). Member profiles, the passport, shared wishlists and the Explore tab were removed.
+- **Set aside, not deleted:**
+  - custom lists (backend only)
+  - sending places (the Send button is greyed out)
+  - friend profile pages and the screens they open (their travel profile, passport, lists, "new this year" and your
+    shared wishlist): the code is all here, switched off by `MemberProfiles.available`
+- **Removed:** the Explore tab.
 
 ### Screens
 
@@ -149,4 +154,4 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 - The fixture backend only stubs the newer features.
 - iOS 18 still needs a runtime check (Liquid Glass falls back to frosted material before iOS 26).
 - Google's terms require its photo credit and limit how long its data is kept. We refresh about weekly.
-- Friends' profiles may come back later as a rebuilt page.
+- Friend profile pages are in the code but switched off; turning them back on needs a restyle to the current design.

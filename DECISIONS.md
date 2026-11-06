@@ -123,7 +123,7 @@ The app has since moved on from several decisions above. README's "How the app w
 
 | Replaces | Now |
 |---|---|
-| C08 one-way follows, public profiles | Two-way friend requests; no member profile pages; names and avatars don't open anything |
+| C08 one-way follows, public profiles | Two-way friend requests; friend profile pages kept in the code but switched off for now (`MemberProfiles.available`) |
 | C07 / D12 public by default | Each log picks who can see it: Only me, Friends or Public (Public is the default) |
 | D10 five tabs | Three tabs, Discover, Friends and My Places, under Roam's own floating glass tab bar |
 | D08 Want to Go | Wishlists at every level (place, city, state, country); been always beats wishlist |

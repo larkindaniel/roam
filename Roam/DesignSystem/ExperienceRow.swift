@@ -162,6 +162,7 @@ struct MemberRowView: View {
     let member: MemberSummary
     var subtitle: String?
     var followState: FollowButtonState?
+    var onOpen: (() -> Void)?
     var onToggleFollow: (() -> Void)?
 
     var body: some View {
@@ -177,7 +178,11 @@ struct MemberRowView: View {
                 }
                 Spacer(minLength: 0)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if MemberProfiles.available { onOpen?() } }
             .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(MemberProfiles.available && onOpen != nil ? .isButton : [])
+            .accessibilityAction { if MemberProfiles.available { onOpen?() } }
             if let followState {
                 FollowButton(state: followState, name: member.displayName) { onToggleFollow?() }
             }

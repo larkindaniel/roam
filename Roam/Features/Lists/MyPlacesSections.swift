@@ -877,6 +877,201 @@ struct PlanTripSheet: View {
 
 // MARK: - Passport
 
+/// Every country and city someone has been to. Friends see the whole passport, but open only the places
+/// shared with them.
+struct PassportSection: View {
+    let ownerID: UUID
+    let countries: [PassportCountry]
+    var isSelf: Bool
+    var onMarkCity: (() -> Void)?
+
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        let cityCount = countries.map(\.cities.count).reduce(0, +)
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            HStack(spacing: Theme.Spacing.l) {
+                stat(countries.count, countries.count == 1 ? "country" : "countries")
+                stat(cityCount, cityCount == 1 ? "city" : "cities")
+                Spacer()
+            }
+            if countries.isEmpty {
+                Text(isSelf ? "Log a place or mark a city you've been to and it gets stamped here." : "No stamps yet.")
+                    .font(.subheadline).foregroundStyle(Roam.inkMuted)
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Spacing.s), GridItem(.flexible(), spacing: Theme.Spacing.s)], spacing: Theme.Spacing.s) {
+                    ForEach(countries) { country in
+                        Button { router.push(PassportCountry.route(ownerID: ownerID, country: country)) } label: { stamp(country) }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("passport-\(country.code)")
+                    }
+                }
+            }
+            if let onMarkCity {
+                Button(action: onMarkCity) { PillLabel(title: "Add a city you've been to", systemImage: "plus") }
+                    .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
+                    .accessibilityIdentifier("mark-city")
+            }
+        }
+    }
+
+    private func stat(_ value: Int, _ label: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text("\(value)").font(.roamTitle()).monospacedDigit()
+            Text(label).font(.subheadline).foregroundStyle(Roam.inkMuted)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func stamp(_ country: PassportCountry) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text(TripTitle.flag(country.code) ?? "🌐").font(.system(size: 30))
+            Text(country.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+            Text("\(country.cities.count) \(country.cities.count == 1 ? "city" : "cities")").font(.footnote).foregroundStyle(Roam.inkMuted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.m)
+        .background(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous).fill(Theme.raisedCard))
+        .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Someone's passport on its own screen, opened from their profile.
+struct PassportView: View {
+    let ownerID: UUID
+    let name: String
+
+    @Environment(AppServices.self) private var services
+    @Environment(SessionStore.self) private var session
+    @State private var countries: LoadPhase<[PassportCountry]> = .idle
+    @State private var marking = false
+
+    private var isSelf: Bool { session.userID == ownerID }
+
+    var body: some View {
+        ScrollView {
+            Group {
+                switch countries {
+                case .idle, .loading: SkeletonList(rows: 4)
+                case .failed(let message): InlineRetryView(message: message) { Task { await load() } }
+                case .loaded(let value):
+                    PassportSection(ownerID: ownerID, countries: value, isSelf: isSelf, onMarkCity: isSelf ? { marking = true } : nil)
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .background(Roam.paper)
+        .navigationTitle(isSelf ? "Your passport" : "\(name)'s passport")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $marking) {
+            DestinationPickerSheet(purpose: .homeCity, title: "City you've been to") { city in
+                Task { try? await services.plans.setCityVisited(city, present: true); await load() }
+            }
+        }
+        .task { await load() }
+        .refreshable { await load() }
+        .screenIdentifier("passport")
+    }
+
+    private func load() async {
+        do { countries = .loaded(try await services.plans.passport(ownerID: ownerID)) }
+        catch { if countries.value == nil { countries = .failed(error.roamMessage) } }
+    }
+}
+
+extension PassportCountry {
+    /// A country always opens its own page, listing its cities, even when there's just one.
+    static func route(ownerID: UUID, country: PassportCountry) -> AppRoute {
+        .passportCountry(ownerID: ownerID, country: country)
+    }
+}
+
+/// The cities in one country of someone's passport, as photo cards: homes first, then the places travelled to.
+/// Each opens the city's page.
+struct PassportCountryView: View {
+    let ownerID: UUID
+    let country: PassportCountry
+
+    @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
+
+    var body: some View {
+        let cities = country.cities.filter(\.isHome) + country.cities.filter { !$0.isHome }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                ForEach(cities) { city in
+                    Button { router.push(.city(city.city, ownerID: ownerID)) } label: {
+                        CityPhotoCard(destination: city.city, isHome: city.isHome).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("passport-city-\(city.city.name)")
+                }
+                if country.otherPlaceCount > 0 {
+                    Text("Plus \(country.otherPlaceCount) \(country.otherPlaceCount == 1 ? "place" : "places") outside a city.").font(.footnote).foregroundStyle(Roam.inkMuted)
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .background(Roam.paper)
+        .navigationTitle(country.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .screenIdentifier("passport-country")
+    }
+}
+
+struct PassportCityView: View {
+    let ownerID: UUID
+    let city: PassportCity
+
+    @Environment(AppServices.self) private var services
+    @Environment(AppRouter.self) private var router
+    @State private var entries: LoadPhase<[ListEntry]> = .idle
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                switch entries {
+                case .idle, .loading: SkeletonList(rows: 4)
+                case .failed(let message): InlineRetryView(message: message) { Task { await load() } }
+                case .loaded(let value):
+                    let items = value.filter { CityMatch.same($0.experience, city.city) }
+                        .sorted { ($0.ownerScore?.tenths ?? -1) > ($1.ownerScore?.tenths ?? -1) }
+                    if items.isEmpty {
+                        Text("No shared places here.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(items) { entry in
+                                PlaceRow(item: PlaceMapItem(experience: entry.experience, state: .visited), score: entry.ownerScore) {
+                                    router.push(.experience(entry.id))
+                                }
+                                if entry.id != items.last?.id { RowSeparator() }
+                            }
+                        }
+                        .roamCard(padding: Theme.Spacing.m)
+                    }
+                    if city.placeCount > items.count {
+                        Text("\(city.placeCount - items.count) more kept private.").font(.footnote).foregroundStyle(Roam.inkMuted)
+                    }
+                }
+            }
+            .padding(Theme.Spacing.l)
+        }
+        .background(Roam.paper)
+        .navigationTitle(city.city.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .screenIdentifier("passport-city")
+    }
+
+    private func load() async {
+        do { entries = .loaded(try await services.lists.been(ownerID: ownerID)) }
+        catch { entries = .failed(error.roamMessage) }
+    }
+}
+
+// MARK: - A group of your places
+
 /// A set of your places, such as a journey on your timeline, broken down by country and city.
 struct PlaceGroupView: View {
     let title: String

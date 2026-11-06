@@ -156,7 +156,7 @@ struct FeedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            ActivityCardView(item: item, compact: true,
+            ActivityCardView(item: item, compact: true, onOpenAuthor: { router.push(.member(item.author.id)) },
                              onOpen: { router.push(.activity(item.id)) })
             Divider()
             let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))

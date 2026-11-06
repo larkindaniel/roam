@@ -403,8 +403,9 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                // Your own stars from your ranking come first, then friends'.
-                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onReport: { target in reportReason = nil; reportTarget = target })
+                // Your own stars from your ranking come first, then friends'; a friend's row opens their profile.
+                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenAuthor: { router.push(.member($0)) },
+                                      onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
                 }
@@ -413,7 +414,7 @@ struct ExperienceDetailView: View {
                         .font(.footnote).foregroundStyle(Theme.fine)
                 }
                 if let memoriesModel, !memoriesModel.hasLoaded || memoriesModel.memories.contains(where: { !$0.isOwn && !friendMemories.map(\.id).contains($0.id) }) {
-                    PublicMemoriesSection(model: memoriesModel,
+                    PublicMemoriesSection(model: memoriesModel, onOpenAuthor: { router.push(.member($0)) },
                                           onOpenPhotos: { router.push(.gallery(experienceID: experienceID, visitID: $0)) },
                                           onReport: { target in reportReason = nil; reportTarget = target },
                                           excludedIDs: Set(friendMemories.map(\.id)))

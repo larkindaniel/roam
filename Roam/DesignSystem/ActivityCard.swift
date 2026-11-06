@@ -4,6 +4,7 @@ import SwiftUI
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = false
+    var onOpenAuthor: (() -> Void)?
     var onOpen: (() -> Void)?
     /// When set, photos open the Visit gallery instead of the post.
     var onOpenPhotos: (() -> Void)?
@@ -34,7 +35,10 @@ struct ActivityCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                AvatarView(member: item.author, size: 40)
+                Button { onOpenAuthor?() } label: { AvatarView(member: item.author, size: 40) }
+                    .buttonStyle(.plain)
+                    .allowsHitTesting(MemberProfiles.available)
+                    .accessibilityLabel("Open \(item.author.displayName)'s profile")
                 VStack(alignment: .leading, spacing: 2) {
                     (Text(item.author.displayName).bold() + Text(" \(item.type.verb) ") + Text(item.experience.name).bold())
                         .font(.subheadline)

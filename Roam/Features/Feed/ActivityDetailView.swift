@@ -91,7 +91,7 @@ struct ActivityDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                        ActivityCardView(item: item, compact: false,
+                        ActivityCardView(item: item, compact: false, onOpenAuthor: { router.push(.member(item.author.id)) },
                                          onOpenPhotos: item.visitID.map { visitID in { router.push(.gallery(experienceID: item.experience.id, visitID: visitID)) } })
                         Button { router.push(.experience(item.experience.id)) } label: {
                             Label("Open \(item.experience.name)", systemImage: "mappin.circle").frame(minHeight: Theme.minimumHitTarget)
@@ -140,6 +140,7 @@ struct ActivityDetailView: View {
             }
             ForEach(model.comments) { comment in
                 CommentRow(comment: comment, deleting: model.deletingCommentID == comment.id,
+                           onOpenAuthor: { router.push(.member(comment.author.id)) },
                            onDelete: { commentToDelete = comment },
                            onReport: { reportTarget = .comment(comment.id) })
                 Divider()
@@ -195,12 +196,16 @@ struct ActivityDetailView: View {
 struct CommentRow: View {
     let comment: Comment
     var deleting = false
+    let onOpenAuthor: () -> Void
     let onDelete: () -> Void
     let onReport: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            AvatarView(member: comment.author, size: 32)
+            Button(action: onOpenAuthor) { AvatarView(member: comment.author, size: 32) }
+                .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
+                .accessibilityLabel("Open \(comment.author.displayName)'s profile")
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(comment.author.displayName).font(.subheadline.weight(.semibold))

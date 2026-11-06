@@ -273,6 +273,7 @@ struct MemberSearchView: View {
                     ForEach(model.rows) { row in
                         MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
                                       followState: FollowButtonState(row.friendState, pending: model.pendingFollows.contains(row.id)),
+                                      onOpen: { router.push(.member(row.id)) },
                                       onToggleFollow: { Task { await model.toggleFollow(row) } })
                     }
                     PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError,

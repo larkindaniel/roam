@@ -39,7 +39,7 @@ when you change a screen. `docs/design-language.md` covers how they look.
   - The friend's avatar, name and the dates they were there. Not tappable.
   - The city's photo with "Japan 🇯🇵" under the name, which opens that city's page.
   - Each place they went there as a row with a chevron, which opens the place.
-- There are no profile pages: names and avatars never open anything.
+- Friend profile pages are switched off for now (`MemberProfiles.available`), so names and avatars don't open anything.
 - With no friends yet, the empty state offers "Find people".
 
 ## My Places

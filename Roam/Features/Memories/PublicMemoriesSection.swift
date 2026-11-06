@@ -71,6 +71,7 @@ final class PublicMemoriesModel {
 /// "From travellers": other members' memories. Your own Visits are listed under Your memories.
 struct PublicMemoriesSection: View {
     let model: PublicMemoriesModel
+    let onOpenAuthor: (UUID) -> Void
     let onOpenPhotos: (UUID?) -> Void
     let onReport: (ReportTarget) -> Void
     /// Friends' entries, already shown in their own section above.
@@ -111,7 +112,7 @@ struct PublicMemoriesSection: View {
                     .accessibilityIdentifier("memories-empty")
             } else {
                 ForEach(others) { memory in
-                    PublicMemoryCard(memory: memory,
+                    PublicMemoryCard(memory: memory, onOpenAuthor: { onOpenAuthor(memory.author.id) },
                                      onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
                     Divider()
                 }
@@ -143,6 +144,8 @@ struct FriendMemoriesSection: View {
 
     let memories: [PublicMemory]
     var yours: Yours? = nil
+    /// Opens a friend's profile from their row.
+    var onOpenAuthor: ((UUID) -> Void)? = nil
     let onReport: (ReportTarget) -> Void
 
     /// Each friend once, with their latest visit.
@@ -217,6 +220,9 @@ struct FriendMemoriesSection: View {
 
     private func row(_ memory: PublicMemory) -> some View {
         line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
+        // Profiles are set aside for now (MemberProfiles), so the row only opens one once they're back.
+        .onTapGesture { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
+        .accessibilityAddTraits(MemberProfiles.available && onOpenAuthor != nil ? .isButton : [])
         .contextMenu {
             Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
         }
@@ -227,6 +233,7 @@ struct FriendMemoriesSection: View {
 
 struct PublicMemoryCard: View {
     let memory: PublicMemory
+    let onOpenAuthor: () -> Void
     let onOpenPhotos: () -> Void
     let onReport: () -> Void
     @State private var expanded = false
@@ -234,17 +241,21 @@ struct PublicMemoryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                HStack(spacing: Theme.Spacing.m) {
-                    AvatarView(member: memory.author, size: 36)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(memory.author.displayName).font(.subheadline.weight(.semibold))
-                        Text(memory.visitDate.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
-                            .font(.caption).foregroundStyle(Theme.secondaryText)
+                Button(action: onOpenAuthor) {
+                    HStack(spacing: Theme.Spacing.m) {
+                        AvatarView(member: memory.author, size: 36)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(memory.author.displayName).font(.subheadline.weight(.semibold))
+                            Text(memory.visitDate.date.map { "Visited \($0.displayString)" } ?? "Visit date unknown")
+                                .font(.caption).foregroundStyle(Theme.secondaryText)
+                        }
                     }
+                    .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)
                 }
-                .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)
-                .accessibilityElement(children: .combine)
+                .buttonStyle(.plain)
+                .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
+                .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
                 Spacer(minLength: 0)
                 if Score.isShown, let score = memory.score {
                     Text(score.formatted)
