@@ -93,7 +93,8 @@ final class M4RatingFlowTests: XCTestCase {
         for category in ExperienceCategory.allCases {
             let acknowledged = result(category)
             let service = RatingFlowTestService(responses: [.success(acknowledged)])
-            let model = RatingFlowModel(request: request(category: .foodDrink), accountID: UUID(), ranking: service, storage: try storage())
+            // A place with no category yet: the first logger picks it.
+            let model = RatingFlowModel(request: request(category: nil), accountID: UUID(), ranking: service, storage: try storage())
             model.selectCategory(category)
             model.selectSentiment(.liked)
             XCTAssertEqual(model.step, .details, "Details follows sentiment before Okay")
@@ -217,7 +218,7 @@ final class M4RatingFlowTests: XCTestCase {
         }
     }
 
-    func testDurableComparisonDraftPreservesMicrosecondTieRepresentativeAndReplaysAnswers() async throws {
+    func testTieRepresentativeUsesMicrosecondsAndUndoReturnsToIt() async throws {
         let older = RankedEntry(ratingID: UUID(uuidString: "ffffffff-ffff-4fff-8fff-ffffffffffff")!, experienceID: UUID(),
                                  name: "True older tie member", locality: "Lisbon",
                                  firstRatedAt: RoamJSON.parseDate("2026-10-13T18:00:00.601100Z")!)
@@ -229,71 +230,45 @@ final class M4RatingFlowTests: XCTestCase {
                       TieGroup(entries: [younger, older]), TieGroup(entries: [ranked("Fourth group")])]
         let ranking = CategoryRanking(category: .foodDrink, revision: 12, liked: groups)
         let service = RatingFlowTestService(rankings: [ranking], responses: [.success(result())])
-        let account = UUID(), request = request(), storage = try storage()
-        let model = RatingFlowModel(request: request, accountID: account, ranking: service, storage: storage)
+        let model = RatingFlowModel(request: request(), accountID: UUID(), ranking: service, storage: try storage())
         model.selectSentiment(.liked)
-        XCTAssertTrue(model.updateDetails(note: "Resume this precise comparison", date: nil))
         await model.okay()
-        XCTAssertEqual(model.comparison?.ratingID, older.ratingID)
-        await model.choose(.preferNew)
-        let recorded = [ComparisonAnswer(comparedRatingID: older.ratingID, choice: .preferNew)]
-        XCTAssertEqual(model.session?.answers, recorded)
-        model.keepDraft()
-        XCTAssertTrue(storage.names(userID: account, prefix: "rating-draft-").contains(model.draftName))
-
-        let restored = RatingFlowModel(request: request, accountID: account, ranking: service, storage: storage)
-        XCTAssertEqual(restored.step, .comparison)
-        XCTAssertEqual(restored.operationID, model.operationID)
-        XCTAssertEqual(restored.visit, model.visit)
-        XCTAssertEqual(restored.session?.answers, recorded, "Actual persisted answers must replay against the same representative")
-        XCTAssertEqual(restored.comparison?.ratingID, middle.ratingID)
-        let tied = try XCTUnwrap(restored.session?.groups[2])
-        XCTAssertEqual(tied.representative.ratingID, older.ratingID, "Microseconds, rather than inverse UUID order, select the true older member")
+        XCTAssertEqual(model.comparison?.ratingID, older.ratingID, "Microseconds, rather than inverse UUID order, select the true older member")
+        let tied = try XCTUnwrap(model.session?.groups[2])
         XCTAssertLessThan(tied.entries[0].firstRatedAt, tied.entries[1].firstRatedAt)
-        restored.undo()
-        XCTAssertEqual(restored.comparison?.ratingID, older.ratingID)
-        XCTAssertEqual(restored.session?.answers, [])
-        await restored.choose(.preferExisting)
-        await restored.choose(.skip)
+        await model.choose(.preferNew)
+        XCTAssertEqual(model.comparison?.ratingID, middle.ratingID)
+        model.undo()
+        XCTAssertEqual(model.comparison?.ratingID, older.ratingID)
+        XCTAssertEqual(model.session?.answers, [])
+        await model.choose(.preferExisting)
+        await model.choose(.skip)
         let commits = await service.commits
         XCTAssertEqual(commits.first?.answers.first?.comparedRatingID, older.ratingID)
         XCTAssertEqual(commits.first?.answers.map(\.choice), [.preferExisting, .skip])
-        XCTAssertEqual(restored.step, .result)
+        XCTAssertEqual(model.step, .result)
     }
-
-    func testNewCanonicalCategoryRetainsDraftEnrichmentAndRequiresFreshComparisons() async throws {
+    func testAnUnfinishedLogIsNotKeptAndReopensFreshAtNeutral() async throws {
         let groups = (0..<4).map { TieGroup(entries: [ranked("Food group \($0)")]) }
-        let service = RatingFlowTestService(rankings: [CategoryRanking(category: .foodDrink, revision: 7, liked: groups),
-                                                       CategoryRanking(category: .outdoors, revision: 2)],
-                                            responses: [.success(result(.outdoors))])
+        let service = RatingFlowTestService(rankings: [CategoryRanking(category: .foodDrink, revision: 7, liked: groups)])
         let account = UUID(), original = request(), storage = try storage()
         let model = RatingFlowModel(request: original, accountID: account, ranking: service, storage: storage)
         model.selectSentiment(.liked)
-        XCTAssertTrue(model.updateDetails(note: "Keep my draft after category lock", date: nil, mediaIDs: [UUID()]))
+        XCTAssertTrue(model.updateDetails(note: "Not kept", date: nil, mediaIDs: [UUID()]))
         await model.okay()
         await model.choose(.preferNew)
-        XCTAssertFalse(model.session?.answers.isEmpty ?? true)
+        model.keepDraft()
 
-        var summary = original.experience
-        summary.category = .outdoors
-        let fresh = LogRequest(experience: summary, mode: .firstLog, suggestedCategory: .outdoors,
-                               destinationTimeZone: original.destinationTimeZone, categoryLocked: true)
-        let restored = RatingFlowModel(request: fresh, accountID: account, ranking: service, storage: storage)
-        XCTAssertEqual(restored.category, .outdoors)
-        XCTAssertEqual(restored.sentiment, .liked)
-        XCTAssertEqual(restored.step, .details)
-        XCTAssertEqual(restored.visit, model.visit)
-        XCTAssertEqual(restored.operationID, model.operationID)
-        XCTAssertNil(restored.session, "Food comparisons cannot be reused for the canonical Outdoors ranking")
-        await restored.okay()
-        let commits = await service.commits, categories = await service.categories
-        XCTAssertEqual(categories, [.foodDrink, .outdoors])
-        XCTAssertEqual(commits.first?.category, .outdoors)
-        XCTAssertEqual(commits.first?.baseRevision, 2)
-        XCTAssertEqual(commits.first?.answers, [])
-        XCTAssertEqual(commits.first?.visit, model.visit)
+        let reopened = RatingFlowModel(request: original, accountID: account, ranking: service, storage: storage)
+        XCTAssertEqual(reopened.step, .details)
+        XCTAssertEqual(reopened.sentiment, .fine, "A log always starts at Neutral")
+        XCTAssertEqual(reopened.visit.publicNote, "")
+        XCTAssertEqual(reopened.visit.mediaIDs, [])
+        XCTAssertNil(reopened.session)
+        XCTAssertNotEqual(reopened.operationID, model.operationID)
+        let commits = await service.commits
+        XCTAssertTrue(commits.isEmpty)
     }
-
     func testNewCanonicalCategoryDoesNotChangeAnImmutablePendingReceiptRequest() async throws {
         let service = RatingFlowTestService(responses: [.failure(.timeout), .success(result())])
         let account = UUID(), original = request(), storage = try storage()
@@ -422,25 +397,23 @@ final class M4RatingFlowTests: XCTestCase {
         XCTAssertEqual(visits.first?.visit.publicNote, "A return visit")
     }
 
-    func testKeepDiscardAndAccountIsolationDoNotWriteToBackend() async throws {
+    func testClosingAnUnsavedLogWritesNothingAndLeavesNothingBehind() async throws {
         let service = RatingFlowTestService(), owner = UUID(), other = UUID(), request = request(), storage = try storage()
         let model = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage)
-        model.selectSentiment(.fine)
-        XCTAssertTrue(model.updateDetails(note: "Draft only", date: nil))
+        model.selectSentiment(.liked)
+        XCTAssertTrue(model.updateDetails(note: "Never saved", date: nil))
         model.keepDraft()
-        let restored = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage)
-        XCTAssertEqual(restored.operationID, model.operationID)
-        XCTAssertEqual(restored.visit.publicNote, "Draft only")
-        XCTAssertEqual(restored.step, .details)
+        let reopened = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage)
+        XCTAssertNotEqual(reopened.operationID, model.operationID)
+        XCTAssertEqual(reopened.visit.publicNote, "")
+        XCTAssertEqual(reopened.sentiment, .fine)
         let foreign = RatingFlowModel(request: request, accountID: other, ranking: service, storage: storage)
         XCTAssertEqual(foreign.visit.publicNote, "")
-        XCTAssertNil(foreign.sentiment)
-        restored.discardDraft()
+        reopened.discardDraft()
         XCTAssertTrue(storage.names(userID: owner, prefix: "rating-draft-").isEmpty)
         let commits = await service.commits, visits = await service.visits, categories = await service.categories
         XCTAssertTrue(commits.isEmpty && visits.isEmpty && categories.isEmpty)
     }
-
     func testAccountChangeCannotSubmitOrReuseAnotherAccountsDraft() async throws {
         let owner = UUID(), service = RatingFlowTestService()
         var active: UUID? = owner
@@ -465,18 +438,19 @@ final class M4RatingFlowTests: XCTestCase {
         XCTAssertNil(model.visit.date)
     }
 
-    func testDraftExpiresAfterThirtyDaysWithoutBackendWrites() throws {
-        let start = Date(), owner = UUID(), request = request(), storage = try storage(), service = RatingFlowTestService()
+    func testAnUnconfirmedSaveOlderThanThirtyDaysIsDropped() async throws {
+        let start = Date(), owner = UUID(), request = request(), storage = try storage()
+        let service = RatingFlowTestService(responses: [.failure(.timeout)])
         let model = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage, now: { start })
         model.selectSentiment(.liked)
-        model.keepDraft()
+        await model.okay()
+        XCTAssertEqual(model.step, .retry, "A save that wasn't confirmed is kept to check")
         let expired = RatingFlowModel(request: request, accountID: owner, ranking: service, storage: storage,
                                       now: { start.addingTimeInterval(31 * 86_400) })
-        XCTAssertNil(expired.sentiment)
-        XCTAssertEqual(expired.step, .sentiment)
+        XCTAssertEqual(expired.step, .details)
+        XCTAssertEqual(expired.sentiment, .fine)
         XCTAssertNotEqual(expired.operationID, model.operationID)
     }
-
     private func quickRequest(category: ExperienceCategory? = .foodDrink) -> LogRequest {
         var value = request(category: category)
         value.startsWithDetails = true
@@ -487,6 +461,8 @@ final class M4RatingFlowTests: XCTestCase {
         let service = RatingFlowTestService(visitResponses: [.success(AddVisitResult(visitID: UUID(), activityID: UUID()))])
         let model = RatingFlowModel(request: quickRequest(), accountID: UUID(), ranking: service, storage: try storage())
         XCTAssertEqual(model.step, .details, "No feeling or comparison is asked for first")
+        XCTAssertEqual(model.sentiment, .fine, "A new log starts at Neutral")
+        model.logWithoutRanking()
         XCTAssertTrue(model.skipsRanking)
         model.setAudience(.onlyMe)
         await model.okay()
@@ -514,14 +490,4 @@ final class M4RatingFlowTests: XCTestCase {
         XCTAssertFalse(model.skipsRanking, "Choosing a feeling continues to comparisons")
     }
 
-    func testAReopenedUnrankedDraftStaysUnranked() throws {
-        let store = try storage()
-        let log = quickRequest()
-        let first = RatingFlowModel(request: log, accountID: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!, ranking: RatingFlowTestService(), storage: store)
-        first.setAudience(.public)
-        first.keepDraft()
-        let reopened = RatingFlowModel(request: log, accountID: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!, ranking: RatingFlowTestService(), storage: store)
-        XCTAssertTrue(reopened.skipsRanking)
-        XCTAssertEqual(reopened.visit.audience, .public)
-    }
 }

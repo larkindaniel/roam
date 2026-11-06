@@ -303,10 +303,11 @@ final class TripRulesTests: XCTestCase {
         XCTAssertNotNil(TripDraft(name: "Backwards", startDate: late, endDate: early).validationMessage)
     }
 
-    func testAPlannedPlaceReadsAsPlannedUntilAVisitExists() {
+    func testAPlaceOnATripReadsAsSavedUntilAVisitExists() {
+        // Only cities are planned; a place on a trip is one you've saved there.
         let place = ExperienceSummary(id: UUID(), placeID: UUID(), name: "Cafe", latitude: 0, longitude: 0, followingCount: 0,
                                       viewer: ViewerExperienceState(isBookmarked: false, hasVisits: false))
-        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: false).state, .planned)
+        XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: false).state, .wishlist)
         XCTAssertEqual(TripPlace(experience: place, stop: "", isPlanned: true, isVisited: true).state, .visited)
     }
 }

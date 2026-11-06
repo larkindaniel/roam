@@ -140,7 +140,7 @@ select ok((select t->'cities' @> '[{"cityKey":"is|m7 capital region|reykjavik","
           'a destination locality counts its own city');
 select ok((select not (t->'countries' @> '[{"countryCode":"NZ"}]') and not (t->'cities' @> '[{"cityKey":"nz|m7 otago|queenstown"}]') from m7_travel),
           'a bookmark and the home city never count as travel');
-select ok((select t->'countries' @> '[{"countryCode":"US","name":"United States","count":2},{"countryCode":"IS","count":2},{"countryCode":"PT","count":1}]' from m7_travel),
+select ok((select t->'countries' @> '[{"countryCode":"US","count":2},{"countryCode":"IS","count":2},{"countryCode":"PT","count":1}]' from m7_travel),
           'country rows count distinct visited experiences, not visits');
 select is((select jsonb_array_length(t->'categories') from m7_travel),5,'category rows cover each visited category');
 select ok((select t->'pins' @> jsonb_build_array(jsonb_build_object('experienceID',pg_temp.m7_id('books'),'visitCount',2,'firstVisitDate','2025-07-04',
