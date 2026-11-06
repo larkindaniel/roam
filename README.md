@@ -5,7 +5,6 @@ Roam is a native iOS travel app: rank the places that made your trips within sev
 - **The product overhaul** (branch `kieran/roam-product-overhaul`) supersedes much of v1:
   - `docs/product-overhaul.md` covers how the app works now.
   - `docs/design-language.md` covers how screens look and which shared components to use.
-  - `docs/overhaul-changelog.md` lists what changed.
 - What the original v1 does: `SPEC.md`, `MILESTONES.md` and `DECISIONS.md` (decisions made during the build are logged at the end).
 - Where the build stands, with evidence: `docs/build-status.md` and `docs/m3-verification.md` to `docs/m8-verification.md`.
 - Backend runbook (migrations, fixtures, cleanup and deletion workers, operator queries): `docs/local-backend.md`.

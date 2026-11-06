@@ -1,10 +1,8 @@
 # Roam product overhaul: working context
 
 Start here if you're picking up work on branch `kieran/roam-product-overhaul`, whether you're a person or an agent. This
-page covers what the app is now, how its screens fit together and how we work. Two companion docs go with it:
-
-- `docs/design-language.md`: the visual rules and the shared components. Read it before touching UI.
-- `docs/overhaul-changelog.md`: a plain-English list of everything the overhaul changed.
+page covers what the app is now, how its screens fit together and how we work. Its companion,
+`docs/design-language.md`, has the visual rules and the shared components; read it before touching UI.
 
 The overhaul deliberately departs from the original v1 contract (`SPEC.md`, `MILESTONES.md`, `DECISIONS.md`, `PLAN.md`,
 `CLAUDE.md`'s milestone run). Where they disagree, this page, the design language and Kieran's latest instructions win.
