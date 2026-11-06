@@ -15,6 +15,8 @@ struct RatingFlowView: View {
     @State private var pickedPhotos: [PhotosPickerItem] = []
     @State private var trips: [TripSummary] = []
     @State private var home: Destination?
+    /// Saving straight from a comparison: the log form stays away while it saves and closes.
+    @State private var fromComparison = false
 
     var body: some View {
         NavigationStack {
@@ -73,6 +75,10 @@ struct RatingFlowView: View {
         .screenIdentifier("rating-flow")
     }
 
+    private func savingFromComparison(_ model: RatingFlowModel) -> Bool {
+        fromComparison && (model.step == .saving || model.step == .result)
+    }
+
     /// A town or city logged as somewhere you've been, rather than a place within one.
     private var isCity: Bool {
         let place = request.experience
@@ -93,7 +99,7 @@ struct RatingFlowView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 // The name, with where it is right under it as one block: a city's country, or a place's city and country.
                 // Not while comparing: the place is one of the two cards then.
-                if model.step != .comparison {
+                if model.step != .comparison && !savingFromComparison(model) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(request.experience.name).font(.roamTitle()).accessibilityIdentifier("rating-place")
                         Text(isCity ? (request.experience.countryName ?? "") : request.experience.areaLine)
@@ -110,8 +116,10 @@ struct RatingFlowView: View {
                 case .loading:
                     ProgressView("Loading your category ranking…").accessibilityIdentifier("rating-loading")
                 case .comparison: comparison(model)
-                // Saving and saved keep the form where it is (Save shows it's working); the log then just closes.
-                case .saving, .result: details(model)
+                // Saving and saved keep the form where it is (Save shows it's working); the log then just closes. After
+                // a comparison, nothing shows while it does, rather than the form coming back for a moment.
+                case .saving, .result:
+                    if !fromComparison { details(model) }
                 case .retry:
                     Button("Retry save") { Task { await model.retrySave() } }
                         .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
@@ -123,10 +131,10 @@ struct RatingFlowView: View {
         // Save sits where the other bottom buttons do: the tab bar's width and height, the same low gap from the bottom of
         // the screen, with room left above it for the content.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if [.details, .saving, .result].contains(model.step) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
+            if [.details, .saving, .result].contains(model.step) && !savingFromComparison(model) { Color.clear.frame(height: RoamTabBar.reservedHeight) }
         }
         .overlay {
-            if [.details, .saving, .result].contains(model.step) {
+            if [.details, .saving, .result].contains(model.step) && !savingFromComparison(model) {
                 let working = model.step != .details
                 let canSave = !working && model.photos?.canCommit != false && model.category != nil
                 VStack(spacing: 0) {
@@ -150,6 +158,9 @@ struct RatingFlowView: View {
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
+        }
+        .onChange(of: model.step) { _, step in
+            if step == .comparison { fromComparison = true } else if step == .details || step == .sentiment { fromComparison = false }
         }
         .roamHaptic(.selection, trigger: model.comparison?.id)
         .roamHaptic(.success, trigger: model.step == .result)
