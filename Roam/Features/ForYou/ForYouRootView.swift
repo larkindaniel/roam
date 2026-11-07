@@ -355,7 +355,7 @@ struct ForYouRootView: View {
         if cities.isEmpty {
             // Nothing to go on yet (no friends, nothing rated nearby): say so plainly and offer the way in.
             EmptyStateView(systemImage: "person.2", title: "Nothing to suggest yet",
-                           message: "Suggestions come from the places your friends love. Add friends, or search for a city.",
+                           message: "Add friends to see the places they love.",
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("discover-empty")
         } else {

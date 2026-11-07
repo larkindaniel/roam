@@ -16,6 +16,12 @@ final class SuggestionsUITests: RoamUITestCase {
         slider.coordinate(withNormalizedOffset: CGVector(dx: (Double(stop) + 0.5) / 3, dy: 0.5)).tap()
     }
 
+    /// Swipes the page (or the city's card) up until the element is on screen.
+    private func raiseCard(until target: XCUIElement) {
+        for _ in 0..<8 where !(target.exists && target.isHittable) { app.swipeUp() }
+        waitFor(target)
+    }
+
     /// From the photo step, skips photo, home and friends.
     private func skipToBeen() {
         waitFor(element("choose-avatar"))
@@ -42,9 +48,8 @@ final class SuggestionsUITests: RoamUITestCase {
         waitFor(element("choose-avatar"))
         tapPrimary("setup-continue")
         waitFor(element("choose-home-city")).tap()
-        let search = waitFor(app.searchFields.firstMatch)
-        search.tap()
-        search.typeText("Lisbon")
+        // The picker's search field is focused as it opens.
+        waitFor(element("destination-search")).typeText("Lisbon")
         waitFor(element("destination-Lisbon-Lisboa")).tap()
         waitFor(app.staticTexts["Lisbon, Lisboa, Portugal"])
         tapPrimary("setup-continue")
@@ -105,7 +110,8 @@ final class SuggestionsUITests: RoamUITestCase {
         capture("suggestions-05-discover")
 
         wellington.tap()
-        waitFor(element("foryou-place-Driftwood Kayak Co."), timeout: 10)
+        waitFor(element("discover-places"), timeout: 10)
+        raiseCard(until: element("foryou-place-Driftwood Kayak Co."))
         XCTAssertTrue(app.staticTexts["On Sam's Wellington list"].exists)
         capture("suggestions-06-city")
 
@@ -116,8 +122,11 @@ final class SuggestionsUITests: RoamUITestCase {
     }
 
     func testCountryPageSuggestsItsCities() {
-        launch(account: "maya", extra: ["-roam-initial-route", "country:GB"])
-        waitFor(element("country-suggested-Edinburgh"), timeout: 10)
+        launch(account: "maya")
+        // Discover → Edinburgh → its country chip.
+        waitFor(element("discover-city-Edinburgh"), timeout: 10).tap()
+        waitFor(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'United Kingdom'")).firstMatch).tap()
+        raiseCard(until: element("country-suggested-Edinburgh"))
         XCTAssertTrue(app.staticTexts["Theo sent you a place here"].exists)
         capture("suggestions-07-country")
     }
@@ -135,7 +144,8 @@ final class SuggestionsUITests: RoamUITestCase {
         tapPrimary("onboarding-been-continue")
         tapPrimary("setup-finish")
         if element("been-intro-continue").waitForExistence(timeout: 5) { element("been-intro-continue").tap() }
-        waitFor(element("tab-foryou")).tap()
+        // Setup ends on My Places; its back button returns to Discover.
+        waitFor(element("myplaces-back")).tap()
         waitFor(element("discover-empty"), timeout: 10)
         capture("suggestions-08-discover-empty")
     }

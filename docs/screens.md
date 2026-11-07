@@ -45,7 +45,7 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
     Japan trip", "On Maya's Lisbon list", "Maya loved it here", "Maya has been" or "Popular on Roam".
   - Your homes, cities you've been to and cities you've hidden never show.
   - A card opens that city's page. Long-press: Not interested hides it.
-  - With nothing to suggest (no friends, nothing rated): "Nothing to suggest yet" with Find people.
+  - With nothing to suggest (no friends, nothing rated): "Nothing to suggest yet", "Add friends to see the places they love." and Find people.
   - Friends' picks show above the cards when there are any. A pick opens its place or trip.
 
 ## Friends

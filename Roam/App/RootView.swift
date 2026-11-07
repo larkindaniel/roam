@@ -75,8 +75,6 @@ struct RootView: View {
                         case "search": router.openSearch()
                         case "explore": router.openExplore()
                         case "profile": router.push(.ownProfile)
-                        // "country:NZ" opens a country's page, for screenshots.
-                        case let route? where route.hasPrefix("country:"): router.push(.country(String(route.dropFirst("country:".count))))
                         default: break
                         }
                         #endif
