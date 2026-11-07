@@ -61,6 +61,13 @@ python3 -I scripts/tests/test_account_deletion.py         # deletion worker (add
 
 Without `TEST_RUNNER_ROAM_BACKEND_TESTS=1` the real-backend integration tests skip, and a skip is not a pass.
 
+### Without Xcode
+
+The database tests need only Docker and the Supabase CLI (`npx supabase@2 …` works without installing it). The Swift
+build, unit tests, UI journeys, screenshots and an onboarding recording run on GitHub's macOS runners: run the
+**iOS evidence** workflow from the Actions tab, or add the `ios-evidence` label to a pull request, then download the
+artifact. macOS minutes are limited on a private repo, so it only runs when asked.
+
 ## Not verified locally
 
 Real Sign in with Apple (token exchange, reauthentication and revocation) needs Apple credentials and a device. An iOS 18 runtime or device pass is still outstanding. Hosted Supabase and SMTP, scheduled cleanup and deletion workers, public privacy/terms/support pages and a moderation owner are release setup. See `docs/m8-verification.md`.
@@ -122,6 +129,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
   `no_photo_limit`
 - **Friends tab:** `friends_feed()` returns friends' dated visits you may see; the app groups them per friend and city
   (`Roam/Domain/FriendFeed.swift`).
+- **Suggestions:** `suggested_places()`, `suggested_cities()`, `hide_suggestion()` and `onboarding_places()`
+  (`20261107000100_suggestions`). Weights and rules are in DECISIONS.md, "Suggestions".
 - **Edge function:** `supabase/functions/google-place` looks up Google photos and ratings near a place, refreshed about
   weekly.
 
@@ -136,6 +145,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 | Photo cards, My Places tabs | `Roam/Features/Lists/MyPlacesTabs.swift` |
 | Photos, gallery, Wikipedia | `Roam/Places/PlaceBackground.swift` |
 | Discover / city / country | `Roam/Features/ForYou/` |
+| Suggestions: reason lines, order, taste lean | `Roam/Domain/Suggestions.swift` |
+| Onboarding (where have you been, rank them) | `Roam/Features/Onboarding/` |
 | Place page | `Roam/Features/Experience/ExperienceDetailView.swift`, `MyVisitsCard.swift` |
 | Friends on a place | `Roam/Features/Memories/PublicMemoriesSection.swift` |
 | Friends tab | `Roam/Features/Feed/FeedRootView.swift`, `Roam/Domain/FriendFeed.swift` |

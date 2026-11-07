@@ -23,11 +23,29 @@ when you change a screen. `docs/design-language.md` covers how they look.
   - A country opens its country page, a state its state page, a city its city page and a place its place page.
   - The field's own × ends the search, and leaving the tab clears it.
 
+## Onboarding (end of setup)
+
+After name, handle, photo, home and Find friends, two steps teach Roam what you like. Both can be skipped.
+
+- **Where have you been?** Up to 12 places around your home city as standard rows, the ones your friends have been to
+  first, then the most rated. A search field finds anything else. Tapping a row ticks it (green Been mark). The button
+  says "Skip for now" until something is ticked, then "Continue". With no home city it's search only.
+- **One place at a time** ("1 of 3"): "How was it?" with the feeling picker, then "Which did you like more?" against
+  your other places, with Undo, Too tough and Skip, like the log screen. After 10 comparisons in all, places go to the
+  middle of where they'd fit without asking. Each place is saved as soon as it's placed: a visit with no date, seen by
+  friends, so it's on your Been list but never on anyone's Friends tab. "Skip the rest" stops; what's saved stays.
+- Then the visibility explainer and Start using Roam.
+
 ## Discover
 
 - **Top:** a search bar and the settings cog.
-- **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading).
-  - A card opens that city's page.
+- **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading), ranked by Roam
+  (see DECISIONS.md, "Suggestions").
+  - Under each name: the country, then why it's suggested, such as "Portugal · Theo sent you a place here", "On your
+    Japan trip", "On Maya's Lisbon list", "Maya loved it here", "Maya has been" or "Popular on Roam".
+  - Your homes, cities you've been to and cities you've hidden never show.
+  - A card opens that city's page. Long-press: Not interested hides it.
+  - With nothing to suggest (no friends, nothing rated): "Nothing to suggest yet" with Find people.
   - Friends' picks show above the cards when there are any. A pick opens its place or trip.
 
 ## Friends
@@ -83,8 +101,10 @@ the country in view.
   - A home city shows only the house and Plan.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
-  - **Suggestions:** big place photo cards with the friend who's been there and the Google stars. A card opens the
-    place.
+  - **Suggestions:** big place photo cards, ranked by Roam, each with its reason line ("Theo sent you this", "On
+    Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like places you loved", "Popular on Roam"; the
+    category when there's none) and the Google stars. Places you've been to, saved or hidden never show. A card opens
+    the place. Long-press: Not interested hides it.
 - **Opening a place from here** stays on this map. The map glides to it and the card swaps to the place, halfway up.
   Back brings the city's card back.
 
@@ -101,7 +121,8 @@ the country in view.
   - Your trips there (rows), which open the trip.
   - An untitled wishlist card, then a been card, of city rows that open the city.
   - Saved states, which open their state page.
-  - Suggested cities as photo cards, which open the city.
+  - Suggested cities as photo cards, ranked by Roam, each with its reason line (or the state when there's none).
+    A card opens the city. Long-press: Not interested hides it.
 - A state page also has a chip that opens its country.
 
 ## Place page
@@ -144,6 +165,8 @@ tapping another place or pin swaps the card to it.
 
 - Your profile row opens Edit profile: photo, name, handle, bio, and home cities (add any number, swipe to remove).
   Cancel with changes asks to discard them.
+- Your tastes: five optional questions (atmosphere, budget, crowds, novelty, pace) that go into Plan with AI prompts.
+  Suggestions don't use them; they learn from your rankings.
 - Account: email, sign out, delete account. Then privacy, terms and version.
 
 ## Sheets
@@ -166,4 +189,6 @@ tapping another place or pin swaps the card to it.
   - Name, then Start → End dates (both required).
   - "+ Add a city", which opens the city search. At least one city is needed.
   - × asks before discarding. Save is at the bottom.
-- **Plan with AI:** copies a prompt for the city or country, or hands it to ChatGPT or Claude.
+- **Plan with AI:** copies a prompt for the city or country, or hands it to ChatGPT or Claude. The prompt has your
+  tastes, the kinds of places you tend to love (from your Liked rankings, once there are 3) and up to five places you
+  liked.
