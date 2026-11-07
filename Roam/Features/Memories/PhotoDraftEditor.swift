@@ -269,9 +269,20 @@ struct MyPhotoCarousel: View {
 /// A log's note: a roomy box where Return starts a new line, with "Add a note" until you type.
 struct NoteBox: View {
     @Binding var text: String
+    @FocusState private var focused: Bool
 
     var body: some View {
         TextEditor(text: $text)
+            .focused($focused)
+            // Return adds a new line, so the keyboard gets its own Done to put it away (it otherwise covers Save).
+            .toolbar {
+                if focused {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") { focused = false }.accessibilityIdentifier("note-done")
+                    }
+                }
+            }
             .scrollContentBackground(.hidden)
             .textInputAutocapitalization(.never)
             .frame(minHeight: 110)

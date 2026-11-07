@@ -31,6 +31,8 @@ struct RoamApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // Dragging any list or page puts the keyboard away, as in Apple's own apps.
+                .scrollDismissesKeyboard(.interactively)
                 .environment(services)
                 .environment(session)
                 .environment(library)
