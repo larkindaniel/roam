@@ -352,7 +352,14 @@ protocol PlanService: AnyObject, Sendable {
     func tripFeed() async throws -> [TripFeedCard]
     func friendsFeed() async throws -> [FriendFeedVisit]
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
-    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
+    /// Places Roam suggests in an area (a city page), best first, each with the facts for its reason line.
+    func suggestedPlaces(in bounds: GeoBounds) async throws -> [DiscoverPlace]
+    /// Cities Roam suggests, best first: everywhere for Discover, or one country (ISO code) for its page.
+    func suggestedCities(countryCode: String?) async throws -> [DiscoverCity]
+    /// "Not interested": hides a place or a city from your suggestions (or brings it back).
+    func hideSuggestion(experienceID: UUID?, cityID: UUID?, hidden: Bool) async throws
+    /// Places around your home you might have been to, for onboarding: friends' first.
+    func onboardingPlaces(in bounds: GeoBounds) async throws -> [ExperienceSummary]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
     func taste() async throws -> TasteProfile
     func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile

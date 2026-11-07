@@ -187,10 +187,26 @@ extension SupabaseBackend: PlanService {
         try await rpc("trip_updates", ["p_owner": RPC.uuid(ownerID), "p_trip_id": RPC.uuid(tripID)])
     }
 
-    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace] {
-        try await rpc("discover_places", [
-            "p_min_lat": bounds.map { .double($0.minLatitude) } ?? .null, "p_max_lat": bounds.map { .double($0.maxLatitude) } ?? .null,
-            "p_min_lon": bounds.map { .double($0.minLongitude) } ?? .null, "p_max_lon": bounds.map { .double($0.maxLongitude) } ?? .null,
+    func suggestedPlaces(in bounds: GeoBounds) async throws -> [DiscoverPlace] {
+        try await rpc("suggested_places", [
+            "p_min_lat": .double(bounds.minLatitude), "p_max_lat": .double(bounds.maxLatitude),
+            "p_min_lon": .double(bounds.minLongitude), "p_max_lon": .double(bounds.maxLongitude),
+        ] as RPCParams)
+    }
+
+    func suggestedCities(countryCode: String?) async throws -> [DiscoverCity] {
+        try await rpc("suggested_cities", ["p_country": RPC.string(countryCode)])
+    }
+
+    func hideSuggestion(experienceID: UUID?, cityID: UUID?, hidden: Bool) async throws {
+        let _: Bool = try await rpc("hide_suggestion", ["p_experience_id": RPC.uuid(experienceID), "p_city_id": RPC.uuid(cityID),
+                                                        "p_hidden": .bool(hidden)] as RPCParams)
+    }
+
+    func onboardingPlaces(in bounds: GeoBounds) async throws -> [ExperienceSummary] {
+        try await rpc("onboarding_places", [
+            "p_min_lat": .double(bounds.minLatitude), "p_max_lat": .double(bounds.maxLatitude),
+            "p_min_lon": .double(bounds.minLongitude), "p_max_lon": .double(bounds.maxLongitude),
         ] as RPCParams)
     }
 

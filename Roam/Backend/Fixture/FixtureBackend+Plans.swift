@@ -313,22 +313,6 @@ extension FixtureBackend: PlanService {
             .sorted { $0.createdAt > $1.createdAt }.compactMap { tripFeedEntry($0, viewer: me) }
     }
 
-    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace] {
-        let me = try await authenticatedActor()
-        return Set(ratings.values.map(\.experience)).compactMap { experience -> DiscoverPlace? in
-            guard let place = summary(experience, viewer: me),
-                  bounds?.contains(latitude: place.latitude, longitude: place.longitude) ?? true else { return nil }
-            let raters = ratings.values.filter { $0.experience == experience && isVisibleMember($0.owner, to: me) || $0.experience == experience && $0.owner == me }
-            let scores = raters.compactMap { ranking(owner: $0.owner, category: $0.category).placement(forExperience: experience)?.score.tenths }
-            guard !scores.isEmpty else { return nil }
-            let friends = raters.filter { $0.owner != me && areFriends(me, $0.owner) }.map { memberSummary($0.owner).displayName }.sorted()
-            let cover = visits.values.filter { $0.experience == experience && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
-                .sorted { $0.createdAt > $1.createdAt }.compactMap { visitModel($0).media.first?.path }.first
-            return DiscoverPlace(experience: place, communityScore: Score(tenths: scores.reduce(0, +) / scores.count), communityCount: scores.count,
-                                 friendNames: friends, coverPath: cover)
-        }.sorted { ($0.communityScore?.tenths ?? -1) > ($1.communityScore?.tenths ?? -1) }
-    }
-
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory] {
         let me = try await authenticatedActor()
         return visits.values

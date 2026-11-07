@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Your Tastes: short, skippable and editable at any time.
+/// Your tastes (Settings): short, skippable and editable at any time. The answers go into Plan with AI prompts.
 struct TasteEditorView: View {
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
@@ -31,7 +31,7 @@ struct TasteEditorView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Roam.paper)
-        .navigationTitle("Your Tastes")
+        .navigationTitle("Your tastes")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }.disabled(saving || !loaded).accessibilityIdentifier("taste-save")
@@ -132,9 +132,12 @@ struct ResearchBriefSheet: View {
     private func build() async {
         let taste = (try? await services.plans.taste()) ?? .empty
         var liked: [String] = []
+        var leanings: [ExperienceCategory] = []
         if let me = session.userID, let been = try? await services.lists.been(ownerID: me) {
-            liked = been.filter { $0.ownerSentiment == .liked }.prefix(5).map(\.experience.name)
+            let loved = been.filter { $0.ownerSentiment == .liked }
+            liked = loved.prefix(5).map(\.experience.name)
+            leanings = TasteLean.categories(liked: loved.compactMap(\.experience.category))
         }
-        text = ResearchBrief.text(destination: destination, taste: taste, liked: liked)
+        text = ResearchBrief.text(destination: destination, taste: taste, liked: liked, leanings: leanings)
     }
 }

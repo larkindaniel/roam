@@ -136,6 +136,9 @@ actor FixtureBackend {
     var placeLists: [UUID: ListRow] = [:]
     var shares: [UUID: ShareRow] = [:]
     var tastes: [UUID: TasteProfile] = [:]
+    /// Places and cities hidden with Not interested.
+    var hiddenSuggestions: Set<UUID> = []
+    var fixtureCityIDs: [String: UUID] = [:]
     var follows: [Pair: Date] = [:]
     /// Pending requests: a asked b.
     var friendRequests: [Pair: Date] = [:]
@@ -170,8 +173,17 @@ actor FixtureBackend {
         var seeded = FixtureState()
         seeded.seed(scenario: scenario, catalog: catalog)
         members = seeded.members
-        places = seeded.places
-        experiences = seeded.experiences
+        var seededPlaces = seeded.places, seededExperiences = seeded.experiences
+        var seededShares: [UUID: ShareRow] = [:], seededLists: [UUID: ListRow] = [:], seededTrips: [UUID: TripRow] = [:]
+        if scenario != "empty" && scenario != "new-account" {
+            Self.seedSuggestionSignals(places: &seededPlaces, experiences: &seededExperiences, shares: &seededShares, lists: &seededLists,
+                                       trips: &seededTrips, catalog: catalog)
+        }
+        places = seededPlaces
+        experiences = seededExperiences
+        shares = seededShares
+        placeLists = seededLists
+        trips = seededTrips
         visits = seeded.visits
         ratings = seeded.ratings
         bookmarks = seeded.bookmarks
@@ -298,6 +310,8 @@ actor FixtureBackend {
     func followingScore(for experienceID: UUID, viewer: UUID) -> (Score?, Int) {
         let followed = follows.keys.filter { $0.a == viewer }.map(\.b)
         let scores = followed.filter { $0 != viewer && !isBlockedEitherWay($0, viewer) && members[$0]?.deleted == false }
+            .filter { owner in ratings.values.first { $0.owner == owner && $0.experience == experienceID }
+                .map { audienceAllows(owner: owner, audience: ratingAudience($0), viewer: viewer) } ?? false }
             .compactMap { placement(owner: $0, experience: experienceID)?.score }
         return (ScoreMath.mean(of: scores), scores.count)
     }

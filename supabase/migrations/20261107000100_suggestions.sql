@@ -324,3 +324,6 @@ grant execute on function public.hide_suggestion(uuid, uuid, boolean),
   public.suggested_places(double precision, double precision, double precision, double precision),
   public.suggested_cities(text),
   public.onboarding_places(double precision, double precision, double precision, double precision) to authenticated;
+
+-- Discover's old list of every rated place is replaced by suggested_places and suggested_cities.
+drop function public.discover_places(double precision, double precision, double precision, double precision);
