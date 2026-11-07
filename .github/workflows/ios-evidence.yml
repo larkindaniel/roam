@@ -1,0 +1,147 @@
+# Builds the app on a GitHub macOS runner, runs the Swift unit tests and the fixture-mode UI journeys for a PR, and
+# uploads the named screenshots and an onboarding recording as an artifact for the PR description.
+#
+# macOS minutes are expensive on a private repo, so this only runs when asked: from the Actions tab (Run workflow) or
+# by adding the `ios-evidence` label to a pull request. The database job is cheap (Linux) and runs on every PR that
+# touches the backend.
+name: iOS evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      ui_tests:
+        description: "UI test class or test to run (RoamUITests/<Class>[/<test>])"
+        default: "RoamUITests/SuggestionsUITests"
+        required: false
+      screenshots:
+        description: "Screenshot name prefix to export (as in capture(\"<prefix>-…\"))"
+        default: "suggestions"
+        required: false
+      recording:
+        description: "UI test to record on video (RoamUITests/<Class>/<test>); empty for none"
+        default: "RoamUITests/SuggestionsUITests/testOnboardingPicksPlacesThenRanksThem"
+        required: false
+  pull_request:
+    types: [labeled, synchronize, opened, reopened]
+
+concurrency:
+  group: ios-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    name: Database tests (pgTAP)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start the local stack (migrations and seed)
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor > /dev/null
+      - name: pgTAP
+        run: supabase test db --local
+
+  ios:
+    name: Build, Swift tests and screenshots
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ios-evidence'))
+    runs-on: macos-26
+    timeout-minutes: 75
+    env:
+      UI_TESTS: ${{ github.event.inputs.ui_tests || 'RoamUITests/SuggestionsUITests' }}
+      SCREENSHOTS: ${{ github.event.inputs.screenshots || 'suggestions' }}
+      RECORDING: ${{ github.event.inputs.recording || 'RoamUITests/SuggestionsUITests/testOnboardingPicksPlacesThenRanksThem' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the project
+        run: ./scripts/generate.sh
+
+      - name: Pick and boot an iPhone simulator
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = [d for runtime, ds in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in ds]
+          pick = next((d for d in devices if d["name"] == "iPhone 17"), None) or next(d for d in devices if d["name"].startswith("iPhone"))
+          print(pick["udid"])')
+          echo "SIM=$SIM" >> "$GITHUB_ENV"
+          xcrun simctl boot "$SIM" || true
+          xcrun simctl bootstatus "$SIM" -b
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          mkdir -p build/evidence build/results
+          xcodebuild -project Roam.xcodeproj -scheme Roam -configuration Debug -destination "platform=iOS Simulator,id=$SIM" \
+            -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build-for-testing 2>&1 | tee build/evidence/build.log \
+            | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED|TEST BUILD SUCCEEDED|TEST BUILD FAILED" || true
+          grep -q "TEST BUILD SUCCEEDED" build/evidence/build.log
+
+      - name: Swift unit tests
+        run: |
+          set -o pipefail
+          xcodebuild -project Roam.xcodeproj -scheme Roam -configuration Debug -destination "platform=iOS Simulator,id=$SIM" \
+            -derivedDataPath build/DerivedData -resultBundlePath build/results/unit.xcresult -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO -only-testing:RoamTests test-without-building 2>&1 | tee build/evidence/unit.log \
+            | grep -E "error:|Test Case .* failed|Executed [0-9]+ tests|TEST (EXECUTE )?(SUCCEEDED|FAILED)"
+
+      - name: Record the onboarding journey
+        if: env.RECORDING != ''
+        run: |
+          set -o pipefail
+          mkdir -p screenshots/$SCREENSHOTS
+          xcrun simctl io "$SIM" recordVideo --codec h264 --force "screenshots/$SCREENSHOTS/onboarding.mov" &
+          RECORDER=$!
+          sleep 2
+          xcodebuild -project Roam.xcodeproj -scheme Roam -configuration Debug -destination "platform=iOS Simulator,id=$SIM" \
+            -derivedDataPath build/DerivedData -resultBundlePath build/results/recording.xcresult -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO "-only-testing:$RECORDING" test-without-building 2>&1 | tee build/evidence/recording.log \
+            | grep -E "error:|Test Case .* (passed|failed)|TEST (EXECUTE )?(SUCCEEDED|FAILED)" || true
+          kill -INT $RECORDER; wait $RECORDER || true
+          grep -q "TEST EXECUTE SUCCEEDED" build/evidence/recording.log
+
+      - name: UI journeys and screenshots
+        run: |
+          set -o pipefail
+          xcodebuild -project Roam.xcodeproj -scheme Roam -configuration Debug -destination "platform=iOS Simulator,id=$SIM" \
+            -derivedDataPath build/DerivedData -resultBundlePath build/results/ui.xcresult -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO "-only-testing:$UI_TESTS" test-without-building 2>&1 | tee build/evidence/ui.log \
+            | grep -E "error:|Test Case .* (passed|failed)|TEST (EXECUTE )?(SUCCEEDED|FAILED)"
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          for result in build/results/recording.xcresult build/results/ui.xcresult; do
+            [ -d "$result" ] && ./scripts/export-screenshots.sh "$result" "$SCREENSHOTS" || true
+          done
+          ls -la "screenshots/$SCREENSHOTS" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-evidence-${{ github.run_number }}
+          path: |
+            screenshots/${{ env.SCREENSHOTS }}
+            build/evidence/*.log
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcresults-${{ github.run_number }}
+          path: build/results
+          retention-days: 7
