@@ -144,6 +144,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Segmented selector** (My Places): one track with the chosen segment's pill sliding across in its state colour.
 - **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonList` where rows will. Errors use
   `InlineRetryView` with Try again.
+- **Reason lines:** a suggestion's card says why in a few words, built by `SuggestionReason` from the server's facts
+  (`Domain/Suggestions.swift`). Never invent one; no reason means the plain subtitle. Never repeat Google's stars in it.
+- **Not interested:** long-press a suggestion card (`.notInterested { … }`). It's a context menu, not a button on the
+  card.
 - **Search results:** `PlaceSearchResults` is shared by Discover, My Places and city pages. Cities show the signpost
   icon, countries show their flag, and towns never appear as places.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not

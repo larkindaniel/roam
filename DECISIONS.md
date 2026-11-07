@@ -133,3 +133,30 @@ The app has since moved on from several decisions above. README's "How the app w
 | Feed of activity cards | The Friends tab shows one card per friend and city, made from dated visits only |
 | Planning places | Only cities and countries are planned on trips; places are saved |
 
+
+## Suggestions (November 2026, issue #4)
+
+Roam suggests from what people you trust picked, not from a prediction of what you'll like. Taste only breaks ties
+between friends' picks. Everything that uses other people's data is worked out on the server, only from what the viewer
+may see: Only me entries, blocked people (either way), deactivated accounts and former friends never change a score, a
+count or a reason line (`08_suggestions_test.sql` proves this by adding all of them and checking nothing changes).
+
+| Area | Decision |
+|---|---|
+| Weights | One place: `app_private.suggestion_weights()` in `20261107000100_suggestions.sql`. The fixture backend copies them (`FixtureSuggestionWeights`) for screenshots only. |
+| Place points | Sent to you by a friend +40, a second friend +20, more add nothing. On a list a friend shared with you +25, once. Each friend who rated it: Liked +15, Neutral +5, Didn't like −10; a friend who's been without rating +5. Your taste: up to +10 once you've liked 3 places, half from your share of Liked places in its category and half from your share in its Apple place type (cafés, bakeries, museums; 0 when it has no type or you've liked none). Popular on Roam +5 (see below). Sent and shared places older than 90 days count half. |
+| Ties | Google's rating breaks ties, then name. Google is never added to points or blended with Roam's scores. |
+| Left out | Places you've been to, rated, saved or hidden; places Apple lists as unavailable; towns. A place friends didn't like on balance, unless a friend sent or shared it. A place only someone you can't see knows about. |
+| Cities | The sum of a city's best 5 places' points, +30 on an upcoming trip of yours (+15 if the trip has the whole country), +10 on your wishlist. Your homes, cities you've been to and hidden cities never show. Trip cities show even with no places yet. Discover shows up to 30; a country page shows its own; a state page keeps its state's. |
+| Reason lines | One per card, the first that applies: sent to you → on a friend's list → friends loved it → a friend has been → "Like the cafés you loved" (2 or more liked of its Apple type, when that type has a word in `PlaceType`) → "Like places you loved" (3 or more liked in its category) → popular on Roam. Cities lead with your trip. Names are first names, then "and 2 others" / "3 friends". No honest reason means no line; Google is never a reason line (the card shows its stars). Built on the device by `SuggestionReason` from the server's facts. |
+| Popular on Roam | The average of the ratings you can see, smoothed as if every place started with 5 ratings of 6.0, must be 7.0 or more: about 5 ratings of 8, or 3 of 9 or 10. Replaces "3 or more ratings averaging 7/10", where three keen ratings were enough. Scores are relative to each person's own list, so smoothing keeps a few enthusiastic early ratings from making the claim. |
+| Close friends, fading | No "close friend" weighting and no fading on being seen in this slice: there's no close-friend data, and taste agreement between friends needs at least 3 places you've both ranked, which few people have yet. Revisit once there's data. |
+| Not interested | Long-press → hides that place or city for good (`hidden_suggestions`). It doesn't change how anything else ranks. |
+| Taste | Learned from your own rankings (category and Apple place-type lean) and saves. The five questionnaire answers (Settings › Your tastes) go only into Plan with AI prompts: places carry no matching attributes, so using them for ranking would mean inventing reasons. Plan with AI also gets the kinds of places you tend to love (place types you've liked 2 or more of, topped up with categories, up to 3) once you've liked 3 places. Cuisine, price and closed places wait on Google's primary type, price level and business status. |
+| Onboarding | After Find friends: pick places you've been around home (friends' first, up to 12, or search), then a feeling and comparisons for each, at most 10 comparisons in all (then Skip's midpoint). Each place is saved as an undated visit seen by friends, so it seeds your Been list without appearing on anyone's Friends tab. Every step can be skipped. The questionnaire left onboarding. |
+| Cold start | No friends and nothing rated nearby: Discover says "Nothing to suggest yet" with Find people. With public ratings around, "Popular on Roam". |
+| Sent places and shared lists | Read only through `app_private.incoming_picks(viewer)`, which uses the existing `direct_shares`, `lists` and `list_items` (the agreed shape: who sent it, to whom, the place or list, when). It works today and needs no stub. If #3 moves sharing into new tables, only that function's body changes. Never written here. |
+| Rating audience | Unchanged: a place's rating takes the audience of its most recently saved visit. Logging a place Only me and later adding a Public visit makes the rating Public. Chosen deliberately (2026-11-07). |
+| Friends' scores fix | `following_score` (friends' average and "N friends rated this") counted friends' Only me ratings. It now counts only ratings the viewer may see. |
+| Removed | `discover_places` and the app's old Discover sections (friends / highly rated / more, the 7.0 "highly rated" cut-off). Popularity now uses the same 7.0 inside the points. |
+| Speed | Computed live per request (bounded to one area or country, 40 places, 30 cities). Google lookups were already cached. A score cache waits until it's measured to be slow. |

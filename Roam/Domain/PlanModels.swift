@@ -268,62 +268,50 @@ struct PlaceListDetail: Codable, Hashable, Sendable {
     }
 }
 
-/// A rated place on Discover: everyone's score, the friends behind it and a cover picture.
+/// A place Roam suggests, with the server's points and the facts behind its reason line.
 struct DiscoverPlace: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary
-    /// Nil until someone rates it; a visit alone gives no score.
+    /// Nil until someone you can see rates it; a visit alone gives no score.
     var communityScore: Score?
     var communityCount: Int
     var friendNames: [String]
     var coverPath: String?
+    var points: Double? = nil
+    var evidence: SuggestionEvidence? = nil
 
     var id: UUID { experience.id }
 
-    /// "Theo has been", "Theo and Sam have been" or "Theo and 2 others have been".
-    var friendEvidence: String? {
-        guard let first = friendNames.first?.split(separator: " ").first.map(String.init) else { return nil }
-        switch friendNames.count {
-        case 1: return "\(first) has been"
-        case 2: return "\(first) and \(friendNames[1].split(separator: " ").first.map(String.init) ?? friendNames[1]) have been"
-        default: return "\(first) and \(friendNames.count - 1) others have been"
-        }
-    }
+    /// Why it's suggested, in a few words; nil when there's nothing honest to say.
+    var reason: String? { SuggestionReason.place(evidence ?? .empty) }
 }
 
-/// A city worth browsing: built only from places people actually rated there.
-struct DiscoverCity: Hashable, Identifiable, Sendable {
+/// A city Roam suggests: on Discover, or a country or state page. Its points add up its best places and count your
+/// upcoming trips and wishlist.
+struct DiscoverCity: Decodable, Hashable, Identifiable, Sendable {
+    /// Roam's own city, used to hide it ("Not interested").
+    var cityID: UUID?
     var destination: Destination
+    var points: Double
+    var evidence: SuggestionEvidence
     var placeCount: Int
-    var friendNames: [String]
-    var bestScore: Score
     var coverPath: String?
-    var coverURL: URL? = nil
-    var coverCredit: String? = nil
+    var coverURL: URL?
+    var coverCredit: String?
 
     var id: String { destination.id }
 
-    /// Cities your friends have been to come first, then the best rated.
-    static func cities(from places: [DiscoverPlace]) -> [DiscoverCity] {
-        let groups = Dictionary(grouping: places.filter { $0.experience.locality != nil }) {
-            "\($0.experience.locality ?? "")|\($0.experience.region ?? "")|\($0.experience.countryCode ?? "")"
-        }
-        return groups.values.compactMap { group -> DiscoverCity? in
-            guard let first = group.first?.experience, let name = first.locality,
-                  let best = group.max(by: { ($0.communityScore?.tenths ?? -1) < ($1.communityScore?.tenths ?? -1) }) else { return nil }
-            let count = Double(group.count)
-            let destination = Destination(name: name, region: first.region, countryCode: first.countryCode, countryName: first.countryName,
-                                          latitude: group.reduce(0) { $0 + $1.experience.latitude } / count,
-                                          longitude: group.reduce(0) { $0 + $1.experience.longitude } / count, radiusMeters: 15_000)
-            let cover = best.coverPath ?? group.compactMap(\.coverPath).first
-            let linked = best.experience.photoURL != nil ? best : group.first { $0.experience.photoURL != nil }
-            return DiscoverCity(destination: destination, placeCount: group.count,
-                                friendNames: Array(Set(group.flatMap(\.friendNames))).sorted(), bestScore: best.communityScore ?? Score(tenths: 0), coverPath: cover,
-                                coverURL: linked?.experience.photoURL, coverCredit: linked?.experience.photoCredit)
-        }.sorted { lhs, rhs in
-            if lhs.friendNames.isEmpty != rhs.friendNames.isEmpty { return !lhs.friendNames.isEmpty }
-            if lhs.bestScore != rhs.bestScore { return lhs.bestScore > rhs.bestScore }
-            return lhs.destination.name < rhs.destination.name
-        }
+    var reason: String? { SuggestionReason.city(evidence) }
+
+    init(cityID: UUID? = nil, destination: Destination, points: Double, evidence: SuggestionEvidence = .empty, placeCount: Int = 0,
+         coverPath: String? = nil, coverURL: URL? = nil, coverCredit: String? = nil) {
+        self.cityID = cityID
+        self.destination = destination
+        self.points = points
+        self.evidence = evidence
+        self.placeCount = placeCount
+        self.coverPath = coverPath
+        self.coverURL = coverURL
+        self.coverCredit = coverCredit
     }
 }
 
@@ -476,13 +464,14 @@ struct TasteProfile: Codable, Hashable, Sendable {
 }
 
 enum ResearchBrief {
-    /// An editable starting point. It holds only the destination, declared tastes and the places the
-    /// member names here, never private notes or friends' identities.
-    static func text(destination: Destination, taste: TasteProfile, liked: [String]) -> String {
+    /// An editable starting point. It holds only the destination, declared tastes, the kinds of places your own
+    /// rankings lean towards and the places the member names here, never private notes or friends' identities.
+    static func text(destination: Destination, taste: TasteProfile, liked: [String], leanings: [String] = []) -> String {
         var lines = ["I'm planning time in \(destination.displayName). Recommend places I'd enjoy."]
-        let answers = [("Atmosphere", taste.atmosphere), ("Budget", taste.budget), ("Crowds", taste.crowds),
+        var answers = [("Atmosphere", taste.atmosphere), ("Budget", taste.budget), ("Crowds", taste.crowds),
                        ("Novelty", taste.novelty), ("Pace", taste.pace)]
             .compactMap { label, value in value.map { "- \(label): \($0)" } }
+        if !leanings.isEmpty { answers.append("- Places I tend to love: " + leanings.joined(separator: ", ")) }
         if !answers.isEmpty { lines += ["", "What I like:"] + answers }
         if !liked.isEmpty { lines += ["", "Places I've enjoyed:"] + liked.map { "- \($0)" } }
         lines += ["", "For each suggestion, explain why it fits me and check that it's currently open."]

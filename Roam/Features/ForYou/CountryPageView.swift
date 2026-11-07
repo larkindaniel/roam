@@ -108,16 +108,13 @@ struct CountryPageView: View {
     private var wishlistRegions: [SavedRegion] {
         region == nil ? (model?.savedRegions ?? []).filter { $0.countryCode.uppercased() == code } : []
     }
-    /// Places others loved here that aren't already yours.
-    private var recommended: [DiscoverPlace] {
-        guard case .loaded(let sections) = suggestions?.phase else { return [] }
-        let mine = Set(pins.map(\.id))
-        return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
-            .filter { isHere($0.experience) && !mine.contains($0.id) }
+    /// Cities Roam suggests here, best first (on a state's page, only that state's).
+    private var recommended: [DiscoverCity] {
+        (suggestions?.cities ?? []).filter { isHere($0.destination) }
     }
     /// Google's photo of a place here, for when the country's (or region's) own has none.
     private var fallbackPhoto: URL? {
-        (pins.map(\.experience) + recommended.map(\.experience)).lazy.compactMap(\.photoURL).first
+        pins.map(\.experience).lazy.compactMap(\.photoURL).first ?? recommended.lazy.compactMap(\.coverURL).first
     }
 
     var body: some View {
@@ -296,33 +293,26 @@ struct CountryPageView: View {
         } else {
             SkeletonList(rows: 3)
         }
-        switch suggestions?.phase ?? .loading {
+        switch suggestions?.cityPhase ?? .loading {
         case .idle, .loading:
             EmptyView()
         case .failed(let message):
-            InlineRetryView(message: message) { Task { await suggestions?.load(destination) } }
+            InlineRetryView(message: message) { Task { await suggestions?.loadCities(countryCode: code) } }
         case .loaded:
             // A level down from a country or state: cities, not places. No heading: the cards just follow on.
-            let cities = DiscoverCity.cities(from: recommended)
-            if !cities.isEmpty {
+            if !recommended.isEmpty {
                 LazyVStack(spacing: Theme.Spacing.l) {
-                    ForEach(cities) { city in
+                    ForEach(recommended) { city in
                         Button { router.push(.city(city.destination)) } label: {
-                            CityHeroCard(city: city.destination, subtitle: suggestionLine(city))
+                            CityHeroCard(city: city.destination, subtitle: city.reason ?? city.destination.region ?? "")
                         }
                         .buttonStyle(.plain)
+                        .notInterested { Task { await suggestions?.hide(city) } }
                         .accessibilityIdentifier("country-suggested-\(city.destination.name)")
                     }
                 }
             }
         }
-    }
-
-    /// "Dhyan has been", or where it is when no friend has.
-    private func suggestionLine(_ city: DiscoverCity) -> String {
-        let names = city.friendNames.compactMap { $0.split(separator: " ").first.map(String.init) }
-        guard let first = names.first else { return city.destination.region ?? "" }
-        return names.count == 1 ? "\(first) has been" : (names.count == 2 ? "\(first) and \(names[1]) have been" : "\(first) and \(names.count - 1) others have been")
     }
 
     /// Your home here first, as a plain link to its page.
@@ -452,7 +442,7 @@ struct CountryPageView: View {
         async let saved = region == nil ? services.plans.savedCountries() : services.plans.savedRegions()
         savedCodes = (try? await saved) ?? savedCodes
         await mine
-        await suggestions?.load(destination)
+        await suggestions?.loadCities(countryCode: code)
     }
 
     /// Your places logged here (been, not homes').

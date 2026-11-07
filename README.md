@@ -122,6 +122,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
   `no_photo_limit`
 - **Friends tab:** `friends_feed()` returns friends' dated visits you may see; the app groups them per friend and city
   (`Roam/Domain/FriendFeed.swift`).
+- **Suggestions:** `suggested_places()`, `suggested_cities()`, `hide_suggestion()` and `onboarding_places()`
+  (`20261107000100_suggestions`). Weights and rules are in DECISIONS.md, "Suggestions".
 - **Edge function:** `supabase/functions/google-place` looks up Google photos and ratings near a place, refreshed about
   weekly.
 
@@ -136,6 +138,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 | Photo cards, My Places tabs | `Roam/Features/Lists/MyPlacesTabs.swift` |
 | Photos, gallery, Wikipedia | `Roam/Places/PlaceBackground.swift` |
 | Discover / city / country | `Roam/Features/ForYou/` |
+| Suggestions: reason lines, order, taste lean | `Roam/Domain/Suggestions.swift` |
+| Onboarding (where have you been, rank them) | `Roam/Features/Onboarding/` |
 | Place page | `Roam/Features/Experience/ExperienceDetailView.swift`, `MyVisitsCard.swift` |
 | Friends on a place | `Roam/Features/Memories/PublicMemoriesSection.swift` |
 | Friends tab | `Roam/Features/Feed/FeedRootView.swift`, `Roam/Domain/FriendFeed.swift` |
