@@ -8,8 +8,8 @@ enum FixtureSuggestionWeights {
     static let sentFirst = 40.0, sentSecond = 20.0, sharedList = 25.0
     static let staleAfterDays = 90.0, staleFactor = 0.5
     static let friendLiked = 15.0, friendFine = 5.0, friendDisliked = -10.0, friendBeen = 5.0
-    static let tasteMax = 10.0, tasteMinLiked = 3
-    static let popular = 5.0, popularMinRaters = 3, popularMinScore = Score(tenths: 70)
+    static let tasteMax = 10.0, tasteMinLiked = 3, tasteTypeMinLiked = 2
+    static let popular = 5.0, popularPriorCount = 5.0, popularPriorScore = 6.0, popularMinScore = 7.0
     static let cityTopPlaces = 5, cityOnTrip = 30.0, cityInTripCountry = 15.0, citySaved = 10.0
 }
 
@@ -38,6 +38,10 @@ extension FixtureBackend {
         return id
     }
 
+    private func appleType(of experienceID: UUID) -> String? {
+        experiences[experienceID].flatMap { places[$0.placeID] }?.candidate.providerCategory
+    }
+
     private struct Scored {
         var experience: UUID
         var candidate: PlaceCandidate
@@ -50,6 +54,7 @@ extension FixtureBackend {
         let stale = { (date: Date) in now.timeIntervalSince(date) > W.staleAfterDays * 86_400 ? W.staleFactor : 1 }
         let myLiked = ratings.values.filter { $0.owner == me && $0.sentiment == .liked }
         let likedByCategory = Dictionary(grouping: myLiked, by: \.category).mapValues(\.count)
+        let likedByType = Dictionary(grouping: myLiked.compactMap { appleType(of: $0.experience) }, by: { $0 }).mapValues(\.count)
         let incoming = shares.values.filter { $0.recipient == me }
         return experiences.values.compactMap { experience -> Scored? in
             guard let place = places[experience.placeID], place.status == .active, !place.candidate.isLocality else { return nil }
@@ -77,7 +82,9 @@ extension FixtureBackend {
                 && audienceAllows(owner: $0.owner, audience: ratingAudience($0), viewer: me) }
                 .compactMap { placement(owner: $0.owner, experience: id)?.score }
             let communityScore = ScoreMath.mean(of: community)
-            let isPopular = community.count >= W.popularMinRaters && (communityScore ?? Score(tenths: 0)) >= W.popularMinScore
+            let smoothed = (Double(community.map(\.tenths).reduce(0, +)) / 10 + W.popularPriorCount * W.popularPriorScore)
+                / (Double(community.count) + W.popularPriorCount)
+            let isPopular = !community.isEmpty && smoothed >= W.popularMinScore
 
             let liked = friendRatings.filter { $0.sentiment == .liked }.count
             let fine = friendRatings.filter { $0.sentiment == .fine }.count
@@ -95,8 +102,11 @@ extension FixtureBackend {
             if let listed { points += W.sharedList * stale(listed.1) }
             points += friendPoints
             let likedHere = experience.category.flatMap { likedByCategory[$0] } ?? 0
+            let type = c.providerCategory
+            let likedOfType = type.flatMap { likedByType[$0] } ?? 0
             let hasLean = myLiked.count >= W.tasteMinLiked
-            if hasLean { points += Double(likedHere) / Double(myLiked.count) * W.tasteMax }
+            if hasLean { points += (Double(likedHere) + Double(likedOfType)) / Double(myLiked.count) / 2 * W.tasteMax }
+            let typeClaim = hasLean && likedOfType >= W.tasteTypeMinLiked
             if isPopular { points += W.popular }
             guard points >= 0 else { return nil }
 
@@ -108,7 +118,8 @@ extension FixtureBackend {
                 friendsBeen: visitors.isEmpty ? nil : names(Array(visitors)).sorted(),
                 friendsFine: visitors.isEmpty ? nil : fine, friendsDisliked: visitors.isEmpty ? nil : disliked,
                 communityCount: community.isEmpty ? nil : community.count, communityScore: communityScore,
-                likedInCategory: hasLean ? likedHere : nil, isPopular: isPopular)
+                likedInCategory: hasLean ? likedHere : nil, likedType: typeClaim ? type : nil, likedInType: typeClaim ? likedOfType : nil,
+                isPopular: isPopular)
             return Scored(experience: id, candidate: c, points: (points * 10).rounded() / 10, evidence: evidence)
         }
     }

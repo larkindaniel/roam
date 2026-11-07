@@ -333,7 +333,7 @@ actor FixtureBackend {
         return ExperienceSummary(id: experienceID, placeID: place.id, name: c.name, category: experience.category, locality: c.locality,
                                  region: c.region, countryCode: c.countryCode, countryName: c.countryName, latitude: c.latitude,
                                  longitude: c.longitude, providerPlaceID: c.providerPlaceID, followingScore: following.0,
-                                 followingCount: following.1, viewer: viewerState)
+                                 followingCount: following.1, viewer: viewerState, providerCategory: c.providerCategory)
     }
 
     func visitModel(_ row: VisitRow) -> Visit {

@@ -4,10 +4,10 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(51);
+select plan(55);
 
 -- People ----------------------------------------------------------------------------------------------------------
--- viewer · friends Maya, Theo, Pia (only shares Only me) · strangers S1–S3 who post publicly · Bex (a friend the viewer
+-- viewer · friends Maya, Theo, Pia (only shares Only me) · strangers S1–S5 who post publicly · Bex (a friend the viewer
 -- has blocked) · Bo (a friend who blocked the viewer) · Dee (a deactivated friend) · Lu (a former friend who shared a list)
 do $$
 declare u record;
@@ -18,14 +18,15 @@ begin
     ('a8000000-0000-4000-8000-000000000005'::uuid,'s1_8','Sol One'),('a8000000-0000-4000-8000-000000000006'::uuid,'s2_8','Sol Two'),
     ('a8000000-0000-4000-8000-000000000007'::uuid,'s3_8','Sol Three'),('a8000000-0000-4000-8000-000000000008'::uuid,'bex8','Bex Blocked'),
     ('a8000000-0000-4000-8000-000000000009'::uuid,'bo8','Bo Blocker'),('a8000000-0000-4000-8000-00000000000a'::uuid,'dee8','Dee Gone'),
-    ('a8000000-0000-4000-8000-00000000000b'::uuid,'lu8','Lu Former')) t(id,handle,name) loop
+    ('a8000000-0000-4000-8000-00000000000b'::uuid,'lu8','Lu Former'),('a8000000-0000-4000-8000-00000000000c'::uuid,'s4_8','Sol Four'),
+    ('a8000000-0000-4000-8000-00000000000d'::uuid,'s5_8','Sol Five')) t(id,handle,name) loop
     insert into auth.users(id,email,aud,role,instance_id) values(u.id,u.handle||'@test.local','authenticated','authenticated','00000000-0000-0000-0000-000000000000');
     insert into public.profiles(id,handle,display_name,setup_checkpoint) values(u.id,u.handle,u.name,'complete');
   end loop;
 end $$;
 create function pg_temp.id(p text) returns uuid language sql immutable as $f$
   select ('a8000000-0000-4000-8000-0000000000'||lpad(case p when 'viewer' then '01' when 'maya' then '02' when 'theo' then '03' when 'pia' then '04'
-    when 's1' then '05' when 's2' then '06' when 's3' then '07' when 'bex' then '08' when 'bo' then '09' when 'dee' then '0a' when 'lu' then '0b' end,2,'0'))::uuid $f$;
+    when 's1' then '05' when 's2' then '06' when 's3' then '07' when 'bex' then '08' when 'bo' then '09' when 'dee' then '0a' when 'lu' then '0b' when 's4' then '0c' when 's5' then '0d' end,2,'0'))::uuid $f$;
 grant execute on function pg_temp.id(text) to authenticated;
 -- Friendships (both directions) with everyone but the strangers.
 insert into public.follows(follower_id,followee_id)
@@ -41,17 +42,19 @@ insert into public.cities(id,city_key,name,region,country_code,latitude,longitud
   case label when 'Lisbon' then 38.72 when 'Porto' then 41.15 when 'Tokyo' then 35.68 when 'Madrid' then 40.42 else 43.65 end,
   case label when 'Lisbon' then -9.14 when 'Porto' then -8.61 when 'Tokyo' then 139.69 when 'Madrid' then -3.70 else -79.38 end from c8;
 create temp table p8(label text primary key, place uuid not null default gen_random_uuid(), experience uuid not null default gen_random_uuid(),
-  city text not null, category public.experience_category not null, google numeric);
-insert into p8(label,city,category,google) values
-  ('Cafe Sent','Lisbon','food_drink',4.2),('Garden Listed','Lisbon','outdoors',4.4),('Bar Loved','Lisbon','nightlife',4.0),
-  ('Museum Been','Lisbon','culture',4.5),('Popular Spot','Lisbon','activities',4.8),('Disliked Diner','Lisbon','food_drink',4.9),
-  ('Private Pick','Lisbon','culture',4.9),('Blocked Fave','Lisbon','culture',4.9),('Later Logged','Lisbon','culture',4.9),
-  ('Porto One','Porto','food_drink',null),('Porto Two','Porto','food_drink',null),('Porto Three','Porto','food_drink',null),
-  ('Madrid Plaza','Madrid','culture',4.1),('Toronto Bakery','Toronto','food_drink',4.3);
+  city text not null, category public.experience_category not null, google numeric, ptype text);
+insert into p8(label,city,category,google,ptype) values
+  ('Cafe Sent','Lisbon','food_drink',4.2,'MKPOICategoryCafe'),('Crowd Favourite','Lisbon','activities',4.6,null),
+  ('Fine Diner','Lisbon','food_drink',4.1,'MKPOICategoryRestaurant'),('Garden Listed','Lisbon','outdoors',4.4,null),('Bar Loved','Lisbon','nightlife',4.0,null),
+  ('Museum Been','Lisbon','culture',4.5,null),('Popular Spot','Lisbon','activities',4.8,null),('Disliked Diner','Lisbon','food_drink',4.9,'MKPOICategoryRestaurant'),
+  ('Private Pick','Lisbon','culture',4.9,null),('Blocked Fave','Lisbon','culture',4.9,null),('Later Logged','Lisbon','culture',4.9,null),
+  ('Porto One','Porto','food_drink',null,'MKPOICategoryCafe'),('Porto Two','Porto','food_drink',null,'MKPOICategoryCafe'),
+  ('Porto Three','Porto','food_drink',null,'MKPOICategoryCafe'),
+  ('Madrid Plaza','Madrid','culture',4.1,null),('Toronto Bakery','Toronto','food_drink',4.3,null);
 grant select on p8, c8 to authenticated;
-insert into public.places(id,name,normalized_name,latitude,longitude,provider,provider_place_id,locality,country_code,country_name,city_id,google_rating)
+insert into public.places(id,name,normalized_name,latitude,longitude,provider,provider_place_id,locality,country_code,country_name,city_id,google_rating,provider_category)
   select p.place,p.label,lower(p.label),c.latitude+0.001*row_number() over (),c.longitude,'fixture','test8-'||p.label,p.city,c.country_code,
-         (select name from public.countries where code=c.country_code),c.id,p.google
+         (select name from public.countries where code=c.country_code),c.id,p.google,p.ptype
   from p8 p join c8 k on k.label=p.city join public.cities c on c.id=k.id;
 insert into public.experiences(id,place_id,category) select experience,place,category from p8;
 create function pg_temp.exp(p text) returns uuid language sql stable as $f$ select experience from p8 where label=p $f$;
@@ -74,11 +77,13 @@ select pg_temp.log('maya','Museum Been','friends');
 select pg_temp.log('s1','Popular Spot','public','liked',8);
 select pg_temp.log('s2','Popular Spot','public','liked',8);
 select pg_temp.log('s3','Popular Spot','public','fine',6);
+select pg_temp.log(w,'Crowd Favourite','public','liked',8) from unnest(array['s1','s2','s3','s4','s5']) w;
+select pg_temp.log('s1','Fine Diner','public','fine',5);
 select pg_temp.log('theo','Disliked Diner','public','disliked',2);
 select pg_temp.log('maya','Later Logged','public','liked',9);
 select pg_temp.log('maya','Madrid Plaza','friends');
 select pg_temp.log('theo','Toronto Bakery','public','liked',9);
--- The viewer: three Liked food places in Porto (so they lean to food and drink), and a visit to Already Been.
+-- The viewer: three Liked cafés in Porto, so they lean to food and drink, and to cafés in particular.
 select pg_temp.log('viewer','Porto One','only_me','liked',9);
 select pg_temp.log('viewer','Porto Two','only_me','liked',8);
 select pg_temp.log('viewer','Porto Three','only_me','liked',7);
@@ -114,8 +119,8 @@ select pg_temp.as_user(pg_temp.id('viewer'));
 insert into r8 values('places',pg_temp.lisbon()),('cities',public.suggested_cities()),('portugal',public.suggested_cities('pt')),
   ('onboarding',public.onboarding_places(38.5,39.0,-9.5,-8.9));
 select is(pg_temp.names((select value from r8 where label='places')),
-  array['Cafe Sent','Bar Loved','Garden Listed','Later Logged','Popular Spot','Museum Been'],
-  'Lisbon: sent (40 + 10 taste), two friends loved (30), shared list (25), one loved (15), then popular and been (5 each, Google breaks the tie)');
+  array['Cafe Sent','Bar Loved','Garden Listed','Later Logged','Crowd Favourite','Museum Been','Fine Diner','Popular Spot'],
+  'Lisbon: sent café (40 + 10 taste), two friends loved (30), shared list (25), one loved (15), then popular, been and half-taste (5 each, Google breaks the tie), then 3 keen ratings (0)');
 select is((pg_temp.place((select value from r8 where label='places'),'Cafe Sent')->>'points')::numeric,50.0,'a sent food place in a food lover''s list scores 40 + 10');
 select is((pg_temp.place((select value from r8 where label='places'),'Bar Loved')->>'points')::numeric,30.0,'two friends who loved it score 15 each');
 select is((pg_temp.place((select value from r8 where label='places'),'Garden Listed')->>'points')::numeric,25.0,'a place on a shared list scores 25');
@@ -132,7 +137,11 @@ select is(pg_temp.place((select value from r8 where label='places'),'Cafe Sent')
 select is(pg_temp.place((select value from r8 where label='places'),'Garden Listed')->'evidence'->'list','{"owner":"Maya Ito","title":"Lisbon"}','whose list it''s on');
 select is(pg_temp.place((select value from r8 where label='places'),'Bar Loved')->'evidence'->'friendsLoved','["Maya Ito","Theo Park"]','who loved it');
 select is(pg_temp.place((select value from r8 where label='places'),'Museum Been')->'evidence'->'friendsBeen','["Maya Ito"]','who''s been');
-select is((pg_temp.place((select value from r8 where label='places'),'Popular Spot')->'evidence'->>'isPopular')::boolean,true,'3 ratings averaging 7.3 is popular');
+select is((pg_temp.place((select value from r8 where label='places'),'Popular Spot')->'evidence'->>'isPopular')::boolean,false,'3 ratings averaging 7.3 are not enough to be popular (smoothed 6.5)');
+select is((pg_temp.place((select value from r8 where label='places'),'Crowd Favourite')->'evidence'->>'isPopular')::boolean,true,'5 ratings of 8 are (smoothed 7.0)');
+select is((pg_temp.place((select value from r8 where label='places'),'Fine Diner')->>'points')::numeric,5.0,'for someone who has only liked cafés, a restaurant gets half the taste points a café does');
+select is(pg_temp.place((select value from r8 where label='places'),'Cafe Sent')->'evidence'->>'likedType','MKPOICategoryCafe','the kind of place you loved, for "Like the cafés you loved"');
+select ok(not (pg_temp.place((select value from r8 where label='places'),'Fine Diner')->'evidence' ? 'likedType'),'no place type is claimed when you have not liked enough of it');
 select is((pg_temp.place((select value from r8 where label='places'),'Cafe Sent')->'evidence'->>'likedInCategory')::int,3,'how many food places you liked');
 select is(pg_temp.place((select value from r8 where label='places'),'Bar Loved')->'experience'->>'followingCount','2','friends rated this: 2');
 

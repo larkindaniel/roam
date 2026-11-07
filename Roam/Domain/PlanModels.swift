@@ -466,12 +466,12 @@ struct TasteProfile: Codable, Hashable, Sendable {
 enum ResearchBrief {
     /// An editable starting point. It holds only the destination, declared tastes, the kinds of places your own
     /// rankings lean towards and the places the member names here, never private notes or friends' identities.
-    static func text(destination: Destination, taste: TasteProfile, liked: [String], leanings: [ExperienceCategory] = []) -> String {
+    static func text(destination: Destination, taste: TasteProfile, liked: [String], leanings: [String] = []) -> String {
         var lines = ["I'm planning time in \(destination.displayName). Recommend places I'd enjoy."]
         var answers = [("Atmosphere", taste.atmosphere), ("Budget", taste.budget), ("Crowds", taste.crowds),
                        ("Novelty", taste.novelty), ("Pace", taste.pace)]
             .compactMap { label, value in value.map { "- \(label): \($0)" } }
-        if !leanings.isEmpty { answers.append("- Places I tend to love: " + leanings.map { $0.title.lowercased() }.joined(separator: ", ")) }
+        if !leanings.isEmpty { answers.append("- Places I tend to love: " + leanings.joined(separator: ", ")) }
         if !answers.isEmpty { lines += ["", "What I like:"] + answers }
         if !liked.isEmpty { lines += ["", "Places I've enjoyed:"] + liked.map { "- \($0)" } }
         lines += ["", "For each suggestion, explain why it fits me and check that it's currently open."]

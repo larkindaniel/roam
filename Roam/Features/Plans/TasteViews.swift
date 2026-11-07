@@ -132,11 +132,11 @@ struct ResearchBriefSheet: View {
     private func build() async {
         let taste = (try? await services.plans.taste()) ?? .empty
         var liked: [String] = []
-        var leanings: [ExperienceCategory] = []
+        var leanings: [String] = []
         if let me = session.userID, let been = try? await services.lists.been(ownerID: me) {
             let loved = been.filter { $0.ownerSentiment == .liked }
             liked = loved.prefix(5).map(\.experience.name)
-            leanings = TasteLean.categories(liked: loved.compactMap(\.experience.category))
+            leanings = TasteLean.labels(liked: loved.map { .init(category: $0.experience.category, appleType: $0.experience.providerCategory) })
         }
         text = ResearchBrief.text(destination: destination, taste: taste, liked: liked, leanings: leanings)
     }

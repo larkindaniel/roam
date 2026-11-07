@@ -102,7 +102,8 @@ the country in view.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
   - **Suggestions:** big place photo cards, ranked by Roam, each with its reason line ("Theo sent you this", "On
-    Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like places you loved", "Popular on Roam"; the
+    Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like the cafés you loved", "Like places you loved",
+    "Popular on Roam"; the
     category when there's none) and the Google stars. Places you've been to, saved or hidden never show. A card opens
     the place. Long-press: Not interested hides it.
 - **Opening a place from here** stays on this map. The map glides to it and the card swaps to the place, halfway up.
@@ -190,5 +191,5 @@ tapping another place or pin swaps the card to it.
   - "+ Add a city", which opens the city search. At least one city is needed.
   - × asks before discarding. Save is at the bottom.
 - **Plan with AI:** copies a prompt for the city or country, or hands it to ChatGPT or Claude. The prompt has your
-  tastes, the kinds of places you tend to love (from your Liked rankings, once there are 3) and up to five places you
-  liked.
+  tastes, the kinds of places you tend to love (cafés, museums: from your Liked rankings, once there are 3) and up to
+  five places you liked.

@@ -101,19 +101,56 @@ final class SuggestionOrderTests: XCTestCase {
 }
 
 final class TasteLeanTests: XCTestCase {
+    private func liked(_ category: ExperienceCategory?, _ type: String? = nil) -> TasteLean.Liked { .init(category: category, appleType: type) }
+
     func testNoLeanUntilEnoughLikedPlaces() {
-        XCTAssertTrue(TasteLean.categories(liked: [.foodDrink, .foodDrink]).isEmpty)
+        XCTAssertTrue(TasteLean.labels(liked: [liked(.foodDrink), liked(.foodDrink)]).isEmpty)
     }
 
-    func testMostLikedCategoriesFirst() {
-        XCTAssertEqual(TasteLean.categories(liked: [.culture, .foodDrink, .foodDrink, .outdoors, .foodDrink, .culture]),
-                       [.foodDrink, .culture, .outdoors])
+    func testKindsOfPlaceComeBeforeBroadCategories() {
+        let labels = TasteLean.labels(liked: [liked(.foodDrink, "MKPOICategoryCafe"), liked(.foodDrink, "MKPOICategoryCafe"),
+                                              liked(.foodDrink, "MKPOICategoryRestaurant"), liked(.culture, "MKPOICategoryMuseum"),
+                                              liked(.culture)])
+        XCTAssertEqual(labels, ["cafés", "food & drink", "culture"], "one restaurant or museum isn't a lean; two cafés are")
+    }
+
+    func testTypesWithoutWordsFallBackToCategories() {
+        XCTAssertEqual(TasteLean.labels(liked: [liked(.activities, "MKPOICategoryBank"), liked(.activities, "MKPOICategoryBank"), liked(.activities)]),
+                       ["activities"])
     }
 
     func testThePlanWithAIPromptIncludesTheLean() {
         let lisbon = Destination(name: "Lisbon", region: nil, countryCode: "PT", countryName: "Portugal", latitude: 0, longitude: 0, radiusMeters: 1)
-        let text = ResearchBrief.text(destination: lisbon, taste: .empty, liked: [], leanings: [.foodDrink, .culture])
-        XCTAssertTrue(text.contains("Places I tend to love: food & drink, culture"))
+        let text = ResearchBrief.text(destination: lisbon, taste: .empty, liked: [], leanings: ["cafés", "museums"])
+        XCTAssertTrue(text.contains("Places I tend to love: cafés, museums"))
         XCTAssertFalse(ResearchBrief.text(destination: lisbon, taste: .empty, liked: []).contains("tend to love"))
+    }
+}
+
+final class PlaceTypeReasonTests: XCTestCase {
+    func testAKindOfPlaceYouLovedBeatsTheBroadCategory() {
+        let evidence = SuggestionEvidence(likedInCategory: 6, likedType: "MKPOICategoryBakery", likedInType: 2, isPopular: true)
+        XCTAssertEqual(SuggestionReason.place(evidence), "Like the bakeries you loved")
+    }
+
+    func testOneOfAKindIsNotALean() {
+        XCTAssertEqual(SuggestionReason.place(SuggestionEvidence(likedInCategory: 4, likedType: "MKPOICategoryCafe", likedInType: 1)),
+                       "Like places you loved")
+    }
+
+    func testTypesWithNoWordingFallBack() {
+        XCTAssertEqual(SuggestionReason.place(SuggestionEvidence(likedInCategory: 3, likedType: "MKPOICategoryParking", likedInType: 5)),
+                       "Like places you loved")
+    }
+
+    func testFriendsStillComeFirst() {
+        XCTAssertEqual(SuggestionReason.place(SuggestionEvidence(friendsBeen: ["Maya Ito"], likedType: "MKPOICategoryCafe", likedInType: 4)),
+                       "Maya has been")
+    }
+
+    func testWordsForCommonTypes() {
+        XCTAssertEqual(PlaceType.plural("MKPOICategoryCafe"), "cafés")
+        XCTAssertEqual(PlaceType.plural("MKPOICategoryWinery"), "wineries")
+        XCTAssertNil(PlaceType.plural(nil))
     }
 }

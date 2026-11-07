@@ -27,10 +27,14 @@ returns jsonb language sql immutable set search_path = '' as $$
     'stale_after_days', 90, 'stale_factor', 0.5,
     -- Each friend who rated it, by their feeling; a friend who's been without rating it.
     'friend_liked', 15, 'friend_fine', 5, 'friend_disliked', -10, 'friend_been', 5,
-    -- Up to this much for a category you lean towards (your share of Liked places in it), once you've liked 3 places.
-    'taste_max', 10, 'taste_min_liked', 3,
+    -- Up to this much for what you lean towards, once you've liked 3 places: half from your share of Liked places in
+    -- its category, half from your share in its Apple place type (cafés, bakeries, museums). The type's half is 0
+    -- when the place has no type or you've liked none of that type. "Like the cafés you loved" needs 2 of that type.
+    'taste_max', 10, 'taste_min_liked', 3, 'taste_type_min_liked', 2,
     -- Rated highly by people on Roam: at least this many ratings averaging at least this score (out of 10).
-    'popular', 5, 'popular_min_raters', 3, 'popular_min_score', 7.0,
+    -- Popular on Roam: the average of the ratings you can see, smoothed as if it started with 5 ratings of 6.0, is 7.0
+    -- or more (about 5 ratings of 8, or 3 of 9 or 10). A couple of keen ratings can't make a place popular.
+    'popular', 5, 'popular_prior_count', 5, 'popular_prior_score', 6.0, 'popular_min_score', 7.0,
     -- A city adds up its best places, then gets more for being on an upcoming trip or your wishlist.
     'city_top_places', 5, 'city_on_trip', 30, 'city_in_trip_country', 15, 'city_saved', 10)
 $$;
@@ -100,7 +104,7 @@ returns table (experience_id uuid, city_id uuid, points numeric, google_rating n
 language sql stable security definer set search_path = '' as $$
   with w as (select app_private.suggestion_weights() as w),
   area as (
-    select e.id as experience_id, e.category, pl.city_id, pl.google_rating, pl.name
+    select e.id as experience_id, e.category, pl.provider_category, pl.city_id, pl.google_rating, pl.name
     from public.experiences e join public.places pl on pl.id = e.place_id
     where pl.status = 'active' and not pl.is_locality
       and (p_min_lat is null or pl.latitude between p_min_lat and p_max_lat)
@@ -149,21 +153,29 @@ language sql stable security definer set search_path = '' as $$
     group by fv.experience_id),
   -- Everyone else's ratings the viewer may see (friends included), for "Popular on Roam".
   community as (
-    select r.experience_id, count(*)::int as raters, round(avg(r.score), 1) as score
-    from public.ratings r join area a on a.experience_id = r.experience_id
+    select r.experience_id, count(*)::int as raters, round(avg(r.score), 1) as score,
+           (sum(r.score) + (w.w->>'popular_prior_count')::numeric * (w.w->>'popular_prior_score')::numeric)
+             / (count(*) + (w.w->>'popular_prior_count')::numeric) >= (w.w->>'popular_min_score')::numeric as is_popular
+    from public.ratings r join area a on a.experience_id = r.experience_id cross join w
     where r.owner_id <> p_viewer and app_private.audience_allows(r.owner_id, r.audience, p_viewer)
-    group by r.experience_id),
+    group by r.experience_id, w.w),
   -- Your own lean: your share of Liked places in each category.
   taste as (
     select r.category, count(*)::numeric / nullif(sum(count(*)) over (), 0) as lean, count(*)::int as liked,
            sum(count(*)) over ()::int as total_liked
     from public.ratings r where r.owner_id = p_viewer and r.sentiment = 'liked'
     group by r.category),
+  -- And in each Apple place type.
+  taste_type as (
+    select pl.provider_category, count(*)::int as liked
+    from public.ratings r join public.experiences e on e.id = r.experience_id join public.places pl on pl.id = e.place_id
+    where r.owner_id = p_viewer and r.sentiment = 'liked' and pl.provider_category is not null
+    group by pl.provider_category),
   scored as (
     select a.experience_id, a.city_id, a.google_rating, a.name, a.category,
            s.senders, s.names as sent_names, s.latest as sent_at, l.list, l.latest as listed_at,
            f.been, f.loved, f.liked, f.fine, f.disliked, f.been_only, c.raters, c.score as community_score,
-           t.liked as liked_in_category, t.lean, t.total_liked,
+           t.liked as liked_in_category, t.lean, t.total_liked, a.provider_category, tt.liked as liked_in_type, c.is_popular,
            coalesce(f.liked * (w.w->>'friend_liked')::numeric + f.fine * (w.w->>'friend_fine')::numeric
                     + f.disliked * (w.w->>'friend_disliked')::numeric + f.been_only * (w.w->>'friend_been')::numeric, 0) as friend_points,
            coalesce(case when s.senders >= 1 then (w.w->>'sent_first')::numeric else 0 end
@@ -173,15 +185,16 @@ language sql stable security definer set search_path = '' as $$
                * case when l.latest < now() - make_interval(days => (w.w->>'stale_after_days')::int) then (w.w->>'stale_factor')::numeric else 1 end end
            + coalesce(f.liked * (w.w->>'friend_liked')::numeric + f.fine * (w.w->>'friend_fine')::numeric
                       + f.disliked * (w.w->>'friend_disliked')::numeric + f.been_only * (w.w->>'friend_been')::numeric, 0)
-           + case when coalesce(t.total_liked, 0) >= (w.w->>'taste_min_liked')::int then coalesce(t.lean, 0) * (w.w->>'taste_max')::numeric else 0 end
-           + case when c.raters >= (w.w->>'popular_min_raters')::int and c.score >= (w.w->>'popular_min_score')::numeric
-               then (w.w->>'popular')::numeric else 0 end as points
+           + case when coalesce(t.total_liked, 0) >= (w.w->>'taste_min_liked')::int
+               then (coalesce(t.lean, 0) + coalesce(tt.liked, 0)::numeric / t.total_liked) / 2 * (w.w->>'taste_max')::numeric else 0 end
+           + case when c.is_popular then (w.w->>'popular')::numeric else 0 end as points
     from area a cross join w
     left join sent s on s.experience_id = a.experience_id
     left join listed l on l.experience_id = a.experience_id
     left join friends f on f.experience_id = a.experience_id
     left join community c on c.experience_id = a.experience_id
     left join taste t on t.category = a.category
+    left join taste_type tt on tt.provider_category = a.provider_category
     -- Only places someone you can see has rated, been to or passed on to you.
     where s.experience_id is not null or l.experience_id is not null or f.experience_id is not null or c.experience_id is not null)
   select experience_id, city_id, round(points, 1), google_rating, name,
@@ -191,8 +204,11 @@ language sql stable security definer set search_path = '' as $$
            'friendsFine', fine, 'friendsDisliked', disliked,
            'communityCount', raters, 'communityScore', community_score,
            'likedInCategory', case when coalesce(total_liked, 0) >= (select (w->>'taste_min_liked')::int from w) then liked_in_category end,
-           'isPopular', coalesce(raters >= (select (w->>'popular_min_raters')::int from w)
-                                 and community_score >= (select (w->>'popular_min_score')::numeric from w), false)))
+           'likedType', case when coalesce(total_liked, 0) >= (select (w->>'taste_min_liked')::int from w)
+                              and liked_in_type >= (select (w->>'taste_type_min_liked')::int from w) then provider_category end,
+           'likedInType', case when coalesce(total_liked, 0) >= (select (w->>'taste_min_liked')::int from w)
+                                and liked_in_type >= (select (w->>'taste_type_min_liked')::int from w) then liked_in_type end,
+           'isPopular', coalesce(is_popular, false)))
   from scored
   -- Places your friends didn't like on balance aren't suggested, whatever your taste or Roam says, unless a friend
   -- passed them on to you.

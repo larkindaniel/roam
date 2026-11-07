@@ -21,6 +21,9 @@ struct SuggestionEvidence: Codable, Hashable, Sendable {
     var communityScore: Score?
     /// How many places in this category you liked, once you've liked enough to have a lean.
     var likedInCategory: Int?
+    /// Apple's type for this place (MKPOICategoryCafe) when you've liked enough of that type, and how many.
+    var likedType: String?
+    var likedInType: Int?
     var isPopular: Bool?
     /// A city on one of your upcoming trips.
     var tripName: String?
@@ -29,17 +32,23 @@ struct SuggestionEvidence: Codable, Hashable, Sendable {
 }
 
 /// One short line saying why something is suggested. The strongest fact wins, in a fixed order:
-/// sent to you → on a friend's list → friends loved it → a friend has been → like places you loved → popular on Roam.
+/// sent to you → on a friend's list → friends loved it → a friend has been → like the cafés you loved (its Apple type)
+/// → like places you loved (its category) → popular on Roam.
 /// Google's rating is never a reason line: the card already shows its stars.
 enum SuggestionReason {
     /// How many places you need to have liked in a category before "Like places you loved" shows.
     static let tasteMinimumLiked = 3
+    /// How many of one Apple place type before "Like the cafés you loved" shows.
+    static let typeMinimumLiked = 2
 
     static func place(_ evidence: SuggestionEvidence) -> String? {
         if let senders = nonEmpty(evidence.sentBy) { return "\(people(senders)) sent you this" }
         if let list = evidence.list { return listLine(list) }
         if let loved = nonEmpty(evidence.friendsLoved) { return lovedLine(loved, suffix: "") }
         if let been = nonEmpty(evidence.friendsBeen) { return beenLine(been) }
+        if (evidence.likedInType ?? 0) >= typeMinimumLiked, let kind = PlaceType.plural(evidence.likedType) {
+            return "Like the \(kind) you loved"
+        }
         if (evidence.likedInCategory ?? 0) >= tasteMinimumLiked { return "Like places you loved" }
         if evidence.isPopular == true { return "Popular on Roam" }
         return nil
@@ -118,14 +127,44 @@ enum SuggestionOrder {
     }
 }
 
-/// What your own rankings say you lean towards: the categories you've liked most, for the Plan with AI prompt.
+/// Apple's place types in words, for reason lines and the Plan with AI prompt. Only the kinds of place people travel
+/// for; anything else (banks, parking, petrol stations) has no wording and falls back to the broad category.
+enum PlaceType {
+    static func plural(_ appleType: String?) -> String? {
+        guard let appleType else { return nil }
+        return names[appleType.replacingOccurrences(of: "MKPOICategory", with: "")]
+    }
+
+    private static let names: [String: String] = [
+        "AmusementPark": "theme parks", "Aquarium": "aquariums", "Bakery": "bakeries", "Beach": "beaches",
+        "Brewery": "breweries", "Cafe": "cafés", "Campground": "campsites", "Castle": "castles", "Distillery": "distilleries",
+        "Fairground": "fairgrounds", "FoodMarket": "food markets", "Fortress": "forts", "Golf": "golf courses",
+        "Hiking": "hikes", "Hotel": "hotels", "Kayaking": "kayaking spots", "Landmark": "landmarks", "Library": "libraries",
+        "Marina": "marinas", "MovieTheater": "cinemas", "Museum": "museums", "MusicVenue": "music venues",
+        "NationalMonument": "monuments", "NationalPark": "national parks", "Nightlife": "bars", "Park": "parks",
+        "Planetarium": "planetariums", "Restaurant": "restaurants", "RockClimbing": "climbing spots", "Skiing": "ski areas",
+        "Spa": "spas", "Stadium": "stadiums", "Store": "shops", "Surfing": "surf spots", "Swimming": "swimming spots",
+        "Theater": "theatres", "Winery": "wineries", "Zoo": "zoos",
+    ]
+}
+
+/// What your own rankings say you lean towards, for the Plan with AI prompt: the kinds of place you've liked most
+/// (cafés, museums), topped up with broad categories, once you've liked enough places to say.
 enum TasteLean {
-    static func categories(liked: [ExperienceCategory], minimum: Int = SuggestionReason.tasteMinimumLiked) -> [ExperienceCategory] {
+    struct Liked: Hashable, Sendable {
+        var category: ExperienceCategory?
+        var appleType: String?
+    }
+
+    static func labels(liked: [Liked], minimum: Int = SuggestionReason.tasteMinimumLiked, limit: Int = 3) -> [String] {
         guard liked.count >= minimum else { return [] }
-        let counts = Dictionary(grouping: liked, by: { $0 }).mapValues(\.count)
-        return counts.sorted { lhs, rhs in
-            lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key.rawValue < rhs.key.rawValue
-        }
-        .prefix(3).map(\.key)
+        let types = ranked(liked.compactMap { PlaceType.plural($0.appleType) }).filter { $0.count >= SuggestionReason.typeMinimumLiked }.map(\.label)
+        let categories = ranked(liked.compactMap { $0.category?.title.lowercased() }).map(\.label)
+        return Array((types + categories).uniqued().prefix(limit))
+    }
+
+    private static func ranked(_ labels: [String]) -> [(label: String, count: Int)] {
+        Dictionary(grouping: labels, by: { $0 }).map { ($0.key, $0.value.count) }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.label < $1.label }
     }
 }
