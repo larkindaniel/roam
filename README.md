@@ -61,13 +61,6 @@ python3 -I scripts/tests/test_account_deletion.py         # deletion worker (add
 
 Without `TEST_RUNNER_ROAM_BACKEND_TESTS=1` the real-backend integration tests skip, and a skip is not a pass.
 
-### Without Xcode
-
-The database tests need only Docker and the Supabase CLI (`npx supabase@2 …` works without installing it). The Swift
-build, unit tests, UI journeys, screenshots and an onboarding recording run on GitHub's macOS runners: run the
-**iOS evidence** workflow from the Actions tab, or add the `ios-evidence` label to a pull request, then download the
-artifact. macOS minutes are limited on a private repo, so it only runs when asked.
-
 ## Not verified locally
 
 Real Sign in with Apple (token exchange, reauthentication and revocation) needs Apple credentials and a device. An iOS 18 runtime or device pass is still outstanding. Hosted Supabase and SMTP, scheduled cleanup and deletion workers, public privacy/terms/support pages and a moderation owner are release setup. See `docs/m8-verification.md`.
