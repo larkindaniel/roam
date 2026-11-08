@@ -274,6 +274,8 @@ struct NoteBox: View {
     var body: some View {
         TextEditor(text: $text)
             .focused($focused)
+            // Scrolling within a long note mustn't close the keyboard mid-sentence.
+            .scrollDismissesKeyboard(.interactively)
             // Return adds a new line, so the keyboard gets its own Done to put it away (it otherwise covers Save).
             .toolbar {
                 if focused {

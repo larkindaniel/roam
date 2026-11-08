@@ -218,6 +218,8 @@ struct ForYouRootView: View {
         .background(Roam.paper)
         .task(id: query) { await placeSearch.run(query, services: services) }
         // Tapping Discover in the tab bar scrolls back to the top, with the search row showing.
+        // Opening a result puts the keyboard away, so it doesn't spring back over the results on the way back.
+        .onChange(of: router.path(for: .forYou).count) { _, depth in if depth > 0 { searchFocused = false } }
         .onChange(of: router.scrollToTopRequests[.forYou]) { _, _ in
             withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
         }
