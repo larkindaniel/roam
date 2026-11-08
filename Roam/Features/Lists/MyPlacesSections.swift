@@ -1179,23 +1179,63 @@ struct DateRangeRow: View {
         .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
         .accessibilityIdentifier("date-\(title.lowercased())")
         .popover(isPresented: Binding(get: { picking == title }, set: { if !$0 { picking = nil } })) {
-            VStack(spacing: Theme.Spacing.s) {
-                DatePicker(title, selection: Binding(get: { date.wrappedValue ?? minimum ?? Calendar.current.startOfDay(for: Date()) },
-                                                     set: { date.wrappedValue = $0; picking = nil }),
-                           in: (minimum ?? .distantPast)..., displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .labelsHidden()
-                // The calendar doesn't report a tap on the day already picked, so taking a date off is a button.
-                if date.wrappedValue != nil {
-                    Button("Remove date", role: .destructive) { date.wrappedValue = nil; picking = nil }
-                        .font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("date-\(title.lowercased())-remove")
-                }
-            }
-            .padding()
-            .frame(width: 340)
-            .presentationCompactAdaptation(.popover)
+            CalendarPopover(title: title, value: date.wrappedValue, fallback: minimum ?? Calendar.current.startOfDay(for: Date()),
+                            earliest: minimum, identifier: "date-\(title.lowercased())",
+                            onPick: { date.wrappedValue = $0; picking = nil },
+                            onRemove: date.wrappedValue == nil ? nil : { date.wrappedValue = nil; picking = nil })
         }
+    }
+}
+
+/// A calendar in a popover, shared by every date in the app. Browsing to another month or year never closes it;
+/// tapping a day in the month on screen picks it and closes; Done picks whatever is shown, so the day it opens on
+/// (today, or the start date) can be picked too, which a tap on the already-selected day can't do.
+struct CalendarPopover: View {
+    let title: String
+    /// The date already set, if any.
+    let value: Date?
+    /// Where the calendar opens when nothing is set yet.
+    let fallback: Date
+    var earliest: Date?
+    var latest: Date?
+    var timeZone: TimeZone = .current
+    var identifier = "date"
+    let onPick: (Date) -> Void
+    var onRemove: (() -> Void)?
+
+    @State private var draft: Date?
+
+    private var shown: Date { draft ?? value ?? fallback }
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.s) {
+            DatePicker(title, selection: Binding(get: { shown }, set: { picked in
+                let before = shown
+                draft = picked
+                // A tap on a day in the month on screen picks it; changing month or year keeps the calendar open.
+                var calendar = Calendar.current
+                calendar.timeZone = timeZone
+                if calendar.isDate(picked, equalTo: before, toGranularity: .month) { onPick(picked) }
+            }), in: (earliest ?? .distantPast)...(latest ?? .distantFuture), displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .environment(\.timeZone, timeZone)
+            HStack {
+                if let onRemove {
+                    Button("Remove date", role: .destructive, action: onRemove)
+                        .accessibilityIdentifier("\(identifier)-remove")
+                }
+                Spacer()
+                Button("Done") { onPick(shown) }
+                    .fontWeight(.semibold)
+                    .accessibilityIdentifier("\(identifier)-done")
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, Theme.Spacing.s)
+        }
+        .padding()
+        .frame(width: 340)
+        .presentationCompactAdaptation(.popover)
     }
 }
 

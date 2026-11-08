@@ -155,10 +155,16 @@ extension FixtureBackend: PlanService {
 
     func passport(ownerID: UUID) async throws -> [PassportCountry] {
         _ = try await authenticatedActor()
-        let cities = (fixtureVisitedCities[ownerID] ?? []) + (fixtureHomeCities[ownerID] ?? [])
+        // Cities you've marked as been, your homes, and the cities of places you've visited, as on the server.
+        let visited = visits.values.filter { $0.owner == ownerID }.compactMap { visit -> Destination? in
+            guard let c = experiences[visit.experience].flatMap({ places[$0.placeID] })?.candidate, let city = c.locality else { return nil }
+            return Destination(name: city, region: c.region, countryCode: c.countryCode, countryName: c.countryName,
+                               latitude: c.latitude, longitude: c.longitude, radiusMeters: 15_000)
+        }
+        let cities = (fixtureVisitedCities[ownerID] ?? []) + (fixtureHomeCities[ownerID] ?? []) + visited.uniqued { $0.id }
         return Dictionary(grouping: cities) { $0.countryCode ?? "" }.map { code, cities in
             PassportCountry(code: code, name: cities.first?.countryName ?? code,
-                            cities: cities.uniqued().map { PassportCity(city: $0, placeCount: 0, visibleCount: 0, isMarked: true, isHome: false) },
+                            cities: cities.uniqued { $0.id }.map { PassportCity(city: $0, placeCount: 0, visibleCount: 0, isMarked: true, isHome: false) },
                             otherPlaceCount: 0, otherVisibleCount: 0)
         }.sorted { $0.name < $1.name }
     }

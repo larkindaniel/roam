@@ -20,6 +20,8 @@ struct ActivityDetailView: View {
             if let model { content(model) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background(Theme.groupedCanvas)
+        // The comment field sits at the bottom, where the tab bar would cover it.
+        .roamTabBar(hidden: true)
         .navigationTitle("Post")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

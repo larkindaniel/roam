@@ -110,8 +110,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **City chip:** a slim grey capsule 24pt tall with `.subheadline.weight(.medium)` text, a small `chevron.right` and
   `Roam.ink.opacity(0.08)`. It opens the city.
 - **Google rating:** one small line, `★ 4.6 (1.2K)`, beside the city chip. The count is grey.
-- **Date ranges:** `DateRangeRow`, two pills `Start → End` with calendar icons. Each opens a calendar in a popover,
-  starts empty and has Remove date.
+- **Date ranges:** `DateRangeRow`, two pills `Start → End` with calendar icons. Each opens `CalendarPopover`, starts
+  empty and has Remove date.
+- **Calendars:** every date uses `CalendarPopover`. Tapping a day picks it and closes; changing month or year keeps it
+  open; Done picks the day shown (so today, or the start date, can be picked too).
 - **Single date on the log screen:** a chip showing the date with an `xmark.circle.fill` on its right to clear it.
   Tapping anywhere else opens a graphical calendar in a popover that closes when you pick a day.
 - **Text fields:** no autocapitalisation or autocorrect on search, names or notes. Notes use `NoteBox`, a roomy box

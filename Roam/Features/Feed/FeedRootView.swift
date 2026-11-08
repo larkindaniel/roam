@@ -13,6 +13,7 @@ struct FeedRootView: View {
     var body: some View {
         ScrollView { content.padding(.horizontal, Theme.Spacing.l).padding(.vertical, Theme.Spacing.m) }
             .scrollPosition($scroll)
+            .solidTopEdge()
             // Tapping Friends in the tab bar scrolls back to the top.
             .onChange(of: router.scrollToTopRequests[.friends]) { _, _ in withAnimation { scroll.scrollTo(edge: .top) } }
             .background(Roam.paper)
