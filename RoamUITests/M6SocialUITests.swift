@@ -169,11 +169,22 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("accept-trip-invitation")).tap()
         waitFor(element("trip-detail"))
         waitFor(app.staticTexts["Lisbon weekend"])
+        let visit = waitFor(element("trip-entry-Harbor Lantern Café"))
+        if !visit.isHittable { app.swipeUp() }
+        XCTAssertTrue(visit.isHittable)
         capture("m6-14-accepted-trip")
 
         element("tab-friends").tap()
         let trip = waitFor(element("activity-trip"))
         trip.tap()
+        waitFor(element("trip-detail"))
+
+        element("tab-myplaces").tap()
+        let been = waitFor(element("myplaces-tab-been"))
+        been.tap()
+        let joined = waitFor(element("trip-row-Lisbon weekend"))
+        if !joined.isHittable { app.swipeUp() }
+        joined.tap()
         waitFor(element("trip-detail"))
     }
 

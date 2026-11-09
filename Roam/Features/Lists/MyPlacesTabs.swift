@@ -163,7 +163,7 @@ struct PastTripsCard: View {
 
     private var trips: [TripSummary] {
         let today = MyTimeline.today()
-        let past = model.trips.filter { $0.isOwn && $0.phase(today: today) == .past }
+        let past = model.trips.filter { $0.phase(today: today) == .past }
         return past.sorted { a, b in
             guard let first = a.endDate ?? a.startDate else { return false }
             guard let second = b.endDate ?? b.startDate else { return true }
@@ -195,7 +195,7 @@ struct UpcomingTripsCard: View {
 
     private var trips: [TripSummary] {
         let today = MyTimeline.today()
-        let upcoming = model.trips.filter { $0.isOwn && $0.phase(today: today) != .past }
+        let upcoming = model.trips.filter { $0.phase(today: today) != .past }
         // Soonest first; every trip has dates, so none should be missing one.
         return upcoming.sorted { a, b in
             guard let first = a.startDate else { return false }

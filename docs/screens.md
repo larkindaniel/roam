@@ -83,6 +83,7 @@ over it.
     - Home cities.
     - Countries you've been to, as photo cards. Each opens its country page.
     - Past trips (rows with a green mark). Each opens its trip page.
+  - Both tabs include trips you own and trips you've joined. Past trips are in Been.
 
 ## City page
 
@@ -171,7 +172,9 @@ tapping another place or pin swaps the card to it.
   - **Several countries:** one card per country, with the country's photo on top (opens the country) and its cities as
     rows (each opens the city).
   - Swiping a city or country deletes it from the trip.
-- **Bottom:** "+ Add to trip" opens the city search. Visits on the trip are filtered to the viewer's access.
+- **Visits:** Scroll below the itinerary to see the places logged on the trip, with who went and when. Tap a row to
+  open its activity, or the place if it has no activity. This section appears once there's a visit you can see.
+- **Add to trip:** opens the city search.
 
 ## Lists and Sent to you
 
