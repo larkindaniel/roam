@@ -53,6 +53,25 @@ final class M6SocialUITests: RoamUITestCase {
         capture("m6-02-feed-liked")
     }
 
+    func testLogPlaceFromFriends() {
+        launch(tab: "friends", location: "denied")
+        waitFor(element("feed-list"))
+        let add = waitFor(app.buttons["log-place"])
+        let tab = waitFor(app.buttons["tab-myplaces"])
+        XCTAssertLessThan(add.frame.maxY, tab.frame.minY, "The shortcut clears the tab bar")
+        capture("m6-21-friends-log-shortcut")
+        add.tap()
+
+        let search = waitFor(app.searchFields.firstMatch)
+        search.tap()
+        search.typeText("Harbor Lantern")
+        waitFor(element("log-place-known-Harbor Lantern Café")).tap()
+        waitFor(element("rating-details"))
+        waitFor(element("rating-okay")).tap()
+        waitForDisappearance(element("log-place-sheet"))
+        XCTAssertTrue(element("feed-list").exists)
+    }
+
     func testCommentFailureKeepsTextAndRetryPostsOnce() {
         launch(scenario: "comment-uncertain", tab: "profile")
         waitFor(element("profile-activity"), timeout: 10)
