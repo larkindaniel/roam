@@ -13,6 +13,7 @@ struct RatingFlowView: View {
     @State private var showsCancel = false
     @State private var showsDate = false
     @State private var pickedPhotos: [PhotosPickerItem] = []
+    @State private var choosingCompanions = false
     @State private var trips: [TripSummary] = []
     @State private var home: Destination?
     /// Saving straight from a comparison: the log form stays away while it saves and closes.
@@ -62,19 +63,19 @@ struct RatingFlowView: View {
                 let flow = RatingFlowModel(request: request, accountID: userID, ranking: services.ranking,
                                            storage: services.storage, currentAccount: { account.userID }, photos: photos)
                 if request.mode == .editVisit, let original = request.existingVisit {
-                    flow.saveEdit = { [services] visit in
-                        let date = VisitDate(date: visit.date, timeZoneIdentifier: visit.timeZoneIdentifier)
-                        _ = try await services.memories.updateVisit(visitID: original.id, note: visit.publicNote, date: date,
-                                                                    mediaIDs: visit.mediaIDs, operationID: UUID())
-                        if let audience = visit.audience, audience != original.audience {
-                            try await services.plans.setVisitAudience(visitID: original.id, audience: audience)
-                        }
-                        if visit.tripID != original.tripID {
-                            try await services.plans.setVisitTrip(visitID: original.id, tripID: visit.tripID)
-                        }
+                    flow.saveEdit = { [services] visit, operationID in
+                        _ = try await services.memories.updateVisit(visitID: original.id, payload: visit, operationID: operationID)
                     }
                 }
                 model = flow
+            }
+        }
+        .sheet(isPresented: $choosingCompanions) {
+            if let model {
+                FriendSelectionSheet(title: "With", action: "Done", multiple: true,
+                                     selection: Set(model.visit.companionIDs ?? [])) { selection in
+                    model.setCompanions(selection)
+                }
             }
         }
         .roamSheetStyle()
@@ -336,6 +337,16 @@ struct RatingFlowView: View {
                     .task(id: request.experience.id) { await loadPlacement(model) }
                 }
             }
+            if request.mode != .rerank {
+                Button { choosingCompanions = true } label: {
+                    let count = model.visit.companionIDs?.count ?? 0
+                    bubbleLabel(symbol: "person.2", text: count == 0 ? "With" : (count == 1 ? "With 1 friend" : "With \(count) friends"),
+                                trailing: "chevron.right")
+                }
+                .buttonStyle(.plain)
+                .roamCard(padding: 0)
+                .accessibilityIdentifier("rating-with")
+            }
             // Photos: the system picker straight away; once there are some, they show one at a time, swiping for more.
             if let photos = model.photos {
                 Group {
@@ -380,7 +391,7 @@ struct RatingFlowView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("Who can see this").font(.footnote.weight(.semibold))
                     // Only me, Friends, Public; a new log is public unless you choose otherwise.
-                    Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .public }, set: { model.setAudience($0) })) {
+                    Picker("Who can see this", selection: Binding(get: { model.visit.audience ?? .friends }, set: { model.setAudience($0) })) {
                         ForEach(Audience.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -408,7 +419,7 @@ struct RatingFlowView: View {
         let place = request.experience
         let spot = CLLocation(latitude: place.latitude, longitude: place.longitude)
         if let match = all.first(where: { trip in
-            guard trip.isOwn, trip.phase(today: today) == .now else { return false }
+            guard trip.canEditItinerary, trip.phase(today: today) == .now else { return false }
             let nearCity = trip.cities.contains { city in
                 CityMatch.same(place, city) || (!(city.latitude == 0 && city.longitude == 0)
                     && CLLocation(latitude: city.latitude, longitude: city.longitude).distance(from: spot) <= CityMatch.homeRadius)

@@ -234,6 +234,9 @@ struct ForYouRootView: View {
                 .padding(.bottom, Theme.Spacing.s)
                 .offset(y: barsHidden && !hasQuery && !searchFocused ? -140 : 0)
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
+                .accessibilityHidden(barsHidden && !hasQuery && !searchFocused)
+                .allowsHitTesting(!barsHidden || hasQuery || searchFocused)
+                .background(Roam.paper.ignoresSafeArea(edges: .top))
         }
         .navigationTitle("Discover")
         .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
@@ -386,32 +389,16 @@ struct ForYouRootView: View {
     private func picksSection(_ picks: [DirectShare]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             sectionTitle("Picked for you")
-            ForEach(picks) { pick in
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    Text(pick.title).font(.roamTitle()).foregroundStyle(Roam.ink)
-                    Text(pickLine(pick)).font(.footnote).foregroundStyle(Roam.inkMuted)
-                    if !pick.message.isEmpty { Text("\u{201C}\(pick.message)\u{201D}") }
-                    HStack(spacing: Theme.Spacing.s) {
-                        Button(pick.experience != nil ? "Open place" : (pick.list != nil ? "Open list" : "Open trip")) { open(pick) }
-                            .buttonStyle(.borderedProminent)
-                            .buttonBorderShape(.capsule)
-                            .accessibilityIdentifier("foryou-pick-open-\(pick.title)")
-                        if let place = pick.experience, !place.viewer.isBookmarked {
-                            Button("Save") { Task { await library.setBookmark(place.id, saved: true) } }
-                                .buttonStyle(.bordered)
-                                .buttonBorderShape(.capsule)
-                                .accessibilityIdentifier("foryou-pick-save-\(pick.title)")
-                        }
-                    }
+            let recent = Array(picks.prefix(3))
+            VStack(spacing: 0) {
+                ForEach(recent) { pick in
+                    ReceivedShareRow(share: pick)
+                    if pick.id != recent.last?.id { RowSeparator() }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .roamCard()
             }
+            .roamCard(padding: Theme.Spacing.m)
         }
     }
-
-
-
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
@@ -444,17 +431,7 @@ struct ForYouRootView: View {
         }
     }
 
-    private func pickLine(_ pick: DirectShare) -> String {
-        if let list = pick.list { return "A list from \(pick.sender.displayName) · \(list.itemCount) \(list.itemCount == 1 ? "place" : "places")" }
-        if pick.trip != nil { return "A trip from \(pick.sender.displayName)" }
-        return "From \(pick.sender.displayName)"
-    }
 
-    private func open(_ pick: DirectShare) {
-        if let place = pick.experience { router.push(.experience(place.id)) }
-        else if let list = pick.list { router.push(.list(list.id)) }
-        else if let trip = pick.trip { router.push(.trip(trip.id)) }
-    }
 }
 
 /// A city's card, like an upcoming trip's: led by its Google photo, else a photo from a place there.

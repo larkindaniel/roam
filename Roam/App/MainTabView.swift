@@ -170,8 +170,7 @@ struct RouteDestinationView: View {
         case .search:
             SearchRootView()
         case .ownProfile:
-            // For now your profile is just settings: no stats or passport.
-            SettingsView()
+            ProfileRootView()
         case .trip(let id):
             TripDetailView(tripID: id)
         case .placeGroup(let title, let subtitle, let ids):
@@ -196,6 +195,10 @@ struct RouteDestinationView: View {
             PassportCityView(ownerID: ownerID, city: city)
         case .lists:
             PlaceListsView()
+        case .receivedShares:
+            ReceivedSharesView()
+        case .tripInvitations:
+            TripInvitationsView()
         case .list(let id):
             PlaceListDetailView(listID: id)
         case .taste:
@@ -226,6 +229,8 @@ struct RouteDestinationView: View {
             PersonalListsView(ownerID: id, initialKind: kind)
         case .gallery(let experienceID, let visitID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID)
+        case .visitPhoto(let experienceID, let visitID, let photoID):
+            VisitGalleryView(experienceID: experienceID, visitID: visitID, initialPhotoID: photoID)
         case .activity(let id):
             ActivityDetailView(activityID: id)
         case .notifications:

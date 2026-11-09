@@ -13,7 +13,11 @@ extension SupabaseBackend: MemoryService {
 
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit {
         let payload = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: note, mediaIDs: mediaIDs)
-        return try await rpc("update_visit", ["p_visit_id": RPC.uuid(visitID), "p_payload": try RPC.json(payload), "p_operation_id": RPC.uuid(operationID)])
+        return try await updateVisit(visitID: visitID, payload: payload, operationID: operationID)
+    }
+
+    func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit {
+        try await rpc("update_visit", ["p_visit_id": RPC.uuid(visitID), "p_payload": try RPC.json(payload), "p_operation_id": RPC.uuid(operationID)])
     }
 
     func privateNote(experienceID: UUID) async throws -> PrivateNote? {

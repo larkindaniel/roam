@@ -42,6 +42,7 @@ struct Visit: Codable, Hashable, Identifiable, Sendable {
     var updatedAt: Date
     var audience: Audience = .friends
     var tripID: UUID? = nil
+    var companions: [MemberSummary]? = nil
 
     /// Newest by visit date, unknown dates last, stable ID tie-break.
     static func historyOrder(_ lhs: Visit, _ rhs: Visit) -> Bool {
@@ -71,6 +72,7 @@ struct PublicMemory: Codable, Hashable, Identifiable, Sendable {
     var activityID: UUID? = nil
     /// A friend's current score for this place, when they ranked it.
     var score: Score? = nil
+    var companions: [MemberSummary]? = nil
 }
 
 struct PrivateNote: Codable, Hashable, Sendable {
@@ -141,11 +143,16 @@ enum ActivityType: String, Codable, Hashable, Sendable {
 
     var verb: String {
         switch self {
-        case .rating: return "ranked"
-        case .revisit: return "revisited"
-        case .rerank: return "re-ranked"
+        case .rating: return "visited"
+        case .revisit: return "went back to"
+        case .rerank: return "updated their rating for"
         }
     }
+}
+
+struct ActivityTrip: Codable, Hashable, Identifiable, Sendable {
+    let id: UUID
+    let name: String
 }
 
 struct ActivityItem: Codable, Hashable, Identifiable, Sendable {
@@ -166,6 +173,8 @@ struct ActivityItem: Codable, Hashable, Identifiable, Sendable {
     var commentCount: Int
     var likedByViewer: Bool
     var isOwn: Bool
+    var trip: ActivityTrip? = nil
+    var companions: [MemberSummary]? = nil
 }
 
 struct Comment: Codable, Hashable, Identifiable, Sendable {

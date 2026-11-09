@@ -5,6 +5,7 @@ struct PlaceListsView: View {
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
     @State private var lists: LoadPhase<[PlaceList]> = .idle
+    @State private var received: [DirectShare] = []
     @State private var creating = false
     @State private var newTitle = ""
     @State private var error: String?
@@ -22,15 +23,15 @@ struct PlaceListsView: View {
                             .accessibilityIdentifier("lists-empty")
                     }
                     ForEach(value) { list in
-                        Button { router.push(.list(list.id)) } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(list.title).font(.headline).foregroundStyle(Roam.ink)
-                                Text("\(list.itemCount) \(list.itemCount == 1 ? "place" : "places")").font(.footnote).foregroundStyle(Roam.inkMuted)
-                            }
-                            .frame(minHeight: Theme.minimumHitTarget)
-                        }
+                        SocialNavigationRow(title: list.title, symbol: "list.bullet") { router.push(.list(list.id)) }
                         .accessibilityIdentifier("list-\(list.title)")
                     }
+                }
+                .listRowBackground(Roam.paperRaised)
+            }
+            if !received.isEmpty {
+                Section("Shared with you") {
+                    ForEach(received) { ReceivedShareRow(share: $0) }
                 }
                 .listRowBackground(Roam.paperRaised)
             }
@@ -41,7 +42,7 @@ struct PlaceListsView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Roam.paper)
-        .navigationTitle("Custom lists")
+        .navigationTitle("Lists")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("New list") { newTitle = ""; creating = true }.accessibilityIdentifier("list-new")
@@ -59,7 +60,14 @@ struct PlaceListsView: View {
 
     private func load() async {
         if lists.value == nil { lists = .loading }
-        do { lists = .loaded(try await services.plans.myLists()) }
+        do {
+            async let own = services.plans.myLists()
+            async let shares = services.plans.sharedWithMe()
+            lists = .loaded(try await own)
+            let receivedShares = try await shares
+            var seen = Set<UUID>()
+            received = receivedShares.filter { $0.list.map { seen.insert($0.id).inserted } ?? false }
+        }
         catch { if lists.value == nil { lists = .failed(error.roamMessage) } }
     }
 
@@ -80,6 +88,9 @@ struct PlaceListDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: LoadPhase<PlaceListDetail> = .idle
     @State private var showsShare = false
+    @State private var showingAccess = false
+    @State private var renaming = false
+    @State private var newTitle = ""
     @State private var confirmingDelete = false
     @State private var actionError: String?
 
@@ -101,12 +112,8 @@ struct PlaceListDetailView: View {
                             .font(.subheadline).foregroundStyle(Roam.inkMuted)
                     }
                     ForEach(value.items) { item in
-                        Button { router.push(.experience(item.id)) } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink)
-                                if !item.note.isEmpty { Text(item.note).font(.subheadline).foregroundStyle(Roam.ink) }
-                            }
-                            .frame(minHeight: Theme.minimumHitTarget)
+                        SocialNavigationRow(title: item.experience.name, symbol: "mappin", subtitle: item.note, place: item.experience) {
+                            router.push(.experience(item.id))
                         }
                         .swipeActions {
                             if value.summary.isOwn {
@@ -131,6 +138,8 @@ struct PlaceListDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Share with a friend") { showsShare = true }
+                        Button("Manage access") { showingAccess = true }
+                        Button("Rename") { newTitle = detail.value?.summary.title ?? ""; renaming = true }
                         Button("Delete list", role: .destructive) { confirmingDelete = true }
                     } label: { Image(systemName: "ellipsis") }
                     .accessibilityLabel("List options")
@@ -139,6 +148,20 @@ struct PlaceListDetailView: View {
         }
         .sheet(isPresented: $showsShare) {
             ShareSheet(target: .list(listID), title: detail.value?.summary.title ?? "this list").presentationBackground(Roam.paper)
+        }
+        .sheet(isPresented: $showingAccess) { ListAccessSheet(listID: listID) }
+        .alert("Rename list", isPresented: $renaming) {
+            TextField("Name", text: $newTitle)
+            Button("Save") {
+                Task {
+                    guard let list = detail.value?.summary else { return }
+                    do {
+                        _ = try await services.plans.saveList(id: listID, title: newTitle, description: list.description)
+                        await load()
+                    } catch { actionError = error.roamMessage }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog("Delete this list?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete list", role: .destructive) {
@@ -236,7 +259,76 @@ struct AddToListSheet: View {
     }
 }
 
-/// Sends a place, list or trip to one friend with a personal message.
+private struct ListAccessSheet: View {
+    let listID: UUID
+    @Environment(AppServices.self) private var services
+    @Environment(\.dismiss) private var dismiss
+    @State private var people: LoadPhase<[MemberSummary]> = .idle
+    @State private var pending: UUID?
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                switch people {
+                case .idle, .loading: SkeletonList(rows: 2)
+                case .failed(let message):
+                    InlineRetryView(message: message) { Task { await load() } }
+                case .loaded(let members):
+                    if members.isEmpty {
+                        Text("This list is private").foregroundStyle(Roam.inkMuted)
+                    }
+                    ForEach(members) { member in
+                        HStack(spacing: Theme.Spacing.m) {
+                            AvatarView(member: member, size: 48)
+                            Text(member.displayName).font(.headline)
+                            Spacer(minLength: 0)
+                            Menu {
+                                Button("Remove access", role: .destructive) {
+                                    Task { await revoke(member.id) }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis").frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+                            }
+                            .disabled(pending != nil)
+                            .accessibilityLabel("Access for \(member.displayName)")
+                        }
+                    }
+                }
+                if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Roam.paper)
+            .navigationTitle("List access")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+                }
+            }
+            .task { await load() }
+        }
+        .roamSheetStyle()
+    }
+
+    private func load() async {
+        do { people = .loaded(try await services.plans.listRecipients(listID: listID)) }
+        catch { people = .failed(error.roamMessage) }
+    }
+
+    private func revoke(_ recipient: UUID) async {
+        guard pending == nil else { return }
+        pending = recipient
+        error = nil
+        defer { pending = nil }
+        do {
+            try await services.plans.revokeListShare(listID: listID, recipientID: recipient)
+            await load()
+        } catch { self.error = error.roamMessage }
+    }
+}
+
+/// Sends a recommendation to an existing friend.
 struct ShareSheet: View {
     let target: ShareTarget
     let title: String
@@ -244,78 +336,67 @@ struct ShareSheet: View {
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
-    @State private var friends: LoadPhase<[MemberRow]> = .idle
-    @State private var recipient: UUID?
+    @State private var selection: Set<UUID> = []
     @State private var message = ""
     @State private var error: String?
     @State private var sending = false
-    /// Kept across retries so a repeated send can't create a second share.
-    @State private var operationID = UUID()
+    @State private var submitted: (recipient: UUID, note: String, operation: UUID)?
 
     var body: some View {
         NavigationStack {
-            List { Group {
-                Section("Friend") {
-                    switch friends {
-                    case .idle, .loading: ProgressView()
-                    case .failed(let text): Text(text).foregroundStyle(Roam.signal)
-                    case .loaded(let rows):
-                        if rows.isEmpty { Text("Add a friend first, then you can share with them.").foregroundStyle(Roam.inkMuted) }
-                        ForEach(rows) { row in
-                            Button {
-                                recipient = row.id
-                            } label: {
-                                HStack {
-                                    Text(row.member.displayName).foregroundStyle(Roam.ink)
-                                    Spacer()
-                                    if recipient == row.id { Image(systemName: "checkmark").foregroundStyle(Roam.ink) }
-                                }
-                                .frame(minHeight: Theme.minimumHitTarget)
-                            }
-                            .accessibilityAddTraits(recipient == row.id ? .isSelected : [])
-                            .accessibilityIdentifier("share-friend-\(row.member.handle)")
-                        }
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    Text(title).font(.roamTitle()).accessibilityAddTraits(.isHeader)
+                    FriendPickerRows(selection: $selection)
+                    TextField("Add a note (optional)", text: $message, axis: .vertical)
+                        .lineLimit(2...5)
+                        .roamCard()
+                        .accessibilityIdentifier("share-message")
+                    if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
                 }
-                .listRowBackground(Roam.paperRaised)
-                Section("Message") {
-                    TextField("Why you'd love it", text: $message, axis: .vertical).accessibilityIdentifier("share-message")
-                }
-                .listRowBackground(Roam.paperRaised)
-                if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
+                .disabled(sending)
+                .padding(Theme.Spacing.l)
             }
-            .listRowBackground(Roam.paperRaised)
-            }
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Share \(title)")
+            .scrollDismissesKeyboard(.interactively)
+            .background(Roam.paper)
+            .navigationTitle("Send")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Share") { Task { await send() } }
-                        .disabled(recipient == nil || sending)
-                        .accessibilityIdentifier("share-send")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .disabled(sending)
+                        .accessibilityLabel("Close")
                 }
             }
-            .task { await load() }
+            .safeAreaInset(edge: .bottom) {
+                Button { Task { await send() } } label: {
+                    Group {
+                        if sending { ProgressView() } else { Text("Send").fontWeight(.semibold) }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Capsule())
+                .disabled(selection.isEmpty || sending || message.count > 500)
+                .accessibilityIdentifier("share-send")
+                .padding(Theme.Spacing.l)
+            }
         }
+        .interactiveDismissDisabled(sending)
         .roamSheetStyle()
-        .presentationDetents([.medium, .large])
-    }
-
-    private func load() async {
-        guard let me = session.userID else { return }
-        do { friends = .loaded(try await services.social.following(of: me, query: "", cursor: nil).items) }
-        catch { friends = .failed(error.roamMessage) }
     }
 
     private func send() async {
-        guard let recipient else { return }
+        guard !sending, let recipient = selection.first else { return }
+        let note = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let operation = submitted.flatMap { $0.recipient == recipient && $0.note == note ? $0.operation : nil } ?? UUID()
+        submitted = (recipient, note, operation)
         sending = true
+        error = nil
         defer { sending = false }
         do {
-            try await services.plans.share(target, with: recipient, message: message, operationID: operationID)
+            try await services.plans.share(target, with: recipient, message: note, operationID: operation)
             dismiss()
-        } catch { self.error = error.roamMessage }
+        } catch { self.error = session.handle(error) }
     }
 }

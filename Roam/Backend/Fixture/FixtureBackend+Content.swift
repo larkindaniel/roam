@@ -47,7 +47,7 @@ extension FixtureBackend: ExperienceService {
             return MyRating(ratingID: row.id, category: row.category, sentiment: placement.sentiment, score: placement.score, rank: placement.rank,
                             groupSize: placement.groupSize, categoryCount: ranking.entryCount, firstRatedAt: row.firstRatedAt)
         }
-        let myVisits = visits.values.filter { $0.owner == me && $0.experience == experienceID }.map(visitModel).sorted(by: Visit.historyOrder)
+        let myVisits = visits.values.filter { $0.owner == me && $0.experience == experienceID }.map { visitModel($0) }.sorted(by: Visit.historyOrder)
         let publicRows = activities.values.filter { $0.experience == experienceID && canSeeActivity($0, viewer: me) }
             .sorted { ($0.publishedAt, $0.id.uuidString) > ($1.publishedAt, $1.id.uuidString) }
         let c = place.candidate
@@ -95,7 +95,7 @@ extension FixtureBackend: ListService {
               let place = places[experience.placeID] else { return nil }
         let rating = ratings.values.first { $0.owner == owner && $0.experience == experienceID }
         let placement = rating.flatMap { ranking(owner: owner, category: $0.category).placement(forExperience: experienceID) }
-        let ownerVisits = visits.values.filter { $0.owner == owner && $0.experience == experienceID }.map(visitModel).sorted(by: Visit.historyOrder)
+        let ownerVisits = visits.values.filter { $0.owner == owner && $0.experience == experienceID }.map { visitModel($0) }.sorted(by: Visit.historyOrder)
         let c = place.candidate
         return ListEntry(experience: summary, ownerCategory: rating?.category ?? experience.category, ownerSentiment: placement?.sentiment,
                          ownerScore: placement?.score, ownerRank: placement?.rank, ownerFirstRatedAt: rating?.firstRatedAt,
@@ -169,10 +169,11 @@ extension FixtureBackend: RankingService {
         } catch {
             throw RoamError.validation("The comparisons no longer match this ranking. Compare again.")
         }
-        let anchor = visits.values.filter { $0.owner == me && $0.experience == request.experienceID }.map(visitModel).sorted(by: Visit.historyOrder).first
+        let anchor = visits.values.filter { $0.owner == me && $0.experience == request.experienceID }.map { visitModel($0) }.sorted(by: Visit.historyOrder).first
         if request.intent == .rerank, request.visit != nil, anchor == nil { throw RoamError.validation("No retained visit is available to edit.") }
         // Validate all enrichment before any write so failure leaves no partial effect.
         if let visit = request.visit {
+            try validateVisitSocial(visit, owner: me)
             if let issue = Validation.publicNote(visit.publicNote) { throw RoamError.validation(issue.localizedDescription) }
             let zone = try visitTimeZone(visit.timeZoneIdentifier)
             if Validation.visitDate(visit.date, today: LocalDate.today(in: zone)) != nil { throw RoamError.validation(ValidationIssue.futureDate.localizedDescription) }
@@ -204,7 +205,8 @@ extension FixtureBackend: RankingService {
             let payload = request.visit ?? VisitPayload(date: nil, timeZoneIdentifier: nil, publicNote: "", mediaIDs: [])
             visits[newVisit] = VisitRow(id: newVisit, owner: me, experience: request.experienceID, date: payload.date,
                                         timeZone: payload.timeZoneIdentifier, note: payload.publicNote, mediaIDs: payload.mediaIDs,
-                                        createdAt: now, updatedAt: now, audience: payload.audience ?? .friends, tripID: payload.tripID)
+                                        createdAt: now, updatedAt: now, audience: payload.audience ?? .friends, tripID: payload.tripID,
+                                        companionIDs: payload.companionIDs ?? [])
             for (index, mediaID) in payload.mediaIDs.enumerated() {
                 media[mediaID]?.attached = true
                 media[mediaID]?.visit = newVisit
@@ -256,6 +258,7 @@ extension FixtureBackend: RankingService {
             throw RoamError.validation("Choose a category for this place.")
         }
         if experiences[request.experienceID]?.category == nil { experiences[request.experienceID]?.category = category }
+        try validateVisitSocial(request.visit, owner: me)
         if let issue = Validation.publicNote(request.visit.publicNote) { throw RoamError.validation(issue.localizedDescription) }
         let zone = try visitTimeZone(request.visit.timeZoneIdentifier)
         if Validation.visitDate(request.visit.date, today: LocalDate.today(in: zone)) != nil { throw RoamError.validation(ValidationIssue.futureDate.localizedDescription) }
@@ -267,7 +270,8 @@ extension FixtureBackend: RankingService {
         let visitID = UUID()
         visits[visitID] = VisitRow(id: visitID, owner: me, experience: request.experienceID, date: request.visit.date,
                                    timeZone: request.visit.timeZoneIdentifier, note: request.visit.publicNote, mediaIDs: request.visit.mediaIDs,
-                                   createdAt: now, updatedAt: now, audience: request.visit.audience ?? .friends, tripID: request.visit.tripID)
+                                   createdAt: now, updatedAt: now, audience: request.visit.audience ?? .friends, tripID: request.visit.tripID,
+                                   companionIDs: request.visit.companionIDs ?? [])
         for (index, mediaID) in request.visit.mediaIDs.enumerated() {
             media[mediaID]?.attached = true
             media[mediaID]?.visit = visitID

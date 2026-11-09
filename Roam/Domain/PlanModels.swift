@@ -44,9 +44,12 @@ struct TripSummary: Codable, Hashable, Identifiable, Sendable {
     var cities: [Destination] = []
     /// Whole countries named for the trip, as ISO codes, before any of their cities are picked.
     var countries: [String] = []
+    var canEdit: Bool = false
+
+    var canEditItinerary: Bool { isOwn || canEdit }
 
     private enum CodingKeys: String, CodingKey {
-        case id, owner, name, description, startDate, endDate, status, isOwn, plannedCount, visitedCount, stops, cities, countries
+        case id, owner, name, description, startDate, endDate, status, isOwn, plannedCount, visitedCount, stops, cities, countries, canEdit
     }
 
     /// Whether the trip goes to this country: named for it, or one of its cities is there.
@@ -71,6 +74,7 @@ extension TripSummary {
         stops = try c.decodeIfPresent([String].self, forKey: .stops) ?? []
         cities = try c.decodeIfPresent([Destination].self, forKey: .cities) ?? []
         countries = try c.decodeIfPresent([String].self, forKey: .countries) ?? []
+        canEdit = try c.decodeIfPresent(Bool.self, forKey: .canEdit) ?? isOwn
     }
 
     /// Where the trip sits on your timeline, from its dates when it has them.
@@ -189,29 +193,51 @@ struct TripPlace: Codable, Hashable, Identifiable, Sendable {
 struct TripDetail: Codable, Hashable, Sendable {
     var summary: TripSummary
     var places: [TripPlace]
+    var members: [TripMember]
 
-    private enum CodingKeys: String, CodingKey { case places }
+    private enum CodingKeys: String, CodingKey { case places, members }
 
-    init(summary: TripSummary, places: [TripPlace]) {
+    init(summary: TripSummary, places: [TripPlace], members: [TripMember] = []) {
         self.summary = summary
         self.places = places
+        self.members = members
     }
 
     init(from decoder: Decoder) throws {
         summary = try TripSummary(from: decoder)
         places = try decoder.container(keyedBy: CodingKeys.self).decode([TripPlace].self, forKey: .places)
+        members = try decoder.container(keyedBy: CodingKeys.self).decodeIfPresent([TripMember].self, forKey: .members) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
         try summary.encode(to: encoder)
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(places, forKey: .places)
+        try container.encode(members, forKey: .members)
     }
 
     var placesByStop: [(stop: String, places: [TripPlace])] {
         let groups = Dictionary(grouping: places, by: \.stop)
         return groups.keys.sorted().map { ($0, groups[$0] ?? []) }
     }
+}
+
+struct TripMember: Codable, Hashable, Identifiable, Sendable {
+    var member: MemberSummary
+    var accepted: Bool
+    var id: UUID { member.id }
+}
+
+struct TripInvitation: Codable, Hashable, Identifiable, Sendable {
+    let id: UUID
+    let name: String
+    let owner: MemberSummary
+    let startDate: LocalDate?
+    let endDate: LocalDate?
+}
+
+enum TripMembershipAction: String, Sendable {
+    case invite, accept, decline, leave, remove
 }
 
 struct TripDraft: Hashable, Sendable {
@@ -325,6 +351,8 @@ struct TripFeedEntry: Codable, Hashable, Identifiable, Sendable {
     var createdAt: Date
     var score: Score?
     var activityID: UUID?
+    var author: MemberSummary? = nil
+    var companions: [MemberSummary]? = nil
 }
 
 /// Where one visit on a trip was.

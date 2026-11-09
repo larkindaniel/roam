@@ -80,7 +80,7 @@ struct NotificationsView: View {
 
     private func row(_ notification: AppNotification, model: NotificationsModel) -> some View {
         Button {
-            Task { if let route = await model.open(notification) { router.push(route) } }
+            Task { if let route = await model.open(notification, viewerID: session.userID) { router.push(route) } }
         } label: {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
                 AvatarView(member: notification.actor, size: 40)
@@ -119,7 +119,7 @@ struct NotificationsView: View {
     }
 }
 
-/// S21: followers and following with search, paging and follow controls.
+/// Friends and incoming requests, with search and paging.
 struct FollowListView: View {
     let userID: UUID
     let initialSegment: FollowSegment
@@ -155,6 +155,15 @@ struct FollowListView: View {
         .background(Theme.groupedCanvas)
         .navigationTitle(segment.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isOwn {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { router.showFindPeople() } label: { Image(systemName: "person.badge.plus") }
+                        .accessibilityLabel("Find people")
+                        .accessibilityIdentifier("find-people")
+                }
+            }
+        }
         .searchable(text: $query, prompt: "Search by name or handle")
         // Type as you like: no capitalising or correcting.
         .textInputAutocapitalization(.never)
@@ -186,27 +195,30 @@ struct FollowListView: View {
                     .padding(.top, Theme.Spacing.xl)
             }
         } else {
-            List { Group {
-                if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: query) } } }
-                if let error = model.actionError { Text(error).foregroundStyle(Theme.disliked) }
-                ForEach(model.rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.friendState == .received && !row.isSelf ? "Wants to be friends" : nil,
-                                  followState: followState(row, model: model),
-                                  onOpen: { router.push(.member(row.id)) },
-                                  onToggleFollow: { Task { await model.apply(row.friendState.primaryAction, to: row) } })
-                    .swipeActions {
-                        if row.friendState == .received {
-                            Button("Decline", role: .destructive) { Task { await model.apply(.decline, to: row) } }
+            List {
+                Section {
+                    if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: query) } } }
+                    if let error = model.actionError { Text(error).foregroundStyle(Theme.disliked) }
+                    ForEach(model.rows) { row in
+                        MemberRowView(member: row.member, subtitle: row.friendState == .received && !row.isSelf ? "Wants to be friends" : nil,
+                                      followState: followState(row, model: model),
+                                      onOpen: { router.push(.member(row.id)) },
+                                      onToggleFollow: { Task { await model.apply(row.friendState.primaryAction, to: row) } })
+                        .swipeActions {
+                            if row.friendState == .received {
+                                Button("Decline", role: .destructive) { Task { await model.apply(.decline, to: row) } }
+                            }
                         }
                     }
+                    PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
+                        Task { await model.loadMore() }
+                    }
                 }
-                PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
-                    Task { await model.loadMore() }
-                }
-                .listRowBackground(Color.clear)
+                .listRowBackground(Roam.paperRaised)
             }
-            .listRowBackground(Roam.paperRaised)
-            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.bottom, RoamTabBar.reservedHeight, for: .scrollContent)
             .accessibilityIdentifier("follow-list-rows")
         }
     }

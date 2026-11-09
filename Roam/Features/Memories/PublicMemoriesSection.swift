@@ -219,10 +219,18 @@ struct FriendMemoriesSection: View {
     }
 
     private func row(_ memory: PublicMemory) -> some View {
-        line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
-        // Profiles are set aside for now (MemberProfiles), so the row only opens one once they're back.
+        VStack(alignment: .leading, spacing: 0) {
+            line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
+            if let companions = memory.companions, !companions.isEmpty {
+                Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
+                    .font(.footnote).foregroundStyle(Roam.inkMuted)
+                    .padding(.leading, 48 + Theme.Spacing.m)
+                    .padding(.bottom, Theme.Spacing.s)
+            }
+        }
         .onTapGesture { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
         .accessibilityAddTraits(MemberProfiles.available && onOpenAuthor != nil ? .isButton : [])
+        .accessibilityAction { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
         .contextMenu {
             Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
         }

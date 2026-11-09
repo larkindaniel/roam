@@ -20,6 +20,18 @@ extension SupabaseBackend: PlanService {
         try await rpcVoid("delete_trip", ["p_trip_id": RPC.uuid(id)])
     }
 
+    func setTripDates(_ draft: TripDraft) async throws -> TripSummary {
+        try await rpc("set_trip_dates", ["p_trip_id": RPC.uuid(draft.id), "p_start": RPC.date(draft.startDate),
+                                         "p_end": RPC.date(draft.endDate), "p_status": RPC.string(draft.status.rawValue)])
+    }
+
+    func tripInvitations() async throws -> [TripInvitation] { try await rpc("trip_invitations") }
+
+    func setTripMembership(tripID: UUID, memberID: UUID, action: TripMembershipAction) async throws {
+        try await rpcVoid("set_trip_membership", ["p_trip_id": RPC.uuid(tripID), "p_member_id": RPC.uuid(memberID),
+                                                 "p_action": RPC.string(action.rawValue)])
+    }
+
     func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws {
         try await rpcVoid("set_trip_place", ["p_trip_id": RPC.uuid(tripID), "p_experience_id": RPC.uuid(experienceID),
                                              "p_stop": RPC.string(stop), "p_present": RPC.bool(present)])
@@ -159,6 +171,18 @@ extension SupabaseBackend: PlanService {
 
     func sharedWithMe() async throws -> [DirectShare] { try await rpc("shared_with_me") }
 
+    func listRecipients(listID: UUID) async throws -> [MemberSummary] {
+        try await rpc("list_recipients", ["p_list_id": RPC.uuid(listID)])
+    }
+
+    func revokeListShare(listID: UUID, recipientID: UUID) async throws {
+        try await rpcVoid("revoke_list_share", ["p_list_id": RPC.uuid(listID), "p_recipient_id": RPC.uuid(recipientID)])
+    }
+
+    func removeMyVisitTag(visitID: UUID) async throws {
+        try await rpcVoid("remove_my_visit_tag", ["p_visit_id": RPC.uuid(visitID)])
+    }
+
     func searchRoamPlaces(query: String) async throws -> [ExperienceSummary] {
         try await rpc("search_roam_places", ["p_query": RPC.string(query)])
     }
@@ -185,6 +209,10 @@ extension SupabaseBackend: PlanService {
 
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry] {
         try await rpc("trip_updates", ["p_owner": RPC.uuid(ownerID), "p_trip_id": RPC.uuid(tripID)])
+    }
+
+    func tripVisits(tripID: UUID) async throws -> [TripFeedEntry] {
+        try await rpc("trip_updates", ["p_owner": RPC.uuid(nil), "p_trip_id": RPC.uuid(tripID)])
     }
 
     func suggestedPlaces(in bounds: GeoBounds) async throws -> [DiscoverPlace] {

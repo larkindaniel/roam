@@ -8,7 +8,7 @@ extension FixtureBackend: MemoryService {
         let me = try await authenticatedActor()
         if scenario == "gallery-read-failure", injectedContentFaults.insert("visit-read").inserted { throw RoamError.timeout }
         guard let row = visits[visitID], audienceAllows(owner: row.owner, audience: row.audience, viewer: me) else { throw RoamError.notFound }
-        return visitModel(row)
+        return visitModel(row, viewer: me)
     }
 
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
@@ -22,20 +22,28 @@ extension FixtureBackend: MemoryService {
         }
         let page = Array(rows.prefix(Limits.pageSize))
         return Page(items: page.map {
-            let visit = visitModel($0)
+            let visit = visitModel($0, viewer: me)
             let latestPost = activities.values.filter { $0.visit == visit.id }
                 .max { ($0.publishedAt, $0.id.uuidString) < ($1.publishedAt, $1.id.uuidString) }
             return PublicMemory(id: visit.id, author: memberSummary($0.owner), experienceID: visit.experienceID,
                                 visitDate: visit.visitDate, publicNote: visit.publicNote, media: visit.media,
                                 createdAt: visit.createdAt, updatedAt: visit.updatedAt, isOwn: $0.owner == me,
-                                activityID: latestPost?.id)
+                                activityID: latestPost?.id, companions: visit.companions)
         }, nextCursor: rows.count > Limits.pageSize ? page.last.map { Self.cursor(date: $0.createdAt, id: $0.id) } : nil)
     }
 
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit {
+        let payload = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: note, mediaIDs: mediaIDs)
+        return try await updateVisit(visitID: visitID, payload: payload, operationID: operationID)
+    }
+
+    func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit {
         let me = try await authenticatedActor()
         let key = "\(me)|\(operationID)"
-        let intent = FixtureVisitEdit(visitID: visitID, note: note, date: date, mediaIDs: mediaIDs)
+        let date = VisitDate(date: payload.date, timeZoneIdentifier: payload.timeZoneIdentifier)
+        let note = payload.publicNote
+        let mediaIDs = payload.mediaIDs
+        let intent = FixtureVisitEdit(visitID: visitID, payload: payload)
         let digest = try MutationFingerprint.digest(intent)
         if let receipt = receipts[key] {
             guard receipt.hash == digest, let result = receipt.result as? Visit else { throw RoamError.conflict("This save was already used for a different change.") }
@@ -43,6 +51,7 @@ extension FixtureBackend: MemoryService {
         }
         guard var row = visits[visitID] else { throw RoamError.notFound }
         guard row.owner == me else { throw RoamError.forbidden }
+        try validateVisitSocial(payload, owner: me)
         if let issue = Validation.publicNote(note) { throw RoamError.validation(issue.localizedDescription) }
         let zone: TimeZone
         if let identifier = date.timeZoneIdentifier, !identifier.isEmpty {
@@ -60,6 +69,10 @@ extension FixtureBackend: MemoryService {
             media[id]?.attached = true; media[id]?.visit = visitID; media[id]?.position = position
         }
         row.note = note; row.date = date.date; row.timeZone = date.timeZoneIdentifier; row.mediaIDs = mediaIDs; row.updatedAt = Date()
+        if let audience = payload.audience { row.audience = audience }
+        if let tripID = payload.tripID { row.tripID = tripID }
+        else if payload.replaceTrip == true { row.tripID = nil }
+        if let companions = payload.companionIDs { row.companionIDs = companions }
         visits[visitID] = row
         let result = visitModel(row)
         receipts[key] = (digest, result)
@@ -104,7 +117,11 @@ extension FixtureBackend: MemoryService {
     }
 }
 
-private struct FixtureVisitEdit: Encodable { let kind = "update_visit"; let visitID: UUID; let note: String; let date: VisitDate; let mediaIDs: [UUID] }
+private struct FixtureVisitEdit: Encodable {
+    let kind = "update_visit"
+    let visitID: UUID
+    let payload: VisitPayload
+}
 private struct FixturePrivateEdit: Encodable { let kind: String; let experienceID: UUID; let text: String? }
 private struct FixturePrivateDelete {}
 private struct FixtureUploadIntent: Encodable { let width: Int; let height: Int; let purpose: MediaPurpose; let digest: String }
