@@ -80,8 +80,29 @@ final class LaunchOptionsTests: XCTestCase {
         XCTAssertEqual(options.simulateLocation, "denied")
     }
 
-    func testDefaultIsRealBackend() {
-        XCTAssertEqual(LaunchOptions.current(arguments: ["Roam"]).backend, .supabase)
+    func testConfiguredLaunchUsesRealBackend() {
+        XCTAssertEqual(LaunchOptions.current(arguments: ["Roam"], hasBackendConfiguration: true).backend, .supabase)
+    }
+
+    func testExplicitRealBackendWinsWithoutConfiguration() {
+        let options = LaunchOptions.current(arguments: ["Roam", "-roam-backend", "supabase"], hasBackendConfiguration: false)
+        XCTAssertEqual(options.backend, .supabase)
+        XCTAssertNil(options.fixtureAccount)
+    }
+
+    #if targetEnvironment(simulator)
+    func testUnconfiguredSimulatorOpensDemo() {
+        let options = LaunchOptions.current(arguments: ["Roam"], hasBackendConfiguration: false)
+        XCTAssertEqual(options.backend, .fixture)
+        XCTAssertEqual(options.fixtureAccount, "maya")
+        XCTAssertEqual(options.fixtureScenario, "social-activities")
+    }
+    #endif
+
+    func testExplicitFixtureModeCanStillStartSignedOut() {
+        let options = LaunchOptions.current(arguments: ["Roam", "-roam-backend", "fixture"], hasBackendConfiguration: false)
+        XCTAssertEqual(options.backend, .fixture)
+        XCTAssertNil(options.fixtureAccount)
     }
 }
 
