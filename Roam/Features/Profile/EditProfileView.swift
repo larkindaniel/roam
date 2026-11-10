@@ -162,6 +162,7 @@ struct EditProfileView: View {
     @State private var showsHomePicker = false
     @State private var homes: [Destination] = []
     @State private var confirmingDiscard = false
+    @FocusState private var bioFocused: Bool
 
     var body: some View {
         Group {
@@ -287,6 +288,13 @@ struct EditProfileView: View {
                 TextField("A line about how you travel", text: $model.draft.bio, axis: .vertical)
                     .textInputAutocapitalization(.never)
                     .lineLimit(2...5)
+                    .focused($bioFocused)
+                    // The field fills its whole box (the row's padding moves inside it), so a tap anywhere in the box
+                    // starts typing, not just on the first line.
+                    .padding(.vertical, 11)
+                    .contentShape(Rectangle())
+                    .onTapGesture { bioFocused = true }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .accessibilityIdentifier("edit-profile-bio")
                 issue(model.bioIssue)
             } header: {

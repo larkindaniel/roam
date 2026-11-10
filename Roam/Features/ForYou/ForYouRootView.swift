@@ -206,6 +206,7 @@ struct ForYouRootView: View {
                 }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+                    .solidTopEdge()
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
@@ -218,6 +219,8 @@ struct ForYouRootView: View {
         .background(Roam.paper)
         .task(id: query) { await placeSearch.run(query, services: services) }
         // Tapping Discover in the tab bar scrolls back to the top, with the search row showing.
+        // Opening a result puts the keyboard away, so it doesn't spring back over the results on the way back.
+        .onChange(of: router.path(for: .forYou).count) { _, depth in if depth > 0 { searchFocused = false } }
         .onChange(of: router.scrollToTopRequests[.forYou]) { _, _ in
             withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
         }

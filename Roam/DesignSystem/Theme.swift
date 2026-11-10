@@ -218,3 +218,11 @@ extension View {
         accessibilityElement(children: .contain).accessibilityIdentifier(identifier)
     }
 }
+
+extension View {
+    /// Content scrolling under a see-through bar (or the clock) fades out firmly, so it never collides with the title
+    /// or the time. iOS 18's bars get their own background on scroll and need nothing.
+    @ViewBuilder func solidTopEdge() -> some View {
+        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.hard, for: .top) } else { self }
+    }
+}

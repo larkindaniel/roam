@@ -130,14 +130,18 @@ struct MapStill: View {
     /// The place's category symbol, drawn in the pin as on its own page.
     var symbol = "mappin"
     var tint: Color = .red
+    /// Room kept clear at the bottom for a card's name and line: the pin and Apple's Maps mark sit above it.
+    var textInset: CGFloat = 0
 
     var body: some View {
         Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)),
             interactionModes: []) {
             Marker("", systemImage: symbol, coordinate: coordinate).tint(tint)
         }
-        // Full Apple Maps colour, like Explore.
-        .mapStyle(.standard(elevation: .realistic, emphasis: .automatic, pointsOfInterest: .all))
+        .safeAreaPadding(.bottom, textInset)
+        // Apple Maps colour, softened under a card's text so the name stays readable.
+        .mapStyle(.standard(elevation: .realistic, emphasis: textInset > 0 ? .muted : .automatic,
+                            pointsOfInterest: textInset > 0 ? .excludingAll : .all))
         .allowsHitTesting(false)
         .accessibilityLabel("Map of where it is")
     }

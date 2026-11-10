@@ -150,14 +150,14 @@ struct PlacePhotoView: View {
                     } else if let url {
                         WebImage(url: url) { ProgressView() } failure: {
                             if let location {
-                                MapStill(coordinate: location, symbol: placeholderSymbol)
+                                MapStill(coordinate: location, symbol: placeholderSymbol, textInset: height >= 150 ? height * 0.36 : 0)
                             } else {
                                 Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                             }
                         }
                         .accessibilityLabel(label)
                     } else if let location {
-                        MapStill(coordinate: location, symbol: placeholderSymbol)
+                        MapStill(coordinate: location, symbol: placeholderSymbol, textInset: height >= 150 ? height * 0.36 : 0)
                     } else {
                         Image(systemName: placeholderSymbol).font(.largeTitle).foregroundStyle(Roam.inkMuted)
                     }

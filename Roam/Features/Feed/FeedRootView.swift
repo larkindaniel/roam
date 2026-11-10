@@ -19,6 +19,7 @@ struct FeedRootView: View {
             .padding(.vertical, Theme.Spacing.m)
         }
         .scrollPosition($scroll)
+        .solidTopEdge()
         .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
         .background(Roam.paper)
         .navigationTitle("Friends")
@@ -34,6 +35,7 @@ struct FeedRootView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { router.push(.notifications) } label: {
                     Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
+                        .symbolRenderingMode(.hierarchical)
                 }
                 .accessibilityLabel("Notifications, \(model?.unreadCount ?? 0) unread")
                 .accessibilityIdentifier("open-notifications")

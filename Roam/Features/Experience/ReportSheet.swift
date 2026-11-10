@@ -12,6 +12,7 @@ struct ReportSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var reason: ReportReason?
     @State private var text = ""
+    @FocusState private var detailsFocused: Bool
     @State private var busy = false
     @State private var error: String?
     @State private var receipt: ReportReceipt?
@@ -47,6 +48,12 @@ struct ReportSheet: View {
                     Section {
                         TextField("Add details (optional)", text: $text, axis: .vertical)
                             .lineLimit(3...8)
+                            .focused($detailsFocused)
+                            // The field fills its whole box, so a tap anywhere in it starts typing.
+                            .padding(.vertical, 11)
+                            .contentShape(Rectangle())
+                            .onTapGesture { detailsFocused = true }
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .accessibilityIdentifier("report-details")
                     } footer: {
                         Text("\(text.count)/\(Limits.reportTextMax)").foregroundStyle(text.count > Limits.reportTextMax ? Theme.disliked : .secondary)

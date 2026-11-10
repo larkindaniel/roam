@@ -240,18 +240,12 @@ struct RatingFlowView: View {
         .accessibilityIdentifier("rating-edit-date")
         .roamCard(padding: 0)
         .popover(isPresented: $showsDate) {
-            DatePicker("Visit date", selection: Binding(
-                get: { (model.visit.date ?? model.today).date(in: zone) },
-                set: { picked in
-                    model.updateDetails(note: model.visit.publicNote, date: LocalDate(date: picked, timeZone: zone))
-                    showsDate = false
-                }), in: ...model.today.date(in: zone), displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-                .environment(\.timeZone, zone)
-                .padding(Theme.Spacing.m)
-                .frame(width: 320)
-                .presentationCompactAdaptation(.popover)
+            CalendarPopover(title: "Visit date", value: model.visit.date?.date(in: zone), fallback: model.today.date(in: zone),
+                            latest: model.today.date(in: zone), timeZone: zone, identifier: "rating-date",
+                            onPick: { picked in
+                                model.updateDetails(note: model.visit.publicNote, date: LocalDate(date: picked, timeZone: zone))
+                                showsDate = false
+                            })
         }
     }
 
