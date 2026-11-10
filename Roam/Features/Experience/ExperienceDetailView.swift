@@ -188,6 +188,7 @@ struct ExperienceDetailView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.openURL) private var openURL
     @State private var friendMemories: [PublicMemory] = []
+    @State private var recommendations: [DirectShare] = []
     /// Your own photos of this place (from your logs), shown ahead of Google's.
     @State private var myPhotos: [String] = []
     @State private var model: ExperienceDetailModel?
@@ -395,6 +396,27 @@ struct ExperienceDetailView: View {
                     CityGuideCard(name: summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate,
                                   showsPhoto: false, within: summary.category == .outdoors ? 30_000 : 3_000, emptySpacing: Theme.Spacing.xl)
                 }
+                if !recommendations.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                        ForEach(recommendations) { share in
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                                Button { router.push(.member(share.sender.id)) } label: {
+                                    Label("\(share.sender.displayName) sent you this", systemImage: "paperplane")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .buttonStyle(.plain)
+                                if !share.message.isEmpty { Text(share.message).font(.subheadline) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .roamCard()
+                    .accessibilityIdentifier("place-recommendations")
+                }
+                SocialNavigationRow(title: "Add to list", symbol: "list.bullet") {
+                    router.sheet = .addToList(experienceID: summary.id, name: summary.name)
+                }
+                .roamCard(padding: Theme.Spacing.m)
                 // What you logged here comes first, right under the photos and blurb.
                 memories(detail)
                 if let refreshError = model?.refreshError {
@@ -403,8 +425,10 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                // Your own stars from your ranking come first, then friends'; a friend's row opens their profile.
-                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenAuthor: { router.push(.member($0)) },
+                // Your own stars from your ranking come first, then friends' visits at this place.
+                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenVisits: { friend in
+                    router.push(.friendPlaceVisits(placeID: summary.id, placeName: summary.name, friend: friend))
+                },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)
@@ -443,7 +467,9 @@ struct ExperienceDetailView: View {
         async let memories: Void = memoriesModel?.load() ?? ()
         async let friends = try? services.plans.friendMemories(experienceID: experienceID)
         async let mine = services.plans.myPhotos(experienceID: experienceID, country: nil, region: nil, regionName: nil, city: nil)
+        async let shares = try? services.plans.sharedWithMe()
         let loadedFriends = await friends
+        recommendations = (await shares ?? []).filter { $0.experience?.id == experienceID }
         _ = await (detail, memories)
         if let loadedFriends { friendMemories = loadedFriends }
         myPhotos = await mine
@@ -539,9 +565,7 @@ struct ExperienceDetailView: View {
                              inactive: visited) {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
-                // Sending isn't ready yet, so Send shows greyed out.
-                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Send (coming soon)", identifier: "detail-recommend",
-                             inactive: true) {
+                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Send", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)

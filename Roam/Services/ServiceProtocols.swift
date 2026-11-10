@@ -159,6 +159,8 @@ struct VisitPayload: Codable, Hashable, Sendable {
     /// Nil keeps a visit's current audience; a new visit then defaults to friends on the server.
     var audience: Audience? = nil
     var tripID: UUID? = nil
+    var companionIDs: [UUID]? = nil
+    var replaceTrip: Bool? = nil
 }
 
 struct RatingCommitRequest: Codable, Hashable, Sendable {
@@ -234,13 +236,25 @@ struct StagedMedia: Codable, Hashable, Sendable {
 protocol MemoryService: AnyObject, Sendable {
     func visit(visitID: UUID) async throws -> Visit
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory>
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory>
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit
+    func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit
     func privateNote(experienceID: UUID) async throws -> PrivateNote?
     func savePrivateNote(experienceID: UUID, text: String, operationID: UUID) async throws -> PrivateNote
     func deletePrivateNote(experienceID: UUID, operationID: UUID) async throws
 }
 
 extension MemoryService {
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        throw RoamError.notFound
+    }
+
+    func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit {
+        try await updateVisit(visitID: visitID, note: payload.publicNote,
+                              date: VisitDate(date: payload.date, timeZoneIdentifier: payload.timeZoneIdentifier),
+                              mediaIDs: payload.mediaIDs, operationID: operationID)
+    }
+
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID]) async throws -> Visit {
         try await updateVisit(visitID: visitID, note: note, date: date, mediaIDs: mediaIDs, operationID: UUID())
     }
@@ -283,6 +297,7 @@ protocol SocialService: AnyObject, Sendable {
 
 protocol FeedService: AnyObject, Sendable {
     func feed(cursor: String?) async throws -> Page<ActivityItem>
+    func friendsActivity(cursor: String?) async throws -> Page<ActivityItem>
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem>
     func activity(id: UUID) async throws -> ActivityItem
     func setLike(activityID: UUID, liked: Bool) async throws -> Bool
@@ -290,6 +305,12 @@ protocol FeedService: AnyObject, Sendable {
     func postComment(activityID: UUID, body: String, operationID: UUID) async throws -> Comment
     func deleteComment(id: UUID) async throws
     func deleteActivity(id: UUID) async throws
+}
+
+extension FeedService {
+    func friendsActivity(cursor: String?) async throws -> Page<ActivityItem> {
+        try await feed(cursor: cursor)
+    }
 }
 
 protocol NotificationService: AnyObject, Sendable {
@@ -305,6 +326,9 @@ protocol PlanService: AnyObject, Sendable {
     func myTrips() async throws -> [TripSummary]
     func trip(id: UUID) async throws -> TripDetail
     func saveTrip(_ draft: TripDraft) async throws -> TripSummary
+    func setTripDates(_ draft: TripDraft) async throws -> TripSummary
+    func tripInvitations() async throws -> [TripInvitation]
+    func setTripMembership(tripID: UUID, memberID: UUID, action: TripMembershipAction) async throws
     func deleteTrip(id: UUID) async throws
     func setTripPlace(tripID: UUID, experienceID: UUID, stop: String, present: Bool) async throws
     func setTripCity(tripID: UUID, city: Destination, present: Bool) async throws
@@ -344,6 +368,9 @@ protocol PlanService: AnyObject, Sendable {
     func setListItem(listID: UUID, experienceID: UUID, note: String, present: Bool) async throws
     func share(_ target: ShareTarget, with recipient: UUID, message: String, operationID: UUID) async throws
     func sharedWithMe() async throws -> [DirectShare]
+    func listRecipients(listID: UUID) async throws -> [MemberSummary]
+    func revokeListShare(listID: UUID, recipientID: UUID) async throws
+    func removeMyVisitTag(visitID: UUID) async throws
     func searchRoamPlaces(query: String) async throws -> [ExperienceSummary]
     func addCustomPlace(name: String, coordinate: CLLocationCoordinate2D, category: ExperienceCategory, area: Destination?) async throws -> ExperienceSummary
     func setVisitAudience(visitID: UUID, audience: Audience) async throws
@@ -352,10 +379,33 @@ protocol PlanService: AnyObject, Sendable {
     func tripFeed() async throws -> [TripFeedCard]
     func friendsFeed() async throws -> [FriendFeedVisit]
     func tripUpdates(ownerID: UUID, tripID: UUID?) async throws -> [TripFeedEntry]
-    func discoverPlaces(in bounds: GeoBounds?) async throws -> [DiscoverPlace]
+    func tripVisits(tripID: UUID) async throws -> [TripFeedEntry]
+    /// Places Roam suggests in an area (a city page), best first, each with the facts for its reason line.
+    func suggestedPlaces(in bounds: GeoBounds) async throws -> [DiscoverPlace]
+    /// Cities Roam suggests, best first: everywhere for Discover, or one country (ISO code) for its page.
+    func suggestedCities(countryCode: String?) async throws -> [DiscoverCity]
+    /// "Not interested": hides a place or a city from your suggestions (or brings it back).
+    func hideSuggestion(experienceID: UUID?, cityID: UUID?, hidden: Bool) async throws
+    /// Places around your home you might have been to, for onboarding: friends' first.
+    func onboardingPlaces(in bounds: GeoBounds) async throws -> [ExperienceSummary]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity]
     func taste() async throws -> TasteProfile
     func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile
+}
+
+extension PlanService {
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity] { [] }
+    func setTripDates(_ draft: TripDraft) async throws -> TripSummary { try await saveTrip(draft) }
+    func tripInvitations() async throws -> [TripInvitation] { [] }
+    func setTripMembership(tripID: UUID, memberID: UUID, action: TripMembershipAction) async throws { throw RoamError.forbidden }
+    func listRecipients(listID: UUID) async throws -> [MemberSummary] { [] }
+    func revokeListShare(listID: UUID, recipientID: UUID) async throws { throw RoamError.forbidden }
+    func removeMyVisitTag(visitID: UUID) async throws { throw RoamError.forbidden }
+    func tripVisits(tripID: UUID) async throws -> [TripFeedEntry] {
+        let detail = try await trip(id: tripID)
+        return try await tripUpdates(ownerID: detail.summary.owner.id, tripID: tripID)
+    }
 }
 
 // MARK: Settings, travel and account

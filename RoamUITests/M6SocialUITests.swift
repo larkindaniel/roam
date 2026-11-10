@@ -1,7 +1,6 @@
 import XCTest
 
-/// M6 fixture journeys: feed, likes, comments with failure/retry, notifications, follow graph,
-/// mute, block, Shared Want to Go and post removal. Multi-account RLS evidence is the backend suite.
+/// Fixture journeys for activity, friendship, sharing and trip invitations.
 final class M6SocialUITests: RoamUITestCase {
     private func first(_ prefix: String, type: XCUIElement.ElementType = .any) -> XCUIElement {
         app.descendants(matching: type).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch
@@ -25,8 +24,8 @@ final class M6SocialUITests: RoamUITestCase {
     }
 
     private func openProfile(handle: String) {
-        element("log-place").tap()
-        waitFor(app.buttons["Members"]).tap()
+        waitFor(element("open-friends")).tap()
+        waitFor(element("find-people")).tap()
         let field = waitFor(element("member-search-field"))
         field.tap()
         let existing = (field.value as? String) ?? ""
@@ -38,12 +37,12 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("profile-root"))
     }
 
-    func testFeedShowsFollowedPostsNewestFirstAndLikesOptimistically() {
+    func testFeedShowsFriendVisitsNewestFirstAndLikesOptimistically() {
         launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
         let newest = first("feed-card-")
-        XCTAssertTrue(newest.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Jonas Weber")).firstMatch.exists,
-                      "The newest followed post leads the feed")
+        XCTAssertTrue(newest.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Theo Park")).firstMatch.exists,
+                      "The newest friend activity leads the feed")
         capture("m6-01-feed")
         let like = newest.buttons["like-button"]
         let before = like.label
@@ -54,11 +53,48 @@ final class M6SocialUITests: RoamUITestCase {
         capture("m6-02-feed-liked")
     }
 
+    func testLogPlaceFromFriends() {
+        launch(tab: "friends", location: "denied")
+        waitFor(element("feed-list"))
+        let add = waitFor(app.buttons["log-place"])
+        let tab = waitFor(app.buttons["tab-myplaces"])
+        XCTAssertLessThan(add.frame.maxY, tab.frame.minY, "The shortcut clears the tab bar")
+        capture("m6-21-friends-log-shortcut")
+        add.tap()
+
+        let search = waitFor(app.searchFields.firstMatch)
+        search.tap()
+        search.typeText("Harbor Lantern")
+        waitFor(element("log-place-known-Harbor Lantern Café")).tap()
+        waitFor(element("rating-details"))
+        waitFor(element("rating-okay")).tap()
+        waitForDisappearance(element("log-place-sheet"))
+        XCTAssertTrue(element("feed-list").exists)
+    }
+
+    func testCityFriendRowOpensTheirPlaceVisits() {
+        launch(tab: "friends", location: "denied")
+        waitFor(app.buttons["Open map of Lisbon"]).tap()
+        let theo = element("area-friend-theowanders")
+        for _ in 0..<8 where !(theo.exists && theo.isHittable) { app.swipeUp() }
+        waitFor(theo)
+        capture("m6-22-city-friends")
+        theo.tap()
+        waitFor(element("friend-area-visits"))
+        let harbor = waitFor(element("friend-visited-place-Harbor Lantern Café"))
+        capture("m6-23-friend-city-places")
+        harbor.tap()
+        waitFor(element("friend-place-visits"))
+        waitFor(app.staticTexts["Maya was right about the tarts."])
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'memory-photo-'")).firstMatch.exists)
+        capture("m6-24-friend-place-visits")
+    }
+
     func testCommentFailureKeepsTextAndRetryPostsOnce() {
-        launch(scenario: "comment-uncertain", tab: "friends")
-        waitFor(element("feed-list"), timeout: 10)
+        launch(scenario: "comment-uncertain", tab: "profile")
+        waitFor(element("profile-activity"), timeout: 10)
         let harbor = card(containing: "Custard tarts")
-        reveal(harbor, in: "feed-list", maxSwipes: 8)
+        reveal(harbor, in: "profile-root", maxSwipes: 8)
         harbor.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'feed-comments-'")).firstMatch.tap()
         waitFor(element("activity-detail"))
         waitFor(app.staticTexts["Adding this to my Lisbon list right now."])
@@ -95,44 +131,33 @@ final class M6SocialUITests: RoamUITestCase {
         capture("m6-06-notifications-all-read")
     }
 
-    func testFollowersFollowingSearchAndFollowBack() {
-        launch(tab: "profile")
-        waitFor(element("profile-friends")).tap()
-        waitFor(element("follow-list"))
+    func testAcceptingRequestAddsTheMemberToFriends() {
+        launch(tab: "friends")
+        waitFor(element("open-friends")).tap()
+        waitFor(element("follow-segment")).buttons["Requests"].tap()
+        let lena = waitFor(element("member-row-lenaeats"), timeout: 10)
+        capture("m6-07-friend-requests")
+        waitFor(lena.buttons["follow-button"]).tap()
+        waitForDisappearance(lena)
+        waitFor(element("follow-segment")).buttons["Friends"].tap()
         waitFor(element("member-row-lenaeats"), timeout: 10)
-        XCTAssertTrue(element("member-row-samexplores").exists)
-        capture("m6-07-followers")
-        let followBack = element("member-row-lenaeats").buttons["follow-button"]
-        XCTAssertTrue(followBack.label.contains("Follow"))
-        followBack.tap()
-        let following = NSPredicate(format: "label BEGINSWITH 'Following'")
-        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: following, object: followBack)], timeout: 5), .completed)
-        app.searchFields.firstMatch.tap()
-        app.searchFields.firstMatch.typeText("sam")
-        waitForDisappearance(element("member-row-lenaeats"), timeout: 5)
-        XCTAssertTrue(element("member-row-samexplores").exists)
-        capture("m6-08-followers-search")
-        app.searchFields.firstMatch.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
-        waitFor(element("member-row-lenaeats"), timeout: 5)
-        app.buttons["Following"].firstMatch.tap()
-        waitFor(element("member-row-jonashikes"), timeout: 10)
-        XCTAssertTrue(element("member-row-lenaeats").exists, "The new follow appears in Following")
+        capture("m6-08-friends-after-accepting")
     }
 
     func testMuteHidesFeedPostsButKeepsProfileActivity() {
         launch(tab: "friends")
         waitFor(element("feed-list"), timeout: 10)
-        XCTAssertTrue(card(containing: "Jonas Weber").exists)
-        openProfile(handle: "jonashikes")
+        XCTAssertTrue(card(containing: "Theo Park").exists)
+        openProfile(handle: "theowanders")
         waitFor(element("profile-overflow")).tap()
         waitFor(element("profile-mute")).tap()
         waitFor(element("profile-muted"), timeout: 5)
         reveal(element("profile-activity"), in: "profile-root")
         XCTAssertTrue(first("feed-card-").exists, "A muted member's profile still shows their posts")
         capture("m6-09-muted-profile")
-        tab("Friends").tap()
+        element("tab-friends").tap()
         waitFor(element("feed-list"), timeout: 10)
-        waitForDisappearance(card(containing: "Jonas Weber"), timeout: 10)
+        waitForDisappearance(card(containing: "Theo Park"), timeout: 10)
         capture("m6-10-feed-without-muted")
     }
 
@@ -150,37 +175,74 @@ final class M6SocialUITests: RoamUITestCase {
         field.typeText(XCUIKeyboardKey.delete.rawValue + "o")
         XCTAssertFalse(element("member-row-theowanders").waitForExistence(timeout: 3), "A blocked member is excluded from search")
         field.typeText("\n")
-        tab("Friends").tap()
+        element("tab-friends").tap()
         waitFor(element("feed-list"), timeout: 10)
         XCTAssertFalse(card(containing: "Theo Park").waitForExistence(timeout: 3), "The blocked member's posts leave the feed")
         capture("m6-12-feed-after-block")
     }
 
-    func testSharedWantToGoListMapAndHonestEmptyState() {
-        launch(tab: "friends")
-        openProfile(handle: "theowanders")
-        waitFor(element("profile-shared-wants")).tap()
-        waitFor(element("shared-wants"))
-        waitFor(element("shared-wants-list"), timeout: 10)
-        XCTAssertTrue(element("shared-wants-count").label.contains("2 places"))
-        capture("m6-13-shared-wants-list")
-        waitFor(element("map-list-toggle")).tap()
-        waitFor(element("shared-wants-map"))
-        capture("m6-14-shared-wants-map")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        openProfile(handle: "lenaeats")
-        waitFor(element("profile-shared-wants")).tap()
-        waitFor(element("shared-wants-empty"), timeout: 10)
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Neither Want to Go list is changed")).firstMatch.exists)
-        capture("m6-15-shared-wants-empty")
+    func testSentPlaceOpensTheMapWithItsSenderAndNote() {
+        launch(tab: "myplaces")
+        waitFor(element("myplaces-sheet-header")).tap()
+        let received = waitFor(element("open-received-shares"))
+        if !received.isHittable { app.swipeUp() }
+        received.tap()
+        waitFor(element("received-shares"))
+        waitFor(element("foryou-pick-open-Old Mill Cinema")).tap()
+        waitFor(element("experience-detail"))
+        waitFor(element("detail-map"))
+        waitFor(app.staticTexts["The Sunday double bill is the best night out in Edinburgh."])
+        capture("m6-13-received-place")
+    }
+
+    func testAcceptingTripInvitationMakesTheTripLinkAvailable() {
+        launch(scenario: "social-activities", tab: "myplaces")
+        waitFor(element("myplaces-sheet-header")).tap()
+        let invitations = waitFor(element("open-trip-invitations"))
+        if !invitations.isHittable { app.swipeUp() }
+        invitations.tap()
+        waitFor(element("trip-invitations"))
+        waitFor(app.staticTexts["Lisbon weekend"])
+        waitFor(element("accept-trip-invitation")).tap()
+        waitFor(element("trip-detail"))
+        waitFor(app.staticTexts["Lisbon weekend"])
+        let visit = waitFor(element("trip-entry-Harbor Lantern Café"))
+        if !visit.isHittable { app.swipeUp() }
+        XCTAssertTrue(visit.isHittable)
+        capture("m6-14-accepted-trip")
+
+        element("tab-friends").tap()
+        let trip = waitFor(element("activity-trip"))
+        trip.tap()
+        waitFor(element("trip-detail"))
+
+        element("tab-myplaces").tap()
+        let been = waitFor(element("myplaces-tab-been"))
+        been.tap()
+        let joined = waitFor(element("trip-row-Lisbon weekend"))
+        if !joined.isHittable { app.swipeUp() }
+        joined.tap()
+        waitFor(element("trip-detail"))
+    }
+
+    func testTaggedFriendCanRemoveTheirOwnTag() {
+        launch(scenario: "social-activities", tab: "friends")
+        let harbor = card(containing: "Maya was right about the tarts.")
+        waitFor(harbor)
+        XCTAssertTrue(harbor.staticTexts["With Maya Chen"].exists)
+        let comments = harbor.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'feed-comments-'")).firstMatch
+        reveal(comments, in: "feed-list").tap()
+        waitFor(element("activity-overflow")).tap()
+        waitFor(element("remove-my-tag")).tap()
+        waitForDisappearance(app.staticTexts["With Maya Chen"])
+        capture("m6-15-tag-removed")
     }
 
     func testOwnerRemovesPostButKeepsTheRanking() {
-        launch(tab: "friends")
-        waitFor(element("feed-list"), timeout: 10)
+        launch(tab: "profile")
+        waitFor(element("profile-activity"), timeout: 10)
         let own = card(containing: "Back again")
-        reveal(own, in: "feed-list", maxSwipes: 8)
+        reveal(own, in: "profile-root", maxSwipes: 8)
         own.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'feed-comments-'")).firstMatch.tap()
         waitFor(element("activity-detail"))
         waitFor(element("activity-overflow")).tap()
@@ -189,13 +251,12 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("confirm-remove-post")).tap()
         waitForDisappearance(element("activity-detail"), timeout: 10)
         XCTAssertFalse(card(containing: "Back again").waitForExistence(timeout: 3))
-        element("log-place").tap()
-        let search = waitFor(element("experience-search-field"))
+        element("tab-foryou").tap()
+        let search = waitFor(element("discover-search"))
         search.tap()
         search.typeText("harbor")
         waitFor(element("experience-row-Harbor Lantern Café"), timeout: 10).staticTexts["Harbor Lantern Café"].firstMatch.tap()
-        waitFor(element("detail-your-score"))
-        XCTAssertTrue(element("detail-your-score").label.contains("10.0"), "Removing a post keeps the ranking")
+        XCTAssertTrue(waitFor(element("detail-add-visit")).label.contains("Been"), "Removing a post keeps the ranked place")
     }
 
     func testLargeTextFeedAndPostKeepActionsReachable() {
@@ -208,15 +269,6 @@ final class M6SocialUITests: RoamUITestCase {
         waitFor(element("activity-detail"))
         XCTAssertTrue(waitFor(element("comment-field")).isHittable, "The composer stays reachable at large text")
         capture("m6-19-large-text-post")
-    }
-
-    func testFollowersEmptyStateForAMemberWithoutFollowers() {
-        launch(tab: "friends")
-        openProfile(handle: "priyaplans")
-        waitFor(element("profile-friends")).tap()
-        waitFor(element("follow-list-empty"), timeout: 10)
-        XCTAssertTrue(app.staticTexts["No one follows this member yet."].exists)
-        capture("m6-20-followers-empty")
     }
 
     func testEmptyFeedOffersFindPeople() {

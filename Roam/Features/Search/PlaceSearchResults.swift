@@ -67,7 +67,10 @@ struct PlaceSearchResults: View {
         Group {
             // No empty card while nothing has matched: just a line once the search has finished.
             if matchedMine.isEmpty && placeSearch.countries.isEmpty && placeSearch.regions.isEmpty && cityHits.isEmpty && others.isEmpty {
-                if case .failed(let message) = search?.phase {
+                if search?.phase == .loading || search?.phase == .idle {
+                    // Still looking: rows are on their way, rather than a blank page.
+                    SkeletonList(rows: 3)
+                } else if case .failed(let message) = search?.phase {
                     InlineRetryView(message: message) { Task { await search?.search(query, near: nil) } }
                 } else if search?.phase == .noResults || search?.phase == .results {
                     Text("No places match \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)

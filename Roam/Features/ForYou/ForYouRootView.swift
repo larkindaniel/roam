@@ -1,75 +1,99 @@
 import Observation
 import SwiftUI
 
-/// Discover's two lists. A place sits in one list, and a place no friend rated is never shown as a friend's find.
-struct ForYouSections: Equatable {
-    /// The score a place needs to count as highly rated.
-    static let highlyRated = Score(tenths: 70)
-
-    var friends: [DiscoverPlace] = []
-    var highlyRated: [DiscoverPlace] = []
-    /// Everything else people have been to, for when you're browsing one city.
-    var more: [DiscoverPlace] = []
-
-    init(places: [DiscoverPlace] = []) {
-        let unvisited = places.filter { $0.experience.viewer.myScore == nil && !$0.experience.viewer.hasVisits }
-        friends = unvisited.filter { !$0.friendNames.isEmpty }.sorted(by: Self.order)
-        let others = unvisited.filter { $0.friendNames.isEmpty }
-        highlyRated = others.filter { ($0.communityScore ?? Score(tenths: 0)) >= Self.highlyRated }.sorted(by: Self.order)
-        more = others.filter { ($0.communityScore ?? Score(tenths: 0)) < Self.highlyRated }.sorted(by: Self.order)
-    }
-
-    private static func order(_ lhs: DiscoverPlace, _ rhs: DiscoverPlace) -> Bool {
-        let left = lhs.communityScore?.tenths ?? -1
-        let right = rhs.communityScore?.tenths ?? -1
-        return left == right ? lhs.experience.name < rhs.experience.name : left > right
-    }
-}
-
+/// Roam's suggestions for one screen: cities (Discover, a country or state page) or a city's places. The server ranks
+/// them from what you're allowed to see; this keeps them loaded and handles Not interested.
 @MainActor
 @Observable
 final class ForYouModel {
-    private(set) var phase: LoadPhase<ForYouSections> = .idle
+    /// A city's places, best first.
+    private(set) var phase: LoadPhase<[DiscoverPlace]> = .idle
+    /// Cities, best first.
+    private(set) var cityPhase: LoadPhase<[DiscoverCity]> = .idle
     private(set) var picks: [DirectShare] = []
-    private(set) var cities: [DiscoverCity] = []
     private let plans: any PlanService
     private var generation = 0
+    private var cityGeneration = 0
 
     init(plans: any PlanService) {
         self.plans = plans
     }
+
+    var places: [DiscoverPlace] { phase.value ?? [] }
+    var cities: [DiscoverCity] { cityPhase.value ?? [] }
 
     /// Picks aren't tied to a destination, so they show even before one is chosen.
     func loadPicks() async {
         if let shares = try? await plans.sharedWithMe() { picks = shares }
     }
 
-    /// With no destination the lists cover everywhere.
-    func load(_ destination: Destination?) async {
+    /// Cities to suggest: everywhere (Discover), or one country's (its page; a state page keeps its own).
+    func loadCities(countryCode: String?) async {
+        cityGeneration += 1
+        let token = cityGeneration
+        if cityPhase.value == nil { cityPhase = .loading }
+        do {
+            let found = try await plans.suggestedCities(countryCode: countryCode)
+            guard token == cityGeneration, !Task.isCancelled else { return }
+            cityPhase = .loaded(found)
+        } catch {
+            guard token == cityGeneration, !(error is CancellationError) else { return }
+            cityPhase = .failed(error.roamMessage)
+        }
+    }
+
+    /// A city's places. They pick up Google photos and ratings in the background, then the list refreshes once.
+    func load(_ destination: Destination) async {
         generation += 1
         let token = generation
         phase = .loading
+        let bounds = GeoBounds(region: .init(center: destination.coordinate, latitudinalMeters: destination.radiusMeters * 2,
+                                             longitudinalMeters: destination.radiusMeters * 2))
         do {
-            let bounds = destination.map {
-                GeoBounds(region: .init(center: $0.coordinate, latitudinalMeters: $0.radiusMeters * 2, longitudinalMeters: $0.radiusMeters * 2))
-            }
-            let found = try await plans.discoverPlaces(in: bounds)
+            let found = try await plans.suggestedPlaces(in: bounds)
             guard token == generation, !Task.isCancelled else { return }
-            if destination == nil { cities = DiscoverCity.cities(from: found) }
-            phase = .loaded(ForYouSections(places: found))
-            // A city's places pick up Google photos and ratings in the background, then the list refreshes once.
-            if destination != nil {
-                let missing = found.filter { $0.experience.googleRating == nil || $0.experience.photoURL == nil }.map(\.id)
-                if await plans.refreshGoogleDetails(experienceIDs: Array(missing.prefix(30))),
-                   token == generation, let refreshed = try? await plans.discoverPlaces(in: bounds), token == generation {
-                    phase = .loaded(ForYouSections(places: refreshed))
-                }
+            phase = .loaded(found)
+            let missing = found.filter { $0.experience.googleRating == nil || $0.experience.photoURL == nil }.map(\.id)
+            if await plans.refreshGoogleDetails(experienceIDs: Array(missing.prefix(30))),
+               token == generation, let refreshed = try? await plans.suggestedPlaces(in: bounds), token == generation {
+                phase = .loaded(refreshed)
             }
         } catch {
             guard token == generation, !(error is CancellationError) else { return }
             phase = .failed(error.roamMessage)
         }
     }
+
+    /// Not interested: the place goes at once, and comes back if the server didn't take it.
+    func hide(_ place: DiscoverPlace) async {
+        guard let current = phase.value else { return }
+        phase = .loaded(current.filter { $0.id != place.id })
+        do { try await plans.hideSuggestion(experienceID: place.id, cityID: nil, hidden: true) }
+        catch { phase = .loaded(SuggestionOrder.places(current)) }
+    }
+
+    func hide(_ city: DiscoverCity) async {
+        guard let current = cityPhase.value, let cityID = city.cityID else { return }
+        cityPhase = .loaded(current.filter { $0.id != city.id })
+        do { try await plans.hideSuggestion(experienceID: nil, cityID: cityID, hidden: true) }
+        catch { cityPhase = .loaded(SuggestionOrder.cities(current)) }
+    }
+}
+
+/// Long-press on a suggestion: Not interested.
+struct NotInterestedMenu: ViewModifier {
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            Button("Not interested", systemImage: "eye.slash", action: action)
+                .accessibilityIdentifier("suggestion-not-interested")
+        }
+    }
+}
+
+extension View {
+    func notInterested(_ action: @escaping () -> Void) -> some View { modifier(NotInterestedMenu(action: action)) }
 }
 
 /// Search results split into areas to browse and specific places to open.
@@ -182,6 +206,7 @@ struct ForYouRootView: View {
                 }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+                    .solidTopEdge()
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
@@ -194,6 +219,8 @@ struct ForYouRootView: View {
         .background(Roam.paper)
         .task(id: query) { await placeSearch.run(query, services: services) }
         // Tapping Discover in the tab bar scrolls back to the top, with the search row showing.
+        // Opening a result puts the keyboard away, so it doesn't spring back over the results on the way back.
+        .onChange(of: router.path(for: .forYou).count) { _, depth in if depth > 0 { searchFocused = false } }
         .onChange(of: router.scrollToTopRequests[.forYou]) { _, _ in
             withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
         }
@@ -210,6 +237,9 @@ struct ForYouRootView: View {
                 .padding(.bottom, Theme.Spacing.s)
                 .offset(y: barsHidden && !hasQuery && !searchFocused ? -140 : 0)
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
+                .accessibilityHidden(barsHidden && !hasQuery && !searchFocused)
+                .allowsHitTesting(!barsHidden || hasQuery || searchFocused)
+                .background(Roam.paper.ignoresSafeArea(edges: .top))
         }
         .navigationTitle("Discover")
         .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
@@ -222,7 +252,7 @@ struct ForYouRootView: View {
         .task {
             if model == nil { model = ForYouModel(plans: services.plans) }
             await model?.loadPicks()
-            await model?.load(nil)
+            await model?.loadCities(countryCode: nil)
         }
         .screenIdentifier("foryou-root")
     }
@@ -315,13 +345,13 @@ struct ForYouRootView: View {
     private var landing: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             if let model, !model.picks.isEmpty { picksSection(model.picks) }
-            switch model?.phase ?? .loading {
+            switch model?.cityPhase ?? .loading {
             case .idle, .loading:
                 SkeletonCards()
             case .failed(let message):
-                InlineRetryView(message: message) { Task { await model?.load(nil) } }
-            case .loaded:
-                citiesSection(model?.cities ?? [])
+                InlineRetryView(message: message) { Task { await model?.loadCities(countryCode: nil) } }
+            case .loaded(let cities):
+                citiesSection(cities)
             }
         }
         .padding(.top, Theme.Spacing.s)
@@ -329,8 +359,10 @@ struct ForYouRootView: View {
 
     @ViewBuilder private func citiesSection(_ cities: [DiscoverCity]) -> some View {
         if cities.isEmpty {
-            Text("Search for a city or a place to get started.")
-                .font(.subheadline).foregroundStyle(Roam.inkMuted)
+            // Nothing to go on yet (no friends, nothing rated nearby): say so plainly and offer the way in.
+            EmptyStateView(systemImage: "person.2", title: "Nothing to suggest yet",
+                           message: "Add friends to see the places they love.",
+                           primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("discover-empty")
         } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
@@ -347,47 +379,29 @@ struct ForYouRootView: View {
             CityCoverCard(city: city, subtitle: cityLine(city))
         }
         .buttonStyle(.plain)
+        .notInterested { Task { await model?.hide(city) } }
         .accessibilityIdentifier("discover-city-\(city.destination.name)")
     }
 
+    /// "Portugal · Theo sent you a place here": the country, then why it's suggested.
     private func cityLine(_ city: DiscoverCity) -> String {
-        var parts = [city.destination.countryName].compactMap { $0 }
-        let names = city.friendNames.compactMap { $0.split(separator: " ").first.map(String.init) }
-        if let first = names.first {
-            parts.append(names.count == 1 ? "\(first) has been" : (names.count == 2 ? "\(first) and \(names[1]) have been" : "\(first) and \(names.count - 1) others have been"))
-        }
-        return parts.joined(separator: " · ")
+        [CountryName.display(city.destination.countryName, code: city.destination.countryCode), city.reason]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private func picksSection(_ picks: [DirectShare]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             sectionTitle("Picked for you")
-            ForEach(picks) { pick in
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    Text(pick.title).font(.roamTitle()).foregroundStyle(Roam.ink)
-                    Text(pickLine(pick)).font(.footnote).foregroundStyle(Roam.inkMuted)
-                    if !pick.message.isEmpty { Text("\u{201C}\(pick.message)\u{201D}") }
-                    HStack(spacing: Theme.Spacing.s) {
-                        Button(pick.experience != nil ? "Open place" : (pick.list != nil ? "Open list" : "Open trip")) { open(pick) }
-                            .buttonStyle(.borderedProminent)
-                            .buttonBorderShape(.capsule)
-                            .accessibilityIdentifier("foryou-pick-open-\(pick.title)")
-                        if let place = pick.experience, !place.viewer.isBookmarked {
-                            Button("Save") { Task { await library.setBookmark(place.id, saved: true) } }
-                                .buttonStyle(.bordered)
-                                .buttonBorderShape(.capsule)
-                                .accessibilityIdentifier("foryou-pick-save-\(pick.title)")
-                        }
-                    }
+            let recent = Array(picks.prefix(3))
+            VStack(spacing: 0) {
+                ForEach(recent) { pick in
+                    ReceivedShareRow(share: pick)
+                    if pick.id != recent.last?.id { RowSeparator() }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .roamCard()
             }
+            .roamCard(padding: Theme.Spacing.m)
         }
     }
-
-
-
 
     private func sectionTitle(_ title: String) -> some View {
         Text(title).font(.roamTitle()).foregroundStyle(Roam.ink).accessibilityAddTraits(.isHeader)
@@ -420,17 +434,7 @@ struct ForYouRootView: View {
         }
     }
 
-    private func pickLine(_ pick: DirectShare) -> String {
-        if let list = pick.list { return "A list from \(pick.sender.displayName) · \(list.itemCount) \(list.itemCount == 1 ? "place" : "places")" }
-        if pick.trip != nil { return "A trip from \(pick.sender.displayName)" }
-        return "From \(pick.sender.displayName)"
-    }
 
-    private func open(_ pick: DirectShare) {
-        if let place = pick.experience { router.push(.experience(place.id)) }
-        else if let list = pick.list { router.push(.list(list.id)) }
-        else if let trip = pick.trip { router.push(.trip(trip.id)) }
-    }
 }
 
 /// A city's card, like an upcoming trip's: led by its Google photo, else a photo from a place there.

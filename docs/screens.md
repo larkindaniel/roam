@@ -5,6 +5,8 @@ when you change a screen. `docs/design-language.md` covers how they look.
 
 ## Everywhere
 
+- **Keyboard:** scrolling any page or list puts it away; notes have their own Done.
+
 - **Tab bar:** Roam's own floating glass bar with Discover, Friends and My Places. Tapping a tab always goes back to its
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
   the card is fully up.
@@ -23,24 +25,48 @@ when you change a screen. `docs/design-language.md` covers how they look.
   - A country opens its country page, a state its state page, a city its city page and a place its place page.
   - The field's own × ends the search, and leaving the tab clears it.
 
+## Onboarding (end of setup)
+
+After name, handle, photo, home and Find friends, two steps teach Roam what you like. Both can be skipped.
+
+- **Where have you been?** Up to 12 places around your home city as standard rows, the ones your friends have been to
+  first, then the most rated. A search field finds anything else. Tapping a row ticks it (green Been mark). The button
+  says "Skip for now" until something is ticked, then "Continue". With no home city it's search only.
+- **One place at a time** ("1 of 3"): "How was it?" with the feeling picker, then "Which did you like more?" against
+  your other places, with Undo, Too tough and Skip, like the log screen. After 10 comparisons in all, places go to the
+  middle of where they'd fit without asking. Each place is saved as soon as it's placed: a visit with no date, seen by
+  friends, so it's on your Been list but never on anyone's Friends tab. "Skip the rest" stops; what's saved stays.
+- Then the visibility explainer and Start using Roam.
+
 ## Discover
 
 - **Top:** a search bar and the settings cog.
-- **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading).
-  - A card opens that city's page.
+- **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading), ranked by Roam
+  (see DECISIONS.md, "Suggestions").
+  - Under each name: the country, then why it's suggested, such as "Portugal · Theo sent you a place here", "On your
+    Japan trip", "On Maya's Lisbon list", "Maya loved it here", "Maya has been" or "Popular on Roam".
+  - Your homes, cities you've been to and cities you've hidden never show.
+  - A card opens that city's page. Long-press: Not interested hides it.
+  - With nothing to suggest (no friends, nothing rated): "Nothing to suggest yet", "Add friends to see the places they love." and Find people.
   - Friends' picks show above the cards when there are any. A pick opens its place or trip.
 
 ## Friends
 
-- **Top right:** friends and requests (people, requests, add friends), notifications, and settings.
-  - In notifications, friend-request notifications mark themselves read but open nothing. Activity notifications open
-    the post.
-- **Body:** one card per friend and city, newest visit first. Visits without a date aren't shown. Each card has:
-  - The friend's avatar, name and the dates they were there. Not tappable.
-  - The city's photo with "Japan 🇯🇵" under the name, which opens that city's page.
-  - Each place they went there as a row with a chevron, which opens the place.
-- Friend profile pages are switched off for now (`MemberProfiles.available`), so names and avatars don't open anything.
-- With no friends yet, the empty state offers "Find people".
+- The floating **+** above the tab bar opens **Add a place**. Search for a place and select it to log a visit.
+- The toolbar opens Friends and Requests, existing notifications, and Settings. Find people is in Friends and in the
+  empty feed. Request notifications open Requests. Activity notifications open the activity.
+- One card per dated friend visit, newest first. A rerank can appear as a separate rating update. Undated imports stay
+  on Been. Cards use the visit's audience, with the actual visit note and photos when available.
+- In “Maya visited Bar X in Toronto”, Maya opens her profile, Bar X opens its pin on the map, and Toronto opens its
+  city map. A trip link appears for viewers with itinerary access. Tagged friends appear on the visit.
+- Likes and comments belong to each activity. The comment field stays above the keyboard, and retry keeps the draft.
+  The author can remove the activity while keeping the visit. A tagged friend can remove their own tag.
+
+## Member profile
+
+- The header shows the avatar, name, handle, and friendship action. Settings opens your own profile.
+- Activity shows the member's visits and ratings that you can see. Friends can open their Passport and lists shared
+  directly with them. The Passport counts places from visits visible to its viewer.
 
 ## My Places
 
@@ -54,11 +80,13 @@ over it.
     - Home cities (rows with a black house). Each opens its city page.
     - Upcoming trips (rows with a blue plane), each opening its trip page, then a full-width "+ New trip" that opens the
       New trip sheet.
+    - Trip invitations, Sent to you, and Lists each open a separate page.
     - Countries and states you've saved, as photo cards (a two-across grid from ten). Each opens its country page.
   - **Been:**
     - Home cities.
     - Countries you've been to, as photo cards. Each opens its country page.
     - Past trips (rows with a green mark). Each opens its trip page.
+  - Both tabs include trips you own and trips you've joined. Past trips are in Been.
 
 ## City page
 
@@ -78,13 +106,18 @@ the country in view.
       dates are picked or you leave. Once you've been, the dates you gave show there.
     - **Wishlist** (yellow): saves the city. It greys out once you've been.
     - **Trip** (blue): add the city to an upcoming trip or start a new one.
-    - **Send:** greyed out until sending is built.
+    - **Send:** greyed out on city pages.
     - **Plan** (pink): opens the Plan with AI sheet (ChatGPT, Claude or copy).
   - A home city shows only the house and Plan.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
-  - **Suggestions:** big place photo cards with the friend who's been there and the Google stars. A card opens the
-    place.
+  - **Friends who’ve been** shows friends with shared visits in the city. Tap a friend to see their places, then a
+    place to see their visits there. The city map keeps showing your own pins.
+  - **Suggestions:** big place photo cards, ranked by Roam, each with its reason line ("Theo sent you this", "On
+    Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like the cafés you loved", "Like places you loved",
+    "Popular on Roam"; the
+    category when there's none) and the Google stars. Places you've been to, saved or hidden never show. A card opens
+    the place. Long-press: Not interested hides it.
 - **Opening a place from here** stays on this map. The map glides to it and the card swaps to the place, halfway up.
   Back brings the city's card back.
 
@@ -101,8 +134,11 @@ the country in view.
   - Your trips there (rows), which open the trip.
   - An untitled wishlist card, then a been card, of city rows that open the city.
   - Saved states, which open their state page.
-  - Suggested cities as photo cards, which open the city.
+  - Suggested cities as photo cards, ranked by Roam, each with its reason line (or the state when there's none).
+    A card opens the city. Long-press: Not interested hides it.
 - A state page also has a chip that opens its country.
+- **Friends who’ve been** shows the cities friends visited in the country or state. Tap a friend to open their cities,
+  then a city to see their shared places. Suggested city cards use the same short reason line as Discover.
 
 ## Place page
 
@@ -115,16 +151,21 @@ tapping another place or pin swaps the card to it.
   - **Log / Been:** Log opens the log sheet. Once you've been, the button shows Been, and tapping it offers only
     Delete, with one confirmation, which removes your visits and ranking.
   - **Save:** saves or unsaves the place. It's greyed out once you've been.
-  - **Send:** greyed out.
+  - **Send:** choose a current friend and add an optional note. Friends can open it from Sent to you in My Places or
+    from Discover. The place page shows who sent it and their note.
 - **Card:**
   - **Photos:** a swipeable gallery with dots, your own photos first. The Wikipedia blurb sits under it when there is
     one.
   - **Your visits:** rows showing the first photo, the date and the first line of the note.
     - Tapping a row opens the log sheet filled in, to edit it.
     - Swiping a row left deletes it.
-    - "+ Add visit" logs another visit.
+    - "+ Add visit" logs another visit. A log can link to an editable trip and tag current friends under With.
+      A tag appears immediately to eligible viewers. Each friend logs their own visit.
+    - New logs start with Friends. Public is visible to signed-in Roam members. Editing a log keeps its saved
+      audience unless you change it.
   - **People who've been:** a titleless card. "You" comes first with your stars, then each friend with when they last
-    went and their stars. Long-pressing a friend offers Report.
+    went and their stars. Tap a friend to see their shared visits, notes, and photos for this place. Tap a photo to open
+    it full screen. Long-pressing a friend offers Report.
   - **Everyone else:** other people's visits, with All photos opening the photo viewer.
 
 ## Trip page
@@ -132,18 +173,29 @@ tapping another place or pin swaps the card to it.
 - **Header:**
   - The name with an edit icon, which opens a sheet to rename the trip.
   - Start → End date bubbles, edited right there.
-  - A red bin, which deletes the trip after one confirmation.
+  - The owner can delete the trip and manage invitations from the People card. Invitees accept or decline in My Places
+    under Trip invitations. Accepted members can edit the itinerary and dates, log their own visits, and leave.
 - **Places:**
   - **One country:** each city as a big photo card that opens the city.
   - **Several countries:** one card per country, with the country's photo on top (opens the country) and its cities as
     rows (each opens the city).
   - Swiping a city or country deletes it from the trip.
-- **Bottom:** "+ Add to trip" opens the city search.
+- **Visits:** Scroll below the itinerary to see the places logged on the trip, with who went and when. Tap a row to
+  open its activity, or the place if it has no activity. This section appears once there's a visit you can see.
+- **Add to trip:** opens the city search.
+
+## Lists and Sent to you
+
+- Create a private list in My Places › Saved › Lists. Add places from their detail page. The owner can rename the
+  list, edit its places, send it to friends, or revoke their access in Manage access.
+- Recipients open the current contents from Lists or Sent to you. Sent to you includes the sender and their note.
 
 ## Settings
 
 - Your profile row opens Edit profile: photo, name, handle, bio, and home cities (add any number, swipe to remove).
   Cancel with changes asks to discard them.
+- Your tastes: five optional questions (atmosphere, budget, crowds, novelty, pace) that go into Plan with AI prompts.
+  Suggestions don't use them; they learn from your rankings.
 - Account: email, sign out, delete account. Then privacy, terms and version.
 
 ## Sheets
@@ -151,7 +203,8 @@ tapping another place or pin swaps the card to it.
 - **Log a place (opened from Log or + Add visit):**
   - The name with its city under it.
   - The feeling picker: Didn't like, Neutral or Liked it. It starts at Neutral.
-  - A date chip: × clears it, and tapping it opens a calendar.
+  - A date chip: × clears it, and tapping it opens a calendar. Tapping a day picks it; Done picks the day shown.
+  - The note has a Done button above the keyboard. Scrolling any page puts the keyboard away.
   - "Part of": a trip happening nearby, or Home, or any trip.
   - Add photos opens the picker; photos then swipe in a carousel.
   - A note, and who can see the visit.
@@ -166,4 +219,6 @@ tapping another place or pin swaps the card to it.
   - Name, then Start → End dates (both required).
   - "+ Add a city", which opens the city search. At least one city is needed.
   - × asks before discarding. Save is at the bottom.
-- **Plan with AI:** copies a prompt for the city or country, or hands it to ChatGPT or Claude.
+- **Plan with AI:** copies a prompt for the city or country, or hands it to ChatGPT or Claude. The prompt has your
+  tastes, the kinds of places you tend to love (cafés, museums: from your Liked rankings, once there are 3) and up to
+  five places you liked.

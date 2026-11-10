@@ -40,15 +40,24 @@ struct LaunchOptions: Equatable, Sendable {
     /// Debug-only route pushed after launch (`globe`), for direct visual inspection.
     var initialRoute: String?
 
-    static func current(arguments: [String] = ProcessInfo.processInfo.arguments) -> LaunchOptions {
+    static func current(arguments: [String] = ProcessInfo.processInfo.arguments,
+                        hasBackendConfiguration: Bool = AppConfig.fromBundle() != nil) -> LaunchOptions {
         var options = LaunchOptions()
         #if ROAM_FIXTURES
         func value(after flag: String) -> String? {
             guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
             return arguments[index + 1]
         }
-        if let backend = value(after: "-roam-backend").flatMap(Backend.init(rawValue:)) { options.backend = backend }
-        options.fixtureAccount = value(after: "-roam-fixture-account")
+        let backend = value(after: "-roam-backend").flatMap(Backend.init(rawValue:))
+        if let backend { options.backend = backend }
+        #if targetEnvironment(simulator)
+        if backend == nil && !hasBackendConfiguration {
+            options.backend = .fixture
+            options.fixtureAccount = "maya"
+            options.fixtureScenario = "social-activities"
+        }
+        #endif
+        if let account = value(after: "-roam-fixture-account") { options.fixtureAccount = account }
         if let scenario = value(after: "-roam-fixture-scenario") { options.fixtureScenario = scenario }
         if let latency = value(after: "-roam-fixture-latency").flatMap(Int.init) { options.fixtureLatencyMilliseconds = latency }
         options.resetLocalState = arguments.contains("-roam-reset-state")

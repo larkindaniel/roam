@@ -56,6 +56,7 @@ final class FeedModel {
         generation += 1
         let token = generation
         isLoading = true
+        loadingMore = false
         defer { if token == generation { isLoading = false } }
         do {
             let page = try await load(nil)
@@ -115,7 +116,13 @@ final class FeedModel {
 
     func apply(_ changes: ActivityChangeStore) {
         items.removeAll { changes.removed.contains($0.id) }
-        for index in items.indices { if let updated = changes.updated[items[index].id] { items[index] = updated } }
+        for index in items.indices where !likePending.contains(items[index].id) {
+            guard let updated = changes.updated[items[index].id] else { continue }
+            // Keep the latest server-projected content and permissions. Synchronize interaction counts only.
+            items[index].likeCount = updated.likeCount
+            items[index].commentCount = updated.commentCount
+            items[index].likedByViewer = updated.likedByViewer
+        }
     }
 
     func remove(_ id: UUID) { items.removeAll { $0.id == id } }
@@ -366,7 +373,7 @@ final class NotificationsModel {
     }
 
     /// Marks the notification read and returns where it should open, or nil if its target is gone.
-    func open(_ notification: AppNotification) async -> AppRoute? {
+    func open(_ notification: AppNotification, viewerID: UUID? = nil) async -> AppRoute? {
         if let index = items.firstIndex(where: { $0.id == notification.id }), items[index].readAt == nil {
             items[index].readAt = now()
             do { try await service.markRead(id: notification.id) }
@@ -377,7 +384,9 @@ final class NotificationsModel {
             return nil
         }
         switch notification.type {
-        case .follow, .friendRequest, .friendAccept: return .member(notification.actor.id)
+        case .friendRequest:
+            return viewerID.map { .followGraph($0, .requests) } ?? .member(notification.actor.id)
+        case .follow, .friendAccept: return .member(notification.actor.id)
         case .like, .comment: return notification.activityID.map(AppRoute.activity)
         }
     }
