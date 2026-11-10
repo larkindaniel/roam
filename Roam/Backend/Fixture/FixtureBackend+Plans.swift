@@ -453,6 +453,36 @@ extension FixtureBackend: PlanService {
             .compactMap { tripFeedEntry($0, viewer: me) }
     }
 
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity] {
+        let me = try await authenticatedActor()
+        let cityKey = area.cityName.map(GeographyKey.normalize)
+        let eligible = visits.values.compactMap { visit -> (visit: VisitRow, city: Destination)? in
+            guard friendID == nil || visit.owner == friendID,
+                  areFriends(me, visit.owner), audienceAllows(owner: visit.owner, audience: visit.audience, viewer: me),
+                  let experience = experiences[visit.experience], let place = places[experience.placeID]?.candidate,
+                  let city = place.locality, !GeographyKey.normalize(city).isEmpty,
+                  place.countryCode?.uppercased() == area.countryCode,
+                  area.regions.isEmpty || area.regions.contains(GeographyKey.normalize(place.region ?? "")),
+                  cityKey == nil || GeographyKey.normalize(city) == cityKey else { return nil }
+            return (visit, Destination(name: city, region: place.region, countryCode: place.countryCode,
+                                       countryName: place.countryName, latitude: place.latitude, longitude: place.longitude,
+                                       radiusMeters: 15_000))
+        }
+        let sorted = eligible.sorted {
+            ($0.visit.date?.isoString ?? "", $0.visit.createdAt, $0.visit.id.uuidString)
+                > ($1.visit.date?.isoString ?? "", $1.visit.createdAt, $1.visit.id.uuidString)
+        }
+        let byFriend = Dictionary(grouping: sorted) { $0.visit.owner }
+        return sorted.map { $0.visit.owner }.uniqued().compactMap { id in
+            guard let entries = byFriend[id] else { return nil }
+            var seenCities = Set<String>()
+            let cities = entries.map(\.city).filter { seenCities.insert($0.id).inserted }
+            let placeIDs = entries.map { $0.visit.experience }.uniqued()
+            let places = friendID != nil && cityKey != nil ? placeIDs.compactMap { summary($0, viewer: me) } : []
+            return FriendAreaActivity(member: memberSummary(id), cities: cities, placeCount: placeIDs.count, places: places)
+        }
+    }
+
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory] {
         let me = try await authenticatedActor()
         return visits.values

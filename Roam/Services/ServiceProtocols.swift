@@ -236,6 +236,7 @@ struct StagedMedia: Codable, Hashable, Sendable {
 protocol MemoryService: AnyObject, Sendable {
     func visit(visitID: UUID) async throws -> Visit
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory>
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory>
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit
     func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit
     func privateNote(experienceID: UUID) async throws -> PrivateNote?
@@ -244,6 +245,10 @@ protocol MemoryService: AnyObject, Sendable {
 }
 
 extension MemoryService {
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        throw RoamError.notFound
+    }
+
     func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit {
         try await updateVisit(visitID: visitID, note: payload.publicNote,
                               date: VisitDate(date: payload.date, timeZoneIdentifier: payload.timeZoneIdentifier),
@@ -384,11 +389,13 @@ protocol PlanService: AnyObject, Sendable {
     /// Places around your home you might have been to, for onboarding: friends' first.
     func onboardingPlaces(in bounds: GeoBounds) async throws -> [ExperienceSummary]
     func friendMemories(experienceID: UUID) async throws -> [PublicMemory]
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity]
     func taste() async throws -> TasteProfile
     func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile
 }
 
 extension PlanService {
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity] { [] }
     func setTripDates(_ draft: TripDraft) async throws -> TripSummary { try await saveTrip(draft) }
     func tripInvitations() async throws -> [TripInvitation] { [] }
     func setTripMembership(tripID: UUID, memberID: UUID, action: TripMembershipAction) async throws { throw RoamError.forbidden }

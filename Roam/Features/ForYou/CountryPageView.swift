@@ -20,6 +20,7 @@ struct CountryPageView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
     @State private var suggestions: ForYouModel?
+    @State private var friendActivity: LoadPhase<[FriendAreaActivity]> = .idle
     @State private var savedCodes: [String] = []
     @State private var logging = false
     @State private var confirmingBeen = false
@@ -39,6 +40,9 @@ struct CountryPageView: View {
     private var destination: Destination { region ?? CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
     private var countryName: String { CountryName.display(code: code) }
     private var name: String { region?.name ?? countryName }
+    private var friendArea: FriendVisitArea {
+        FriendVisitArea(name: name, countryCode: code, regions: [region?.name, region?.region].compactMap { $0 })
+    }
     /// How saved regions are keyed: "CA|ON".
     private var savedKey: String { region.map { "\(code)|\($0.region ?? $0.name)" } ?? code }
     /// In the region, when this is one: places and cities carry its code ("ON") or, now and then, its name.
@@ -293,6 +297,11 @@ struct CountryPageView: View {
         } else {
             SkeletonList(rows: 3)
         }
+        if let rows = friendActivity.value, !rows.isEmpty {
+            FriendAreaRows(area: friendArea, activity: rows)
+        } else if case .failed(let message) = friendActivity {
+            InlineRetryView(message: message) { Task { await loadFriendActivity() } }
+        }
         switch suggestions?.cityPhase ?? .loading {
         case .idle, .loading:
             EmptyView()
@@ -439,10 +448,17 @@ struct CountryPageView: View {
         if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
         if suggestions == nil { suggestions = ForYouModel(plans: services.plans) }
         async let mine: Void = model?.load() ?? ()
+        async let friends: Void = loadFriendActivity()
         async let saved = region == nil ? services.plans.savedCountries() : services.plans.savedRegions()
         savedCodes = (try? await saved) ?? savedCodes
         await mine
         await suggestions?.loadCities(countryCode: code)
+        await friends
+    }
+
+    private func loadFriendActivity() async {
+        do { friendActivity = .loaded(try await services.plans.friendAreaActivity(in: friendArea, friendID: nil)) }
+        catch { if !Task.isCancelled { friendActivity = .failed(session.handle(error)) } }
     }
 
     /// Your places logged here (been, not homes').

@@ -5,12 +5,15 @@ struct SocialNavigationRow: View {
     let symbol: String
     var subtitle: String? = nil
     var place: ExperienceSummary? = nil
+    var member: MemberSummary? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.m) {
-                if let place {
+                if let member {
+                    AvatarView(member: member, size: 48)
+                } else if let place {
                     PlaceThumbnail(id: place.id.uuidString, path: nil, url: place.photoURL,
                                    coordinate: place.coordinate, symbol: place.iconName, size: 48)
                 } else {

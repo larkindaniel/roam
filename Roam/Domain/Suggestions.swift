@@ -96,7 +96,11 @@ enum SuggestionReason {
     }
 
     private static func beenLine(_ names: [String]) -> String {
-        names.count == 1 ? "\(firstName(names[0])) has been" : "\(people(names)) have been"
+        switch names.count {
+        case 1: return "\(firstName(names[0])) has been"
+        case 2: return "\(people(names)) have been"
+        default: return "\(firstName(names[0])) and \(names.count - 1) friends have been"
+        }
     }
 
     private static func nonEmpty(_ names: [String]?) -> [String]? {

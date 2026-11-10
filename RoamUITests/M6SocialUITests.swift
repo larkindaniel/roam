@@ -72,6 +72,24 @@ final class M6SocialUITests: RoamUITestCase {
         XCTAssertTrue(element("feed-list").exists)
     }
 
+    func testCityFriendRowOpensTheirPlaceVisits() {
+        launch(tab: "friends", location: "denied")
+        waitFor(app.buttons["Open map of Lisbon"]).tap()
+        let theo = element("area-friend-theowanders")
+        for _ in 0..<8 where !(theo.exists && theo.isHittable) { app.swipeUp() }
+        waitFor(theo)
+        capture("m6-22-city-friends")
+        theo.tap()
+        waitFor(element("friend-area-visits"))
+        let harbor = waitFor(element("friend-visited-place-Harbor Lantern Café"))
+        capture("m6-23-friend-city-places")
+        harbor.tap()
+        waitFor(element("friend-place-visits"))
+        waitFor(app.staticTexts["Maya was right about the tarts."])
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'memory-photo-'")).firstMatch.exists)
+        capture("m6-24-friend-place-visits")
+    }
+
     func testCommentFailureKeepsTextAndRetryPostsOnce() {
         launch(scenario: "comment-uncertain", tab: "profile")
         waitFor(element("profile-activity"), timeout: 10)

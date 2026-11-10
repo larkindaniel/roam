@@ -12,9 +12,21 @@ extension FixtureBackend: MemoryService {
     }
 
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage(experienceID: experienceID, friendID: nil, cursor: cursor)
+    }
+
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage(experienceID: experienceID, friendID: friendID, cursor: cursor)
+    }
+
+    private func memoryPage(experienceID: UUID, friendID: UUID?, cursor: String?) async throws -> Page<PublicMemory> {
         let me = try await authenticatedActor()
         guard experiences[experienceID] != nil else { throw RoamError.notFound }
-        var rows = visits.values.filter { $0.experience == experienceID && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me) }
+        if let friendID, !areFriends(me, friendID) { throw RoamError.notFound }
+        var rows = visits.values.filter {
+            $0.experience == experienceID && (friendID == nil || $0.owner == friendID)
+                && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
+        }
             .sorted { ($0.createdAt, $0.id.uuidString) > ($1.createdAt, $1.id.uuidString) }
         if let cursor {
             guard let (date, id) = Self.parseCursor(cursor) else { throw RoamError.validation("Refresh these memories and try again.") }

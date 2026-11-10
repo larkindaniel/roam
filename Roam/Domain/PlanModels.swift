@@ -294,6 +294,35 @@ struct PlaceListDetail: Codable, Hashable, Sendable {
     }
 }
 
+/// The geography of a friend visit lookup. A state can match both its name and its code.
+struct FriendVisitArea: Hashable, Sendable {
+    let name: String
+    let countryCode: String
+    let regions: [String]
+    let cityName: String?
+
+    init(name: String, countryCode: String, regions: [String] = [], cityName: String? = nil) {
+        self.name = name
+        self.countryCode = countryCode.uppercased()
+        self.regions = Array(Set(regions.map(GeographyKey.normalize).filter { !$0.isEmpty })).sorted()
+        self.cityName = cityName
+    }
+
+    init?(city: Destination) {
+        guard let countryCode = city.countryCode else { return nil }
+        self.init(name: city.name, countryCode: countryCode, regions: [city.region].compactMap { $0 }, cityName: city.name)
+    }
+}
+
+struct FriendAreaActivity: Decodable, Identifiable, Sendable {
+    let member: MemberSummary
+    let cities: [Destination]
+    let placeCount: Int
+    let places: [ExperienceSummary]
+
+    var id: UUID { member.id }
+}
+
 /// A place Roam suggests, with the server's points and the facts behind its reason line.
 struct DiscoverPlace: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary

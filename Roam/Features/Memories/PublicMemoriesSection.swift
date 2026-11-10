@@ -17,20 +17,23 @@ final class PublicMemoriesModel {
     private(set) var nextCursor: String?
     private(set) var authError: RoamError?
     private let service: any MemoryService
+    private let friendID: UUID?
     private var generation = 0
 
-    init(experienceID: UUID, service: any MemoryService) {
+    init(experienceID: UUID, service: any MemoryService, friendID: UUID? = nil) {
         self.experienceID = experienceID
         self.service = service
+        self.friendID = friendID
     }
 
     func load() async {
         generation += 1
         let token = generation
         isLoading = true
+        loadingMore = false
         defer { if token == generation { isLoading = false } }
         do {
-            let page = try await service.publicMemories(experienceID: experienceID, cursor: nil)
+            let page = try await fetchPage(cursor: nil)
             guard token == generation, !Task.isCancelled else { return }
             memories = page.items
             nextCursor = page.nextCursor
@@ -49,7 +52,7 @@ final class PublicMemoriesModel {
         loadingMore = true
         defer { if token == generation { loadingMore = false } }
         do {
-            let page = try await service.publicMemories(experienceID: experienceID, cursor: cursor)
+            let page = try await fetchPage(cursor: cursor)
             guard token == generation, nextCursor == cursor, !Task.isCancelled else { return }
             var seen = Set(memories.map(\.id))
             memories += page.items.filter { seen.insert($0.id).inserted }
@@ -57,14 +60,33 @@ final class PublicMemoriesModel {
             pageError = nil
         } catch {
             guard token == generation, !(error is CancellationError) else { return }
+            if discardUnavailableFriendVisits(error) { return }
             pageError = error.roamMessage
             if let error = error as? RoamError, error == .sessionExpired || error == .notSignedIn { authError = error }
         }
     }
 
     private func record(_ error: Error) {
+        if discardUnavailableFriendVisits(error) { return }
         self.error = error.roamMessage
         if let error = error as? RoamError, error == .sessionExpired || error == .notSignedIn { authError = error }
+    }
+
+    private func fetchPage(cursor: String?) async throws -> Page<PublicMemory> {
+        if let friendID {
+            return try await service.friendPlaceMemories(experienceID: experienceID, friendID: friendID, cursor: cursor)
+        }
+        return try await service.publicMemories(experienceID: experienceID, cursor: cursor)
+    }
+
+    private func discardUnavailableFriendVisits(_ error: Error) -> Bool {
+        guard friendID != nil, let problem = error as? RoamError,
+              problem == .notFound || problem == .forbidden else { return false }
+        memories = []
+        nextCursor = nil
+        pageError = nil
+        self.error = "These visits are no longer available."
+        return true
     }
 }
 
@@ -113,7 +135,7 @@ struct PublicMemoriesSection: View {
             } else {
                 ForEach(others) { memory in
                     PublicMemoryCard(memory: memory, onOpenAuthor: { onOpenAuthor(memory.author.id) },
-                                     onOpenPhotos: { onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
+                                     onOpenPhotos: { _ in onOpenPhotos(memory.id) }, onReport: { onReport(.visit(memory.id)) })
                     Divider()
                 }
                 if let pageError = model.pageError {
@@ -144,8 +166,7 @@ struct FriendMemoriesSection: View {
 
     let memories: [PublicMemory]
     var yours: Yours? = nil
-    /// Opens a friend's profile from their row.
-    var onOpenAuthor: ((UUID) -> Void)? = nil
+    let onOpenVisits: (MemberSummary) -> Void
     let onReport: (ReportTarget) -> Void
 
     /// Each friend once, with their latest visit.
@@ -200,7 +221,7 @@ struct FriendMemoriesSection: View {
             .accessibilityIdentifier("detail-own-review")
     }
 
-    private func line(member: MemberSummary, name: String, date: VisitDate?, score: Score?) -> some View {
+    private func line(member: MemberSummary, name: String, date: VisitDate?, score: Score?, opensVisits: Bool = false) -> some View {
         HStack(spacing: Theme.Spacing.m) {
             AvatarView(member: member, size: 48)
             VStack(alignment: .leading, spacing: -2) {
@@ -213,24 +234,30 @@ struct FriendMemoriesSection: View {
                 stars(score.formatted)
                     .accessibilityLabel("Rated \(score.formatted) out of 5")
             }
+            if opensVisits {
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                    .foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
         }
         .padding(.vertical, Theme.Spacing.s)
         .contentShape(Rectangle())
     }
 
     private func row(_ memory: PublicMemory) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            line(member: memory.author, name: memory.author.displayName, date: memory.visitDate, score: memory.score)
-            if let companions = memory.companions, !companions.isEmpty {
-                Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
-                    .font(.footnote).foregroundStyle(Roam.inkMuted)
-                    .padding(.leading, 48 + Theme.Spacing.m)
-                    .padding(.bottom, Theme.Spacing.s)
+        Button { onOpenVisits(memory.author) } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                line(member: memory.author, name: memory.author.displayName, date: memory.visitDate,
+                     score: memory.score, opensVisits: true)
+                if let companions = memory.companions, !companions.isEmpty {
+                    Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
+                        .font(.footnote).foregroundStyle(Roam.inkMuted)
+                        .padding(.leading, 48 + Theme.Spacing.m)
+                        .padding(.bottom, Theme.Spacing.s)
+                }
             }
         }
-        .onTapGesture { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
-        .accessibilityAddTraits(MemberProfiles.available && onOpenAuthor != nil ? .isButton : [])
-        .accessibilityAction { if MemberProfiles.available { onOpenAuthor?(memory.author.id) } }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens visits at this place")
         .contextMenu {
             Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
         }
@@ -242,8 +269,9 @@ struct FriendMemoriesSection: View {
 struct PublicMemoryCard: View {
     let memory: PublicMemory
     let onOpenAuthor: () -> Void
-    let onOpenPhotos: () -> Void
+    let onOpenPhotos: (UUID) -> Void
     let onReport: () -> Void
+    var compactNote = true
     @State private var expanded = false
 
     var body: some View {
@@ -276,9 +304,9 @@ struct PublicMemoryCard: View {
             if !memory.publicNote.isEmpty {
                 Text(memory.publicNote)
                     .font(.body)
-                    .lineLimit(expanded ? nil : 4)
+                    .lineLimit(compactNote && !expanded ? 4 : nil)
                     .fixedSize(horizontal: false, vertical: true)
-                if memory.publicNote.count > 180 && !expanded {
+                if compactNote && memory.publicNote.count > 180 && !expanded {
                     Button("See more") { expanded = true }.font(.footnote.weight(.semibold))
                 }
             }
@@ -286,7 +314,7 @@ struct PublicMemoryCard: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.s) {
                         ForEach(Array(memory.media.sorted { $0.position < $1.position }.enumerated()), id: \.element.id) { index, media in
-                            Button(action: onOpenPhotos) {
+                            Button { onOpenPhotos(media.id) } label: {
                                 RemoteImageView(path: media.path, accessibilityLabel: "Photo \(index + 1) from \(memory.author.displayName)'s visit")
                                     .frame(width: 120, height: 96)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -300,5 +328,6 @@ struct PublicMemoryCard: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("memory-card-\(memory.id.uuidString)")
+        .contextMenu { Button("Report", systemImage: "flag", action: onReport) }
     }
 }

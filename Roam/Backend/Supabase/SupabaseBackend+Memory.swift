@@ -6,8 +6,18 @@ extension SupabaseBackend: MemoryService {
     }
 
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage("public_memories", ["p_experience_id": RPC.uuid(experienceID), "p_cursor": RPC.string(cursor)])
+    }
+
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage("friend_place_memories", [
+            "p_experience_id": RPC.uuid(experienceID), "p_friend_id": RPC.uuid(friendID), "p_cursor": RPC.string(cursor)
+        ])
+    }
+
+    private func memoryPage(_ name: String, _ parameters: RPCParams) async throws -> Page<PublicMemory> {
         struct Wire: Decodable { let items: [PublicMemory]; let nextCursor: String? }
-        let page: Wire = try await rpc("public_memories", ["p_experience_id": RPC.uuid(experienceID), "p_cursor": RPC.string(cursor)])
+        let page: Wire = try await rpc(name, parameters)
         return Page(items: page.items, nextCursor: page.nextCursor)
     }
 

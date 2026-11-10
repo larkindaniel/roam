@@ -425,8 +425,10 @@ struct ExperienceDetailView: View {
                 if detail.isLocality {
                     Label("Town or city — logged as a Day Trip destination", systemImage: "signpost.right").font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
-                // Your own stars from your ranking come first, then friends'; a friend's row opens their profile.
-                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenAuthor: { router.push(.member($0)) },
+                // Your own stars from your ranking come first, then friends' visits at this place.
+                FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenVisits: { friend in
+                    router.push(.friendPlaceVisits(placeID: summary.id, placeName: summary.name, friend: friend))
+                },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
                     CityGuideCard(name: summary.locality ?? summary.name, region: summary.region, country: summary.countryName, coordinate: summary.coordinate)

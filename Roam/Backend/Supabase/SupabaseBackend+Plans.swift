@@ -242,6 +242,15 @@ extension SupabaseBackend: PlanService {
         try await rpc("friend_memories", ["p_experience_id": RPC.uuid(experienceID)])
     }
 
+    func friendAreaActivity(in area: FriendVisitArea, friendID: UUID?) async throws -> [FriendAreaActivity] {
+        try await rpc("friend_area_activity", [
+            "p_country_code": RPC.string(area.countryCode),
+            "p_regions": .array(area.regions.map(AnyJSON.string)),
+            "p_city": RPC.string(area.cityName),
+            "p_friend_id": RPC.uuid(friendID)
+        ] as RPCParams)
+    }
+
     func taste() async throws -> TasteProfile { try await rpc("my_taste") }
 
     func saveTaste(_ taste: TasteProfile) async throws -> TasteProfile {

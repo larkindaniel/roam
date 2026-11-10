@@ -206,6 +206,10 @@ struct RouteDestinationView: View {
             CountryPageView(code: code)
         case .region(let area):
             CountryPageView(code: area.countryCode ?? "", region: area)
+        case .friendAreaVisits(let area, let friend):
+            FriendAreaVisitsView(area: area, friend: friend)
+        case .friendPlaceVisits(let placeID, let placeName, let friend):
+            FriendPlaceVisitsView(placeID: placeID, placeName: placeName, friend: friend)
         case .passport(let ownerID, let name):
             PassportView(ownerID: ownerID, name: name)
         case .passportCountry(let ownerID, let country):

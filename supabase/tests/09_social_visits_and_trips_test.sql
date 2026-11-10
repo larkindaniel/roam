@@ -19,8 +19,9 @@ create temp table place_ids as
 select gen_random_uuid() place,gen_random_uuid() experience,code
 from (values ('CA'::char(2)),('PT'::char(2))) countries(code);
 insert into public.countries(code,name) values ('CA','Canada'),('PT','Portugal') on conflict do nothing;
-insert into public.places(id,name,normalized_name,latitude,longitude,provider,provider_place_id,country_code)
-select place,'Social Cafe','social cafe',43,-80,'fixture','social-cafe-9-'||code,code from place_ids;
+insert into public.places(id,name,normalized_name,latitude,longitude,provider,provider_place_id,country_code,locality,region)
+select place,'Social Cafe','social cafe',43,-80,'fixture','social-cafe-9-'||code,code,
+  case when code='CA' then 'Toronto' else 'Lisbon' end, case when code='CA' then 'Ontario' else 'Lisboa' end from place_ids;
 insert into public.experiences(id,place_id,category)
 select experience,place,'food_drink' from place_ids;
 create temp table results(name text primary key, value jsonb);
@@ -155,6 +156,27 @@ select ok(public.passport(pg_temp.person('owner')) @> '[{"code":"PT"}]'::jsonb,'
 select pg_temp.actor('friend');
 select ok(public.passport(pg_temp.person('owner')) @> '[{"code":"CA","otherPlaceCount":1}]'::jsonb,'friend passport counts visible places');
 select ok(not (public.passport(pg_temp.person('owner')) @> '[{"code":"PT"}]'::jsonb),'private visits do not expose their country to friends');
+
+select ok(not has_function_privilege('anon','public.friend_area_activity(text,text[],text,uuid)','EXECUTE'),'anonymous friend area access is denied');
+select ok(not has_function_privilege('anon','public.friend_place_memories(uuid,uuid,text)','EXECUTE'),'anonymous friend visit access is denied');
+select is(public.friend_area_activity('CA',null,null,null)->0->'cities'->0->>'name','Toronto','country rows show friends’ visible cities');
+select is(jsonb_array_length(public.friend_area_activity('CA',array['on','ontario'],'Toronto',pg_temp.person('owner'))->0->'places'),
+  1,'city detail returns distinct visible places');
+select is(public.friend_area_activity('CA',array['quebec'],null,null),'[]'::jsonb,'state rows exclude other regions');
+select is(public.friend_area_activity('CA',null,'Ottawa',null),'[]'::jsonb,'city rows exclude other cities');
+select is(public.friend_area_activity('PT',null,null,null),'[]'::jsonb,'area rows exclude private visits');
+select is(jsonb_array_length(public.friend_place_memories((select experience from place_ids where code='CA'),pg_temp.person('owner'),null)->'items'),
+  2,'place detail returns only this friend’s visible visits');
+select ok(public.friend_place_memories((select experience from place_ids where code='CA'),pg_temp.person('owner'),null)->'items'
+  @> '[{"publicNote":"Updated note"}]'::jsonb,'friend detail includes the note from the visible visit');
+select pg_temp.actor('outsider');
+select is(public.friend_area_activity('CA',null,null,pg_temp.person('owner')),'[]'::jsonb,'a non-friend cannot see friend area data');
+select throws_ok($$select public.friend_place_memories((select experience from place_ids where code='CA'),pg_temp.person('owner'),null)$$,
+  'P0002',null,'a non-friend cannot use the friend detail endpoint');
+select pg_temp.actor('blocked');
+select is(public.friend_area_activity('CA',null,null,pg_temp.person('owner')),'[]'::jsonb,'a blocked user cannot see friend area data');
+select throws_ok($$select public.friend_place_memories((select experience from place_ids where code='CA'),pg_temp.person('owner'),null)$$,
+  'P0002',null,'a blocked user cannot open friend visits');
 
 select * from finish();
 rollback;

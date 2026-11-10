@@ -109,6 +109,8 @@ the country in view.
   - A home city shows only the house and Plan.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
+  - **Friends who’ve been** shows friends with shared visits in the city. Tap a friend to see their places, then a
+    place to see their visits there. The city map keeps showing your own pins.
   - **Suggestions:** big place photo cards, ranked by Roam, each with its reason line ("Theo sent you this", "On
     Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like the cafés you loved", "Like places you loved",
     "Popular on Roam"; the
@@ -133,6 +135,8 @@ the country in view.
   - Suggested cities as photo cards, ranked by Roam, each with its reason line (or the state when there's none).
     A card opens the city. Long-press: Not interested hides it.
 - A state page also has a chip that opens its country.
+- **Friends who’ve been** shows the cities friends visited in the country or state. Tap a friend to open their cities,
+  then a city to see their shared places. Suggested city cards use the same short reason line as Discover.
 
 ## Place page
 
@@ -158,7 +162,8 @@ tapping another place or pin swaps the card to it.
     - New logs start with Friends. Public is visible to signed-in Roam members. Editing a log keeps its saved
       audience unless you change it.
   - **People who've been:** a titleless card. "You" comes first with your stars, then each friend with when they last
-    went and their stars. Tap a friend to open their profile. Long-pressing a friend offers Report.
+    went and their stars. Tap a friend to see their shared visits, notes, and photos for this place. Tap a photo to open
+    it full screen. Long-pressing a friend offers Report.
   - **Everyone else:** other people's visits, with All photos opening the photo viewer.
 
 ## Trip page

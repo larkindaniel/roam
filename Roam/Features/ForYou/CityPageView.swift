@@ -25,6 +25,7 @@ struct CityPageView: View {
     @Environment(SessionStore.self) private var session
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
+    @State private var friendActivity: LoadPhase<[FriendAreaActivity]> = .idle
     @State private var search: ExperienceSearchModel?
     @State private var query = ""
     @FocusState private var searching: Bool
@@ -425,6 +426,11 @@ struct CityPageView: View {
         let saved = wishlist.filter { item in !spots.contains { $0.id == item.id } }
         if !saved.isEmpty { placeRows(saved.map { PlaceMapItem(experience: $0.experience, state: .wishlist) }) }
         if !spots.isEmpty { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
+        if let area = FriendVisitArea(city: destination), let rows = friendActivity.value, !rows.isEmpty {
+            FriendAreaRows(area: area, activity: rows)
+        } else if case .failed(let message) = friendActivity {
+            InlineRetryView(message: message) { Task { await loadFriendActivity() } }
+        }
         switch model?.phase ?? .loading {
         case .idle, .loading:
             SkeletonCards()
@@ -513,6 +519,7 @@ struct CityPageView: View {
     }
 
     private func reload() async {
+        async let friends: Void = loadFriendActivity()
         async let mine = loadSpots(of: session.userID)
         async let theirs = isOwn ? [] : loadSpots(of: ownerID)
         let own = await mine
@@ -547,6 +554,13 @@ struct CityPageView: View {
         }
         if model == nil { model = ForYouModel(plans: services.plans) }
         await model?.load(destination)
+        await friends
+    }
+
+    private func loadFriendActivity() async {
+        guard isOwn, let area = FriendVisitArea(city: destination) else { return }
+        do { friendActivity = .loaded(try await services.plans.friendAreaActivity(in: area, friendID: nil)) }
+        catch { if !Task.isCancelled { friendActivity = .failed(session.handle(error)) } }
     }
 
     /// Only cities are planned: the city joins the trip, and places you've saved here show up on it.
