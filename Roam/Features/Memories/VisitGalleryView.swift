@@ -5,6 +5,7 @@ import SwiftUI
 struct VisitGalleryView: View {
     let experienceID: UUID
     let visitID: UUID?
+    var initialPhotoID: UUID? = nil
 
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
@@ -12,6 +13,7 @@ struct VisitGalleryView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: VisitGalleryModel?
     @State private var viewer: GalleryViewerSelection?
+    @State private var openedInitialPhoto = false
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 4)]
 
@@ -28,6 +30,10 @@ struct VisitGalleryView: View {
                                           storage: services.storage, currentAccount: { session.userID })
             }
             await model?.load()
+            if !openedInitialPhoto, let initialPhotoID, model?.photos.contains(where: { $0.id == initialPhotoID }) == true {
+                viewer = GalleryViewerSelection(photoID: initialPhotoID)
+                openedInitialPhoto = true
+            }
         }
         .onChange(of: model?.authError) { _, error in if let error { _ = session.handle(error) } }
         .onChange(of: model?.removedPhotoID) { _, removed in if removed != nil { library.noteChanged() } }

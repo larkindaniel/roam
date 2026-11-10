@@ -6,14 +6,28 @@ extension SupabaseBackend: MemoryService {
     }
 
     func publicMemories(experienceID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage("public_memories", ["p_experience_id": RPC.uuid(experienceID), "p_cursor": RPC.string(cursor)])
+    }
+
+    func friendPlaceMemories(experienceID: UUID, friendID: UUID, cursor: String?) async throws -> Page<PublicMemory> {
+        try await memoryPage("friend_place_memories", [
+            "p_experience_id": RPC.uuid(experienceID), "p_friend_id": RPC.uuid(friendID), "p_cursor": RPC.string(cursor)
+        ])
+    }
+
+    private func memoryPage(_ name: String, _ parameters: RPCParams) async throws -> Page<PublicMemory> {
         struct Wire: Decodable { let items: [PublicMemory]; let nextCursor: String? }
-        let page: Wire = try await rpc("public_memories", ["p_experience_id": RPC.uuid(experienceID), "p_cursor": RPC.string(cursor)])
+        let page: Wire = try await rpc(name, parameters)
         return Page(items: page.items, nextCursor: page.nextCursor)
     }
 
     func updateVisit(visitID: UUID, note: String, date: VisitDate, mediaIDs: [UUID], operationID: UUID) async throws -> Visit {
         let payload = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: note, mediaIDs: mediaIDs)
-        return try await rpc("update_visit", ["p_visit_id": RPC.uuid(visitID), "p_payload": try RPC.json(payload), "p_operation_id": RPC.uuid(operationID)])
+        return try await updateVisit(visitID: visitID, payload: payload, operationID: operationID)
+    }
+
+    func updateVisit(visitID: UUID, payload: VisitPayload, operationID: UUID) async throws -> Visit {
+        try await rpc("update_visit", ["p_visit_id": RPC.uuid(visitID), "p_payload": try RPC.json(payload), "p_operation_id": RPC.uuid(operationID)])
     }
 
     func privateNote(experienceID: UUID) async throws -> PrivateNote? {

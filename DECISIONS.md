@@ -130,7 +130,7 @@ The app has since moved on from several decisions above. README's "How the app w
 | D14 up to six photos | No photo limit per visit |
 | D16 New experiences this year, D18 shared Want to Go | Removed with the profile pages |
 | Visible 0–10 scores | Roam scores hidden (`Score.isShown == false`) except friends' stars and your own, out of 5; storage and ranking stay out of 10 (D04 unchanged) |
-| Feed of activity cards | The Friends tab shows one card per friend and city, made from dated visits only |
+| Feed of activity cards | The Friends tab shows dated visits as separate activities, with optional trip links for authorized viewers |
 | Planning places | Only cities and countries are planned on trips; places are saved |
 
 
@@ -160,3 +160,16 @@ count or a reason line (`08_suggestions_test.sql` proves this by adding all of t
 | Friends' scores fix | `following_score` (friends' average and "N friends rated this") counted friends' Only me ratings. It now counts only ratings the viewer may see. |
 | Removed | `discover_places` and the app's old Discover sections (friends / highly rated / more, the 7.0 "highly rated" cut-off). Popularity now uses the same 7.0 inside the points. |
 | Speed | Computed live per request (bounded to one area or country, 40 places, 30 cities). Google lookups were already cached. A score cache waits until it's measured to be slow. |
+
+
+## Social (November 2026)
+
+- Dated friend visits appear individually. Likes and comments stay on each activity. The author, place, city, and any
+  authorized trip link open their respective pages.
+- With tags apply immediately to current friends. Tags respect visit visibility, and a tagged friend can remove their
+  own tag. Each traveler logs their own visit. New visits default to Friends. Public means signed-in Roam members.
+- A trip owner invites current friends and controls its identity, membership, and deletion. Accepted members can edit
+  cities, countries, and dates, and attach their own visits. Date edits save the date pair, so the latest save wins.
+- A list starts private. The owner can send live view access to individual friends and revoke it. Send on places and
+  lists can include a note. Sent to you is available under My Places.
+- Off-app invitations, new notification delivery, and friend request messages are deferred.

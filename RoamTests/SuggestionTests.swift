@@ -30,7 +30,7 @@ final class SuggestionReasonTests: XCTestCase {
         XCTAssertEqual(SuggestionReason.place(E(friendsLoved: ["Maya Ito", "Theo Park"])), "Maya and Theo loved it")
         XCTAssertEqual(SuggestionReason.place(E(friendsLoved: ["A", "B", "C"])), "3 friends loved it")
         XCTAssertEqual(SuggestionReason.place(E(friendsBeen: ["Maya Ito"])), "Maya has been")
-        XCTAssertEqual(SuggestionReason.place(E(friendsBeen: ["A b", "C d", "E f"])), "A and 2 others have been")
+        XCTAssertEqual(SuggestionReason.place(E(friendsBeen: ["A b", "C d", "E f"])), "A and 2 friends have been")
     }
 
     func testAListNamedListIsNotSaidTwice() {

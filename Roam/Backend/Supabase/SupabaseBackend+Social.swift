@@ -45,6 +45,10 @@ extension SupabaseBackend: SocialService {
 }
 
 extension SupabaseBackend: FeedService {
+    func friendsActivity(cursor: String?) async throws -> Page<ActivityItem> {
+        try await page("friends_activity", ["p_cursor": RPC.string(cursor)])
+    }
+
     func feed(cursor: String?) async throws -> Page<ActivityItem> {
         try await page("feed", ["p_cursor": RPC.string(cursor)])
     }

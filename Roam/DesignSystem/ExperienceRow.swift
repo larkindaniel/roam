@@ -168,10 +168,10 @@ struct MemberRowView: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.m) {
             HStack(spacing: Theme.Spacing.m) {
-                AvatarView(member: member, size: 44)
+                AvatarView(member: member, size: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(member.displayName).font(.headline).lineLimit(2)
-                    Text("@\(member.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
+                    Text("@\(member.handle)").font(.footnote).foregroundStyle(Roam.inkMuted)
                     if let subtitle {
                         Text(subtitle).font(.caption).foregroundStyle(Theme.secondaryText)
                     }
@@ -187,7 +187,7 @@ struct MemberRowView: View {
                 FollowButton(state: followState, name: member.displayName) { onToggleFollow?() }
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Theme.Spacing.s)
         .screenIdentifier("member-row-\(member.handle)")
     }
 }

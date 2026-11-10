@@ -23,7 +23,7 @@ struct ProfileRootView: View {
     }
 }
 
-/// S18: public profile header, follow controls, travel globe and the member's posts.
+/// Member identity, places and visible activities.
 struct ProfileView: View {
     let userID: UUID
 
@@ -33,26 +33,13 @@ struct ProfileView: View {
     @Environment(ActivityChangeStore.self) private var changes
     @Environment(LibraryStore.self) private var library
     @State private var profile: LoadPhase<PublicProfile> = .idle
-    @State private var travel: TravelProfile?
-    @State private var travelError: String?
+    @State private var sharedLists: [PlaceList] = []
     @State private var activity: FeedModel?
     @State private var followPending = false
     @State private var safetyPending = false
     @State private var actionError: String?
     @State private var confirmingBlock = false
     @State private var reportTarget: ReportTarget?
-    @State private var tab: ProfileTab = .activity
-
-    enum ProfileTab: String, CaseIterable, Identifiable {
-        case activity
-        case travel
-
-        var id: String { rawValue }
-        var title: String { self == .activity ? "Activity" : "Travel Profile" }
-    }
-
-    private var year: Int { Calendar.current.component(.year, from: Date()) }
-
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.l) {
@@ -74,43 +61,14 @@ struct ProfileView: View {
                     if let actionError {
                         InlineRetryView(message: actionError, retryTitle: "Dismiss") { self.actionError = nil }.padding(.horizontal)
                     }
-                    globeCard(value)
-                    if value.relationship.isSelf || value.relationship.friendState == .friends {
-                        Button { router.push(.passport(ownerID: userID, name: value.member.displayName)) } label: {
-                            HStack {
-                                Image(systemName: "book.closed").accessibilityHidden(true)
-                                Text(value.relationship.isSelf ? "Your passport" : "Passport").font(.headline)
-                                Spacer()
-                                Text("Every country and city").font(.footnote).foregroundStyle(Theme.secondaryText)
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Theme.secondaryText).accessibilityHidden(true)
-                            }
-                            .foregroundStyle(.primary)
-                            .frame(minHeight: Theme.minimumHitTarget)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .roamCard(padding: Theme.Spacing.m)
-                        .padding(.horizontal)
-                        .accessibilityIdentifier("profile-passport")
-                    }
-                    Picker("Profile section", selection: $tab) {
-                        ForEach(ProfileTab.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .accessibilityIdentifier("profile-tabs")
-                    switch tab {
-                    case .activity:
-                        activitySection(value)
-                    case .travel:
-                        TravelProfileSection(userID: userID, travel: travel, error: travelError, isSelf: value.relationship.isSelf,
-                                             ownerName: value.member.displayName, retry: { Task { await loadTravel() } })
-                    }
+                    shortcuts(value)
+                    activitySection(value)
                 }
             }
             .padding(.bottom, Theme.Spacing.xl)
         }
-        .background(Theme.groupedCanvas)
+        .contentMargins(.bottom, RoamTabBar.reservedHeight, for: .scrollContent)
+        .background(Roam.paper)
         .navigationTitle(profile.value?.member.displayName ?? "Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -136,15 +94,14 @@ struct ProfileView: View {
             Text("You'll stop being friends and won't see each other's profiles, posts, lists, photos or comments. Unblocking later doesn't restore follows.")
         }
         .sheet(item: $reportTarget) { target in ReportSheet(target: target, title: "Report this person") }
-        .task { if profile.value == nil { await load() } }
+        .task { await load() }
         .refreshable { await load() }
         .onChange(of: session.profile) { _, updated in
             // An own-profile edit or a new visit elsewhere refreshes the header and travel counts.
             if updated?.id == userID { Task { await load() } }
         }
         .onChange(of: library.revision) { _, _ in
-            // Visits logged, edited or deleted elsewhere change travel counts.
-            if userID == session.userID { Task { await loadTravel() } }
+            if userID == session.userID { Task { await load() } }
         }
         .screenIdentifier("profile-root")
     }
@@ -164,83 +121,69 @@ struct ProfileView: View {
             _ = session.handle(error)
         }
         async let posts: Void = activity?.refresh() ?? ()
-        await loadTravel()
+        let shares = (try? await services.plans.sharedWithMe()) ?? []
+        var seen = Set<UUID>()
+        sharedLists = shares.compactMap(\.list).filter { $0.owner.id == userID && seen.insert($0.id).inserted }
         await posts
     }
 
-    private func loadTravel() async {
-        do {
-            travel = try await services.travel.travelProfile(userID: userID, year: year)
-            travelError = nil
-        } catch {
-            travelError = error.roamMessage
-        }
-    }
-
     private func header(_ value: PublicProfile) -> some View {
-        VStack(spacing: Theme.Spacing.s) {
-            AvatarView(member: value.member, size: 88)
-            Text(value.member.displayName).font(.roamTitle(.title))
-                .multilineTextAlignment(.center)
-            Text("@\(value.member.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
-            if !value.bio.isEmpty {
-                Text(value.bio).font(.body).multilineTextAlignment(.center).padding(.horizontal)
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            HStack(spacing: Theme.Spacing.m) {
+                AvatarView(member: value.member, size: 64)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(value.member.displayName).font(.roamTitle(.title))
+                    Text("@\(value.member.handle)").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                }
+                Spacer(minLength: 0)
             }
+            if !value.bio.isEmpty { Text(value.bio).font(.body) }
             if let home = value.homeCityName {
-                Label("Home: \(home)", systemImage: "house").font(.footnote).foregroundStyle(Theme.secondaryText)
+                Label(home, systemImage: "house.fill").font(.footnote).foregroundStyle(Roam.inkMuted)
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Spacing.xl) { stats(value) }
-                VStack(spacing: Theme.Spacing.s) { stats(value) }
-            }
-            .padding(.top, Theme.Spacing.s)
         }
-        .padding(.top, Theme.Spacing.l)
-        .padding(.horizontal)
+        .roamCard()
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.top, Theme.Spacing.m)
     }
 
-    @ViewBuilder private func stats(_ value: PublicProfile) -> some View {
-        Button { router.push(.followGraph(userID, .friends)) } label: { stat(value.followingCount, "Friends") }
-            .buttonStyle(.plain)
+    private func shortcuts(_ value: PublicProfile) -> some View {
+        VStack(spacing: 0) {
+            SocialNavigationRow(title: "Friends", symbol: "person.2") {
+                router.push(.followGraph(userID, .friends))
+            }
             .accessibilityIdentifier("profile-friends")
-        Button { router.push(.memberList(userID, .been)) } label: { stat(value.rankedCount, "Ranked") }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("profile-been-count")
-        Button { router.push(.memberList(userID, .want)) } label: { stat(value.wantCount, "Wishlist") }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("profile-want-count")
-    }
-
-    private func stat(_ count: Int, _ label: String) -> some View {
-        VStack(spacing: 2) {
-            Text("\(count)").font(.headline).monospacedDigit()
-            Text(label).font(.caption).foregroundStyle(Theme.secondaryText)
+            if value.relationship.isSelf || value.relationship.friendState == .friends {
+                RowSeparator()
+                SocialNavigationRow(title: "Passport", symbol: "book.closed") {
+                    router.push(.passport(ownerID: userID, name: value.member.displayName))
+                }
+            }
+            if value.relationship.isSelf {
+                RowSeparator()
+                SocialNavigationRow(title: "Lists", symbol: "list.bullet") { router.push(.lists) }
+            } else {
+                ForEach(sharedLists) { list in
+                    RowSeparator()
+                    SocialNavigationRow(title: list.title, symbol: "list.bullet") { router.push(.list(list.id)) }
+                }
+            }
         }
-        .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-        .accessibilityElement(children: .combine)
+        .roamCard(padding: Theme.Spacing.m)
+        .padding(.horizontal, Theme.Spacing.l)
     }
 
     private func relationshipActions(_ value: PublicProfile) -> some View {
         let relationship = value.relationship
         let state = FollowButtonState(relationship.friendState, pending: followPending)
         return VStack(spacing: Theme.Spacing.s) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
-                VStack(spacing: Theme.Spacing.s) { followAndShared(value, state: state) }
-            }
+            FollowButton(state: state, name: value.member.displayName) { Task { await toggleFollow(value) } }
             if relationship.isMuted {
-                Label("Muted: their places are hidden from your Friends tab.", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Theme.secondaryText)
+                Label("Muted", systemImage: "speaker.slash").font(.footnote).foregroundStyle(Roam.inkMuted)
                     .accessibilityIdentifier("profile-muted")
             }
         }
         .padding(.horizontal)
-    }
-
-    @ViewBuilder private func followAndShared(_ value: PublicProfile, state: FollowButtonState) -> some View {
-        FollowButton(state: state, name: value.member.displayName) { Task { await toggleFollow(value) } }
-        Button { router.push(.sharedWants(userID)) } label: { PillLabel(title: "Shared Wishlist", systemImage: "bookmark.circle") }
-            .buttonStyle(PillButtonStyle())
-            .accessibilityIdentifier("profile-shared-wants")
     }
 
     private func overflow(_ value: PublicProfile) -> some View {
@@ -314,40 +257,6 @@ struct ProfileView: View {
         }
     }
 
-    private func globeCard(_ value: PublicProfile) -> some View {
-        Button {
-            router.push(.globe(userID))
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                GlobeMapView(pins: (travel?.pins ?? []).map(MapPin.init), shadedCountryCodes: Set(travel?.countries.map(\.countryCode) ?? []),
-                             style: .globe, interactive: false)
-                    .frame(height: 230)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(value.countryCount) \(value.countryCount == 1 ? "country" : "countries") · \(value.cityCount) \(value.cityCount == 1 ? "city" : "cities")")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text(travelError ?? "All-time places visited")
-                            .font(.caption)
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.left.and.arrow.down.right").foregroundStyle(Theme.accent)
-                }
-                .padding(Theme.Spacing.m)
-            }
-            .background(Theme.raisedCard)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal)
-        .accessibilityLabel("Travel globe: \(value.countryCount) \(value.countryCount == 1 ? "country" : "countries"), \(value.cityCount) \(value.cityCount == 1 ? "city" : "cities"). Opens the full globe.")
-        .accessibilityIdentifier("mini-globe")
-    }
-
     @ViewBuilder private func activitySection(_ value: PublicProfile) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             Text("Activity").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
@@ -364,7 +273,12 @@ struct ProfileView: View {
                 } else {
                     ForEach(activity.items) { item in
                         FeedCard(item: item, likePending: activity.likePending.contains(item.id),
-                                 onLike: { liked in Task { await activity.setLike(item.id, liked: liked) } })
+                                 onLike: { liked in
+                            Task {
+                                await activity.setLike(item.id, liked: liked)
+                                if let updated = activity.items.first(where: { $0.id == item.id }) { changes.publish(updated) }
+                            }
+                        })
                     }
                     if activity.nextCursor != nil || activity.pageError != nil {
                         PaginationFooter(isLoading: activity.loadingMore, errorMessage: activity.pageError, hasMore: false) {

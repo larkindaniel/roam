@@ -13,6 +13,8 @@ struct ActivityDetailView: View {
     @State private var confirmingRemoval = false
     @State private var commentToDelete: Comment?
     @State private var reportTarget: ReportTarget?
+    @State private var removingTag = false
+    @State private var tagError: String?
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -32,6 +34,13 @@ struct ActivityDetailView: View {
                             Button(role: .destructive) { confirmingRemoval = true } label: { Label("Remove post", systemImage: "trash") }
                                 .accessibilityIdentifier("activity-remove")
                         } else {
+                            if let visitID = item.visitID, item.companions?.contains(where: { $0.id == session.userID }) == true {
+                                Button("Remove my tag", role: .destructive) {
+                                    Task { await removeTag(visitID) }
+                                }
+                                .disabled(removingTag)
+                                .accessibilityIdentifier("remove-my-tag")
+                            }
                             Button { reportTarget = .activity(item.id) } label: { Label("Report post", systemImage: "flag") }
                                 .accessibilityIdentifier("activity-report")
                         }
@@ -77,6 +86,19 @@ struct ActivityDetailView: View {
         if model?.isUnavailable == true { changes.publishRemoval(activityID) }
     }
 
+    private func removeTag(_ visitID: UUID) async {
+        guard !removingTag else { return }
+        removingTag = true
+        tagError = nil
+        defer { removingTag = false }
+        do {
+            try await services.plans.removeMyVisitTag(visitID: visitID)
+            await model?.load()
+            publish()
+            changes.markFeedStale()
+        } catch { tagError = session.handle(error) }
+    }
+
     @ViewBuilder private func content(_ model: ActivityDetailModel) -> some View {
         if model.isUnavailable {
             ScrollView {
@@ -93,12 +115,7 @@ struct ActivityDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                        ActivityCardView(item: item, compact: false, onOpenAuthor: { router.push(.member(item.author.id)) },
-                                         onOpenPhotos: item.visitID.map { visitID in { router.push(.gallery(experienceID: item.experience.id, visitID: visitID)) } })
-                        Button { router.push(.experience(item.experience.id)) } label: {
-                            Label("Open \(item.experience.name)", systemImage: "mappin.circle").frame(minHeight: Theme.minimumHitTarget)
-                        }
-                        .accessibilityIdentifier("activity-open-experience")
+                        ActivityCardView(item: item, compact: false)
                         HStack(spacing: Theme.Spacing.l) {
                             LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: model.likePending) {
                                 Task { await model.setLike(!item.likedByViewer); publish() }
@@ -109,8 +126,11 @@ struct ActivityDetailView: View {
                         }
                     }
                     .roamCard()
+                    if let tagError, let visitID = item.visitID {
+                        InlineRetryView(message: tagError) { Task { await removeTag(visitID) } }
+                    }
                     if let error = model.actionError {
-                        InlineRetryView(message: error, retryTitle: "Reload") { Task { await model.load() } }
+                        InlineRetryView(message: error, retryTitle: "Reload") { Task { await model.load(); publish() } }
                     }
                     comments(model)
                 }
@@ -137,7 +157,7 @@ struct ActivityDetailView: View {
                 InlineRetryView(message: error) { Task { await model.load() } }
             }
             if model.commentsLoaded && model.comments.isEmpty {
-                Text("No comments yet. Be the first to say something kind.").font(.subheadline).foregroundStyle(Theme.secondaryText)
+                Text("No comments yet").font(.subheadline).foregroundStyle(Roam.inkMuted)
                     .accessibilityIdentifier("comments-empty")
             }
             ForEach(model.comments) { comment in

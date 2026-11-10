@@ -50,12 +50,12 @@ Get colours from `PlaceState.markerColor` and symbols from `markerSymbol`. Never
 
 - **Been beats wishlist** everywhere: once you've been somewhere it's off your wishlist, and Save/Wishlist shows
   greyed out.
-- **Send** isn't built yet, so it's always shown greyed out (`inkFaint`).
+- **Send** opens a friend picker with an optional note on a place. Cities keep the greyed-out (`inkFaint`) button.
 
 ## Cards
 
 - `.roamCard()` is the standard card surface. Use `.roamCard(padding: Theme.Spacing.m)` for a card of rows.
-- **Photo-topped card** (a city's photo with rows under it, as on a multi-country trip and the Friends tab):
+- **Photo-topped card** (a city's photo with rows under it, as on a multi-country trip):
   `.roamCard(padding: 0)`, with the photo inset `6pt` and its corners at `Theme.cornerRadius - 6`.
 - Inside a swipe-up card short of fully up, cards turn see-through grey automatically (`\.onGlass`).
 
@@ -78,7 +78,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Padding and lines:** `.padding(.vertical, Theme.Spacing.s)`. Put `RowSeparator()` between rows, never after the
   last one. The line starts after the photo, is a solid 1pt and goes darker on glass by itself.
 - **Ready-made rows:** `PlaceRow`, `CityRow`, `TripRow` (`Features/Lists/MyPlacesSections.swift`), `MyVisitsCard`
-  (your visits), `FriendMemoriesSection` (You plus friends on a place), `FriendCityCard` (the Friends tab).
+  (your visits), `FriendMemoriesSection` (You plus friends on a place), `ActivityCardView` (the Friends tab).
 - **Swipe to delete:** a `List`'s `.swipeActions` with a red Delete, or `SwipeToDelete` for rows inside a card.
 
 ## Photo cards

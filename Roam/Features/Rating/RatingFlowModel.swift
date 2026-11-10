@@ -59,7 +59,8 @@ final class RatingFlowModel {
     private let now: () -> Date
     private var generation = 0
     /// Saves an edited visit over the one it came from (edit mode only).
-    var saveEdit: ((VisitPayload) async throws -> Void)?
+    private var submittedEdit: (payload: VisitPayload, operationID: UUID)?
+    var saveEdit: ((VisitPayload, UUID) async throws -> Void)?
 
     var draftName: String { "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)" }
     /// What the place already is, from Roam or from Apple's place type.
@@ -96,12 +97,12 @@ final class RatingFlowModel {
         if request.mode == .editVisit, let anchor = request.existingVisit {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id), audience: anchor.audience,
-                                   tripID: anchor.tripID)
+                                   tripID: anchor.tripID, companionIDs: anchor.companions?.map(\.id), replaceTrip: true)
         } else if request.mode == .rerank, let anchor = request.existingVisit {
             initial = VisitPayload(date: anchor.visitDate.date, timeZoneIdentifier: anchor.visitDate.timeZoneIdentifier,
                                    publicNote: anchor.publicNote, mediaIDs: anchor.media.map(\.id))
         } else {
-            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .public)
+            initial = VisitPayload(date: date.date, timeZoneIdentifier: date.timeZoneIdentifier, publicNote: "", mediaIDs: [], audience: .friends)
         }
         let name = "rating-draft-\(request.experience.id.uuidString.lowercased())-\(request.mode.rawValue)"
         storage.purgeExpired(userID: accountID, prefix: "rating-draft-", lifetime: 30 * 86_400, now: now())
@@ -185,6 +186,12 @@ final class RatingFlowModel {
         guard canEdit, visit == initialVisit else { setTrip(tripID); return }
         visit.tripID = tripID
         initialVisit.tripID = tripID
+    }
+
+    func setCompanions(_ selection: Set<UUID>) {
+        guard canEdit else { return }
+        visit.companionIDs = selection.sorted { $0.uuidString < $1.uuidString }
+        persist()
     }
 
     func setAudience(_ audience: Audience) {
@@ -332,7 +339,13 @@ final class RatingFlowModel {
         step = .saving
         message = nil
         do {
-            try await saveEdit(visit)
+            var payload = visit
+            if visit.companionIDs == initialVisit.companionIDs { payload.companionIDs = nil }
+            if visit.audience == initialVisit.audience { payload.audience = nil }
+            if visit.tripID == initialVisit.tripID { payload.tripID = nil; payload.replaceTrip = nil }
+            let operation = submittedEdit.flatMap { $0.payload == payload ? $0.operationID : nil } ?? UUID()
+            submittedEdit = (payload, operation)
+            try await saveEdit(payload, operation)
             guard accountMatches() else { step = .details; return }
             completion = .edited
             step = .result

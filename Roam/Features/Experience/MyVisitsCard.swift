@@ -42,6 +42,10 @@ struct MyVisitsCard: View {
                 // The note's start tucked right under the date.
                 VStack(alignment: .leading, spacing: -2) {
                     Text(visit.visitDate.displayString).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
+                    if let companions = visit.companions, !companions.isEmpty {
+                        Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
+                            .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                    }
                     if !visit.publicNote.isEmpty {
                         Text(visit.publicNote.replacingOccurrences(of: "\n", with: " "))
                             .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1).truncationMode(.tail)

@@ -168,6 +168,7 @@ struct PlaceGallery: View {
     let items: [PlaceGalleryItem]
     let placeName: String
     var lookAround: MKLookAroundScene?
+    var onOpenVisitPhoto: ((String) -> Void)? = nil
 
     @State private var index = 0
     @State private var showsLookAround = false
@@ -239,7 +240,15 @@ struct PlaceGallery: View {
         case .photo(let url, _):
             PlacePhotoView(url: url, label: "Photo of \(placeName)", height: 220, showsCredit: false, cornerRadius: 0)
         case .visitPhoto(let path):
-            RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
+            if let onOpenVisitPhoto {
+                Button { onOpenVisitPhoto(path) } label: {
+                    RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the photo viewer")
+            } else {
+                RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
+            }
         }
     }
 }

@@ -31,6 +31,8 @@ struct SettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("settings-edit-profile")
+                NavigationLink(value: AppRoute.ownProfile) { Label("View profile", systemImage: "person.crop.circle") }
+                    .accessibilityIdentifier("settings-view-profile")
                 // What you like, for Plan with AI. Suggestions learn from your rankings instead.
                 NavigationLink(value: AppRoute.taste) { Label("Your tastes", systemImage: "heart") }
                     .accessibilityIdentifier("settings-tastes")

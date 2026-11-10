@@ -44,7 +44,7 @@ Real-backend tests need the test accounts, so run `supabase db reset --local` an
 ./scripts/build.sh             # Debug build for the iPhone 17 Pro simulator
 ```
 
-Open `Roam.xcodeproj` and run the `Roam` scheme, or install `build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` with `xcrun simctl install`. Sign in with a fixture account such as `maya@roam.test`. Debug builds also accept `-roam-backend fixture -roam-fixture-account maya` for the in-memory fixture backend that the UI tests use.
+Open `Roam.xcodeproj` and run the `Roam` scheme, or install `build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` with `xcrun simctl install`. A Debug build on the simulator opens as Maya with sample data when no backend is configured. With a configured local backend, sign in with a fixture account such as `maya@roam.test`. You can also select either backend explicitly with `-roam-backend fixture -roam-fixture-account maya` or `-roam-backend supabase`.
 
 ## Test
 

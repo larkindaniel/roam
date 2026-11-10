@@ -51,6 +51,7 @@ actor FixtureBackend {
         /// Seeded entries were published to all members; new entries come from the log sheet.
         var audience: Audience = .public
         var tripID: UUID? = nil
+        var companionIDs: [UUID] = []
     }
 
     struct RatingRow {
@@ -178,6 +179,19 @@ actor FixtureBackend {
         if scenario != "empty" && scenario != "new-account" {
             Self.seedSuggestionSignals(places: &seededPlaces, experiences: &seededExperiences, shares: &seededShares, lists: &seededLists,
                                        trips: &seededTrips, catalog: catalog)
+        }
+        if scenario == "social-activities", let lisbon = catalog.destinations.first(where: { $0.name == "Lisbon" }) {
+            let tripID = FixtureIDs.uuid(92, 2)
+            let start = LocalDate.today().adding(days: -21)
+            let end = start.adding(days: 3)
+            seededTrips[tripID] = TripRow(id: tripID, owner: FixtureIDs.theo,
+                draft: TripDraft(id: tripID, name: "Lisbon weekend", startDate: start, endDate: end, status: .past),
+                createdAt: FixtureSeed.daysAgo(4), cities: [lisbon], participants: [FixtureIDs.maya: false])
+            if let visit = seeded.visits.values.filter({ $0.owner == FixtureIDs.theo && $0.date != nil })
+                .max(by: { $0.createdAt < $1.createdAt }) {
+                seeded.visits[visit.id]?.tripID = tripID
+                seeded.visits[visit.id]?.companionIDs = [FixtureIDs.maya]
+            }
         }
         places = seededPlaces
         experiences = seededExperiences
@@ -336,25 +350,48 @@ actor FixtureBackend {
                                  followingCount: following.1, viewer: viewerState, providerCategory: c.providerCategory)
     }
 
-    func visitModel(_ row: VisitRow) -> Visit {
+    func visibleCompanions(_ row: VisitRow, viewer: UUID) -> [MemberSummary] {
+        guard audienceAllows(owner: row.owner, audience: row.audience, viewer: viewer) else { return [] }
+        return row.companionIDs.filter { id in
+            areFriends(row.owner, id) && (viewer == row.owner || viewer == id || areFriends(viewer, id))
+        }.map(memberSummary).sorted { $0.displayName < $1.displayName }
+    }
+
+    func validateVisitSocial(_ payload: VisitPayload, owner: UUID) throws {
+        if let tripID = payload.tripID {
+            guard let trip = trips[tripID], canEditTrip(trip, viewer: owner) else { throw RoamError.notFound }
+        }
+        if let companions = payload.companionIDs, !companions.allSatisfy({ areFriends(owner, $0) }) {
+            throw RoamError.validation("You can only add current friends to a visit.")
+        }
+    }
+
+    func visitModel(_ row: VisitRow, viewer: UUID? = nil) -> Visit {
+        let viewer = viewer ?? row.owner
+        let trip = row.tripID.flatMap { trips[$0] }.flatMap { canReadTrip($0, viewer: viewer) ? $0.id : nil }
         let mediaRefs = row.mediaIDs.compactMap { media[$0] }.sorted { $0.position < $1.position }
             .map { MediaRef(id: $0.id, path: $0.path, width: $0.width, height: $0.height, position: $0.position) }
         return Visit(id: row.id, experienceID: row.experience, ownerID: row.owner,
                      visitDate: VisitDate(date: row.date, timeZoneIdentifier: row.timeZone), publicNote: row.note,
-                     media: mediaRefs, createdAt: row.createdAt, updatedAt: row.updatedAt, audience: row.audience, tripID: row.tripID)
+                     media: mediaRefs, createdAt: row.createdAt, updatedAt: row.updatedAt, audience: row.audience, tripID: trip,
+                     companions: visibleCompanions(row, viewer: viewer))
     }
 
     func activityItem(_ row: ActivityRow, viewer: UUID) -> ActivityItem? {
         guard let summary = summary(row.experience, viewer: viewer) else { return nil }
         let visit = row.visit.flatMap { visits[$0] }
-        let mediaRefs = visit.map(visitModel)?.media ?? []
+        let mediaRefs = visit.map { visitModel($0, viewer: viewer).media } ?? []
+        let trip = visit?.tripID.flatMap { trips[$0] }.flatMap {
+            canReadTrip($0, viewer: viewer) ? ActivityTrip(id: $0.id, name: $0.draft.name) : nil
+        }
         return ActivityItem(id: row.id, type: row.type, author: memberSummary(row.author), experience: summary, category: row.category,
                             scoreSnapshot: row.score, rankSnapshot: row.rank, sentimentSnapshot: row.sentiment, visitID: row.visit,
                             visitDate: VisitDate(date: visit?.date, timeZoneIdentifier: visit?.timeZone), note: visit?.note ?? "",
                             media: mediaRefs, publishedAt: row.publishedAt,
                             likeCount: likes.keys.filter { $0.b == row.id && isVisibleMember($0.a, to: viewer) }.count,
                             commentCount: comments.values.filter { $0.activity == row.id && isVisibleMember($0.author, to: viewer) }.count,
-                            likedByViewer: likes[Pair(a: viewer, b: row.id)] != nil, isOwn: row.author == viewer)
+                            likedByViewer: likes[Pair(a: viewer, b: row.id)] != nil, isOwn: row.author == viewer,
+                            trip: trip, companions: visit.map { visibleCompanions($0, viewer: viewer) })
     }
 
     func canSeeActivity(_ row: ActivityRow, viewer: UUID) -> Bool {

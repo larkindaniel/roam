@@ -1,95 +1,120 @@
 import SwiftUI
 
-/// Rating/revisit/rerank card. The score shown is the snapshot at posting time, labelled as such.
 struct ActivityCardView: View {
     let item: ActivityItem
-    var compact = false
-    var onOpenAuthor: (() -> Void)?
-    var onOpen: (() -> Void)?
-    /// When set, photos open the Visit gallery instead of the post.
-    var onOpenPhotos: (() -> Void)?
+    var compact = true
 
+    @Environment(AppRouter.self) private var router
     @State private var expanded = false
 
-    /// Category and area on one line when they fit; otherwise the area moves under the category
-    /// (compact phones, large text) instead of being squeezed into a narrow column.
-    private var categoryLine: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                CategoryBadge(category: item.category, compact: true)
-                if !item.experience.areaLine.isEmpty {
-                    Text("· \(item.experience.areaLine)").font(.caption).foregroundStyle(Theme.secondaryText)
-                }
-            }
-            .fixedSize()
-            VStack(alignment: .leading, spacing: 2) {
-                CategoryBadge(category: item.category, compact: true).fixedSize()
-                if !item.experience.areaLine.isEmpty {
-                    Text(item.experience.areaLine).font(.caption).foregroundStyle(Theme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
+    private static let profileLink = URL(string: "roam-action://profile")!
+    private static let placeLink = URL(string: "roam-action://place")!
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                Button { onOpenAuthor?() } label: { AvatarView(member: item.author, size: 40) }
-                    .buttonStyle(.plain)
-                    .allowsHitTesting(MemberProfiles.available)
-                    .accessibilityLabel("Open \(item.author.displayName)'s profile")
-                VStack(alignment: .leading, spacing: 2) {
-                    (Text(item.author.displayName).bold() + Text(" \(item.type.verb) ") + Text(item.experience.name).bold())
-                        .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
-                    categoryLine
-                    Text(dateLine).font(.caption).foregroundStyle(Theme.secondaryText)
+                Button { router.push(.member(item.author.id)) } label: {
+                    AvatarView(member: item.author, size: 44)
                 }
-                Spacer(minLength: 0)
-                ScoreBadge(score: item.scoreSnapshot, source: .snapshot, size: 42)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open \(item.author.displayName)'s profile")
+                .accessibilityIdentifier("activity-author")
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text(headline)
+                        .font(.body)
+                        .tint(Roam.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .environment(\.openURL, OpenURLAction { url in
+                            switch url {
+                            case Self.profileLink: router.push(.member(item.author.id))
+                            case Self.placeLink: router.push(.experience(item.experience.id))
+                            default: return .discarded
+                            }
+                            return .handled
+                        })
+                        .accessibilityAction(named: Text("Open place")) { router.push(.experience(item.experience.id)) }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Spacing.s) { area; date }
+                        VStack(alignment: .leading, spacing: 2) { area; date }
+                    }
+                }
+            }
+            if let trip = item.trip {
+                Button { router.push(.trip(trip.id)) } label: {
+                    Label(trip.name, systemImage: "airplane")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, Theme.Spacing.s)
+                        .padding(.vertical, Theme.Spacing.xs)
+                        .background(Roam.fill, in: Capsule())
+                        .frame(minHeight: Theme.minimumHitTarget)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open trip \(trip.name)")
+                .accessibilityIdentifier("activity-trip")
+            }
+            if let companions = item.companions, !companions.isEmpty {
+                Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
+                    .font(.footnote)
+                    .foregroundStyle(Roam.inkMuted)
             }
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
-                    // Only long notes collapse (with See more); a short note is never cut off.
-                    .lineLimit(expanded || item.note.count < 160 ? nil : 3)
+                    .lineLimit(compact && !expanded && item.note.count >= 160 ? 3 : nil)
                     .fixedSize(horizontal: false, vertical: true)
-                if item.note.count >= 160 && !expanded {
-                    Button("See more") { expanded = true }.font(.footnote.weight(.semibold))
+                if compact && item.note.count >= 160 && !expanded {
+                    Button("More") { expanded = true }
+                        .font(.footnote.weight(.semibold))
+                        .frame(minHeight: Theme.minimumHitTarget)
                 }
             }
-            if !item.media.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.s) {
-                        ForEach(item.media) { media in
-                            if let onOpenPhotos {
-                                Button(action: onOpenPhotos) { photo(media) }
-                                    .buttonStyle(.plain)
-                                    .accessibilityHint("Opens the visit photos")
-                            } else {
-                                photo(media)
-                            }
-                        }
-                    }
+            if let visitID = item.visitID, !item.media.isEmpty {
+                let photos = item.media.sorted { $0.position < $1.position }
+                PlaceGallery(items: photos.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name) { path in
+                    guard let photo = photos.first(where: { $0.path == path }) else { return }
+                    router.push(.visitPhoto(experienceID: item.experience.id, visitID: visitID, photoID: photo.id))
                 }
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { onOpen?() }
+        .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
     }
 
-    private func photo(_ media: MediaRef) -> some View {
-        RemoteImageView(path: media.path, accessibilityLabel: "Photo from \(item.author.displayName)'s visit")
-            .frame(width: 150, height: 112)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+    private var headline: AttributedString {
+        var author = AttributedString(item.author.displayName)
+        author.link = Self.profileLink
+        author.font = .body.weight(.semibold)
+        var place = AttributedString(item.experience.name)
+        place.link = Self.placeLink
+        place.font = .body.weight(.semibold)
+        return author + AttributedString(" \(item.type.verb) ") + place
     }
 
-    private var dateLine: String {
-        let posted = item.publishedAt.formatted(.relative(presentation: .named))
-        if let date = item.visitDate.date { return "Visited \(date.displayString) · posted \(posted)" }
-        return "Visit date unknown · posted \(posted)"
+    @ViewBuilder private var area: some View {
+        if let city = item.experience.locality, !city.isEmpty {
+            let destination = Destination(name: city, region: item.experience.region, countryCode: item.experience.countryCode,
+                                          countryName: item.experience.countryName, latitude: item.experience.latitude,
+                                          longitude: item.experience.longitude, radiusMeters: 15_000)
+            Button { router.push(.city(destination)) } label: {
+                Label(item.experience.areaLine, systemImage: "map")
+                    .font(.footnote)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Roam.inkMuted)
+            .accessibilityLabel("Open map of \(city)")
+        } else if let code = item.experience.countryCode, !item.experience.areaLine.isEmpty {
+            Button(item.experience.areaLine) { router.push(.country(code)) }
+                .buttonStyle(.plain)
+                .font(.footnote)
+                .foregroundStyle(Roam.inkMuted)
+        }
+    }
+
+    private var date: some View {
+        Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
+            .font(.footnote)
+            .foregroundStyle(Roam.inkMuted)
     }
 }
