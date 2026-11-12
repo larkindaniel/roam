@@ -29,8 +29,7 @@ privacy policy URLs, release type **Manual**, five 6.9" iPhone screenshots (fixt
 age rating answers (user content, comments, social feed; 13+ override to match the Terms), and
 App Review contact (Daniel Larkin, +1 780 381 5182, dxxxx441@gmail.com). Also set: availability in 174 territories (not mainland China, which needs an ICP filing), price Free,
 content rights, the review demo account (`dxxxx441+appreview@gmail.com`, password in ignored `.env.review`,
-created by `scripts/create-review-account.py`) and review notes, and build 7. Still empty: App Privacy
-(web only) and EU trader status (web only). **Trader status decision (November 12): not a trader**
+created by `scripts/create-review-account.py`) and review notes, and build 7. App Privacy is published (see below). Still to do on the website: EU trader status. **Trader status decision (November 12): not a trader**
 (free personal project, no purchases or ads); declare it under Business › Digital Services Act. Until it's
 declared, Roam isn't available in the EU, but submission isn't blocked.
 
@@ -93,23 +92,24 @@ The code search found no ad SDK or analytics integration. That does **not** make
 the answer to Apple's "Do you collect data?" question "No." Do not choose "No"
 while these account and user-content records are stored in Supabase.
 
-## App Privacy answers (enter on the website: App Store Connect › Roam › App Privacy)
+## App Privacy label: published November 12, 2026
 
-Apple's API can't set these. **Data collection:** Yes, we collect data. For every type below:
-used for **App Functionality** only, **Linked to the user: Yes**, **Used for tracking: No**.
+Published in App Store Connect by Somang Larkin. **Data collection: Yes.** Every type is
+**Linked to the user: Yes** and **Used for tracking: No**.
 
-| Category | Data type | Why |
-|---|---|---|
-| Contact Info | Email Address | Email sign-in and Apple relay email |
-| Contact Info | Name | Display name on the profile |
-| User Content | Photos or Videos | Visit photos and avatar |
-| User Content | Other User Content | Notes, ratings, comments, posts, lists, trips, reports |
-| Identifiers | User ID | Account ID |
+| Category | Data type | Purposes | Why |
+|---|---|---|---|
+| Contact Info | Email Address | App Functionality | Email sign-in and Apple relay email |
+| Contact Info | Name | App Functionality | Display name on the profile |
+| User Content | Photos or Videos | App Functionality | Visit photos and avatar |
+| User Content | Other User Content | App Functionality, Product Personalization | Notes, ratings, comments, posts, lists, trips, reports; saved and visited places shape suggestions |
+| Contacts | Contacts | App Functionality, Product Personalization | Friendships are a social graph in Apple's definition; friends' activity drives suggestions |
+| Identifiers | User ID | App Functionality | Account ID |
 
-Leave everything else unticked: Location (the device's position sorts results on the phone and is
-never stored on our server; place coordinates belong to places, not the person), Health, Financial,
-Contacts, Browsing/Search History, Purchases, Usage Data, Diagnostics, Sensitive Info, Other Data.
-Privacy policy URL is already set. Then click **Publish**.
+Not collected: Location (the device's position sorts results on the phone and is never stored on our
+server), Health, Financial, Browsing/Search History, Purchases, Usage Data, Diagnostics, Sensitive
+Info, Other Data. The label becomes public when the product page goes live. If the app starts
+collecting anything new, update the label and `site/privacy.html` together.
 
 ## Submission sequence
 
