@@ -1,5 +1,8 @@
 # Draft public copy for Roam
 
+The publishable pages built from this copy are in `site/` (`index.html` support, `privacy.html`,
+`terms.html`). Edit those when the policy changes; this file is the earlier plain-text draft.
+
 **Do not publish this draft yet.** Daniel Larkin is the launch contact for
 support and reports. The public support address is dxxxx441@gmail.com; a hosting
 URL for these pages has not been established. Verify the final text against the released build, Supabase
@@ -30,8 +33,7 @@ Roam uses this information to run your account, show your travel history and
 plans, share content with the audience you choose, and handle safety reports.
 Your email and sign-in details are not shown on your public profile. Other
 members can see profile details and any content you choose to share with them.
-Visits can be set to Only me, Friends, or Public. Review the audience before
-posting; the app's current default for a new visit is Public.
+Visits can be set to Only me, Friends, or Public. New visits start as Friends.
 
 ### Location and photos
 
