@@ -30,7 +30,9 @@ age rating answers (user content, comments, social feed; 13+ override to match t
 App Review contact (Daniel Larkin, +1 780 381 5182, dxxxx441@gmail.com). Also set: availability in 174 territories (not mainland China, which needs an ICP filing), price Free,
 content rights, the review demo account (`dxxxx441+appreview@gmail.com`, password in ignored `.env.review`,
 created by `scripts/create-review-account.py`) and review notes, and build 7. Still empty: App Privacy
-(web only) and EU trader status (web only).
+(web only) and EU trader status (web only). **Trader status decision (November 12): not a trader**
+(free personal project, no purchases or ads); declare it under Business › Digital Services Act. Until it's
+declared, Roam isn't available in the EU, but submission isn't blocked.
 
 ## Blocking checks before submitting
 
