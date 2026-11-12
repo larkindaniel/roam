@@ -2,8 +2,9 @@
 
 Prepared on `codex/app_store_review` for **Roam: Places & Memories**, bundle
 `com.daniellarkin.roam`, App Store Connect app `6822982847`. This is a draft for
-review, not a claim that version 1.0 is ready to submit. The November 6 build 5
-is in the **internal** TestFlight group; an internal build is not a public App
+review, not a claim that version 1.0 is ready to submit. The November 9 build 6
+is the latest valid build in the **internal** TestFlight group (checked through
+App Store Connect on November 12); an internal build is not a public App
 Review approval. Keep release set to **Manually release this version** so an
 approval does not publish the app automatically.
 
@@ -11,10 +12,10 @@ approval does not publish the app automatically.
 
 | Item | Current evidence | Ready when |
 |---|---|---|
-| Real iPhone run | Build 5 processed as valid; no recorded phone walkthrough | Apple sign-in, return sign-in, photo upload, logging, friends, reporting, deletion and recovery pass on a device |
+| Real iPhone run | Build 6 processed as valid; no recorded phone walkthrough | Apple sign-in, return sign-in, photo upload, logging, friends, reporting, deletion and recovery pass on a device |
 | iOS 18 compatibility | Deployment target is 18.0; local UI runs were on iOS 26.2 | Run core journeys on an iOS 18 simulator or device, or raise the minimum OS honestly |
 | Hosted account deletion and media cleanup | Database queues jobs; hosted worker schedule is prepared in `.github/workflows/roam-maintenance.yml` | Add `ROAM_BETA_SERVICE_ROLE_KEY` as a GitHub Actions secret, merge/enable the workflow, run it manually, and verify a disposable account and orphaned photo are removed. Never test with a real member. |
-| Sign in with Apple revocation | The branch contains `delete-account` Edge code and a migration, but neither has been deployed or provider-verified; build 5 still uses the old path | Create a separate Sign in with Apple key, deploy the function and migration, upload a new build, and complete a real-device deletion/revocation test |
+| Sign in with Apple revocation | The branch contains `delete-account` Edge code and a migration, but neither has been deployed or provider-verified; build 6 still uses the old path | Create a separate Sign in with Apple key, deploy the function and migration, upload a new build, and complete a real-device deletion/revocation test |
 | Email signup and recovery | Hosted SMTP and templates are deferred | Configure SMTP, apply the prepared templates, verify confirmation and recovery from non-team email addresses |
 | Public policy and support | In-app Help text has no public URL or contact destination | Publish accurate privacy policy, terms and support page; add privacy/support URLs to App Store Connect and links in the app |
 | User content safety | Members can report and block; reports are stored for operator review | Daniel Larkin monitors the report queue, has a reachable contact channel, and documents content filtering and response actions |
@@ -32,7 +33,7 @@ do not submit a placeholder URL to Apple.
 ## App Store Connect packet
 
 - **Name:** Roam: Places & Memories (existing app record).
-- **Version:** 1.0. Choose a new build number for any binary changed after build 5.
+- **Version:** 1.0. Build 7 is reserved in `project.yml` for the next binary; verify it is unused immediately before upload.
 - **Draft subtitle:** Keep track of where you go.
 - **Draft description:** "Save places you want to visit, plan trips by city, and keep a record of places you have been. Add notes and photos to your visits, rank your favourites, and see what friends share with you. Choose who can see each visit."
 - **Category:** select after checking the current product page; likely Travel.

@@ -35,6 +35,10 @@ if (action === 'create-internal' && !groups.some(g => g.attributes.name === 'Roa
   groups.push(result.data);
 }
 const builds = (await api(`/builds?filter[app]=${appID}&limit=100`)).data;
+const groupBuilds = await Promise.all(groups.map(async group => ({
+  id: group.id,
+  buildIDs: (await api(`/betaGroups/${group.id}/builds?limit=100`)).data.map(build => build.id),
+})));
 if (action === 'add-build') {
   const build = builds.find(b => b.id === process.argv[3]);
   const group = groups.find(g => g.attributes.name === 'Roam Internal' && g.attributes.isInternalGroup);
@@ -43,6 +47,7 @@ if (action === 'add-build') {
   console.log('Added build to Roam Internal.');
 }
 console.log(JSON.stringify({
-  groups: groups.map(g => ({ id: g.id, name: g.attributes.name, internal: g.attributes.isInternalGroup })),
+  groups: groups.map(g => ({ id: g.id, name: g.attributes.name, internal: g.attributes.isInternalGroup,
+    buildIDs: groupBuilds.find(item => item.id === g.id)?.buildIDs ?? [] })),
   builds: builds.map(b => ({ id: b.id, version: b.attributes.version, state: b.attributes.processingState, uploaded: b.attributes.uploadedDate })),
 }, null, 2));

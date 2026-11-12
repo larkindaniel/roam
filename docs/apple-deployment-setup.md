@@ -60,5 +60,12 @@ temporary checkout; their locations were not committed. Real-device verification
 
 Hosted backend deployment status is recorded in `docs/hosted-beta.md`.
 
+## November 12, 2026 read-only status check
+
+The App Store Connect API reports version 1.0 build 6 (`e2eb8f3a-1a87-4b59-b4d6-3a5dcd7eea3d`)
+as `VALID`, uploaded November 9, and attached to `Roam Internal`. It is newer than the build 5
+record above. The `codex/app_store_review` branch reserves build 7 for a later upload, but no
+new archive was uploaded and no App Store submission was made during this preparation.
+
 Do not substitute another Apple team. Keep private signing material out of xcconfig files, app bundles,
 Git, screenshots and logs.
