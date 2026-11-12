@@ -50,12 +50,12 @@ Get colours from `PlaceState.markerColor` and symbols from `markerSymbol`. Never
 
 - **Been beats wishlist** everywhere: once you've been somewhere it's off your wishlist, and Save/Wishlist shows
   greyed out.
-- **Send** isn't built yet, so it's always shown greyed out (`inkFaint`).
+- **Send** opens a friend picker with an optional note on a place. Cities keep the greyed-out (`inkFaint`) button.
 
 ## Cards
 
 - `.roamCard()` is the standard card surface. Use `.roamCard(padding: Theme.Spacing.m)` for a card of rows.
-- **Photo-topped card** (a city's photo with rows under it, as on a multi-country trip and the Friends tab):
+- **Photo-topped card** (a city's photo with rows under it, as on a multi-country trip):
   `.roamCard(padding: 0)`, with the photo inset `6pt` and its corners at `Theme.cornerRadius - 6`.
 - Inside a swipe-up card short of fully up, cards turn see-through grey automatically (`\.onGlass`).
 
@@ -78,7 +78,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Padding and lines:** `.padding(.vertical, Theme.Spacing.s)`. Put `RowSeparator()` between rows, never after the
   last one. The line starts after the photo, is a solid 1pt and goes darker on glass by itself.
 - **Ready-made rows:** `PlaceRow`, `CityRow`, `TripRow` (`Features/Lists/MyPlacesSections.swift`), `MyVisitsCard`
-  (your visits), `FriendMemoriesSection` (You plus friends on a place), `FriendCityCard` (the Friends tab).
+  (your visits), `FriendMemoriesSection` (You plus friends on a place), `ActivityCardView` (the Friends tab).
 - **Swipe to delete:** a `List`'s `.swipeActions` with a red Delete, or `SwipeToDelete` for rows inside a card.
 
 ## Photo cards
@@ -110,8 +110,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **City chip:** a slim grey capsule 24pt tall with `.subheadline.weight(.medium)` text, a small `chevron.right` and
   `Roam.ink.opacity(0.08)`. It opens the city.
 - **Google rating:** one small line, `★ 4.6 (1.2K)`, beside the city chip. The count is grey.
-- **Date ranges:** `DateRangeRow`, two pills `Start → End` with calendar icons. Each opens a calendar in a popover,
-  starts empty and has Remove date.
+- **Date ranges:** `DateRangeRow`, two pills `Start → End` with calendar icons. Each opens `CalendarPopover`, starts
+  empty and has Remove date.
+- **Calendars:** every date uses `CalendarPopover`. Tapping a day picks it and closes; changing month or year keeps it
+  open; Done picks the day shown (so today, or the start date, can be picked too).
 - **Single date on the log screen:** a chip showing the date with an `xmark.circle.fill` on its right to clear it.
   Tapping anywhere else opens a graphical calendar in a popover that closes when you pick a day.
 - **Text fields:** no autocapitalisation or autocorrect on search, names or notes. Notes use `NoteBox`, a roomy box
@@ -144,6 +146,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Segmented selector** (My Places): one track with the chosen segment's pill sliding across in its state colour.
 - **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonList` where rows will. Errors use
   `InlineRetryView` with Try again.
+- **Reason lines:** a suggestion's card says why in a few words, built by `SuggestionReason` from the server's facts
+  (`Domain/Suggestions.swift`). Never invent one; no reason means the plain subtitle. Never repeat Google's stars in it.
+- **Not interested:** long-press a suggestion card (`.notInterested { … }`). It's a context menu, not a button on the
+  card.
 - **Search results:** `PlaceSearchResults` is shared by Discover, My Places and city pages. Cities show the signpost
   icon, countries show their flag, and towns never appear as places.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not

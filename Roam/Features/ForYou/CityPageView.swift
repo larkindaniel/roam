@@ -25,6 +25,7 @@ struct CityPageView: View {
     @Environment(SessionStore.self) private var session
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
+    @State private var friendActivity: LoadPhase<[FriendAreaActivity]> = .idle
     @State private var search: ExperienceSearchModel?
     @State private var query = ""
     @FocusState private var searching: Bool
@@ -79,11 +80,10 @@ struct CityPageView: View {
     private var savedPlaceCount: Int { wishlist.filter { item in !spots.contains { $0.id == item.id } }.count }
     private var isSaved: Bool { !matchingSaved.isEmpty || (isOwn && savedPlaceCount > 0) }
 
-    /// Places others loved that aren't already among your spots.
+    /// Roam's suggestions here, best first, leaving out anything already among your spots or saved.
     private var recommended: [DiscoverPlace] {
-        guard case .loaded(let sections) = model?.phase else { return [] }
-        let shown = Set(spots.map(\.id))
-        return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }.filter { !shown.contains($0.id) }
+        let shown = Set(spots.map(\.id) + wishlist.map(\.id))
+        return (model?.places ?? []).filter { !shown.contains($0.id) }
     }
 
     var body: some View {
@@ -426,6 +426,11 @@ struct CityPageView: View {
         let saved = wishlist.filter { item in !spots.contains { $0.id == item.id } }
         if !saved.isEmpty { placeRows(saved.map { PlaceMapItem(experience: $0.experience, state: .wishlist) }) }
         if !spots.isEmpty { placeRows(spots.map { PlaceMapItem(experience: $0.experience, state: .visited) }) }
+        if let area = FriendVisitArea(city: destination), let rows = friendActivity.value, !rows.isEmpty {
+            FriendAreaRows(area: area, activity: rows)
+        } else if case .failed(let message) = friendActivity {
+            InlineRetryView(message: message) { Task { await loadFriendActivity() } }
+        }
         switch model?.phase ?? .loading {
         case .idle, .loading:
             SkeletonCards()
@@ -436,10 +441,10 @@ struct CityPageView: View {
                 // No heading: the suggestions just follow on. Lazy, so only the cards on screen build their maps.
                 LazyVStack(spacing: Theme.Spacing.l) {
                     ForEach(recommended) { place in
-                        DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.friendEvidence,
-                                          score: (place.friendEvidence != nil ? place.experience.followingScore : nil) ?? place.communityScore) {
+                        DiscoverPlaceCard(experience: place.experience, path: place.coverPath, evidence: place.reason) {
                             fly(to: place.experience)
                         }
+                        .notInterested { Task { await model?.hide(place) } }
                     }
                 }
                 .accessibilityElement(children: .contain)
@@ -514,6 +519,7 @@ struct CityPageView: View {
     }
 
     private func reload() async {
+        async let friends: Void = loadFriendActivity()
         async let mine = loadSpots(of: session.userID)
         async let theirs = isOwn ? [] : loadSpots(of: ownerID)
         let own = await mine
@@ -548,6 +554,13 @@ struct CityPageView: View {
         }
         if model == nil { model = ForYouModel(plans: services.plans) }
         await model?.load(destination)
+        await friends
+    }
+
+    private func loadFriendActivity() async {
+        guard isOwn, let area = FriendVisitArea(city: destination) else { return }
+        do { friendActivity = .loaded(try await services.plans.friendAreaActivity(in: area, friendID: nil)) }
+        catch { if !Task.isCancelled { friendActivity = .failed(session.handle(error)) } }
     }
 
     /// Only cities are planned: the city joins the trip, and places you've saved here show up on it.
@@ -616,11 +629,11 @@ struct CityAtView: View {
 struct DiscoverPlaceCard: View {
     let experience: ExperienceSummary
     var path: String?
+    /// Why it's suggested ("Theo sent you this"); the category shows when there's no reason.
     var evidence: String?
-    var score: Score?
     let action: () -> Void
 
-    /// The full-photo card: the name in white with who's been there under it, and just the stars at the bottom right;
+    /// The full-photo card: the name in white with why it's suggested under it, and just the stars at the bottom right;
     /// the rest (category, reviews) is on the place's page.
     var body: some View {
         Button(action: action) {

@@ -195,7 +195,9 @@ extension FixtureBackend: ProfileService {
         guard let member = members[userID], let handle = member.handle, !member.deleted, !isBlockedEitherWay(me, userID) || me == userID else {
             throw RoamError.notFound
         }
-        let visited = Set(visits.values.filter { $0.owner == userID }.map(\.experience))
+        let visited = Set(visits.values.filter {
+            $0.owner == userID && audienceAllows(owner: $0.owner, audience: $0.audience, viewer: me)
+        }.map(\.experience))
         let geography = visited.compactMap { experiences[$0].flatMap { places[$0.placeID]?.candidate } }
         let countryCount = Set(geography.compactMap(\.countryCode)).count
         let cityCount = Set(geography.compactMap { GeographyKey.cityKey(countryCode: $0.countryCode, region: $0.region, locality: $0.locality) }).count
@@ -207,7 +209,9 @@ extension FixtureBackend: ProfileService {
             bio: member.bio, homeCityName: member.homeCity?.displayName, joinedAt: member.createdAt,
             followerCount: follows.keys.filter { $0.b == userID && isVisibleMember($0.a, to: me) }.count,
             followingCount: follows.keys.filter { $0.a == userID && isVisibleMember($0.b, to: me) }.count,
-            rankedCount: ratings.values.filter { $0.owner == userID }.count,
+            rankedCount: ratings.values.filter {
+                $0.owner == userID && audienceAllows(owner: $0.owner, audience: ratingAudience($0), viewer: me)
+            }.count,
             wantCount: bookmarks.keys.filter { $0.a == userID }.count,
             countryCount: countryCount, cityCount: cityCount, relationship: relationship)
     }

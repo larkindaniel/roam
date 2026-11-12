@@ -55,10 +55,14 @@ enum AppRoute: Hashable, Sendable {
     case country(String)
     /// A state or province: its name, its code in `region` ("ON"), its country and middle.
     case region(Destination)
+    case friendAreaVisits(FriendVisitArea, MemberSummary)
+    case friendPlaceVisits(placeID: UUID, placeName: String, friend: MemberSummary)
     case passport(ownerID: UUID, name: String)
     case passportCountry(ownerID: UUID, country: PassportCountry)
     case passportCity(ownerID: UUID, city: PassportCity)
     case lists
+    case receivedShares
+    case tripInvitations
     case list(UUID)
     case taste
     case member(UUID)
@@ -72,6 +76,7 @@ enum AppRoute: Hashable, Sendable {
     /// S19 with a Travel Profile row selected (category, city or country).
     case travelFilter(UUID, TravelFilter)
     case gallery(experienceID: UUID, visitID: UUID?)
+    case visitPhoto(experienceID: UUID, visitID: UUID, photoID: UUID)
     case settings
     case editProfile
     case safetyList(SafetyListKind)
@@ -80,10 +85,8 @@ enum AppRoute: Hashable, Sendable {
     case deleteAccount
 }
 
-/// Other members' profile pages are set aside until they're rebuilt: nothing opens one, and names and avatars
-/// aren't tappable. Turn this back on to bring them back.
 enum MemberProfiles {
-    static let available = false
+    static let available = true
 }
 
 enum SafetyListKind: String, Hashable, Sendable {

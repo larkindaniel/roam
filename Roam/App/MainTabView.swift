@@ -21,8 +21,13 @@ struct MainTabView: View {
             }
             if !tabBar.isHidden(on: router.selectedTab) {
                 // Measured from the very bottom of the screen, not the home indicator, so the gaps match.
-                VStack {
-                    Spacer()
+                VStack(spacing: Theme.Spacing.s) {
+                    Spacer(minLength: 0)
+                    if router.selectedTab == .friends, router.path(for: .friends).isEmpty {
+                        logPlaceButton
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.horizontal, RoamTabBar.sideMargin)
+                    }
                     RoamTabBar(selection: $router.selectedTab)
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -35,6 +40,20 @@ struct MainTabView: View {
             SheetContent(route: sheet)
                 .presentationBackground(Roam.paper)
         }
+    }
+
+    private var logPlaceButton: some View {
+        Button { router.sheet = .logPlace } label: {
+            Image(systemName: "plus")
+                .font(.headline)
+                .foregroundStyle(Roam.ink)
+                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Circle())
+        .accessibilityLabel("Log a place")
+        .accessibilityIdentifier("log-place")
     }
 
     @ViewBuilder private func stack(_ tab: AppTab) -> some View {
@@ -170,8 +189,7 @@ struct RouteDestinationView: View {
         case .search:
             SearchRootView()
         case .ownProfile:
-            // For now your profile is just settings: no stats or passport.
-            SettingsView()
+            ProfileRootView()
         case .trip(let id):
             TripDetailView(tripID: id)
         case .placeGroup(let title, let subtitle, let ids):
@@ -188,6 +206,10 @@ struct RouteDestinationView: View {
             CountryPageView(code: code)
         case .region(let area):
             CountryPageView(code: area.countryCode ?? "", region: area)
+        case .friendAreaVisits(let area, let friend):
+            FriendAreaVisitsView(area: area, friend: friend)
+        case .friendPlaceVisits(let placeID, let placeName, let friend):
+            FriendPlaceVisitsView(placeID: placeID, placeName: placeName, friend: friend)
         case .passport(let ownerID, let name):
             PassportView(ownerID: ownerID, name: name)
         case .passportCountry(let ownerID, let country):
@@ -196,6 +218,10 @@ struct RouteDestinationView: View {
             PassportCityView(ownerID: ownerID, city: city)
         case .lists:
             PlaceListsView()
+        case .receivedShares:
+            ReceivedSharesView()
+        case .tripInvitations:
+            TripInvitationsView()
         case .list(let id):
             PlaceListDetailView(listID: id)
         case .taste:
@@ -226,6 +252,8 @@ struct RouteDestinationView: View {
             PersonalListsView(ownerID: id, initialKind: kind)
         case .gallery(let experienceID, let visitID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID)
+        case .visitPhoto(let experienceID, let visitID, let photoID):
+            VisitGalleryView(experienceID: experienceID, visitID: visitID, initialPhotoID: photoID)
         case .activity(let id):
             ActivityDetailView(activityID: id)
         case .notifications:

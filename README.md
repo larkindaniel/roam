@@ -44,7 +44,7 @@ Real-backend tests need the test accounts, so run `supabase db reset --local` an
 ./scripts/build.sh             # Debug build for the iPhone 17 Pro simulator
 ```
 
-Open `Roam.xcodeproj` and run the `Roam` scheme, or install `build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` with `xcrun simctl install`. Sign in with a fixture account such as `maya@roam.test`. Debug builds also accept `-roam-backend fixture -roam-fixture-account maya` for the in-memory fixture backend that the UI tests use.
+Open `Roam.xcodeproj` and run the `Roam` scheme, or install `build/DerivedData/Build/Products/Debug-iphonesimulator/Roam.app` with `xcrun simctl install`. A Debug build on the simulator opens as Maya with sample data when no backend is configured. With a configured local backend, sign in with a fixture account such as `maya@roam.test`. You can also select either backend explicitly with `-roam-backend fixture -roam-fixture-account maya` or `-roam-backend supabase`.
 
 ## Test
 
@@ -122,6 +122,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
   `no_photo_limit`
 - **Friends tab:** `friends_feed()` returns friends' dated visits you may see; the app groups them per friend and city
   (`Roam/Domain/FriendFeed.swift`).
+- **Suggestions:** `suggested_places()`, `suggested_cities()`, `hide_suggestion()` and `onboarding_places()`
+  (`20261107000100_suggestions`). Weights and rules are in DECISIONS.md, "Suggestions".
 - **Edge function:** `supabase/functions/google-place` looks up Google photos and ratings near a place, refreshed about
   weekly.
 
@@ -136,6 +138,8 @@ Migrations from `20261101…` on in `supabase/migrations/` are each named for wh
 | Photo cards, My Places tabs | `Roam/Features/Lists/MyPlacesTabs.swift` |
 | Photos, gallery, Wikipedia | `Roam/Places/PlaceBackground.swift` |
 | Discover / city / country | `Roam/Features/ForYou/` |
+| Suggestions: reason lines, order, taste lean | `Roam/Domain/Suggestions.swift` |
+| Onboarding (where have you been, rank them) | `Roam/Features/Onboarding/` |
 | Place page | `Roam/Features/Experience/ExperienceDetailView.swift`, `MyVisitsCard.swift` |
 | Friends on a place | `Roam/Features/Memories/PublicMemoriesSection.swift` |
 | Friends tab | `Roam/Features/Feed/FeedRootView.swift`, `Roam/Domain/FriendFeed.swift` |

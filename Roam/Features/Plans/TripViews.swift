@@ -74,6 +74,11 @@ struct TripDetailView: View {
     @State private var actionError: String?
     @State private var editing: TripDraft?
     @State private var confirmingDelete = false
+    @State private var inviting = false
+    @State private var confirmingLeave = false
+    @State private var savingDates = false
+    @State private var entryError: String?
+    @Environment(LibraryStore.self) private var library
     @State private var entries: [TripFeedEntry] = []
     @State private var wishlist: [ExperienceSummary] = []
     @State private var addingFromWishlist = false
@@ -137,6 +142,21 @@ struct TripDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $inviting) {
+            if let value = detail.value {
+                FriendSelectionSheet(title: "Invite to trip", action: "Invite", excluding: Set(value.members.map(\.id))) { selected in
+                    guard let member = selected.first else { return }
+                    try await services.plans.setTripMembership(tripID: tripID, memberID: member, action: .invite)
+                    await load()
+                }
+            }
+        }
+        .confirmationDialog("Leave this trip?", isPresented: $confirmingLeave, titleVisibility: .visible) {
+            Button("Leave", role: .destructive) {
+                if let me = session.userID { Task { await changeMembership(me, action: .leave) } }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .sheet(item: $editing) { draft in
             // The name, description and dates; cities are added and swiped off on the trip's page.
             TripEditorSheet(draft: draft) { _ in Task { await load() } }
@@ -159,8 +179,8 @@ struct TripDetailView: View {
         // Both dates set: a change is saved (a trip always has both).
         .onChange(of: [tripStart, tripEnd]) { _, _ in
             if loadingTripDates { loadingTripDates = false; return }
-            guard let tripStart, let tripEnd else { return }
-            Task { await saveTrip(start: tripStart, end: tripEnd) }
+            guard !savingDates, let tripStart, let tripEnd else { return }
+            Task { await saveDates(start: tripStart, end: tripEnd) }
         }
         .task { await load() }
         .refreshable { await load() }
@@ -171,11 +191,19 @@ struct TripDetailView: View {
         Section { header(value) }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
-        // Just the places; no timeline or top picks views.
+        if value.summary.canEditItinerary { members(value) }
         places(value)
+        if let entryError {
+            Section { InlineRetryView(message: entryError) { Task { await load() } } }
+        }
+        if !entries.isEmpty {
+            Section("Visits") { entryList(entries) }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        }
         // Add to trip across the bottom, under all the places (the page leaves room for it above the tab bar). On a trip to
         // one country it's in the cards' own section, so it's as close as two cards are; across countries, as two countries.
-        if value.summary.isOwn, Self.countryCount(value) > 1 {
+        if value.summary.canEditItinerary, Self.countryCount(value) > 1 {
             Section { addCityBubble }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -218,37 +246,67 @@ struct TripDetailView: View {
         }
     }
 
-    private func entryList(_ list: [TripFeedEntry], empty: String) -> some View {
-        VStack(spacing: 0) {
-            if list.isEmpty {
-                Text(empty).font(.subheadline).foregroundStyle(Roam.inkMuted).frame(maxWidth: .infinity, alignment: .leading)
+    private func members(_ value: TripDetail) -> some View {
+        Section("People") {
+            HStack(spacing: Theme.Spacing.m) {
+                AvatarView(member: value.summary.owner, size: 48)
+                Text(value.summary.owner.displayName).font(.headline)
+                Spacer()
+                Text("Owner").font(.footnote).foregroundStyle(Roam.inkMuted)
             }
+            ForEach(value.members) { entry in
+                HStack(spacing: Theme.Spacing.m) {
+                    AvatarView(member: entry.member, size: 48)
+                    Text(entry.member.displayName).font(.headline)
+                    Spacer(minLength: 0)
+                    if !entry.accepted { Text("Invited").font(.footnote).foregroundStyle(Roam.inkMuted) }
+                    if value.summary.isOwn {
+                        Menu {
+                            Button(entry.accepted ? "Remove from trip" : "Cancel invitation", role: .destructive) {
+                                Task { await changeMembership(entry.id, action: .remove) }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis").frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+                        }
+                        .accessibilityLabel("Options for \(entry.member.displayName)")
+                    }
+                }
+            }
+            if value.summary.isOwn {
+                Button { inviting = true } label: { Label("Invite a friend", systemImage: "person.badge.plus") }
+                    .frame(minHeight: Theme.minimumHitTarget)
+                    .accessibilityIdentifier("trip-invite")
+            } else {
+                Button("Leave trip", role: .destructive) { confirmingLeave = true }
+                    .frame(minHeight: Theme.minimumHitTarget)
+            }
+        }
+        .listRowBackground(Roam.paperRaised)
+    }
+
+    private func changeMembership(_ member: UUID, action: TripMembershipAction) async {
+        do {
+            try await services.plans.setTripMembership(tripID: tripID, memberID: member, action: action)
+            library.noteChanged()
+            if action == .leave { dismiss() } else { await load() }
+        } catch { actionError = session.handle(error) }
+    }
+
+    private func entryList(_ list: [TripFeedEntry]) -> some View {
+        VStack(spacing: 0) {
             ForEach(list) { entry in
-                entryRow(entry)
-                if entry.id != list.last?.id { Divider() }
+                let details = [entry.author?.displayName, entry.visitDate.date?.displayString,
+                               entry.companions.flatMap { $0.isEmpty ? nil : "With " + $0.map(\.displayName).formatted(.list(type: .and)) }]
+                    .compactMap { $0 }.joined(separator: " · ")
+                SocialNavigationRow(title: entry.experience.name, symbol: "mappin", subtitle: details, place: entry.experience) {
+                    if let activity = entry.activityID { router.push(.activity(activity)) }
+                    else { router.push(.experience(entry.experience.id)) }
+                }
+                .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
+                if entry.id != list.last?.id { RowSeparator() }
             }
         }
         .roamCard(padding: Theme.Spacing.m)
-    }
-
-    private func entryRow(_ entry: TripFeedEntry) -> some View {
-        Button { router.push(.experience(entry.experience.id)) } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(entry.experience.name).font(.headline).foregroundStyle(Roam.ink)
-                    Spacer(minLength: Theme.Spacing.s)
-                    if Score.isShown, let score = entry.score {
-                        Text(score.formatted).font(.system(.body, design: .rounded).bold()).monospacedDigit().foregroundStyle(Roam.ink)
-                    }
-                }
-                Text(entry.visitDate.date?.displayString ?? "Date unknown").font(.footnote).foregroundStyle(Roam.inkMuted)
-                if !entry.publicNote.isEmpty { Text(entry.publicNote).font(.subheadline).foregroundStyle(Roam.ink) }
-            }
-            .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
     }
 
     /// Just the trip's name and its dates (a friend's trip says whose).
@@ -273,8 +331,8 @@ struct TripDetailView: View {
             }
             // A little more room before the dates.
             .padding(.bottom, Theme.Spacing.xs)
-            if own {
-                DateRangeRow(start: $tripStart, end: $tripEnd)
+            if value.summary.canEditItinerary {
+                DateRangeRow(start: $tripStart, end: $tripEnd).disabled(savingDates)
             } else {
                 Text(MyTimeline.range(value.summary.startDate, value.summary.endDate) ?? "No dates yet")
                     .font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -284,18 +342,18 @@ struct TripDetailView: View {
         }
     }
 
-    /// Saves the trip with a new name, description or dates (the rest kept as it is).
-    private func saveTrip(name: String? = nil, description: String? = nil, start: Date? = nil, end: Date? = nil) async {
+    private func saveDates(start: Date?, end: Date?) async {
         guard let summary = detail.value?.summary else { return }
         var value = draft(summary)
-        if let name { value.name = name.trimmingCharacters(in: .whitespaces) }
-        if let description { value.description = description }
         if let start { value.startDate = LocalDate(date: start, timeZone: .current) }
         if let end { value.endDate = LocalDate(date: end, timeZone: .current) }
         value.status = TripSummary.status(start: value.startDate, end: value.endDate, today: MyTimeline.today())
         if let message = value.validationMessage { actionError = message; return }
+        savingDates = true
+        defer { savingDates = false }
         do {
-            _ = try await services.plans.saveTrip(value)
+            _ = try await services.plans.setTripDates(value)
+            library.noteChanged()
             actionError = nil
             await load()
         } catch { actionError = error.roamMessage }
@@ -310,7 +368,7 @@ struct TripDetailView: View {
     }
 
     @ViewBuilder private func places(_ value: TripDetail) -> some View {
-        let own = value.summary.isOwn
+        let own = value.summary.canEditItinerary
         let cities = value.summary.cities
         let countries = value.summary.countries.filter { code in !cities.contains { $0.countryCode?.uppercased() == code.uppercased() } }
         // Every country the trip goes to: named for it, or where one of its cities is.
@@ -397,7 +455,13 @@ struct TripDetailView: View {
                 tripStart = start
                 tripEnd = end
             }
-            entries = (try? await services.plans.tripUpdates(ownerID: loaded.summary.owner.id, tripID: tripID)) ?? []
+            do {
+                entries = try await services.plans.tripVisits(tripID: tripID)
+                entryError = nil
+            } catch {
+                entries = []
+                entryError = session.handle(error)
+            }
             if loaded.summary.isOwn, let me = session.userID {
                 let onTrip = Set(loaded.places.map(\.id))
                 let saved = (try? await services.lists.want(ownerID: me)) ?? []

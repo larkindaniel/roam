@@ -154,26 +154,17 @@ private struct SetupSteps: View {
         case .people:
             question("Find friends", "Optional. Friends see each other's places once both of you agree. Nobody is added unless you choose.")
             peopleList
-            Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .tastes }
+            Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .been }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("setup-continue")
-        case .tastes:
-            question("What do you like?", "Optional. These answers go into research briefs, and you can change them any time in Your Tastes.")
-            ForEach(TasteProfile.questions) { item in
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text(item.title).font(.subheadline.weight(.semibold))
-                    Picker(item.title, selection: Binding(get: { model.taste[keyPath: item.keyPath] ?? "" },
-                                                          set: { model.taste[keyPath: item.keyPath] = $0.isEmpty ? nil : $0 })) {
-                        Text("Skip").tag("")
-                        ForEach(item.options, id: \.self) { Text($0).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("setup-taste-\(item.title)")
-                }
+        case .been:
+            OnboardingBeenStep(model: model.taste, home: model.homeCity) {
+                model.taste.startRanking()
+                model.step = model.taste.stage == .done ? .visibility : .rank
             }
-            Button(model.taste == .empty ? "Skip for now" : "Continue") { Task { await model.saveTastes() } }
-                .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("setup-tastes-continue")
+        case .rank:
+            OnboardingRankStep(model: model.taste)
+                .onChange(of: model.taste.stage) { _, stage in if stage == .done { model.step = .visibility } }
         case .visibility:
             question("You choose who sees what", "Each entry can be for friends, only you, or everyone. Your name, photo and bio are visible to members.")
             VisibilityExplainer()

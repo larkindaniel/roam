@@ -27,6 +27,7 @@ extension FixtureBackend: SocialService {
         case (.remove, .friends):
             follows[mine] = nil
             follows[theirs] = nil
+            revokeFriendAccess(me, userID)
         default:
             break
         }
@@ -93,6 +94,7 @@ extension FixtureBackend: SocialService {
             follows[Pair(a: userID, b: me)] = nil
             friendRequests[Pair(a: me, b: userID)] = nil
             friendRequests[Pair(a: userID, b: me)] = nil
+            revokeFriendAccess(me, userID)
         } else {
             blocks.remove(Pair(a: me, b: userID))
         }
@@ -124,6 +126,16 @@ extension FixtureBackend: SocialService {
 }
 
 extension FixtureBackend: FeedService {
+    func friendsActivity(cursor: String?) async throws -> Page<ActivityItem> {
+        let me = try await authenticatedActor()
+        let rows = activities.values.filter { row in
+            areFriends(me, row.author) && !mutes.contains(Pair(a: me, b: row.author)) &&
+                activityAllowed(row, viewer: me) &&
+                (row.type == .rerank || row.visit.flatMap { visits[$0]?.date } != nil)
+        }
+        return page(of: rows, cursor: cursor, viewer: me)
+    }
+
     func feed(cursor: String?) async throws -> Page<ActivityItem> {
         let me = try await authenticatedActor()
         let followed = Set(follows.keys.filter { $0.a == me }.map(\.b))

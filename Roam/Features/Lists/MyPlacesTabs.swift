@@ -163,7 +163,7 @@ struct PastTripsCard: View {
 
     private var trips: [TripSummary] {
         let today = MyTimeline.today()
-        let past = model.trips.filter { $0.isOwn && $0.phase(today: today) == .past }
+        let past = model.trips.filter { $0.phase(today: today) == .past }
         return past.sorted { a, b in
             guard let first = a.endDate ?? a.startDate else { return false }
             guard let second = b.endDate ?? b.startDate else { return true }
@@ -195,7 +195,7 @@ struct UpcomingTripsCard: View {
 
     private var trips: [TripSummary] {
         let today = MyTimeline.today()
-        let upcoming = model.trips.filter { $0.isOwn && $0.phase(today: today) != .past }
+        let upcoming = model.trips.filter { $0.phase(today: today) != .past }
         // Soonest first; every trip has dates, so none should be missing one.
         return upcoming.sorted { a, b in
             guard let first = a.startDate else { return false }
@@ -261,7 +261,7 @@ struct SavedTab: View {
         }
     }
 
-    // Saved places by country, for now; custom lists are set aside.
+    // Saved places by country, with recommendations and lists in their own pages.
     var body: some View {
         // Saved places, whole saved cities and states, and whole saved countries, by country.
         // Been wins: a country you've been to is on Been, not here (places saved in it are on its page).
@@ -278,6 +278,16 @@ struct SavedTab: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HomeCitiesCard(model: model)
             UpcomingTripsCard(model: model, onNewTrip: onNewTrip)
+            VStack(spacing: 0) {
+                SocialNavigationRow(title: "Trip invitations", symbol: "airplane") { router.push(.tripInvitations) }
+                    .accessibilityIdentifier("open-trip-invitations")
+                RowSeparator()
+                SocialNavigationRow(title: "Sent to you", symbol: "paperplane") { router.push(.receivedShares) }
+                    .accessibilityIdentifier("open-received-shares")
+                RowSeparator()
+                SocialNavigationRow(title: "Lists", symbol: "list.bullet") { router.push(.lists) }
+            }
+            .roamCard(padding: Theme.Spacing.m)
             if countries.isEmpty {
                 Text("Save places you want to go. When you're ready, plan a trip from them.").font(.subheadline).foregroundStyle(Roam.inkMuted)
             } else {

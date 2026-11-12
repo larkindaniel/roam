@@ -20,6 +20,7 @@ struct CountryPageView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
     @State private var suggestions: ForYouModel?
+    @State private var friendActivity: LoadPhase<[FriendAreaActivity]> = .idle
     @State private var savedCodes: [String] = []
     @State private var logging = false
     @State private var confirmingBeen = false
@@ -39,6 +40,9 @@ struct CountryPageView: View {
     private var destination: Destination { region ?? CountryDestination.make(code: code) ?? lookedUp ?? Self.destination(for: code) }
     private var countryName: String { CountryName.display(code: code) }
     private var name: String { region?.name ?? countryName }
+    private var friendArea: FriendVisitArea {
+        FriendVisitArea(name: name, countryCode: code, regions: [region?.name, region?.region].compactMap { $0 })
+    }
     /// How saved regions are keyed: "CA|ON".
     private var savedKey: String { region.map { "\(code)|\($0.region ?? $0.name)" } ?? code }
     /// In the region, when this is one: places and cities carry its code ("ON") or, now and then, its name.
@@ -108,16 +112,13 @@ struct CountryPageView: View {
     private var wishlistRegions: [SavedRegion] {
         region == nil ? (model?.savedRegions ?? []).filter { $0.countryCode.uppercased() == code } : []
     }
-    /// Places others loved here that aren't already yours.
-    private var recommended: [DiscoverPlace] {
-        guard case .loaded(let sections) = suggestions?.phase else { return [] }
-        let mine = Set(pins.map(\.id))
-        return (sections.friends + sections.highlyRated + sections.more).uniqued { $0.id }
-            .filter { isHere($0.experience) && !mine.contains($0.id) }
+    /// Cities Roam suggests here, best first (on a state's page, only that state's).
+    private var recommended: [DiscoverCity] {
+        (suggestions?.cities ?? []).filter { isHere($0.destination) }
     }
     /// Google's photo of a place here, for when the country's (or region's) own has none.
     private var fallbackPhoto: URL? {
-        (pins.map(\.experience) + recommended.map(\.experience)).lazy.compactMap(\.photoURL).first
+        pins.map(\.experience).lazy.compactMap(\.photoURL).first ?? recommended.lazy.compactMap(\.coverURL).first
     }
 
     var body: some View {
@@ -296,33 +297,31 @@ struct CountryPageView: View {
         } else {
             SkeletonList(rows: 3)
         }
-        switch suggestions?.phase ?? .loading {
+        if let rows = friendActivity.value, !rows.isEmpty {
+            FriendAreaRows(area: friendArea, activity: rows)
+        } else if case .failed(let message) = friendActivity {
+            InlineRetryView(message: message) { Task { await loadFriendActivity() } }
+        }
+        switch suggestions?.cityPhase ?? .loading {
         case .idle, .loading:
             EmptyView()
         case .failed(let message):
-            InlineRetryView(message: message) { Task { await suggestions?.load(destination) } }
+            InlineRetryView(message: message) { Task { await suggestions?.loadCities(countryCode: code) } }
         case .loaded:
             // A level down from a country or state: cities, not places. No heading: the cards just follow on.
-            let cities = DiscoverCity.cities(from: recommended)
-            if !cities.isEmpty {
+            if !recommended.isEmpty {
                 LazyVStack(spacing: Theme.Spacing.l) {
-                    ForEach(cities) { city in
+                    ForEach(recommended) { city in
                         Button { router.push(.city(city.destination)) } label: {
-                            CityHeroCard(city: city.destination, subtitle: suggestionLine(city))
+                            CityHeroCard(city: city.destination, subtitle: city.reason ?? city.destination.region ?? "")
                         }
                         .buttonStyle(.plain)
+                        .notInterested { Task { await suggestions?.hide(city) } }
                         .accessibilityIdentifier("country-suggested-\(city.destination.name)")
                     }
                 }
             }
         }
-    }
-
-    /// "Dhyan has been", or where it is when no friend has.
-    private func suggestionLine(_ city: DiscoverCity) -> String {
-        let names = city.friendNames.compactMap { $0.split(separator: " ").first.map(String.init) }
-        guard let first = names.first else { return city.destination.region ?? "" }
-        return names.count == 1 ? "\(first) has been" : (names.count == 2 ? "\(first) and \(names[1]) have been" : "\(first) and \(names.count - 1) others have been")
     }
 
     /// Your home here first, as a plain link to its page.
@@ -449,10 +448,17 @@ struct CountryPageView: View {
         if model == nil, let me = session.userID { model = MyPlacesModel(services: services, ownerID: me) }
         if suggestions == nil { suggestions = ForYouModel(plans: services.plans) }
         async let mine: Void = model?.load() ?? ()
+        async let friends: Void = loadFriendActivity()
         async let saved = region == nil ? services.plans.savedCountries() : services.plans.savedRegions()
         savedCodes = (try? await saved) ?? savedCodes
         await mine
-        await suggestions?.load(destination)
+        await suggestions?.loadCities(countryCode: code)
+        await friends
+    }
+
+    private func loadFriendActivity() async {
+        do { friendActivity = .loaded(try await services.plans.friendAreaActivity(in: friendArea, friendID: nil)) }
+        catch { if !Task.isCancelled { friendActivity = .failed(session.handle(error)) } }
     }
 
     /// Your places logged here (been, not homes').

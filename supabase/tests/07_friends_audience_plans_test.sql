@@ -85,7 +85,7 @@ select is(jsonb_array_length(public.trip_updates('a1000000-0000-4000-8000-000000
 select pg_temp.as_user('c1000000-0000-4000-8000-000000000003');
 select is((select count(*)::int from jsonb_array_elements(public.trip_feed()) c where c->'author'->>'handle'='owner7'),0,'someone who is not a friend gets no card');
 select is(jsonb_array_length(public.friend_memories((select experience from ids7))),0,'someone who is not a friend sees none');
-select ok(not exists(select 1 from jsonb_array_elements(public.discover_places()) d where d->'experience'->>'name' like 'Seven%'),'private entries never reach anyone''s Discover');
+select ok(not exists(select 1 from jsonb_array_elements(public.suggested_places()) d where d->'experience'->>'name' like 'Seven%'),'private entries never reach anyone''s suggestions');
 select is(jsonb_array_length(public.public_memories((select experience from ids7),null)->'items'),0,'an unrelated member cannot see a friends entry');
 select throws_ok(format($$select public.visit(%L)$$,(select (value->>'visitID')::uuid from v7 where label='friends')),'P0002',null,'nor read it by ID');
 select is((select count(*)::int from public.visits where owner_id='a1000000-0000-4000-8000-000000000001'),0,'row security hides those visits too');
