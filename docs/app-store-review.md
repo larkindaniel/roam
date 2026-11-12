@@ -27,8 +27,10 @@ Set through the API with `scripts/app-store-listing.mjs`, `scripts/app-store-scr
 description, keywords, promotional text, subtitle, copyright, category Travel, support and
 privacy policy URLs, release type **Manual**, five 6.9" iPhone screenshots (fixture data),
 age rating answers (user content, comments, social feed; 13+ override to match the Terms), and
-App Review contact (Daniel Larkin, +1 780 381 5182, dxxxx441@gmail.com). Still empty: review
-demo account and notes, App Privacy questionnaire (web only), build selection.
+App Review contact (Daniel Larkin, +1 780 381 5182, dxxxx441@gmail.com). Also set: availability in 174 territories (not mainland China, which needs an ICP filing), price Free,
+content rights, the review demo account (`dxxxx441+appreview@gmail.com`, password in ignored `.env.review`,
+created by `scripts/create-review-account.py`) and review notes, and build 7. Still empty: App Privacy
+(web only) and EU trader status (web only).
 
 ## Blocking checks before submitting
 
@@ -36,12 +38,12 @@ demo account and notes, App Privacy questionnaire (web only), build selection.
 |---|---|---|
 | Real iPhone run | **Done (team-reported, November 12):** the team tested the TestFlight build on iPhones | Re-check only what changes in build 7: Settings › Safety/Support rows and links, and Apple account deletion once revocation is deployed |
 | iOS 18 compatibility | **Accepted (team decision, November 12):** the team considers its TestFlight testing sufficient; no iOS 18 simulator run is recorded | Raise the minimum OS if an iOS 18 problem is reported |
-| Hosted account deletion and media cleanup | Database queues jobs; hosted worker schedule is prepared in `.github/workflows/roam-maintenance.yml` | Add `ROAM_BETA_SERVICE_ROLE_KEY` as a GitHub Actions secret, merge/enable the workflow, run it manually, and verify a disposable account and orphaned photo are removed. Never test with a real member. |
-| Sign in with Apple revocation | The dedicated key `CP8L433922` was created and downloaded on November 12 (see `docs/apple-deployment-setup.md`). The branch contains `delete-account` Edge code and a migration, but neither has been deployed or provider-verified; build 6 still uses the old path | Configure the hosted Apple secrets, deploy the function and migration, upload a new build, and complete a real-device deletion/revocation test |
-| Email signup and recovery | Hosted SMTP and templates are deferred | Configure SMTP, apply the prepared templates, verify confirmation and recovery from non-team email addresses |
+| Hosted account deletion and media cleanup | Database queues jobs; the hosted worker schedule is in `.github/workflows/roam-maintenance.yml`, which only runs from `main` | Merge to `main`, add `ROAM_BETA_SERVICE_ROLE_KEY` as a GitHub Actions secret, run the workflow manually, and verify a disposable account and orphaned photo are removed |
+| Sign in with Apple revocation | **Deployed November 12:** key `CP8L433922` stored as `APPLE_TEAM_ID`/`APPLE_SIGN_IN_KEY_ID`/`APPLE_SIGN_IN_PRIVATE_KEY` Edge secrets on roam-beta; migration `20261112000100_apple_revocation_result.sql` applied; `delete-account` deployed (rejects unsigned calls with 401). Build 7 uses it | On build 7 from TestFlight, sign in with a spare Apple Account, delete it, and confirm the job completes and Apple shows Roam's access removed |
+| Email signup and recovery | Hosted SMTP is deferred; Supabase's free sender only reaches team addresses. Review notes direct App Review to the pre-confirmed demo account and Sign in with Apple | Before wider launch: configure SMTP, apply the templates, verify confirmation and recovery from non-team addresses |
 | Public policy and support | The app now links to them: Settings › Support/Terms email `ROAM_SUPPORT_EMAIL`, Settings › Privacy opens `ROAM_PRIVACY_POLICY_URL`. Release builds fail until both are set in `Config/Beta.xcconfig`. Both are set locally: support dxxxx441@gmail.com, policy https://larkindaniel.github.io/roam-site/privacy.html. The pages are published from the public `larkindaniel/roam-site` repo (copy of `site/`) via GitHub Pages | In App Store Connect, set Privacy Policy URL to https://larkindaniel.github.io/roam-site/privacy.html and Support URL to https://larkindaniel.github.io/roam-site/ . Keep `site/` and `roam-site` in sync when the text changes |
 | User content safety | Members can report, block and mute; Settings › Safety again lists Blocked people, Muted people and Your reports (they were unreachable after the Settings trim); reports are stored for operator review | Daniel Larkin monitors the report queue, has a reachable contact channel, and documents content filtering and response actions |
-| Content/data rights | Place photos can come from Google; app uses MapKit and Wikipedia imagery | Check provider terms and required attributions against the released UI and selected territories |
+| Content/data rights | Content rights declared as **uses third-party content** (Google Places and Wikipedia imagery; MapKit) | Check provider attribution requirements against the released UI |
 
 The hosted worker deliberately accepts only `https://xnjzuotytfzyppubjcfi.supabase.co`
 when `ROAM_WORKER_ENV=hosted` and requires its service key from the process environment.
@@ -55,7 +57,7 @@ do not submit a placeholder URL to Apple.
 ## App Store Connect packet
 
 - **Name:** Roam: Places & Memories (existing app record).
-- **Version:** 1.0. Build 7 is reserved in `project.yml` for the next binary; verify it is unused immediately before upload.
+- **Version:** 1.0, **build 7** (uploaded November 12, processed VALID, selected for the version and in Roam Internal on TestFlight). The next binary needs build 8 in `project.yml`.
 - **Draft subtitle:** Keep track of where you go.
 - **Draft description:** "Save places you want to visit, plan trips by city, and keep a record of places you have been. Add notes and photos to your visits, rank your favourites, and see what friends share with you. Choose who can see each visit."
 - **Category:** select after checking the current product page; likely Travel.

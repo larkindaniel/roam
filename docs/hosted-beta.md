@@ -82,10 +82,11 @@ restricted to organization team addresses, and custom email templates require cu
 upgrade. Confirmation/recovery templates in `supabase/templates/` have therefore not been applied to
 the hosted email service. Do not invite email testers until delivery and templates are configured.
 
-Hosted media-cleanup/account-deletion scheduling and Apple token revocation remain outstanding; the
-existing Python workers still intentionally reject non-loopback URLs. Real Apple sign-in and photo
-upload must be verified on the phone. Support/privacy/terms destinations and moderation ownership
-remain setup for a wider beta/public release. Do not represent account-deletion revocation as complete.
+Apple token revocation was deployed on November 12 (`delete-account` function, its migration and the
+Sign in with Apple key secrets) and ships in build 7; a real-device deletion test is still pending.
+Hosted media-cleanup/account-deletion scheduling runs from `.github/workflows/roam-maintenance.yml`
+once it is on `main` with the `ROAM_BETA_SERVICE_ROLE_KEY` secret. Support, privacy and terms are
+published at https://larkindaniel.github.io/roam-site/ (source in `site/`).
 
 Signed archive/IPA verification is recorded in `apple-deployment-setup.md`. Build 5 is available to
 the existing internal TestFlight tester. Additional testers require their own App Store Connect access
