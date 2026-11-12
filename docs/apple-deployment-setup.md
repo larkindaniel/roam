@@ -48,7 +48,20 @@ The user approved Apple's API usage terms and generation/download of this dedica
 
 The private key's contents were not read or copied into the repository. Keep the `.p8` in secure local
 storage and back it up securely: Apple permits only one download. This App Store Connect key is
-separate from any Sign in with Apple server/revocation key. No such revocation key was created here.
+separate from the Sign in with Apple server/revocation key below.
+
+## November 12, 2026 Sign in with Apple server key
+
+Apple Developer Keys had no existing service key. A new key named `Roam Sign In Revocation`
+was registered with Sign in with Apple enabled for the primary App ID
+`com.daniellarkin.roam` on team `H5V24G3F3D`.
+
+- Key ID: `CP8L433922`.
+- Private key download location on this Mac: `/Users/daniellarkin/Downloads/AuthKey_CP8L433922.p8`.
+- The file is 257 bytes and has mode `0600`. Its contents were not copied into the repository.
+
+The backend still needs `APPLE_TEAM_ID`, `APPLE_SIGN_IN_KEY_ID`, and
+`APPLE_SIGN_IN_PRIVATE_KEY` configured before deploying and verifying Apple token revocation.
 
 ## November 6, 2026 TestFlight update
 
