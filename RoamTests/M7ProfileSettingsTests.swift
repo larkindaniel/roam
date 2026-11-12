@@ -219,7 +219,7 @@ final class M7ShareTextTests: XCTestCase {
 @MainActor
 final class M7DeleteAccountModelTests: XCTestCase {
     private func model(_ backend: FixtureBackend, providers: [AuthProviderKind] = [.email]) -> DeleteAccountModel {
-        DeleteAccountModel(auth: backend, account: backend, providers: providers)
+        DeleteAccountModel(auth: backend, account: backend, providers: providers, userID: FixtureIDs.maya)
     }
 
     func testDeletionNeedsARecentPasswordThenHidesTheAccount() async throws {
@@ -280,6 +280,13 @@ final class M7DeleteAccountModelTests: XCTestCase {
         XCTAssertTrue(lines.contains { $0.hasPrefix("Roam couldn't revoke Sign in with Apple automatically.") })
         let email = AccountDeletionStatus(state: .pending, appleRevocation: "not_applicable", storageCleanup: "pending", updatedAt: Date())
         XCTAssertFalse(DeleteAccountModel.statusLines(email).contains { $0.contains("Apple") })
+    }
+
+    func testLinkedAppleAccountRequiresAppleReauthentication() {
+        let backend = FixtureBackend(scenario: "default", signedInHandle: "maya", latencyMilliseconds: 0)
+        let flow = model(backend, providers: [.email, .apple])
+        XCTAssertTrue(flow.canUseApple)
+        XCTAssertFalse(flow.canUsePassword, "A linked email identity cannot bypass Apple revocation")
     }
 }
 

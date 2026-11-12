@@ -144,7 +144,8 @@ tapping another place or pin swaps the card to it.
 
 - Your profile row opens Edit profile: photo, name, handle, bio, and home cities (add any number, swipe to remove).
   Cancel with changes asks to discard them.
-- Account: email, sign out, delete account. Then privacy, terms and version.
+- Account: email, sign out, delete account. Deleting an Apple account asks for a fresh Apple sign-in
+  so Roam can revoke its Apple authorization while removing the account. Then privacy, terms and version.
 
 ## Sheets
 

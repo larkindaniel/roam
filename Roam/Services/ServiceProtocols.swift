@@ -371,5 +371,12 @@ protocol TravelService: AnyObject, Sendable {
 
 protocol AccountService: AnyObject, Sendable {
     func requestDeletion() async throws -> AccountDeletionStatus
+    func requestDeletion(appleAuthorizationCode: String) async throws -> AccountDeletionStatus
     func deletionStatus() async throws -> AccountDeletionStatus?
+}
+
+extension AccountService {
+    func requestDeletion(appleAuthorizationCode: String) async throws -> AccountDeletionStatus {
+        try await requestDeletion()
+    }
 }
