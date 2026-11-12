@@ -24,7 +24,7 @@ optional; their absence alone is not a blocker.
 
 | Item | Current evidence | Ready when |
 |---|---|---|
-| Real iPhone run | Build 6 processed as valid; no recorded phone walkthrough | Apple sign-in, return sign-in, photo upload, logging, friends, reporting, deletion and recovery pass on a device |
+| Real iPhone run | **Done (team-reported, November 12):** the team tested the TestFlight build on iPhones | Re-check only what changes in build 7: Settings › Safety/Support rows and links, and Apple account deletion once revocation is deployed |
 | iOS 18 compatibility | Deployment target is 18.0; local UI runs were on iOS 26.2 | Run core journeys on an iOS 18 simulator or device, or raise the minimum OS honestly |
 | Hosted account deletion and media cleanup | Database queues jobs; hosted worker schedule is prepared in `.github/workflows/roam-maintenance.yml` | Add `ROAM_BETA_SERVICE_ROLE_KEY` as a GitHub Actions secret, merge/enable the workflow, run it manually, and verify a disposable account and orphaned photo are removed. Never test with a real member. |
 | Sign in with Apple revocation | The branch contains `delete-account` Edge code and a migration, but neither has been deployed or provider-verified; build 6 still uses the old path | Create a separate Sign in with Apple key, deploy the function and migration, upload a new build, and complete a real-device deletion/revocation test |
