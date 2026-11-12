@@ -8,5 +8,10 @@
 ROAM_SUPABASE_URL = http:/$()/127.0.0.1:54321
 ROAM_SUPABASE_PUBLISHABLE_KEY =
 
+// Public contact points shown in Settings. Empty here, so Debug builds hide the links;
+// Release requires both (set them in Beta.xcconfig).
+ROAM_SUPPORT_EMAIL =
+ROAM_PRIVACY_POLICY_URL =
+
 // Developer-specific values (ignored by git). Copy Local.xcconfig.example to create it.
 #include? "Local.xcconfig"

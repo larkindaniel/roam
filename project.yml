@@ -49,6 +49,15 @@ targets:
             case "$ROAM_SUPABASE_PUBLISHABLE_KEY" in
               ""|\<*|\$\(*|sb_secret_*) echo "error: Release requires a public Supabase client key."; exit 1 ;;
             esac
+            case "$ROAM_SUPPORT_EMAIL" in
+              ?*@?*.?*) ;;
+              *) echo "error: Release requires ROAM_SUPPORT_EMAIL (a public support address) in Config/Beta.xcconfig."; exit 1 ;;
+            esac
+            case "$ROAM_PRIVACY_POLICY_URL" in
+              https://\<*) echo "error: Release requires the published privacy policy URL in ROAM_PRIVACY_POLICY_URL."; exit 1 ;;
+              https://?*) ;;
+              *) echo "error: Release requires the published privacy policy URL in ROAM_PRIVACY_POLICY_URL."; exit 1 ;;
+            esac
           fi
     settings:
       base:
