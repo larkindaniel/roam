@@ -1,0 +1,4 @@
+// Copy to Config/Beta.xcconfig and populate from the roam-beta project.
+// Public client values only. Never place service-role keys or signing secrets here.
+ROAM_SUPABASE_URL = https:/$()/<project-ref>.supabase.co
+ROAM_SUPABASE_PUBLISHABLE_KEY = <publishable-key>
