@@ -89,6 +89,24 @@ The code search found no ad SDK or analytics integration. That does **not** make
 the answer to Apple's "Do you collect data?" question "No." Do not choose "No"
 while these account and user-content records are stored in Supabase.
 
+## App Privacy answers (enter on the website: App Store Connect › Roam › App Privacy)
+
+Apple's API can't set these. **Data collection:** Yes, we collect data. For every type below:
+used for **App Functionality** only, **Linked to the user: Yes**, **Used for tracking: No**.
+
+| Category | Data type | Why |
+|---|---|---|
+| Contact Info | Email Address | Email sign-in and Apple relay email |
+| Contact Info | Name | Display name on the profile |
+| User Content | Photos or Videos | Visit photos and avatar |
+| User Content | Other User Content | Notes, ratings, comments, posts, lists, trips, reports |
+| Identifiers | User ID | Account ID |
+
+Leave everything else unticked: Location (the device's position sorts results on the phone and is
+never stored on our server; place coordinates belong to places, not the person), Health, Financial,
+Contacts, Browsing/Search History, Purchases, Usage Data, Diagnostics, Sensitive Info, Other Data.
+Privacy policy URL is already set. Then click **Publish**.
+
 ## Submission sequence
 
 1. Finish the blocking checks and upload a signed build containing the fixes.
