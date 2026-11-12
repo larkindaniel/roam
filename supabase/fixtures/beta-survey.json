@@ -1,0 +1,1200 @@
+{
+  "source": "Roam recommendation survey, October 6-22, 2026. Curated by hand: no emails; first names and bios as respondents typed them (bios shortened to fit 160 characters); respondents who left their name blank have a made-up first name. Team members already on the beta (Daniel, Nihal) are left out. Each spot's search text is looked up through Apple Maps near the city given; ratings are the survey's 1-10.",
+  "respondents": [
+    {
+      "key": "maya",
+      "name": "Maya",
+      "bio": "",
+      "homes": [
+        "Kitchener, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Kitchener, Canada",
+          "spots": [
+            {
+              "q": "Retro Rollers"
+            },
+            {
+              "q": "Guanaquita Restaurant"
+            },
+            {
+              "q": "KW Escape"
+            }
+          ]
+        },
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "EWOWDAY DIY Workshop",
+              "alts": [
+                "EWOWDAY",
+                "EWOWDAY DIY"
+              ]
+            },
+            {
+              "q": "Fifth Note"
+            },
+            {
+              "q": "Comal y Canela"
+            }
+          ]
+        },
+        {
+          "city": "Porto, Portugal",
+          "spots": [
+            {
+              "q": "Teleférico de Gaia",
+              "alts": [
+                "Gaia Cable Car",
+                "Teleférico Vila Nova de Gaia",
+                "Teleférico de Gaia Cais"
+              ],
+              "near": "Vila Nova de Gaia, Portugal",
+              "exclude": [
+                "Batalha",
+                "Vila Nova de Gaia (Santa Marinha)"
+              ]
+            },
+            {
+              "q": "Base Porto"
+            },
+            {
+              "q": "Manteigaria"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "theo",
+      "name": "Theo",
+      "bio": "",
+      "homes": [],
+      "visitedCities": [
+        "Gargellen, Austria",
+        "Mindo, Ecuador"
+      ],
+      "cities": [
+        {
+          "city": "Panajachel, Guatemala",
+          "spots": [
+            {
+              "q": "Lake Atitlán",
+              "note": "Stayed at an eco lodge with great hikes nearby. Lots of stray dogs though, that sit on roofs and bark at you while you pass.",
+              "alts": [
+                "Lago de Atitlán",
+                "Lago Atitlán"
+              ],
+              "near": "Sololá, Guatemala"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "arjun",
+      "name": "Arjun",
+      "bio": "",
+      "homes": [
+        "Waterloo, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Waterloo, Canada",
+          "spots": [
+            {
+              "q": "Kingfisher Pond"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "elena",
+      "name": "Elena",
+      "bio": "",
+      "homes": [
+        "Calgary, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Calgary, Canada",
+          "spots": [
+            {
+              "q": "Thai Thien Sub",
+              "note": "$4 banh mi downtown"
+            },
+            {
+              "q": "Missy's This That",
+              "note": "Hidden(ish) bar with banger cheesecake"
+            }
+          ]
+        },
+        {
+          "city": "Carmel-by-the-Sea, USA",
+          "spots": [
+            {
+              "q": "The Xocolatl Garden",
+              "note": "Chocolate garden"
+            }
+          ],
+          "trip": "Bay Area"
+        },
+        {
+          "city": "Davenport, USA",
+          "spots": [
+            {
+              "q": "Swanton Berry Farm",
+              "near": "Davenport, California, United States"
+            }
+          ],
+          "trip": "Bay Area"
+        },
+        {
+          "city": "Cupertino, USA",
+          "spots": [
+            {
+              "q": "Bitter + Sweet",
+              "note": "Cute coffee place"
+            }
+          ],
+          "trip": "Bay Area"
+        }
+      ]
+    },
+    {
+      "key": "luc",
+      "name": "Luc",
+      "bio": "",
+      "homes": [
+        "Lausanne, Switzerland"
+      ],
+      "cities": [
+        {
+          "city": "Copenhagen, Denmark",
+          "spots": [
+            {
+              "q": "Bastard Café"
+            },
+            {
+              "q": "Wasteland Copenhagen",
+              "alts": [
+                "Wasteland",
+                "Wasteland vintage"
+              ]
+            }
+          ]
+        },
+        {
+          "city": "Lausanne, Switzerland",
+          "spots": [
+            {
+              "q": "Plage du Pélican"
+            },
+            {
+              "q": "mudac"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "noah",
+      "name": "Noah",
+      "bio": "",
+      "homes": [
+        "Waterloo, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Horseshoe Tavern"
+            },
+            {
+              "q": "The Rivoli"
+            },
+            {
+              "q": "Fresca Pizza and Pasta"
+            }
+          ]
+        },
+        {
+          "city": "Waterloo, Canada",
+          "spots": [
+            {
+              "q": "Princess Cafe"
+            },
+            {
+              "q": "Lost Vessel Vintage"
+            },
+            {
+              "q": "Morty's Pub"
+            }
+          ]
+        },
+        {
+          "city": "New York, USA",
+          "spots": [
+            {
+              "q": "Brooklyn Bridge Park Pier 1"
+            },
+            {
+              "q": "Cassidy's Pub"
+            },
+            {
+              "q": "an.mé"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "akanksha",
+      "name": "Akanksha",
+      "bio": "I'm a SYDE student living in downtown Toronto for the term. I like checking out new cafes, food spots, museums, and musicals.",
+      "homes": [
+        "Toronto, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Neo Coffee Bar King Spadina",
+              "rating": 9
+            },
+            {
+              "q": "Gianni's Gelato",
+              "rating": 10
+            },
+            {
+              "q": "Sukhothai",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "St. Catharines, Canada",
+          "spots": [
+            {
+              "q": "Fat Rabbit",
+              "rating": 9
+            },
+            {
+              "q": "Chocolates Etc",
+              "note": "Always the best",
+              "rating": 9
+            },
+            {
+              "q": "Beechwood Donuts"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "muneeb",
+      "name": "Muneeb",
+      "bio": "Waterloo SE, love travel and trying new food",
+      "homes": [
+        "Toronto, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Singapore, Singapore",
+          "spots": [
+            {
+              "q": "Marina Bay Sands",
+              "rating": 9
+            },
+            {
+              "q": "Singapore River Walk",
+              "rating": 8,
+              "alts": [
+                "Singapore River",
+                "Clarke Quay"
+              ],
+              "exclude": [
+                "Riverwalk Apartments"
+              ]
+            },
+            {
+              "q": "Pulau Ubin",
+              "rating": 6
+            }
+          ]
+        },
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Helvaci Ali",
+              "rating": 8
+            },
+            {
+              "q": "Centennial Park",
+              "rating": 8
+            },
+            {
+              "q": "Crown Pastries"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "agith",
+      "name": "Agith",
+      "bio": "ummm ion rlly travel often i kinda like going with the flow not big on concrete plans",
+      "homes": [
+        "Toronto, Canada"
+      ],
+      "cities": [
+        {
+          "city": "New York, USA",
+          "spots": [
+            {
+              "q": "Golden Diner",
+              "rating": 9
+            },
+            {
+              "q": "Pranakhon",
+              "rating": 8
+            },
+            {
+              "q": "Eileen's Special Cheesecake",
+              "rating": 10
+            }
+          ]
+        },
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Bang Bang Ice Cream",
+              "rating": 10
+            },
+            {
+              "q": "Yakiniku Legend",
+              "rating": 9
+            },
+            {
+              "q": "Alforat Shawarma",
+              "rating": 9,
+              "alts": [
+                "Alforat Iraqi Street Food",
+                "Alforat"
+              ]
+            }
+          ]
+        },
+        {
+          "city": "Tokyo, Japan",
+          "spots": [
+            {
+              "q": "400℃ Pizza Shinagawa",
+              "rating": 8
+            },
+            {
+              "q": "Azaya",
+              "rating": 10,
+              "alts": [
+                "Azaya Tokyo"
+              ]
+            },
+            {
+              "q": "Torikizoku Shibuya",
+              "rating": 8,
+              "alts": [
+                "鳥貴族 渋谷",
+                "Torikizoku"
+              ],
+              "exclude": [
+                "Torikizoku Shinjuku Otakibashi Dori Store"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "abhinav",
+      "name": "Abhinav",
+      "bio": "Hi 👋! I'm Abhinav, a rising senior at the University of Conestoga. I like travelling to India 🇮🇳🇮🇳🇮🇳",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Reykjavik, Iceland",
+          "spots": [
+            {
+              "q": "Kopar Geirsgata 3",
+              "rating": 9
+            }
+          ],
+          "trip": "Iceland"
+        },
+        {
+          "city": "Vík, Iceland",
+          "spots": [
+            {
+              "q": "The Soup Company",
+              "rating": 10
+            }
+          ],
+          "trip": "Iceland"
+        },
+        {
+          "city": "Landmannalaugar, Iceland",
+          "spots": [
+            {
+              "q": "Landmannalaugar",
+              "rating": 10
+            }
+          ],
+          "trip": "Iceland"
+        },
+        {
+          "city": "Salzburg, Austria",
+          "spots": [
+            {
+              "q": "Heavy Rotation Glockengasse",
+              "rating": 10,
+              "alts": [
+                "Heavy Rotation Musicstore & Bar",
+                "Heavy Rotation"
+              ]
+            },
+            {
+              "q": "Mozart Monument",
+              "rating": 10,
+              "alts": [
+                "Mozartdenkmal",
+                "Mozartplatz"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "sofia",
+      "name": "Sofia",
+      "bio": "Waterloo math student. When I travel I like to immerse myself in local culture, see what life is like for a local, and find some adventure like hiking.",
+      "homes": [
+        "Waterloo, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Lisbon, Portugal",
+          "spots": [
+            {
+              "q": "Zé da Mouraria 2",
+              "rating": 9
+            },
+            {
+              "q": "Tapada das Necessidades",
+              "rating": 9
+            },
+            {
+              "q": "Casa de Pasto Oh Pereira",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "Montezuma, Costa Rica",
+          "spots": [
+            {
+              "q": "Soda Tipica Las Palmeras",
+              "rating": 9
+            },
+            {
+              "q": "Playa Montezuma",
+              "rating": 8
+            },
+            {
+              "q": "Montezuma Waterfalls",
+              "rating": 9,
+              "alts": [
+                "Cataratas de Montezuma",
+                "Montezuma Waterfall",
+                "Montezuma Falls"
+              ]
+            }
+          ]
+        },
+        {
+          "city": "Barcelona, Spain",
+          "spots": [
+            {
+              "q": "Park Güell",
+              "rating": 9
+            },
+            {
+              "q": "Bobby's Free",
+              "rating": 8
+            },
+            {
+              "q": "Museu Nacional d'Art de Catalunya",
+              "rating": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "kristofer",
+      "name": "Kristofer",
+      "bio": "Final year CS student at UWaterloo, I like visiting historical sites in various cities!",
+      "homes": [
+        "Waterloo, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Casa Loma",
+              "rating": 7
+            },
+            {
+              "q": "Edwards Gardens",
+              "rating": 9
+            },
+            {
+              "q": "Queen's Park",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "Kitchener, Canada",
+          "spots": [
+            {
+              "q": "Kitchener-Waterloo Art Gallery",
+              "rating": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dilara",
+      "name": "Dilara",
+      "bio": "idk who i am but i like to travel anywhere and everywhere",
+      "homes": [
+        "Waterloo, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Waterloo, Canada",
+          "spots": [
+            {
+              "q": "Coffee Brick",
+              "rating": 10
+            }
+          ]
+        },
+        {
+          "city": "Kitchener, Canada",
+          "spots": [
+            {
+              "q": "Public Kitchen & Bar",
+              "rating": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "adeel",
+      "name": "Adeel",
+      "bio": "I'm Adeel, a uni student who loves beautiful views. Not a fan of nightlife; I'd rather see views you don't get in Canada or America.",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Kyoto, Japan",
+          "spots": [
+            {
+              "q": "Murin-an",
+              "rating": 8,
+              "alts": [
+                "Murinan",
+                "無鄰菴",
+                "Murin-an Garden",
+                "Murinan Villa"
+              ]
+            },
+            {
+              "q": "Shoden-ji",
+              "rating": 10,
+              "alts": [
+                "Shodenji Temple",
+                "正伝寺"
+              ]
+            },
+            {
+              "q": "Enko-ji",
+              "rating": 7,
+              "alts": [
+                "Enkoji Temple",
+                "圓光寺"
+              ]
+            }
+          ]
+        },
+        {
+          "city": "Tokyo, Japan",
+          "spots": [
+            {
+              "q": "Todoroki Valley",
+              "rating": 10,
+              "alts": [
+                "Todoroki Ravine",
+                "等々力渓谷",
+                "等々力渓谷公園",
+                "Todoroki Valley Park"
+              ]
+            },
+            {
+              "q": "Yanaka Ginza",
+              "rating": 6
+            },
+            {
+              "q": "Kiyosumi Garden",
+              "rating": 7
+            }
+          ]
+        },
+        {
+          "city": "Osaka, Japan",
+          "spots": [
+            {
+              "q": "Hoshida Park",
+              "rating": 8,
+              "alts": [
+                "ほしだ園地",
+                "Hoshida Park Katano"
+              ],
+              "near": "Katano, Osaka, Japan"
+            },
+            {
+              "q": "Minoo Park",
+              "rating": 10
+            },
+            {
+              "q": "Nagai Botanical Garden",
+              "rating": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "daniel",
+      "name": "Daniel",
+      "bio": "Im 23 yo and love to solo travel",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Madrid, Spain",
+          "spots": [
+            {
+              "q": "Parque Juan Carlos I",
+              "rating": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "christian",
+      "name": "Christian",
+      "bio": "I'm a 4th year Waterloo student and enjoy travelling within the province.",
+      "homes": [
+        "Whitby, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Whitby, Canada",
+          "spots": [
+            {
+              "q": "Belle Vie",
+              "rating": 9
+            },
+            {
+              "q": "Portobello Road",
+              "rating": 9
+            }
+          ]
+        },
+        {
+          "city": "Toronto, Canada",
+          "spots": [
+            {
+              "q": "Icha Tea",
+              "rating": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tomi",
+      "name": "Tomi",
+      "bio": "Recent college grad who enjoys lively, fast-paced trips with friends as well as more laid-back trips with family.",
+      "homes": [
+        "Toronto, Canada"
+      ],
+      "visitedCities": [
+        "Kingston upon Thames, United Kingdom"
+      ],
+      "cities": [
+        {
+          "city": "London, United Kingdom",
+          "spots": [
+            {
+              "q": "Brixton Village",
+              "rating": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "vivien",
+      "name": "Vivien",
+      "bio": "I am Vivien and I like to travel for vacation and explore new climbing gyms in different cities hehehehe",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Singapore, Singapore",
+          "spots": [
+            {
+              "q": "Yunnan Garden",
+              "rating": 8,
+              "alts": [
+                "Yunnan Garden NTU",
+                "雲南園"
+              ],
+              "near": "Jurong West, Singapore"
+            },
+            {
+              "q": "Southernmost Point of Continental Asia",
+              "rating": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "laura",
+      "name": "Laura",
+      "bio": "22 year old who likes to do mix of city and nature",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Madeira, Portugal",
+          "spots": [
+            {
+              "q": "Pico do Arieiro",
+              "note": "The hike from Pico do Arieiro to Pico Ruivo",
+              "rating": 10
+            },
+            {
+              "q": "Praia do Seixal",
+              "rating": 8
+            },
+            {
+              "q": "Monte Palace Tropical Garden",
+              "rating": 9
+            }
+          ]
+        },
+        {
+          "city": "Copenhagen, Denmark",
+          "spots": [
+            {
+              "q": "Nyhavn",
+              "rating": 9
+            },
+            {
+              "q": "Church of Our Saviour",
+              "note": "Climb it for the viewpoint",
+              "rating": 10
+            },
+            {
+              "q": "Kongens Have",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "San Francisco, USA",
+          "spots": [
+            {
+              "q": "Alcatraz Island",
+              "rating": 10
+            },
+            {
+              "q": "Muir Woods National Monument",
+              "rating": 10
+            },
+            {
+              "q": "17-Mile Drive",
+              "rating": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "anna",
+      "name": "Anna",
+      "bio": "I love going to cozy or scenic spots—I'm a cafes and hikes type of person",
+      "homes": [
+        "Waterloo, Canada",
+        "Guelph, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Guelph, Canada",
+          "spots": [
+            {
+              "q": "Whoopsie Daisy Drinks",
+              "rating": 9
+            },
+            {
+              "q": "Butt's Berry & Flower Farm",
+              "note": "Strawberry picking in the summer",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "Waterloo, Canada",
+          "spots": [
+            {
+              "q": "Coffee Culture",
+              "rating": 7
+            }
+          ]
+        },
+        {
+          "city": "Ottawa, Canada",
+          "spots": [
+            {
+              "q": "Carmelito Café Nepean",
+              "rating": 9
+            },
+            {
+              "q": "Midori Gifts",
+              "rating": 7
+            },
+            {
+              "q": "Britannia Beach",
+              "rating": 9
+            }
+          ]
+        },
+        {
+          "city": "Copenhagen, Denmark",
+          "spots": [
+            {
+              "q": "Platform CPH sauna",
+              "rating": 8,
+              "alts": [
+                "Platform CPH",
+                "Platform sauna"
+              ]
+            },
+            {
+              "q": "Emmerys",
+              "rating": 9
+            },
+            {
+              "q": "København K thrift store",
+              "rating": 7,
+              "alts": [
+                "København K Studiestræde",
+                "København K vintage"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "rachel",
+      "name": "Rachel",
+      "bio": "i'm a uni student, love good food + art in cities, and hiking!",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Berlin, Germany",
+          "spots": [
+            {
+              "q": "Bäcker & Bistro Haßelbach",
+              "note": "Cheap + fancy brunch near East Side Gallery",
+              "rating": 9
+            },
+            {
+              "q": "Wen Cheng",
+              "note": "Hand-pulled noodles, so good, but it gets busy",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "Amsterdam, Netherlands",
+          "spots": [
+            {
+              "q": "Cafe Restaurant Van Kerkwijk",
+              "rating": 9,
+              "alts": [
+                "Van Kerkwijk",
+                "Café Van Kerkwijk"
+              ]
+            },
+            {
+              "q": "The English Bookshop Amsterdam",
+              "rating": 8
+            },
+            {
+              "q": "Café Wester",
+              "rating": 10
+            }
+          ]
+        },
+        {
+          "city": "Dublin, Ireland",
+          "spots": [
+            {
+              "q": "Howth Cliff Walk",
+              "rating": 8,
+              "alts": [
+                "Howth Cliff Path",
+                "Howth Cliff Path Loop",
+                "Howth Head"
+              ],
+              "near": "Howth, Ireland"
+            },
+            {
+              "q": "The Cobblestone",
+              "rating": 10
+            },
+            {
+              "q": "Bambino's Pizza",
+              "rating": 7,
+              "alts": [
+                "Bambino Dublin",
+                "Bambino Pizza Dublin"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "arielle",
+      "name": "Arielle",
+      "bio": "26 yr old pharmacist who's travelled extensively in Canada and is starting to visit more of Europe/Asia. I like hotels and prefer to visit cities.",
+      "homes": [
+        "Okotoks, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Okotoks, Canada",
+          "spots": [
+            {
+              "q": "Covet Sips & Sweets",
+              "rating": 8
+            },
+            {
+              "q": "Okotoks Erratic",
+              "rating": 7
+            }
+          ]
+        },
+        {
+          "city": "Duncan, Canada",
+          "spots": [
+            {
+              "q": "Tin Cup Espresso Bar",
+              "rating": 7
+            },
+            {
+              "q": "TurF",
+              "rating": 7
+            },
+            {
+              "q": "Ironworks Cafe & Creperie",
+              "rating": 6
+            },
+            {
+              "q": "Duncan Garage Cafe & Bakery",
+              "rating": 9
+            }
+          ]
+        },
+        {
+          "city": "Vancouver, Canada",
+          "spots": [
+            {
+              "q": "Kits Beach Coffee",
+              "rating": 7
+            },
+            {
+              "q": "Nitobe Memorial Garden",
+              "rating": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "vinita",
+      "name": "Vinita",
+      "bio": "Final year CS student at UWaterloo who loves exploring new places. More of a traveller than a vacationer, always looking out for trendy food spots!",
+      "homes": [
+        "Mississauga, Canada"
+      ],
+      "cities": [
+        {
+          "city": "New York, USA",
+          "spots": [
+            {
+              "q": "Ace Hotel New York",
+              "note": "The vintage photobooth",
+              "rating": 8
+            },
+            {
+              "q": "Elizabeth Street Garden",
+              "rating": 7
+            },
+            {
+              "q": "Time Out Market New York",
+              "note": "The rooftop bar",
+              "rating": 9
+            }
+          ]
+        },
+        {
+          "city": "Nice, France",
+          "spots": [
+            {
+              "q": "Pitaya Thaï Street Food",
+              "rating": 10
+            },
+            {
+              "q": "Jabal Coffee House",
+              "rating": 8
+            },
+            {
+              "q": "Sentier du Littoral",
+              "rating": 10
+            }
+          ]
+        },
+        {
+          "city": "Mississauga, Canada",
+          "spots": [
+            {
+              "q": "Chiang Mai Thai Dining",
+              "rating": 10,
+              "alts": [
+                "Chiang Mai Mississauga"
+              ]
+            },
+            {
+              "q": "Café Alma",
+              "rating": 8,
+              "alts": [
+                "Cafe Alma Mississauga",
+                "Alma Café"
+              ],
+              "exclude": [
+                "Archtop Cafe"
+              ]
+            },
+            {
+              "q": "Riverwood Conservancy",
+              "rating": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "harshil",
+      "name": "Harshil",
+      "bio": "",
+      "homes": [
+        "Mississauga, Canada"
+      ],
+      "cities": [
+        {
+          "city": "Mississauga, Canada",
+          "spots": [
+            {
+              "q": "Sawmill Valley Trail",
+              "rating": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "hussein",
+      "name": "Hussein",
+      "bio": "Technical guy. I like to experience a culture by eating their food. I also like to visit places with history.",
+      "homes": [],
+      "cities": [
+        {
+          "city": "Copenhagen, Denmark",
+          "spots": [
+            {
+              "q": "Al Malek Shawarma Nørrebro",
+              "note": "The best shawarma I've ever had, and that's coming from an experienced shawarma taster (I'm Arabic and have had shawarma in multiple Arab countries).",
+              "rating": 10,
+              "alts": [
+                "Al Malek",
+                "Al-Malek Shawarma",
+                "Al Malak"
+              ]
+            },
+            {
+              "q": "Strandstation 2",
+              "note": "Great views of the beach. Easy to get to. Great walk around and over the bridges both ways! Good in the day and night.",
+              "rating": 8,
+              "alts": [
+                "Strandstation 2 Amager Strand",
+                "Amager Strandpark Strandstation 2"
+              ],
+              "near": "Amager Strand, Copenhagen, Denmark"
+            },
+            {
+              "q": "Assistens Cemetery",
+              "note": "Niels Bohr, Søren Kierkegaard and H. C. Ørsted are buried here. A lot of history and very old! It's a cemetery though.",
+              "rating": 8
+            }
+          ]
+        },
+        {
+          "city": "Kuala Lumpur, Malaysia",
+          "spots": [
+            {
+              "q": "Plaza Low Yat",
+              "note": "All the tech you can imagine in one very densely packed mall. Got my first iPad here (iPad 2!).",
+              "rating": 9
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

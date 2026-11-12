@@ -1,0 +1,2879 @@
+{
+ "cities": {
+  "Amsterdam, Netherlands": {
+   "countryCode": "NL",
+   "countryName": "Netherlands",
+   "latitude": 52.36532,
+   "longitude": 4.89784,
+   "name": "Amsterdam",
+   "region": "North Holland"
+  },
+  "Barcelona, Spain": {
+   "countryCode": "ES",
+   "countryName": "Spain",
+   "latitude": 41.3826807,
+   "longitude": 2.1770239,
+   "name": "Barcelona",
+   "region": "Barcelona"
+  },
+  "Berlin, Germany": {
+   "countryCode": "DE",
+   "countryName": "Germany",
+   "latitude": 52.5187416,
+   "longitude": 13.4080224,
+   "name": "Berlin",
+   "region": "Berlin"
+  },
+  "Calgary, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 51.0453937,
+   "longitude": -114.0580874,
+   "name": "Calgary",
+   "region": "AB"
+  },
+  "Carmel-by-the-Sea, USA": {
+   "countryCode": "US",
+   "countryName": "United States",
+   "latitude": 36.5551934,
+   "longitude": -121.9231204,
+   "name": "Carmel By The Sea",
+   "region": "CA"
+  },
+  "Cupertino, USA": {
+   "countryCode": "US",
+   "countryName": "United States",
+   "latitude": 37.3193115,
+   "longitude": -122.0283356,
+   "name": "Cupertino",
+   "region": "CA"
+  },
+  "Dublin, Ireland": {
+   "countryCode": "IE",
+   "countryName": "Ireland",
+   "latitude": 53.3441204,
+   "longitude": -6.2673368,
+   "name": "Dublin",
+   "region": "Co. Dublin"
+  },
+  "Duncan, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 48.77868,
+   "longitude": -123.707898,
+   "name": "Duncan",
+   "region": "BC"
+  },
+  "Gargellen, Austria": {
+   "countryCode": "AT",
+   "countryName": "Austria",
+   "latitude": 46.9702858,
+   "longitude": 9.9173517,
+   "name": "St. Gallenkirch",
+   "region": "Vorarlberg"
+  },
+  "Guelph, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.544299,
+   "longitude": -80.2476862,
+   "name": "Guelph",
+   "region": "ON"
+  },
+  "Kingston upon Thames, United Kingdom": {
+   "countryCode": "GB",
+   "countryName": "United Kingdom",
+   "latitude": 51.4086841,
+   "longitude": -0.3066223,
+   "name": "Kingston Upon Thames",
+   "region": "England"
+  },
+  "Kitchener, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.4503293,
+   "longitude": -80.4869857,
+   "name": "Kitchener",
+   "region": "ON"
+  },
+  "Kuala Lumpur, Malaysia": {
+   "countryCode": "MY",
+   "countryName": "Malaysia",
+   "latitude": 3.16,
+   "longitude": 101.7099999,
+   "name": "Kuala Lumpur",
+   "region": "Kuala Lumpur"
+  },
+  "Kyoto, Japan": {
+   "countryCode": "JP",
+   "countryName": "Japan",
+   "latitude": 35.2516368,
+   "longitude": 135.5081306,
+   "name": "Kyoto",
+   "region": "Kyoto"
+  },
+  "Lausanne, Switzerland": {
+   "countryCode": "CH",
+   "countryName": "Switzerland",
+   "latitude": 46.52178,
+   "longitude": 6.6332494,
+   "name": "Lausanne",
+   "region": "VD"
+  },
+  "Lisbon, Portugal": {
+   "countryCode": "PT",
+   "countryName": "Portugal",
+   "latitude": 38.7078405,
+   "longitude": -9.1388862,
+   "name": "Lisbon",
+   "region": "Lisboa"
+  },
+  "London, United Kingdom": {
+   "countryCode": "GB",
+   "countryName": "United Kingdom",
+   "latitude": 51.5033768,
+   "longitude": -0.0795183,
+   "name": "London",
+   "region": "England"
+  },
+  "Madrid, Spain": {
+   "countryCode": "ES",
+   "countryName": "Spain",
+   "latitude": 40.4192127,
+   "longitude": -3.692517,
+   "name": "Madrid",
+   "region": "Madrid"
+  },
+  "Mindo, Ecuador": {
+   "countryCode": "EC",
+   "countryName": "Ecuador",
+   "latitude": -0.0522525,
+   "longitude": -78.7749558,
+   "name": "Mindo",
+   "region": "Pichincha"
+  },
+  "Mississauga, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.5852835,
+   "longitude": -79.6449401,
+   "name": "Mississauga",
+   "region": "ON"
+  },
+  "Montezuma, Costa Rica": {
+   "countryCode": "CR",
+   "countryName": "Costa Rica",
+   "latitude": 9.654654,
+   "longitude": -85.0680079,
+   "name": "Montezuma",
+   "region": "Puntarenas"
+  },
+  "New York, USA": {
+   "countryCode": "US",
+   "countryName": "United States",
+   "latitude": 40.7129822,
+   "longitude": -74.007205,
+   "name": "New York",
+   "region": "NY"
+  },
+  "Nice, France": {
+   "countryCode": "FR",
+   "countryName": "France",
+   "latitude": 43.6989315,
+   "longitude": 7.2723078,
+   "name": "Nice",
+   "region": "Provence-Alpes-Côte d'Azur"
+  },
+  "Okotoks, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 50.7254861,
+   "longitude": -113.975315,
+   "name": "Okotoks",
+   "region": "AB"
+  },
+  "Osaka, Japan": {
+   "countryCode": "JP",
+   "countryName": "Japan",
+   "latitude": 34.6206798,
+   "longitude": 135.5164369,
+   "name": "Osaka",
+   "region": "Osaka"
+  },
+  "Ottawa, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 45.4200146,
+   "longitude": -75.6895387,
+   "name": "Ottawa",
+   "region": "ON"
+  },
+  "Panajachel, Guatemala": {
+   "countryCode": "GT",
+   "countryName": "Guatemala",
+   "latitude": 14.738072,
+   "longitude": -91.1560861,
+   "name": "Panajachel",
+   "region": "Solola"
+  },
+  "Porto, Portugal": {
+   "countryCode": "PT",
+   "countryName": "Portugal",
+   "latitude": 41.1566071,
+   "longitude": -8.6212893,
+   "name": "Porto",
+   "region": "Norte"
+  },
+  "Reykjavik, Iceland": {
+   "countryCode": "IS",
+   "countryName": "Iceland",
+   "latitude": 64.1475973,
+   "longitude": -21.9386179,
+   "name": "Reykjavík",
+   "region": "Greater Reykjavík"
+  },
+  "Salzburg, Austria": {
+   "countryCode": "AT",
+   "countryName": "Austria",
+   "latitude": 47.804451,
+   "longitude": 13.0439421,
+   "name": "Salzburg",
+   "region": "Salzburg"
+  },
+  "San Francisco, USA": {
+   "countryCode": "US",
+   "countryName": "United States",
+   "latitude": 37.779379,
+   "longitude": -122.418433,
+   "name": "San Francisco",
+   "region": "CA"
+  },
+  "Singapore, Singapore": {
+   "countryCode": "SG",
+   "countryName": "Singapore",
+   "latitude": 1.3043744,
+   "longitude": 103.8245805,
+   "name": "Singapore",
+   "region": "SG"
+  },
+  "St. Catharines, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.1595235,
+   "longitude": -79.2473937,
+   "name": "St. Catharines",
+   "region": "ON"
+  },
+  "Tokyo, Japan": {
+   "countryCode": "JP",
+   "countryName": "Japan",
+   "latitude": 35.689506,
+   "longitude": 139.6917,
+   "name": "Tokyo",
+   "region": "Tokyo"
+  },
+  "Toronto, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.6516053,
+   "longitude": -79.3831254,
+   "name": "Toronto",
+   "region": "ON"
+  },
+  "Vancouver, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 49.2604134,
+   "longitude": -123.1139456,
+   "name": "Vancouver",
+   "region": "BC"
+  },
+  "Vík, Iceland": {
+   "countryCode": "IS",
+   "countryName": "Iceland",
+   "latitude": 63.4197737,
+   "longitude": -19.0070126,
+   "name": "Vík",
+   "region": "Southern Region"
+  },
+  "Waterloo, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.4632631,
+   "longitude": -80.5206027,
+   "name": "Waterloo",
+   "region": "ON"
+  },
+  "Whitby, Canada": {
+   "countryCode": "CA",
+   "countryName": "Canada",
+   "latitude": 43.8989708,
+   "longitude": -78.9435377,
+   "name": "Whitby",
+   "region": "ON"
+  }
+ },
+ "spots": {
+  "abhinav|Landmannalaugar, Iceland|Landmannalaugar": {
+   "candidate": {
+    "address": "Landmannalaugavegur, 851 Hella, Iceland",
+    "countryCode": "IS",
+    "countryName": "Iceland",
+    "isLocality": false,
+    "latitude": 63.9904931,
+    "locality": "Hella",
+    "longitude": -19.0590262,
+    "name": "Landmannalaugar",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCampground",
+    "providerPlaceID": "I98218C6227FA6BD3",
+    "region": "Southern Region",
+    "suggestedCategory": "stays",
+    "timeZoneIdentifier": "Atlantic/Reykjavik",
+    "website": "https://www.landmannalaugar.info/"
+   },
+   "query": "Landmannalaugar"
+  },
+  "abhinav|Reykjavik, Iceland|Kopar Geirsgata 3": {
+   "candidate": {
+    "address": "Geirsgata 3, 101 Reykjavík, Iceland",
+    "countryCode": "IS",
+    "countryName": "Iceland",
+    "isLocality": false,
+    "latitude": 64.1510102,
+    "locality": "Reykjavík",
+    "longitude": -21.9441175,
+    "name": "Kopar",
+    "phone": "+354 567 2700",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IFB76285E4AD94BCA",
+    "region": "Greater Reykjavík",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Atlantic/Reykjavik",
+    "website": "http://koparrestaurant.is/"
+   },
+   "query": "Kopar Geirsgata 3"
+  },
+  "abhinav|Salzburg, Austria|Heavy Rotation Glockengasse": {
+   "candidate": {
+    "address": "Glockengasse 6, 5020 Salzburg, Austria",
+    "countryCode": "AT",
+    "countryName": "Austria",
+    "isLocality": false,
+    "latitude": 47.80482,
+    "locality": "Salzburg",
+    "longitude": 13.051722,
+    "name": "Heavy Rotation",
+    "phone": "+43 664 4014613",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "I29B0C6709EA19681",
+    "region": "Salzburg",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "Europe/Vienna",
+    "website": "https://www.facebook.com/heavyrotationsalzburg"
+   },
+   "query": "Heavy Rotation Musicstore & Bar"
+  },
+  "abhinav|Salzburg, Austria|Mozart Monument": {
+   "candidate": {
+    "address": "Salzburg, Austria",
+    "countryCode": "AT",
+    "countryName": "Austria",
+    "isLocality": false,
+    "latitude": 47.7989129,
+    "locality": "Salzburg",
+    "longitude": 13.0477537,
+    "name": "Mozartplatz",
+    "provider": "mapkit",
+    "region": "Salzburg",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Vienna"
+   },
+   "query": "Mozartdenkmal"
+  },
+  "abhinav|Vík, Iceland|The Soup Company": {
+   "candidate": {
+    "address": "Víkurbraut 5, 870 Vík, Iceland",
+    "countryCode": "IS",
+    "countryName": "Iceland",
+    "isLocality": false,
+    "latitude": 63.4185164,
+    "locality": "Vík",
+    "longitude": -19.0098216,
+    "name": "Súpufélagið ehf",
+    "phone": "+354 778 6611",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "ID8E860660D23F0C1",
+    "region": "Southern Region",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Atlantic/Reykjavik",
+    "website": "https://thesoup.company"
+   },
+   "query": "The Soup Company"
+  },
+  "adeel|Kyoto, Japan|Enko-ji": {
+   "candidate": {
+    "address": "606-8147, Kyoto Kyoto, 13, Ichijoji Kotanicho, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 35.0450824,
+    "locality": "Kyoto",
+    "longitude": 135.797103,
+    "name": "Enkouji Temple",
+    "phone": "+81 75 781 8025",
+    "provider": "mapkit",
+    "providerPlaceID": "IB0ACC16024AE10F2",
+    "region": "Kyoto",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.enkouji.jp"
+   },
+   "query": "Enkoji Temple"
+  },
+  "adeel|Kyoto, Japan|Murin-an": {
+   "candidate": {
+    "address": "606-8437, 京都府 左京区, 京都市, 南禅寺草川町31, 日本",
+    "countryCode": "JP",
+    "countryName": "日本",
+    "isLocality": false,
+    "latitude": 35.0115571,
+    "locality": "左京区, 京都市",
+    "longitude": 135.7872722,
+    "name": "Murin-An",
+    "phone": "+81 75 771 3909",
+    "provider": "mapkit",
+    "providerPlaceID": "IAA7CE08B001C33E1",
+    "region": "京都府",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://murin-an.jp"
+   },
+   "query": "Murin-an Garden"
+  },
+  "adeel|Kyoto, Japan|Shoden-ji": {
+   "candidate": {
+    "address": "603-8847, Kyoto Kyoto, 72, Nishigamo Kitachinjuancho, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 35.0623639,
+    "locality": "Kyoto",
+    "longitude": 135.7368833,
+    "name": "Shoden-ji Temple",
+    "phone": "+81 75 491 3259",
+    "provider": "mapkit",
+    "providerPlaceID": "IB693C97C75449B06",
+    "region": "Kyoto",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "http://shodenji-kyoto.jp"
+   },
+   "query": "Shodenji Temple"
+  },
+  "adeel|Osaka, Japan|Hoshida Park": {
+   "candidate": {
+    "address": "576-0016, 大阪府 交野市, 星田3丁目10番,16番,23番付近, 日本",
+    "countryCode": "JP",
+    "countryName": "日本",
+    "isLocality": false,
+    "latitude": 34.7651084,
+    "locality": "交野市",
+    "longitude": 135.670135,
+    "name": "Hoshida Park",
+    "phone": "+81 72 892 0121",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "I339A1854DDC9521A",
+    "region": "大阪府",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.city.katano.osaka.jp"
+   },
+   "query": "Hoshida Park"
+  },
+  "adeel|Osaka, Japan|Minoo Park": {
+   "candidate": {
+    "address": "562-0002, Osaka Minoo, 1-18, Minookoen, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 34.846888,
+    "locality": "Minoo",
+    "longitude": 135.4721466,
+    "name": "Minoo Park",
+    "phone": "+81 727 21 3014",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "I7E8C9CD4A2C9A451",
+    "region": "Osaka",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.mino-park.jp"
+   },
+   "query": "Minoo Park"
+  },
+  "adeel|Osaka, Japan|Nagai Botanical Garden": {
+   "candidate": {
+    "address": "546-0034, Osaka Osaka, 1-23, Nagaikoen, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 34.6113298,
+    "locality": "Osaka",
+    "longitude": 135.5226445,
+    "name": "Nagai Botanical Garden",
+    "phone": "+81 6 6696 7117",
+    "provider": "mapkit",
+    "providerPlaceID": "IEB809C58C82D84E5",
+    "region": "Osaka",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://botanical-garden.nagai-park.jp"
+   },
+   "query": "Nagai Botanical Garden"
+  },
+  "adeel|Tokyo, Japan|Kiyosumi Garden": {
+   "candidate": {
+    "address": "135-0024, 東京都 江東区, 清澄二・三丁目, 日本",
+    "countryCode": "JP",
+    "countryName": "日本",
+    "isLocality": false,
+    "latitude": 35.6802284,
+    "locality": "江東区",
+    "longitude": 139.7967017,
+    "name": "Kiyosumi Garden",
+    "phone": "+81 3 3641 5892",
+    "provider": "mapkit",
+    "providerPlaceID": "IC1EA941FE5DBB217",
+    "region": "東京都",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.tokyo-park.or.jp/park/format/index033.html"
+   },
+   "query": "Kiyosumi Garden"
+  },
+  "adeel|Tokyo, Japan|Todoroki Valley": {
+   "candidate": {
+    "address": "158-0082, 東京都 世田谷区, 等々力1丁目22-26, 日本",
+    "countryCode": "JP",
+    "countryName": "日本",
+    "isLocality": false,
+    "latitude": 35.6043643,
+    "locality": "世田谷区",
+    "longitude": 139.6459079,
+    "name": "Todoroki Keikoku Park",
+    "phone": "+81 3 3704 4972",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "IAD8B30A3EF4908CD",
+    "region": "東京都",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.city.setagaya.lg.jp/02075/9082.html"
+   },
+   "query": "等々力渓谷公園"
+  },
+  "adeel|Tokyo, Japan|Yanaka Ginza": {
+   "candidate": {
+    "address": "110-0001, Tokyo Taito, 9-15, Yanaka 3-Chōme, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 35.727645,
+    "locality": "Taito",
+    "longitude": 139.7666609,
+    "name": "Yanaka Ginza Shopping Street",
+    "phone": "+81 3 3821 9123",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "IA807B652340F0C72",
+    "region": "Tokyo",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.yanakaginza.com"
+   },
+   "query": "Yanaka Ginza"
+  },
+  "agith|New York, USA|Eileen's Special Cheesecake": {
+   "candidate": {
+    "address": "17 Cleveland Pl, New York NY 10012, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7215588,
+    "locality": "New York",
+    "longitude": -73.9972582,
+    "name": "Eileen's Special Cheesecake",
+    "phone": "+1 (212) 966-5585",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "I1118FED08EBF0B53",
+    "region": "NY",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://www.eileenscheesecake.com"
+   },
+   "query": "Eileen's Special Cheesecake"
+  },
+  "agith|New York, USA|Golden Diner": {
+   "candidate": {
+    "address": "123 Madison St, New York NY 10002, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7124293,
+    "locality": "New York",
+    "longitude": -73.9940245,
+    "name": "Golden Diner",
+    "phone": "+1 (917) 472-7800",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I504F49E992EF4F05",
+    "region": "NY",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://goldendinerny.com"
+   },
+   "query": "Golden Diner"
+  },
+  "agith|New York, USA|Pranakhon": {
+   "candidate": {
+    "address": "88 University Pl, New York NY 10003, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7336935,
+    "locality": "New York",
+    "longitude": -73.993135,
+    "name": "Pranakhon Thai Restaurant",
+    "phone": "+1 (212) 786-6789",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I84DAE8D4816B7784",
+    "region": "NY",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "http://www.pranakhonnyc.com"
+   },
+   "query": "Pranakhon"
+  },
+  "agith|Tokyo, Japan|400℃ Pizza Shinagawa": {
+   "candidate": {
+    "address": "108-0074, Tokyo Minato, 22-11, Takanawa 4-Chōme, Japan",
+    "countryCode": "JP",
+    "countryName": "Japan",
+    "isLocality": false,
+    "latitude": 35.625891,
+    "locality": "Minato",
+    "longitude": 139.7372558,
+    "name": "400℃ PIZZA SHINAGAWA",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I9C34E77C6E883A8B",
+    "region": "Tokyo",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Asia/Tokyo",
+    "website": "https://www.instagram.com/shinagawa400do/"
+   },
+   "query": "400℃ Pizza Shinagawa"
+  },
+  "agith|Tokyo, Japan|Azaya": null,
+  "agith|Tokyo, Japan|Torikizoku Shibuya": null,
+  "agith|Toronto, Canada|Alforat Shawarma": {
+   "candidate": {
+    "address": "271 Yonge St, Toronto ON M5B 1N8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6553674,
+    "locality": "Toronto",
+    "longitude": -79.380371,
+    "name": "Alforat Iraqi Street Food",
+    "phone": "+1 (416) 363-3000",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IAAA68A388C70EA44",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://alforat.ca"
+   },
+   "query": "Alforat Iraqi Street Food"
+  },
+  "agith|Toronto, Canada|Bang Bang Ice Cream": {
+   "candidate": {
+    "address": "93A Ossington Ave, Toronto ON M6J 2Z2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6463429,
+    "locality": "Toronto",
+    "longitude": -79.4193653,
+    "name": "Bang Bang Ice Cream",
+    "phone": "+1 (647) 348-1900",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "ID3B2E469605D5BCC",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.bangbangicecream.ca"
+   },
+   "query": "Bang Bang Ice Cream"
+  },
+  "agith|Toronto, Canada|Yakiniku Legend": {
+   "candidate": {
+    "address": "100-35 McCaul St, Toronto ON M5T 1V7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6515356,
+    "locality": "Toronto",
+    "longitude": -79.3899311,
+    "name": "Yakiniku Legend",
+    "phone": "+1 (416) 260-2999",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I1CD5D12703743ADD",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://yakinikulegend.com/downtown-toronto/"
+   },
+   "query": "Yakiniku Legend"
+  },
+  "akanksha|St. Catharines, Canada|Beechwood Donuts": {
+   "candidate": {
+    "address": "165 St Paul St, St. Catharines ON L2R 3M5, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.1578406,
+    "locality": "St. Catharines",
+    "longitude": -79.2446315,
+    "name": "Beechwood Doughnuts",
+    "phone": "+1 (905) 682-6887",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "ID036F4018ABC69F8",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.beechwooddoughnuts.com"
+   },
+   "query": "Beechwood Donuts"
+  },
+  "akanksha|St. Catharines, Canada|Chocolates Etc": {
+   "candidate": {
+    "address": "100 Welland Ave, St. Catharines ON L2R 2N1, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.1630561,
+    "locality": "St. Catharines",
+    "longitude": -79.2473785,
+    "name": "Chocolates Etc",
+    "phone": "+1 (905) 682-8828",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryFoodMarket",
+    "providerPlaceID": "I8160BF69BA7EC391",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://chocolatesetc.ca"
+   },
+   "query": "Chocolates Etc"
+  },
+  "akanksha|St. Catharines, Canada|Fat Rabbit": {
+   "candidate": {
+    "address": "34 Geneva St, St. Catharines ON L2R 4M4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.1615492,
+    "locality": "St. Catharines",
+    "longitude": -79.2399396,
+    "name": "Fat Rabbit",
+    "phone": "+1 (905) 688-6553",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I6916F0ACEE57C444",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://fat-rabbit.ca/"
+   },
+   "query": "Fat Rabbit"
+  },
+  "akanksha|Toronto, Canada|Gianni's Gelato": {
+   "candidate": {
+    "address": "241 Queen St W, Toronto ON M5V 1Z4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6502605,
+    "locality": "Toronto",
+    "longitude": -79.3885584,
+    "name": "Gianni’s Gelato",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I428A59AE6BE2E579",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.yelp.ca/biz/gianni-s-gelato-toronto"
+   },
+   "query": "Gianni's Gelato"
+  },
+  "akanksha|Toronto, Canada|Neo Coffee Bar King Spadina": {
+   "candidate": {
+    "address": "61 Spadina Ave, Toronto ON M5V 2J2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6450441,
+    "locality": "Toronto",
+    "longitude": -79.3945378,
+    "name": "NEO COFFEE BAR",
+    "phone": "+1 (437) 915-9155",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I5B9E83F963A89579",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.neocoffeebar.com/location/king-x-spadina/"
+   },
+   "query": "Neo Coffee Bar King Spadina"
+  },
+  "akanksha|Toronto, Canada|Sukhothai": {
+   "candidate": {
+    "address": "52 Wellington St E, Toronto ON M5E 1C7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6485593,
+    "locality": "Toronto",
+    "longitude": -79.37459,
+    "name": "Sukho Thai",
+    "phone": "+1 (647) 351-4612",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "ID7EAF563437CCD50",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.sukhothaifood.ca"
+   },
+   "query": "Sukhothai"
+  },
+  "anna|Copenhagen, Denmark|Emmerys": {
+   "candidate": {
+    "address": "Torvegade 25, 1400 København K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6732961,
+    "locality": "København K",
+    "longitude": 12.5900536,
+    "name": "Emmerys",
+    "phone": "+45 32 54 03 31",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "I672CD4F5E2F35A28",
+    "region": "Capital Region of Denmark",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "http://www.emmerys.dk"
+   },
+   "query": "Emmerys"
+  },
+  "anna|Copenhagen, Denmark|København K thrift store": {
+   "candidate": {
+    "address": "Studiestræde 32C, 1455 Copenhagen K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6784694,
+    "locality": "Copenhagen K",
+    "longitude": 12.5680876,
+    "name": "København K",
+    "phone": "+45 33 33 08 89",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "IBDB29CE891F40A49",
+    "region": "Capital Region of Denmark",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://www.visitcopenhagen.dk/koebenhavn/planlaeg-din-tur/koebenhavn-k-gdk812635"
+   },
+   "query": "København K vintage"
+  },
+  "anna|Copenhagen, Denmark|Platform CPH sauna": null,
+  "anna|Guelph, Canada|Butt's Berry & Flower Farm": {
+   "candidate": {
+    "address": "5838 Fifth Line, Guelph-Eramosa ON N0B 2K0, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6895134,
+    "locality": "Guelph-Eramosa",
+    "longitude": -80.2477025,
+    "name": "Butt’s Berry Farm",
+    "phone": "+1 (519) 856-0270",
+    "provider": "mapkit",
+    "providerPlaceID": "I7F44A9145C863C2A",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.buttsberryfarm.com"
+   },
+   "query": "Butt's Berry & Flower Farm"
+  },
+  "anna|Guelph, Canada|Whoopsie Daisy Drinks": {
+   "candidate": {
+    "address": "1-1 Victoria St S, Kitchener ON N2G 0B5, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4525744,
+    "locality": "Kitchener",
+    "longitude": -80.4980153,
+    "name": "Whoopsie Daisy Drinks",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I5498A669CA6046D3",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.instagram.com/whoopsiedaisydrinks/"
+   },
+   "query": "Whoopsie Daisy Drinks"
+  },
+  "anna|Ottawa, Canada|Britannia Beach": {
+   "candidate": {
+    "address": "2805 Carling Ave, Ottawa ON K2B 8K6, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 45.3650181,
+    "locality": "Ottawa",
+    "longitude": -75.8014787,
+    "name": "Britannia Beach",
+    "phone": "+1 (613) 820-1211",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBeach",
+    "providerPlaceID": "I913D87661DDD9069",
+    "region": "ON",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://ottawa.ca/en/residents/parks-and-recreation/parks-and-sports-fields/archives-beach-water-quality"
+   },
+   "query": "Britannia Beach"
+  },
+  "anna|Ottawa, Canada|Carmelito Café Nepean": {
+   "candidate": {
+    "address": "354 Preston St, Ottawa ON K1S 4M7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 45.4018225,
+    "locality": "Ottawa",
+    "longitude": -75.7104204,
+    "name": "Carmelito",
+    "phone": "+1 (613) 234-5336",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "IC0EAD349FDFF4D15",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://carmelitocafe.com"
+   },
+   "query": "Carmelito Café Nepean"
+  },
+  "anna|Ottawa, Canada|Midori Gifts": {
+   "candidate": {
+    "address": "196 Bank St, Ottawa ON K2P 1W8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 45.4176387,
+    "locality": "Ottawa",
+    "longitude": -75.6984492,
+    "name": "Midori Gifts",
+    "phone": "+1 (613) 695-0908",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "I67A3C861B19E6E76",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://midorigifts.com"
+   },
+   "query": "Midori Gifts"
+  },
+  "anna|Waterloo, Canada|Coffee Culture": {
+   "candidate": {
+    "address": "1 King St W, Kitchener ON N2G 1V6, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4497718,
+    "locality": "Kitchener",
+    "longitude": -80.489396,
+    "name": "Coffee Culture",
+    "phone": "+1 (519) 576-0999",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I28B9BCEEA55E23EF",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.coffeeculturecafe.com"
+   },
+   "query": "Coffee Culture"
+  },
+  "arielle|Duncan, Canada|Duncan Garage Cafe & Bakery": {
+   "candidate": {
+    "address": "101-330 Duncan St, Duncan BC V9L 3W4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 48.7774885,
+    "locality": "Duncan",
+    "longitude": -123.7058669,
+    "name": "Duncan Garage Cafe & Bakery",
+    "phone": "+1 (250) 715-3011",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "IDA9766392B4E50D0",
+    "region": "BC",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Vancouver",
+    "website": "https://duncangaragecafe.ca"
+   },
+   "query": "Duncan Garage Cafe & Bakery"
+  },
+  "arielle|Duncan, Canada|Ironworks Cafe & Creperie": {
+   "candidate": {
+    "address": "64 Station St, Duncan BC V9L 1M4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 48.7775702,
+    "locality": "Duncan",
+    "longitude": -123.7077415,
+    "name": "Ironworks Café & Crêperie",
+    "phone": "+1 (250) 748-9371",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I17103365238F49CC",
+    "region": "BC",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Vancouver",
+    "website": "https://ironworkscafe.ca/locations/duncan/"
+   },
+   "query": "Ironworks Cafe & Creperie"
+  },
+  "arielle|Duncan, Canada|Tin Cup Espresso Bar": {
+   "candidate": {
+    "address": "277 Canada Ave, Duncan BC V9L 1T6, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 48.779023,
+    "locality": "Duncan",
+    "longitude": -123.7075858,
+    "name": "The Tin Cup Coffee & Espresso Bar",
+    "phone": "+1 (250) 597-3738",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "ID8B32876DACB392",
+    "region": "BC",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Vancouver"
+   },
+   "query": "Tin Cup Espresso Bar"
+  },
+  "arielle|Duncan, Canada|TurF": {
+   "candidate": {
+    "address": "2041 W 4th Ave, Vancouver BC V6J 1N3, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 49.2682318,
+    "locality": "Vancouver",
+    "longitude": -123.1517438,
+    "name": "TurF",
+    "phone": "+1 (604) 428-9970",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryFitnessCenter",
+    "providerPlaceID": "I7FB0F07B025D312E",
+    "region": "BC",
+    "timeZoneIdentifier": "America/Vancouver",
+    "website": "https://www.ourturf.com/pages/kitsilano"
+   },
+   "query": "TurF"
+  },
+  "arielle|Okotoks, Canada|Covet Sips & Sweets": {
+   "candidate": {
+    "address": "322233 15th St E, Foothills County AB T1S 3L7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 50.748266,
+    "locality": "Foothills County",
+    "longitude": -113.9767505,
+    "name": "Covet Sips & Sweets",
+    "phone": "+1 (833) 332-6838",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "IADF8676594BE0E07",
+    "region": "AB",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Edmonton",
+    "website": "https://covet-sips-sweets.com"
+   },
+   "query": "Covet Sips & Sweets"
+  },
+  "arielle|Okotoks, Canada|Okotoks Erratic": {
+   "candidate": {
+    "address": "AB-7, Black Diamond AB T0L0H0, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 50.7059166,
+    "locality": "Black Diamond",
+    "longitude": -114.076345,
+    "name": "Okotoks Glacial Erratic",
+    "phone": "+1 (403) 562-7388",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "IFA07C15BA316A976",
+    "region": "AB",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "America/Edmonton",
+    "website": "https://www.alberta.ca/okotoks-erratic-big-rock.aspx"
+   },
+   "query": "Okotoks Erratic"
+  },
+  "arielle|Vancouver, Canada|Kits Beach Coffee": {
+   "candidate": {
+    "address": "1945 Cornwall Ave, Vancouver BC V6J 1C8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 49.2726734,
+    "locality": "Vancouver",
+    "longitude": -123.1487185,
+    "name": "Kits Beach Coffee",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I4E2C2F870F086E35",
+    "region": "BC",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Vancouver",
+    "website": "https://www.kitsbeachcoffee.com"
+   },
+   "query": "Kits Beach Coffee"
+  },
+  "arielle|Vancouver, Canada|Nitobe Memorial Garden": {
+   "candidate": {
+    "address": "1895 Lower Mall, Vancouver BC V6T 1Z4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 49.266518,
+    "locality": "Vancouver",
+    "longitude": -123.259746,
+    "name": "Nitobe Memorial Garden",
+    "phone": "+1 (604) 822-6038",
+    "provider": "mapkit",
+    "providerPlaceID": "I5CDB0D627C81AC95",
+    "region": "BC",
+    "timeZoneIdentifier": "America/Vancouver",
+    "website": "https://botanicalgarden.ubc.ca/visit/nitobe-memorial-garden/"
+   },
+   "query": "Nitobe Memorial Garden"
+  },
+  "arjun|Waterloo, Canada|Kingfisher Pond": {
+   "candidate": {
+    "address": "641 Columbia Forest Blvd, Waterloo ON N2V 2K7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.463419,
+    "locality": "Waterloo",
+    "longitude": -80.585194,
+    "name": "Kingfisher Pond",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryHiking",
+    "region": "ON",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Toronto"
+   },
+   "query": "Kingfisher Pond"
+  },
+  "christian|Toronto, Canada|Icha Tea": {
+   "candidate": {
+    "address": "233 Spadina Ave, Toronto ON M5T 2E2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6514258,
+    "locality": "Toronto",
+    "longitude": -79.3970371,
+    "name": "Icha Tea",
+    "phone": "+1 (416) 546-6292",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I6E44D12874D57B69",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://ichateashop.com"
+   },
+   "query": "Icha Tea"
+  },
+  "christian|Whitby, Canada|Belle Vie": {
+   "candidate": {
+    "address": "117 Brock St N, Whitby ON L1N 4H3, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.880386,
+    "locality": "Whitby",
+    "longitude": -78.9419457,
+    "name": "Belle Vie Cafe & Bakery",
+    "phone": "+1 (905) 668-9555",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "I462487903FBFA393",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://belleviepastries.com"
+   },
+   "query": "Belle Vie"
+  },
+  "christian|Whitby, Canada|Portobello Road": {
+   "candidate": {
+    "address": "118 Athol St, Whitby ON L1N 3Y9, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.879708,
+    "locality": "Whitby",
+    "longitude": -78.9397,
+    "name": "Portobello Road",
+    "phone": "+1 (905) 723-6465",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IB59B58B86D676ECC",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://portobello-road-105020.square.site"
+   },
+   "query": "Portobello Road"
+  },
+  "daniel|Madrid, Spain|Parque Juan Carlos I": {
+   "candidate": {
+    "address": "Glorieta SAR Don Juan de Borbón y Battemberg, 5, 28042 Madrid Madrid, Spain",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "isLocality": false,
+    "latitude": 40.4616052,
+    "locality": "Madrid",
+    "longitude": -3.6062958,
+    "name": "Juan Carlos I Park",
+    "phone": "+34 630 630 710",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "IAFA1523FDD3A043",
+    "region": "Madrid",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Madrid",
+    "website": "http://www.madrid.es/portales/munimadrid/es/Inicio/El-Ayuntamiento/Medio-ambiente/Parques-y-jardines/Patrimonio-Verde/Parques-en-Madrid/Parque-Juan-Carlos-I?vgnextfmt=default&vgnextoid=8d9a78a0dea9e210VgnVCM1000000b205a0aRCRD&vgnextchannel=38bb1914e7d4e210VgnVCM1000000b205a0aRCRD"
+   },
+   "query": "Parque Juan Carlos I"
+  },
+  "dilara|Kitchener, Canada|Public Kitchen & Bar": {
+   "candidate": {
+    "address": "300 Victoria St N, Kitchener ON N2H 6R7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4585731,
+    "locality": "Kitchener",
+    "longitude": -80.4840803,
+    "name": "Public Kitchen & Bar",
+    "phone": "+1 (519) 954-8111",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IE9DC2028B27CA997",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.kwpublic.com"
+   },
+   "query": "Public Kitchen & Bar"
+  },
+  "dilara|Waterloo, Canada|Coffee Brick": {
+   "candidate": {
+    "address": "102-410 Conestogo Rd W, Waterloo ON N2L 4E2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.498122,
+    "locality": "Waterloo",
+    "longitude": -80.533647,
+    "name": "Coffee Brick Canada Inc",
+    "phone": "+1 (289) 500-7666",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "IA1B3BEAFC6299C67",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://instagram.com/coffeebrick_ca"
+   },
+   "query": "Coffee Brick"
+  },
+  "elena|Calgary, Canada|Missy's This That": {
+   "candidate": {
+    "address": "348A 14 Ave SW, Calgary AB T2R 0M3, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 51.0399561,
+    "locality": "Calgary",
+    "longitude": -114.0712539,
+    "name": "Missy’s This That",
+    "phone": "+1 (403) 269-4660",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "IE32251766A7DF6E0",
+    "region": "AB",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "America/Edmonton",
+    "website": "https://www.missysthisthat.com/info"
+   },
+   "query": "Missy's This That"
+  },
+  "elena|Calgary, Canada|Thai Thien Sub": {
+   "candidate": {
+    "address": "811a First St SW, Calgary AB T2P 7N2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 51.0450392,
+    "locality": "Calgary",
+    "longitude": -114.0656698,
+    "name": "Thai Thien Sub",
+    "phone": "+1 (403) 263-4080",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IE4DBECCC43A1B6DD",
+    "region": "AB",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Edmonton",
+    "website": "https://www.clover.com/online-ordering/thai-thien-sub-calgary"
+   },
+   "query": "Thai Thien Sub"
+  },
+  "elena|Carmel-by-the-Sea, USA|The Xocolatl Garden": {
+   "candidate": {
+    "address": "Ocean Ave 4sw of Dolores, Carmel By The Sea CA 93921, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 36.5549043,
+    "locality": "Carmel By The Sea",
+    "longitude": -121.9229221,
+    "name": "The Xocolatl Garden",
+    "phone": "+1 (831) 785-6055",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryFoodMarket",
+    "providerPlaceID": "I331113EB107108F1",
+    "region": "CA",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.facebook.com/thexocolatlgarden"
+   },
+   "query": "The Xocolatl Garden"
+  },
+  "elena|Cupertino, USA|Bitter + Sweet": {
+   "candidate": {
+    "address": "20560 Town Center Ln, Cupertino CA 95014, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 37.318252,
+    "locality": "Cupertino",
+    "longitude": -122.0315567,
+    "name": "Bitter + Sweet",
+    "phone": "+1 (408) 255-2600",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "IA0E575F1FD5941D6",
+    "region": "CA",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.bitter-sweet.com"
+   },
+   "query": "Bitter + Sweet"
+  },
+  "elena|Davenport, USA|Swanton Berry Farm": {
+   "candidate": {
+    "address": "25 Swanton Rd, Davenport CA 95017, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 37.0306253,
+    "locality": "Davenport",
+    "longitude": -122.2181475,
+    "name": "Swanton Berry Farm-The Farmstand",
+    "phone": "+1 (831) 889-0850",
+    "provider": "mapkit",
+    "providerPlaceID": "IC36FC79D92D90E24",
+    "region": "CA",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.swantonberryfarm.com"
+   },
+   "query": "Swanton Berry Farm"
+  },
+  "harshil|Mississauga, Canada|Sawmill Valley Trail": {
+   "candidate": {
+    "address": "Sawmill Creek Tr, Mississauga ON, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.54583,
+    "locality": "Mississauga",
+    "longitude": -79.667655,
+    "name": "Sawmill Valley Trail",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryHiking",
+    "region": "ON",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Toronto"
+   },
+   "query": "Sawmill Valley Trail"
+  },
+  "hussein|Copenhagen, Denmark|Al Malek Shawarma Nørrebro": null,
+  "hussein|Copenhagen, Denmark|Assistens Cemetery": {
+   "candidate": {
+    "address": "Kapelvej 2, 2200 København N, Danmark",
+    "countryCode": "DK",
+    "countryName": "Danmark",
+    "isLocality": false,
+    "latitude": 55.69075,
+    "locality": "København N",
+    "longitude": 12.54978,
+    "name": "Assistens Cemetery",
+    "phone": "+45 33 66 91 00",
+    "provider": "mapkit",
+    "providerPlaceID": "I3A8C4DD81DB478B6",
+    "region": "Region Hovedstaden",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://www.kk.dk/brug-byen/byens-groenne-oaser/koebenhavns-kirkegaarde/assistens-kirkegaard"
+   },
+   "query": "Assistens Cemetery"
+  },
+  "hussein|Copenhagen, Denmark|Strandstation 2": {
+   "candidate": {
+    "address": "Amager Strand Stien 3, 2300 København S, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6521945,
+    "locality": "København S",
+    "longitude": 12.6455146,
+    "name": "Amager Beach Park",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "IE460C1E6FC96681E",
+    "region": "Capital Region of Denmark",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "http://www.kk.dk/amagerstrandpark"
+   },
+   "query": "Amager Strandpark Strandstation 2"
+  },
+  "hussein|Kuala Lumpur, Malaysia|Plaza Low Yat": {
+   "candidate": {
+    "address": "7, Jalan Seri Bintang 2, 52100 Kuala Lumpur Kuala Lumpur, Malaysia",
+    "countryCode": "MY",
+    "countryName": "Malaysia",
+    "isLocality": false,
+    "latitude": 3.1440566,
+    "locality": "Kuala Lumpur",
+    "longitude": 101.7099989,
+    "name": "Plaza Low Yat",
+    "phone": "+60 3 2148 3651",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "I4EB052B664DF1F0F",
+    "region": "Kuala Lumpur",
+    "timeZoneIdentifier": "Asia/Kuala_Lumpur",
+    "website": "http://plazalowyat.com"
+   },
+   "query": "Plaza Low Yat"
+  },
+  "kristofer|Kitchener, Canada|Kitchener-Waterloo Art Gallery": {
+   "candidate": {
+    "address": "101 Queen St N, Kitchener ON N2H 6P7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4546401,
+    "locality": "Kitchener",
+    "longitude": -80.4845095,
+    "name": "Kitchener-Waterloo Art Gallery",
+    "phone": "+1 (519) 579-5860",
+    "provider": "mapkit",
+    "providerPlaceID": "I992A028F391E90F7",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.kwag.ca"
+   },
+   "query": "Kitchener-Waterloo Art Gallery"
+  },
+  "kristofer|Toronto, Canada|Casa Loma": {
+   "candidate": {
+    "address": "1 Austin Terr, Toronto ON M5R 1X8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6780599,
+    "locality": "Toronto",
+    "longitude": -79.4094561,
+    "name": "Casa Loma",
+    "phone": "+1 (416) 923-1171",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "I4827EA7BE04BD1CA",
+    "region": "ON",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://casaloma.ca"
+   },
+   "query": "Casa Loma"
+  },
+  "kristofer|Toronto, Canada|Edwards Gardens": {
+   "candidate": {
+    "address": "755 Lawrence Ave E, North York ON M3C 1P2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.7334451,
+    "locality": "North York",
+    "longitude": -79.3600363,
+    "name": "Edwards Gardens",
+    "phone": "+1 (416) 397-1340",
+    "provider": "mapkit",
+    "providerPlaceID": "I4B0CD4AB7C3276FB",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.toronto.ca/data/parks/prd/facilities/complex/473/index.html"
+   },
+   "query": "Edwards Gardens"
+  },
+  "kristofer|Toronto, Canada|Queen's Park": {
+   "candidate": {
+    "address": "110 Wellesley St W, Toronto ON M7A 1A2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.664601,
+    "locality": "Toronto",
+    "longitude": -79.3925237,
+    "name": "Queen's Park",
+    "phone": "+1 (416) 325-7500",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "I2DD9D2D41A9A868E",
+    "region": "ON",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.toronto.ca/data/parks/prd/facilities/complex/2674/index.html"
+   },
+   "query": "Queen's Park"
+  },
+  "laura|Copenhagen, Denmark|Church of Our Saviour": {
+   "candidate": {
+    "address": "Sankt Annæ Gade 29, 1416 København K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6728565,
+    "locality": "København K",
+    "longitude": 12.5942212,
+    "name": "Church of Our Saviour",
+    "phone": "+45 32 54 68 83",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryReligiousSite",
+    "providerPlaceID": "I4344F77A4C8989C9",
+    "region": "Capital Region of Denmark",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://www.vorfrelserskirke.dk"
+   },
+   "query": "Church of Our Saviour"
+  },
+  "laura|Copenhagen, Denmark|Kongens Have": {
+   "candidate": {
+    "address": "Øster Voldgade 4A, 1350 København K, Danmark",
+    "countryCode": "DK",
+    "countryName": "Danmark",
+    "isLocality": false,
+    "latitude": 55.6851022,
+    "locality": "København K",
+    "longitude": 12.5799945,
+    "name": "Kongens Have",
+    "phone": "+45 33 95 42 00",
+    "provider": "mapkit",
+    "providerPlaceID": "ICE8E98E1DE941C7",
+    "region": "Region Hovedstaden",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://www.parkmuseerne.dk/parker/kongens-have"
+   },
+   "query": "Kongens Have"
+  },
+  "laura|Copenhagen, Denmark|Nyhavn": {
+   "candidate": {
+    "address": "Nyhavn 47C, 1051 København K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6798106,
+    "locality": "København K",
+    "longitude": 12.5913307,
+    "name": "Nyhavn",
+    "phone": "+45 33 12 32 33",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "I27E868640CCE0A32",
+    "region": "Capital Region of Denmark",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://info803402.wixsite.com/nyhavn"
+   },
+   "query": "Nyhavn"
+  },
+  "laura|Madeira, Portugal|Monte Palace Tropical Garden": {
+   "candidate": {
+    "address": "Caminho das Babosas 4-A, 9050-541 Funchal, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 32.6758177,
+    "locality": "Funchal",
+    "longitude": -16.9009817,
+    "name": "Monte Palace Tropical Garden",
+    "phone": "+351 291 742 650",
+    "provider": "mapkit",
+    "providerPlaceID": "I253ED69066A3182",
+    "region": "Madeira",
+    "timeZoneIdentifier": "Atlantic/Madeira",
+    "website": "https://montepalacemadeira.com"
+   },
+   "query": "Monte Palace Tropical Garden"
+  },
+  "laura|Madeira, Portugal|Pico do Arieiro": {
+   "candidate": {
+    "address": "9030-345 Santana, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 32.7355096,
+    "locality": "Santana",
+    "longitude": -16.928612,
+    "name": "Pico do Areeiro",
+    "phone": "+351 968 247 466",
+    "provider": "mapkit",
+    "providerPlaceID": "IC71974B685C64FA6",
+    "region": "Madeira",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Atlantic/Madeira"
+   },
+   "query": "Pico do Arieiro"
+  },
+  "laura|Madeira, Portugal|Praia do Seixal": {
+   "candidate": {
+    "address": "Rua João Fernandes Correia, 8650-376 Porto Moniz, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 32.8219421,
+    "locality": "Porto Moniz",
+    "longitude": -17.1031642,
+    "name": "Praia do Seixal",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBeach",
+    "providerPlaceID": "I276DCD6C12DEC154",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Atlantic/Madeira"
+   },
+   "query": "Praia do Seixal"
+  },
+  "laura|San Francisco, USA|17-Mile Drive": {
+   "candidate": {
+    "address": "17 Mile Dr, Pebble Beach CA 93953, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 36.6037246,
+    "locality": "Pebble Beach",
+    "longitude": -121.9451845,
+    "name": "17-Mile Drive",
+    "phone": "+1 (800) 877-0597",
+    "provider": "mapkit",
+    "providerPlaceID": "I9192A2C7FDC0AE53",
+    "region": "CA",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.pebblebeach.com/17-mile-drive/"
+   },
+   "query": "17-Mile Drive"
+  },
+  "laura|San Francisco, USA|Alcatraz Island": {
+   "candidate": {
+    "address": "San Francisco CA, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 37.8268417,
+    "locality": "San Francisco",
+    "longitude": -122.423066,
+    "name": "Alcatraz Island",
+    "phone": "+1 (415) 561-4900",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "IF27144A7CB336F58",
+    "region": "CA",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.nps.gov"
+   },
+   "query": "Alcatraz Island"
+  },
+  "laura|San Francisco, USA|Muir Woods National Monument": {
+   "candidate": {
+    "address": "1 Muir Woods Rd, Mill Valley CA 94941, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 37.8922022,
+    "locality": "Mill Valley",
+    "longitude": -122.5748207,
+    "name": "Muir Woods National Monument",
+    "phone": "+1 (415) 561-2850",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNationalMonument",
+    "providerPlaceID": "I907589547EB05261",
+    "region": "CA",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "America/Los_Angeles",
+    "website": "https://www.nps.gov/muwo/index.htm"
+   },
+   "query": "Muir Woods National Monument"
+  },
+  "luc|Copenhagen, Denmark|Bastard Café": {
+   "candidate": {
+    "address": "Rådhusstræde 13, 1466 København K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.6764112,
+    "locality": "København K",
+    "longitude": 12.5747284,
+    "name": "Bastard Café",
+    "phone": "+45 42 74 66 42",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I6CA25D56B27F36DF",
+    "region": "Capital Region of Denmark",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "http://bastardcafe.dk/"
+   },
+   "query": "Bastard Café"
+  },
+  "luc|Copenhagen, Denmark|Wasteland Copenhagen": {
+   "candidate": {
+    "address": "Studiestræde 19, 1455 København K, Denmark",
+    "countryCode": "DK",
+    "countryName": "Denmark",
+    "isLocality": false,
+    "latitude": 55.67865,
+    "locality": "København K",
+    "longitude": 12.569765,
+    "name": "Wasteland",
+    "phone": "+45 33 32 54 05",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "IBE111A44574E10BB",
+    "region": "Capital Region of Denmark",
+    "timeZoneIdentifier": "Europe/Copenhagen",
+    "website": "https://www.instagram.com/wastelandcopenhagen/"
+   },
+   "query": "Wasteland"
+  },
+  "luc|Lausanne, Switzerland|Plage du Pélican": {
+   "candidate": {
+    "address": "Avenue du Léman 54, 1025 St-Sulpice VD, Switzerland",
+    "countryCode": "CH",
+    "countryName": "Switzerland",
+    "isLocality": false,
+    "latitude": 46.5133042,
+    "locality": "St-Sulpice VD",
+    "longitude": 6.5721326,
+    "name": "Plage du Pélican",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBeach",
+    "providerPlaceID": "I78761AE0BD99667B",
+    "region": "VD",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Zurich"
+   },
+   "query": "Plage du Pélican"
+  },
+  "luc|Lausanne, Switzerland|mudac": {
+   "candidate": {
+    "address": "Place de la Gare 17, 1003 Lausanne, Switzerland",
+    "countryCode": "CH",
+    "countryName": "Switzerland",
+    "isLocality": false,
+    "latitude": 46.5186368,
+    "locality": "Lausanne",
+    "longitude": 6.6233981,
+    "name": "Mudac Musée Cantonal de Design et D’arts Appliqués Contemporains",
+    "phone": "+41 21 318 44 00",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryMuseum",
+    "providerPlaceID": "IE6BAA9BACA28770B",
+    "region": "VD",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Europe/Zurich",
+    "website": "https://mudac.ch/en"
+   },
+   "query": "mudac"
+  },
+  "maya|Kitchener, Canada|Guanaquita Restaurant": {
+   "candidate": {
+    "address": "273 King St W, Kitchener ON N2G 1B1, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4515108,
+    "locality": "Kitchener",
+    "longitude": -80.4942416,
+    "name": "The Guanaquita Restaurant",
+    "phone": "+1 (519) 576-4322",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I70962F6FB6980F2D",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.theguanaquitarestaurant.com"
+   },
+   "query": "Guanaquita Restaurant"
+  },
+  "maya|Kitchener, Canada|KW Escape": {
+   "candidate": {
+    "address": "1-259 Gage Ave, Kitchener ON N2M 2C9, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4468369,
+    "locality": "Kitchener",
+    "longitude": -80.5169569,
+    "name": "KW Escape",
+    "phone": "+1 (519) 746-4111",
+    "provider": "mapkit",
+    "providerPlaceID": "IE0DDD9CC86C5D277",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://kwescape.ca"
+   },
+   "query": "KW Escape"
+  },
+  "maya|Kitchener, Canada|Retro Rollers": {
+   "candidate": {
+    "address": "563 Highland Rd W, Kitchener ON N2M 5K2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4341064,
+    "locality": "Kitchener",
+    "longitude": -80.516623,
+    "name": "Retro Rollers",
+    "phone": "+1 (519) 635-9124",
+    "provider": "mapkit",
+    "providerPlaceID": "IABAEB87FF8DD8D20",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://retrorollers.ca/"
+   },
+   "query": "Retro Rollers"
+  },
+  "maya|Porto, Portugal|Base Porto": {
+   "candidate": {
+    "address": "Rua das Carmelitas, 4050 Porto, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 41.1461272,
+    "locality": "Porto",
+    "longitude": -8.6146545,
+    "name": "Base",
+    "phone": "+351 910 076 920",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "I59243A0001B8C360",
+    "region": "Porto",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Lisbon",
+    "website": "http://baseporto.com/"
+   },
+   "query": "Base Porto"
+  },
+  "maya|Porto, Portugal|Manteigaria": {
+   "candidate": {
+    "address": "Rua dos Clérigos 37, 4050-205 Porto, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 41.1458161,
+    "locality": "Porto",
+    "longitude": -8.6129862,
+    "name": "Manteigaria Fábrica de Pastéis de Nata",
+    "phone": "+351 222 082 582",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBakery",
+    "providerPlaceID": "IF32CBBE132204DFB",
+    "region": "Norte",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Lisbon",
+    "website": "https://manteigaria.com/as-nossas-fabricas/clerigos/"
+   },
+   "query": "Manteigaria"
+  },
+  "maya|Porto, Portugal|Teleférico de Gaia": null,
+  "maya|Toronto, Canada|Comal y Canela": {
+   "candidate": {
+    "address": "1692B Jane St, North York ON M9N 2S4, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.703289,
+    "locality": "North York",
+    "longitude": -79.5041123,
+    "name": "Comal y Canela",
+    "phone": "+1 (647) 689-4694",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I6453321973688633",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.comalycanela.com/"
+   },
+   "query": "Comal y Canela"
+  },
+  "maya|Toronto, Canada|EWOWDAY DIY Workshop": {
+   "candidate": {
+    "address": "269 Danforth Ave, Toronto ON M4K 1N2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6767964,
+    "locality": "Toronto",
+    "longitude": -79.3545721,
+    "name": "Ewowday",
+    "phone": "+1 (647) 847-0303",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "IFA34639B58580A73",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.ewowday.com"
+   },
+   "query": "EWOWDAY"
+  },
+  "maya|Toronto, Canada|Fifth Note": {
+   "candidate": {
+    "address": "567 King St W, Toronto ON M5V 1M1, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6444276,
+    "locality": "Toronto",
+    "longitude": -79.3994345,
+    "name": "Fifth Note",
+    "phone": "+1 (647) 875-8192",
+    "provider": "mapkit",
+    "providerPlaceID": "I5512126189EB5074",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://fifthnote.ca/"
+   },
+   "query": "Fifth Note"
+  },
+  "muneeb|Singapore, Singapore|Marina Bay Sands": {
+   "candidate": {
+    "address": "10 Bayfront Ave, Singapore 018956, Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "isLocality": false,
+    "latitude": 1.2837435,
+    "locality": "Singapore",
+    "longitude": 103.8606924,
+    "name": "Marina Bay Sands",
+    "phone": "+65 6688 8888",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "I3C29D49F96CB1EFC",
+    "region": "SG",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Asia/Singapore",
+    "website": "http://www.marinabaysands.com"
+   },
+   "query": "Marina Bay Sands"
+  },
+  "muneeb|Singapore, Singapore|Pulau Ubin": {
+   "candidate": {
+    "address": "Singapore 508310, Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "isLocality": false,
+    "latitude": 1.4085446,
+    "locality": "Singapore",
+    "longitude": 103.960884,
+    "name": "Pulau Ubin",
+    "phone": "+65 6542 4108",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "I3FB622FA31DCA695",
+    "region": "Singapore",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Singapore",
+    "website": "https://www.nparks.gov.sg/pulau-ubin"
+   },
+   "query": "Pulau Ubin"
+  },
+  "muneeb|Singapore, Singapore|Singapore River Walk": {
+   "candidate": {
+    "address": "Singapore, Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "isLocality": false,
+    "latitude": 1.289224,
+    "locality": "Singapore",
+    "longitude": 103.8452048,
+    "name": "Singapore River",
+    "phone": "+65 6336 6111",
+    "provider": "mapkit",
+    "region": "SG",
+    "suggestedCategory": "outdoors"
+   },
+   "query": "Singapore River"
+  },
+  "muneeb|Toronto, Canada|Centennial Park": {
+   "candidate": {
+    "address": "14 Saskatchewan Rd, Toronto ON M6K 3C3, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6333053,
+    "locality": "Toronto",
+    "longitude": -79.4242692,
+    "name": "Centennial Park",
+    "phone": "+1 (416) 263-3000",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "IE7387DF1656D2360",
+    "region": "ON",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.yelp.ca/biz/centennial-park-toronto"
+   },
+   "query": "Centennial Park"
+  },
+  "muneeb|Toronto, Canada|Crown Pastries": {
+   "candidate": {
+    "address": "2086 Lawrence Ave E, Scarborough ON M1R 2Z5, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.7461978,
+    "locality": "Scarborough",
+    "longitude": -79.2931081,
+    "name": "Crown Pastries",
+    "phone": "+1 (647) 351-2015",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I39279BC459E3F617",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://crownpastries.com"
+   },
+   "query": "Crown Pastries"
+  },
+  "muneeb|Toronto, Canada|Helvaci Ali": {
+   "candidate": {
+    "address": "2066 Lawrence Ave E, Toronto ON M1R 2Z5, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.7460233,
+    "locality": "Toronto",
+    "longitude": -79.2940862,
+    "name": "Helvaci Ali Turkish Dessert Cafe",
+    "phone": "+1 (888) 435-8224",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "ICF19CA08DB304450",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://helvaciali.ca"
+   },
+   "query": "Helvaci Ali"
+  },
+  "noah|New York, USA|Brooklyn Bridge Park Pier 1": {
+   "candidate": {
+    "address": "60 Furman St, Brooklyn NY 11201, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.70246,
+    "locality": "Brooklyn",
+    "longitude": -73.9963263,
+    "name": "Pier 1",
+    "phone": "+1 (718) 222-9939",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryMarina",
+    "providerPlaceID": "I1A617D5835B7F9EB",
+    "region": "NY",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://www.brooklynbridgepark.org/places-to-see/pier-1/"
+   },
+   "query": "Brooklyn Bridge Park Pier 1"
+  },
+  "noah|New York, USA|Cassidy's Pub": {
+   "candidate": {
+    "address": "65 W 55th St, New York NY 10019, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7628008,
+    "locality": "New York",
+    "longitude": -73.9773775,
+    "name": "Cassidy's Pub & Restaurant",
+    "phone": "+1 (212) 397-0814",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "I5B66FFB65760BACE",
+    "region": "NY",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://www.facebook.com/CassidysNYC/"
+   },
+   "query": "Cassidy's Pub"
+  },
+  "noah|New York, USA|an.mé": {
+   "candidate": {
+    "address": "249 Bleecker St, New York NY 10014, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7309927,
+    "locality": "New York",
+    "longitude": -74.002662,
+    "name": "an.mé",
+    "phone": "+1 (646) 719-1116",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "I4291AA59595EFD2C",
+    "region": "NY",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "http://www.anmeshop.com"
+   },
+   "query": "an.mé"
+  },
+  "noah|Toronto, Canada|Fresca Pizza and Pasta": {
+   "candidate": {
+    "address": "302 College St, Toronto ON M5T 1R9, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6578161,
+    "locality": "Toronto",
+    "longitude": -79.4017437,
+    "name": "Fresca Pizza & Pasta",
+    "phone": "+1 (416) 922-9555",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IFC3CED4C7EFD0381",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.facebook.com/FrescaToronto/"
+   },
+   "query": "Fresca Pizza and Pasta"
+  },
+  "noah|Toronto, Canada|Horseshoe Tavern": {
+   "candidate": {
+    "address": "370 Queen St W, Toronto ON M5V 2A2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.6490347,
+    "locality": "Toronto",
+    "longitude": -79.3958939,
+    "name": "Horseshoe Tavern",
+    "phone": "+1 (416) 598-4226",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryMusicVenue",
+    "providerPlaceID": "I43E16DBAFCABED2F",
+    "region": "ON",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.horseshoetavern.com"
+   },
+   "query": "Horseshoe Tavern"
+  },
+  "noah|Toronto, Canada|The Rivoli": {
+   "candidate": {
+    "address": "332-334 Queen St W, Toronto ON M5V 2A2, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.649251,
+    "locality": "Toronto",
+    "longitude": -79.3948793,
+    "name": "Rivoli",
+    "phone": "+1 (647) 494-4540",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryMusicVenue",
+    "providerPlaceID": "I44F7B3137AE45328",
+    "region": "ON",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.rivolitoronto.com"
+   },
+   "query": "The Rivoli"
+  },
+  "noah|Waterloo, Canada|Lost Vessel Vintage": {
+   "candidate": {
+    "address": "6 Princess St W, Waterloo ON N2L 2X8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4669451,
+    "locality": "Waterloo",
+    "longitude": -80.5237887,
+    "name": "Lost Vessel Vintage",
+    "phone": "+1 (519) 755-8635",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "IC72326219334C116",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://lostvessel.com"
+   },
+   "query": "Lost Vessel Vintage"
+  },
+  "noah|Waterloo, Canada|Morty's Pub": {
+   "candidate": {
+    "address": "272 King St N, Waterloo ON N2J 2Y9, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.477708,
+    "locality": "Waterloo",
+    "longitude": -80.524879,
+    "name": "Morty's Pub",
+    "phone": "+1 (519) 886-0440",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "I56B870E17DD80ED7",
+    "region": "ON",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.mortys.com"
+   },
+   "query": "Morty's Pub"
+  },
+  "noah|Waterloo, Canada|Princess Cafe": {
+   "candidate": {
+    "address": "46 King St N, Uptown Waterloo ON N2J 2W8, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.4664787,
+    "locality": "Uptown Waterloo",
+    "longitude": -80.5225831,
+    "name": "Princess Cafe",
+    "phone": "+1 (519) 886-0227",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "IF08EE54E8213788A",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.princesscafe.ca/"
+   },
+   "query": "Princess Cafe"
+  },
+  "rachel|Amsterdam, Netherlands|Cafe Restaurant Van Kerkwijk": {
+   "candidate": {
+    "address": "Nes 41, 1012 KC Amsterdam, Netherlands",
+    "countryCode": "NL",
+    "countryName": "Netherlands",
+    "isLocality": false,
+    "latitude": 52.3715445,
+    "locality": "Amsterdam",
+    "longitude": 4.8937009,
+    "name": "Van Kerkwijk",
+    "phone": "+31 20 620 33 16",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryCafe",
+    "providerPlaceID": "ID770F71F1010896A",
+    "region": "North Holland",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Amsterdam",
+    "website": "https://www.vankerkwijk.com"
+   },
+   "query": "Van Kerkwijk"
+  },
+  "rachel|Amsterdam, Netherlands|Café Wester": {
+   "candidate": {
+    "address": "Nieuwe Leliestraat 2, 1015 SP Amsterdam, Netherlands",
+    "countryCode": "NL",
+    "countryName": "Netherlands",
+    "isLocality": false,
+    "latitude": 52.3760613,
+    "locality": "Amsterdam",
+    "longitude": 4.8838459,
+    "name": "Café Wester",
+    "phone": "+31 20 758 08 46",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "IA693A53617C388EF",
+    "region": "North Holland",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "Europe/Amsterdam",
+    "website": "https://www.instagram.com/cafewester/"
+   },
+   "query": "Café Wester"
+  },
+  "rachel|Amsterdam, Netherlands|The English Bookshop Amsterdam": {
+   "candidate": {
+    "address": "Kalverstraat 223, 1012 XC Amsterdam, Netherlands",
+    "countryCode": "NL",
+    "countryName": "Netherlands",
+    "isLocality": false,
+    "latitude": 52.3674469,
+    "locality": "Amsterdam",
+    "longitude": 4.8930667,
+    "name": "The Old English Bookstore",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryStore",
+    "providerPlaceID": "I846A77DA9D79DB92",
+    "region": "North Holland",
+    "timeZoneIdentifier": "Europe/Amsterdam",
+    "website": "https://www.instagram.com/the.englishbookshop/"
+   },
+   "query": "The English Bookshop Amsterdam"
+  },
+  "rachel|Berlin, Germany|Bäcker & Bistro Haßelbach": {
+   "candidate": {
+    "address": "Straße der Pariser Kommune 10, 10243 Berlin, Germany",
+    "countryCode": "DE",
+    "countryName": "Germany",
+    "isLocality": false,
+    "latitude": 52.5105534,
+    "locality": "Berlin",
+    "longitude": 13.4375238,
+    "name": "Bäcker & Bistro Haßelbach",
+    "phone": "+49 30 28090820",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I5E1518FB3A26ADA9",
+    "region": "Berlin",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Berlin",
+    "website": "https://www.hasselbach-baeckerbistro.berlin/"
+   },
+   "query": "Bäcker & Bistro Haßelbach"
+  },
+  "rachel|Berlin, Germany|Wen Cheng": {
+   "candidate": {
+    "address": "Schönhauser Allee 10, 10119 Berlin, Germany",
+    "countryCode": "DE",
+    "countryName": "Germany",
+    "isLocality": false,
+    "latitude": 52.5306118,
+    "locality": "Berlin",
+    "longitude": 13.4119606,
+    "name": "Wen Cheng",
+    "phone": "+49 155 60089868",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IC3A0E8DDD7B41C8D",
+    "region": "Berlin",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Berlin",
+    "website": "https://www.wenchengnoodles.com/locations/berlin/rosa-luxemburg"
+   },
+   "query": "Wen Cheng"
+  },
+  "rachel|Dublin, Ireland|Bambino's Pizza": {
+   "candidate": {
+    "address": "37 Stephen St Lower, Dublin 2 Co. Dublin D02 T862, Ireland",
+    "countryCode": "IE",
+    "countryName": "Ireland",
+    "isLocality": false,
+    "latitude": 53.3411068,
+    "locality": "Dublin 2",
+    "longitude": -6.2635873,
+    "name": "Bambino",
+    "phone": "+353 1547 15 52",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I349EA3C46D0BC4B4",
+    "region": "Co. Dublin",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Dublin",
+    "website": "https://www.bmbno.ie"
+   },
+   "query": "Bambino Dublin"
+  },
+  "rachel|Dublin, Ireland|Howth Cliff Walk": {
+   "candidate": {
+    "address": "Howth Co. Dublin, Ireland",
+    "countryCode": "IE",
+    "countryName": "Ireland",
+    "isLocality": false,
+    "latitude": 53.3855713,
+    "locality": "Howth",
+    "longitude": -6.0500497,
+    "name": "Howth Cliff Walk",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "IC064B4951A21456C",
+    "region": "Co. Dublin",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Europe/Dublin",
+    "website": "https://www.yelp.ie/biz/howth-cliff-walk-howth"
+   },
+   "query": "Howth Cliff Path"
+  },
+  "rachel|Dublin, Ireland|The Cobblestone": {
+   "candidate": {
+    "address": "77 King Street North, Smithfield Co. Dublin D07 TP22, Ireland",
+    "countryCode": "IE",
+    "countryName": "Ireland",
+    "isLocality": false,
+    "latitude": 53.3497899,
+    "locality": "Smithfield",
+    "longitude": -6.2778199,
+    "name": "The Cobblestone",
+    "phone": "+353 1872 17 99",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "IB94E474E07D32AEF",
+    "region": "Co. Dublin",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "Europe/Dublin",
+    "website": "https://cobblestonepub.ie"
+   },
+   "query": "The Cobblestone"
+  },
+  "sofia|Barcelona, Spain|Bobby's Free": {
+   "candidate": {
+    "address": "Carrer de Pau Claris, 85, 08010 Barcelona Barcelona, Spain",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "isLocality": false,
+    "latitude": 41.38987,
+    "locality": "Barcelona",
+    "longitude": 2.1707204,
+    "name": "Bobby's Free",
+    "phone": "+34 932 779 773",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryNightlife",
+    "providerPlaceID": "I53F2BAE5DBF85E8D",
+    "region": "Barcelona",
+    "suggestedCategory": "nightlife",
+    "timeZoneIdentifier": "Europe/Madrid",
+    "website": "https://www.bobbysfree.com"
+   },
+   "query": "Bobby's Free"
+  },
+  "sofia|Barcelona, Spain|Museu Nacional d'Art de Catalunya": {
+   "candidate": {
+    "address": "08038 Barcelona Barcelona, Spain",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "isLocality": false,
+    "latitude": 41.3685846,
+    "locality": "Barcelona",
+    "longitude": 2.1534846,
+    "name": "National Art Museum of Catalonia",
+    "phone": "+34 936 220 360",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "I42281670AA64E418",
+    "region": "Barcelona",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Europe/Madrid",
+    "website": "https://museunacional.cat"
+   },
+   "query": "Museu Nacional d'Art de Catalunya"
+  },
+  "sofia|Barcelona, Spain|Park Güell": {
+   "candidate": {
+    "address": "Carrer d'Olot, 11, 08024 Barcelona Barcelona, Spain",
+    "countryCode": "ES",
+    "countryName": "Spain",
+    "isLocality": false,
+    "latitude": 41.413765,
+    "locality": "Barcelona",
+    "longitude": 2.1527625,
+    "name": "Park Güell",
+    "phone": "+34 934 091 831",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryLandmark",
+    "providerPlaceID": "IE951BB33C7E9FF68",
+    "region": "Barcelona",
+    "suggestedCategory": "culture",
+    "timeZoneIdentifier": "Europe/Madrid",
+    "website": "https://parkguell.barcelona/"
+   },
+   "query": "Park Güell"
+  },
+  "sofia|Lisbon, Portugal|Casa de Pasto Oh Pereira": {
+   "candidate": {
+    "address": "Rua do Arco do Cego 59, 1000-020 Lisboa, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 38.7400059,
+    "locality": "Lisboa",
+    "longitude": -9.1427972,
+    "name": "Oh Pereira",
+    "phone": "+351 211 317 603",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IB5352182E957256C",
+    "region": "Lisboa",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Lisbon",
+    "website": "https://ohpereira.eatbu.com/?lang=pt"
+   },
+   "query": "Casa de Pasto Oh Pereira"
+  },
+  "sofia|Lisbon, Portugal|Tapada das Necessidades": {
+   "candidate": {
+    "address": "Calçada das Necessidades 32, 1350-214 Lisboa, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 38.7087673,
+    "locality": "Lisboa",
+    "longitude": -9.169586,
+    "name": "Tapada das Necessidades",
+    "phone": "+351 213 463 658",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPark",
+    "providerPlaceID": "I6238EA546147B92C",
+    "region": "Lisboa",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Lisbon",
+    "website": "http://www.cm-lisboa.pt/equipamentos/equipamento/info/tapada-das-necessidades"
+   },
+   "query": "Tapada das Necessidades"
+  },
+  "sofia|Lisbon, Portugal|Zé da Mouraria 2": {
+   "candidate": {
+    "address": "Rua Gomes Freire 60, 1150-179 Lisboa, Portugal",
+    "countryCode": "PT",
+    "countryName": "Portugal",
+    "isLocality": false,
+    "latitude": 38.7244286,
+    "locality": "Lisboa",
+    "longitude": -9.1399287,
+    "name": "Zé da Mouraria 2",
+    "phone": "+351 216 084 695",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I3CE22D2177E05711",
+    "region": "Lisboa",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Lisbon",
+    "website": "https://www.instagram.com/ze_da_mouraria"
+   },
+   "query": "Zé da Mouraria 2"
+  },
+  "sofia|Montezuma, Costa Rica|Montezuma Waterfalls": {
+   "candidate": {
+    "address": "Climbing path to/from upper and lower falls, Costa Rica",
+    "countryCode": "CR",
+    "countryName": "Costa Rica",
+    "isLocality": false,
+    "latitude": 9.652478,
+    "longitude": -85.072276,
+    "name": "Catarata montezuma",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryPlayground",
+    "providerPlaceID": "I4B1160A418FEFCA8",
+    "region": "Puntarenas",
+    "timeZoneIdentifier": "America/Costa_Rica"
+   },
+   "query": "Cataratas de Montezuma"
+  },
+  "sofia|Montezuma, Costa Rica|Playa Montezuma": {
+   "candidate": {
+    "address": "Puntarenas, Costa Rica",
+    "countryCode": "CR",
+    "countryName": "Costa Rica",
+    "isLocality": false,
+    "latitude": 9.6565754,
+    "locality": "Puntarenas",
+    "longitude": -85.0653227,
+    "name": "Playa Montezuma",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryBeach",
+    "providerPlaceID": "I948E533DFDCB402",
+    "region": "Puntarenas",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "America/Costa_Rica"
+   },
+   "query": "Playa Montezuma"
+  },
+  "sofia|Montezuma, Costa Rica|Soda Tipica Las Palmeras": {
+   "candidate": {
+    "address": "Calle Cabo Blanco, Costa Rica",
+    "countryCode": "CR",
+    "countryName": "Costa Rica",
+    "isLocality": false,
+    "latitude": 9.648407,
+    "longitude": -85.071303,
+    "name": "Soda típica las Palmeras",
+    "phone": "+506 2642-0269",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IDDD2502E89FD6009",
+    "region": "Puntarenas",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Costa_Rica",
+    "website": "https://www.facebook.com/profile.php?id=100054229040298"
+   },
+   "query": "Soda Tipica Las Palmeras"
+  },
+  "theo|Panajachel, Guatemala|Lake Atitlán": null,
+  "tomi|London, United Kingdom|Brixton Village": {
+   "candidate": {
+    "address": "Coldharbour Lane, London, England, SW9 8PS, United Kingdom",
+    "countryCode": "GB",
+    "countryName": "United Kingdom",
+    "isLocality": false,
+    "latitude": 51.4621472,
+    "locality": "London",
+    "longitude": -0.1114347,
+    "name": "Brixton Village",
+    "phone": "+44 20 7274 2990",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryFoodMarket",
+    "providerPlaceID": "I5E5DA5EBA81676C8",
+    "region": "England",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/London",
+    "website": "https://brixtonvillage.com"
+   },
+   "query": "Brixton Village"
+  },
+  "vinita|Mississauga, Canada|Café Alma": null,
+  "vinita|Mississauga, Canada|Chiang Mai Thai Dining": {
+   "candidate": {
+    "address": "100-285 Enfield Pl, Mississauga ON L5B 3Y6, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.5904738,
+    "locality": "Mississauga",
+    "longitude": -79.6355655,
+    "name": "Chiang Mai",
+    "phone": "+1 (416) 257-8424",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I866B1580EDA77419",
+    "region": "ON",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "https://www.chiangmai.ca/locations/mississauga"
+   },
+   "query": "Chiang Mai Mississauga"
+  },
+  "vinita|Mississauga, Canada|Riverwood Conservancy": {
+   "candidate": {
+    "address": "4300 Riverwood Park Ln, Mississauga ON L5C 2S7, Canada",
+    "countryCode": "CA",
+    "countryName": "Canada",
+    "isLocality": false,
+    "latitude": 43.5650032,
+    "locality": "Mississauga",
+    "longitude": -79.6742,
+    "name": "The Riverwood Conservancy",
+    "phone": "+1 (905) 279-5878",
+    "provider": "mapkit",
+    "providerPlaceID": "I32F293DEE02F816",
+    "region": "ON",
+    "timeZoneIdentifier": "America/Toronto",
+    "website": "http://www.theriverwoodconservancy.org/"
+   },
+   "query": "Riverwood Conservancy"
+  },
+  "vinita|New York, USA|Ace Hotel New York": {
+   "candidate": {
+    "address": "20 W 29th St, New York NY 10001, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7457501,
+    "locality": "New York",
+    "longitude": -73.9882308,
+    "name": "Ace Hotel New York",
+    "phone": "+1 (212) 679-2222",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryHotel",
+    "providerPlaceID": "I9B9EBB73FA57B07",
+    "region": "NY",
+    "suggestedCategory": "stays",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://acehotel.com/new-york/"
+   },
+   "query": "Ace Hotel New York"
+  },
+  "vinita|New York, USA|Elizabeth Street Garden": {
+   "candidate": {
+    "address": "211 Elizabeth St, New York NY 10012, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.722177,
+    "locality": "New York",
+    "longitude": -73.9945561,
+    "name": "Elizabeth Street Garden",
+    "phone": "+1 (212) 644-6969",
+    "provider": "mapkit",
+    "providerPlaceID": "I413429273D6E3F60",
+    "region": "NY",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "http://elizabethstreetgarden.com"
+   },
+   "query": "Elizabeth Street Garden"
+  },
+  "vinita|New York, USA|Time Out Market New York": {
+   "candidate": {
+    "address": "55 Water St, Brooklyn NY 11201, United States",
+    "countryCode": "US",
+    "countryName": "United States",
+    "isLocality": false,
+    "latitude": 40.7034303,
+    "locality": "Brooklyn",
+    "longitude": -73.9921092,
+    "name": "Time Out Market",
+    "phone": "+1 (917) 810-4855",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "IE384360211F86E8D",
+    "region": "NY",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "America/New_York",
+    "website": "https://www.timeout.com/time-out-market-new-york"
+   },
+   "query": "Time Out Market New York"
+  },
+  "vinita|Nice, France|Jabal Coffee House": null,
+  "vinita|Nice, France|Pitaya Thaï Street Food": {
+   "candidate": {
+    "address": "30 Rue d'Angleterre, 06000 Nice, France",
+    "countryCode": "FR",
+    "countryName": "France",
+    "isLocality": false,
+    "latitude": 43.7048721,
+    "locality": "Nice",
+    "longitude": 7.2648212,
+    "name": "PITAYA",
+    "phone": "+33 1 00 00 00 00",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryRestaurant",
+    "providerPlaceID": "I3D05AC3E0C227CFF",
+    "region": "Provence-Alpes-Côte d'Azur",
+    "suggestedCategory": "food_drink",
+    "timeZoneIdentifier": "Europe/Paris",
+    "website": "https://pitaya-thaistreetfood.com/r/pitaya-nice-jean-medecin"
+   },
+   "query": "Pitaya Thaï Street Food"
+  },
+  "vinita|Nice, France|Sentier du Littoral": {
+   "candidate": {
+    "address": "42 Boulevard Princesse Grâce de Monaco, 06300 Nice, France",
+    "countryCode": "FR",
+    "countryName": "France",
+    "isLocality": false,
+    "latitude": 43.68919,
+    "locality": "Nice",
+    "longitude": 7.30791,
+    "name": "Sentier du Littoral",
+    "provider": "mapkit",
+    "providerCategory": "MKPOICategoryHiking",
+    "providerPlaceID": "I586DDA78EC8D49E5",
+    "region": "Provence-Alpes-Côte d'Azur",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Europe/Paris",
+    "website": "https://cotedazurfrance.com/offers/sentier-du-littoral-nice-nice-en-3223002/"
+   },
+   "query": "Sentier du Littoral"
+  },
+  "vivien|Singapore, Singapore|Southernmost Point of Continental Asia": {
+   "candidate": {
+    "address": "Singapore, Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "isLocality": false,
+    "latitude": 1.2481246,
+    "locality": "Singapore",
+    "longitude": 103.8214514,
+    "name": "Southernmost Point of Asia",
+    "provider": "mapkit",
+    "providerPlaceID": "IE791C3BCDD0A098A",
+    "region": "SG",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Singapore",
+    "website": "https://www.sentosa.com.sg/en/things-to-do/attractions/southernmost-point-of-continental-asia/"
+   },
+   "query": "Southernmost Point of Continental Asia"
+  },
+  "vivien|Singapore, Singapore|Yunnan Garden": {
+   "candidate": {
+    "address": "Singapore, Singapore",
+    "countryCode": "SG",
+    "countryName": "Singapore",
+    "isLocality": false,
+    "latitude": 1.342062,
+    "locality": "Singapore",
+    "longitude": 103.6932656,
+    "name": "Yunnan",
+    "provider": "mapkit",
+    "region": "SG",
+    "suggestedCategory": "outdoors",
+    "timeZoneIdentifier": "Asia/Singapore"
+   },
+   "query": "雲南園"
+  }
+ }
+}
