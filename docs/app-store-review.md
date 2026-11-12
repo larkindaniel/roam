@@ -5,8 +5,20 @@ Prepared on `codex/app_store_review` for **Roam: Places & Memories**, bundle
 review, not a claim that version 1.0 is ready to submit. The November 9 build 6
 is the latest valid build in the **internal** TestFlight group (checked through
 App Store Connect on November 12); an internal build is not a public App
-Review approval. Keep release set to **Manually release this version** so an
-approval does not publish the app automatically.
+Review approval. The release option is currently automatic after approval;
+change it to **Manually release this version** if Daniel wants a separate
+decision before public launch.
+
+## Live App Store Connect check — November 12, 2026
+
+Version 1.0 is `PREPARE_FOR_SUBMISSION`. No build is selected for App Review,
+and the English (Canada) localization has no screenshots, description, keywords,
+or support URL. The app localization has no privacy policy URL or subtitle.
+App Review details do not exist yet. An age-rating declaration record exists,
+but its answers were not audited. The App Privacy questionnaire could not be
+verified through this API check. The version's release option is currently
+`AFTER_APPROVAL` (automatic). A marketing URL and privacy-choices URL are
+optional; their absence alone is not a blocker.
 
 ## Blocking checks before submitting
 
