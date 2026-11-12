@@ -1,8 +1,11 @@
 # Draft public copy for Roam
 
+The publishable pages built from this copy are in `site/` (`index.html` support, `privacy.html`,
+`terms.html`). Edit those when the policy changes; this file is the earlier plain-text draft.
+
 **Do not publish this draft yet.** Daniel Larkin is the launch contact for
-support and reports. A durable public contact method and hosting URL have not
-been established. Verify the final text against the released build, Supabase
+support and reports. The public support address is dxxxx441@gmail.com; a hosting
+URL for these pages has not been established. Verify the final text against the released build, Supabase
 retention/backup settings, and the selected App Store regions before publishing.
 
 ## Privacy policy draft
@@ -11,7 +14,7 @@ retention/backup settings, and the selected App Store regions before publishing.
 
 Effective date: [publication date]
 
-Contact: [public support address or form URL]
+Contact: dxxxx441@gmail.com
 
 Roam helps you remember places you have visited, plan trips, and share selected
 experiences with friends. Daniel Larkin operates Roam. This policy describes the
@@ -30,8 +33,7 @@ Roam uses this information to run your account, show your travel history and
 plans, share content with the audience you choose, and handle safety reports.
 Your email and sign-in details are not shown on your public profile. Other
 members can see profile details and any content you choose to share with them.
-Visits can be set to Only me, Friends, or Public. Review the audience before
-posting; the app's current default for a new visit is Public.
+Visits can be set to Only me, Friends, or Public. New visits start as Friends.
 
 ### Location and photos
 
@@ -61,15 +63,14 @@ then removes your account, visits, photos, social activity, and other data.
 Reports you filed remain as moderation records without your account identity.
 Text already copied or shared outside Roam cannot be recalled.
 
-To ask about your information or report a privacy concern, use [public support
-address or form URL].
+To ask about your information or report a privacy concern, use dxxxx441@gmail.com.
 
 ## Support page draft
 
 **Roam Support**
 
 For account, sign-in, privacy, or safety help, contact Daniel Larkin at
-[public support address or form URL]. Include your Roam handle and a short
+dxxxx441@gmail.com. Include your Roam handle and a short
 description of the issue, but do not send passwords or Apple authorization
 codes. You can report a place, post, comment, photo, or member inside the app;
 Settings shows the status of reports you have filed. Daniel reviews incoming
@@ -87,8 +88,7 @@ harassment, threats, or illegal material. You keep ownership of your content
 and give Roam permission to display it to the audience you select while it
 remains in the service. You can edit or delete your content in the app and can
 delete your account in Settings. Roam may remove content or restrict accounts
-to protect members and operate the service. Contact [public support address or
-form URL] about these terms or a moderation decision.
+to protect members and operate the service. Contact dxxxx441@gmail.com about these terms or a moderation decision.
 
 ## Publication checks
 

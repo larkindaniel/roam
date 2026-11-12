@@ -197,7 +197,12 @@ tapping another place or pin swaps the card to it.
 - Your tastes: five optional questions (atmosphere, budget, crowds, novelty, pace) that go into Plan with AI prompts.
   Suggestions don't use them; they learn from your rankings.
 - Account: email, sign out, delete account. Deleting an Apple account asks for a fresh Apple sign-in
-  so Roam can revoke its Apple authorization while removing the account. Then privacy, terms and version.
+  so Roam can revoke its Apple authorization while removing the account.
+- Safety: Blocked people and Muted people (each can be undone from its list) and Your reports (status of reports
+  you filed).
+- About: Support, Privacy, Terms of use and version. Support and Terms end with a Contact card that emails the
+  support address; Privacy ends with a link to the full published policy. Both come from `ROAM_SUPPORT_EMAIL` and
+  `ROAM_PRIVACY_POLICY_URL`; Release builds fail without them, and Debug builds without them hide the links.
 
 ## Sheets
 

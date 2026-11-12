@@ -43,9 +43,13 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         waitFor(element("settings"))
     }
 
+    /// Friends › Friends and requests › Find people, or the people search already on screen.
     private func openProfile(handle: String) {
-        element("log-place").tap()
-        waitFor(app.buttons["Members"]).tap()
+        if !element("member-search-field").exists {
+            tab("Friends").tap()
+            waitFor(element("open-friends")).tap()
+            waitFor(element("find-people")).tap()
+        }
         let field = waitFor(element("member-search-field"))
         field.tap()
         let existing = (field.value as? String) ?? ""
@@ -262,14 +266,14 @@ final class M7ProfileSettingsUITests: RoamUITestCase {
         openSettings()
         reveal(element("settings-reports")).tap()
         let row = waitFor(element("report-row"), timeout: 10)
-        XCTAssertTrue(row.label.contains("Member · Spam"))
+        XCTAssertTrue(row.label.contains("Person · Spam"))
         XCTAssertTrue(row.label.contains("Received, not yet reviewed"), "Nothing claims a review happened")
         capture("m7-23-report-history")
         back()
-        reveal(element("settings-help-ranking")).tap()
-        waitFor(element("help-ranking"))
-        XCTAssertTrue(text(containing: "Too tough means the two places are a tie").exists)
-        capture("m7-24-help-ranking")
+        reveal(element("settings-help-support")).tap()
+        waitFor(element("help-support"))
+        XCTAssertTrue(text(containing: "Settings › Your reports").exists)
+        capture("m7-24-help-support")
         back()
         reveal(element("settings-help-privacy")).tap()
         waitFor(element("help-privacy"))

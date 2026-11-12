@@ -48,7 +48,22 @@ The user approved Apple's API usage terms and generation/download of this dedica
 
 The private key's contents were not read or copied into the repository. Keep the `.p8` in secure local
 storage and back it up securely: Apple permits only one download. This App Store Connect key is
-separate from any Sign in with Apple server/revocation key. No such revocation key was created here.
+separate from the Sign in with Apple server/revocation key below.
+
+## November 12, 2026 Sign in with Apple server key
+
+Apple Developer Keys had no existing service key. A new key named `Roam Sign In Revocation`
+was registered with Sign in with Apple enabled for the primary App ID
+`com.daniellarkin.roam` on team `H5V24G3F3D`.
+
+- Key ID: `CP8L433922`.
+- Private key download location on this Mac: `/Users/daniellarkin/Downloads/AuthKey_CP8L433922.p8`.
+- The file is 257 bytes and has mode `0600`. Its contents were not copied into the repository.
+
+Later on November 12 the key was stored on roam-beta as `APPLE_TEAM_ID`, `APPLE_SIGN_IN_KEY_ID` and
+`APPLE_SIGN_IN_PRIVATE_KEY` Edge Function secrets, the revocation migration was applied, and
+`delete-account` was deployed. Build 7 (uploaded the same day) calls it. A real-device deletion test
+remains before claiming revocation is verified.
 
 ## November 6, 2026 TestFlight update
 
@@ -64,8 +79,15 @@ Hosted backend deployment status is recorded in `docs/hosted-beta.md`.
 
 The App Store Connect API reports version 1.0 build 6 (`e2eb8f3a-1a87-4b59-b4d6-3a5dcd7eea3d`)
 as `VALID`, uploaded November 9, and attached to `Roam Internal`. It is newer than the build 5
-record above. The `codex/app_store_review` branch reserves build 7 for a later upload, but no
-new archive was uploaded and no App Store submission was made during this preparation.
+record above.
+
+## November 12, 2026 build 7
+
+Version 1.0 build 7 was archived with `scripts/archive-beta.sh` (`build/archives/Roam-20261112-180318.xcarchive`)
+and uploaded with `scripts/upload-beta.sh` (`build/evidence/upload-20261112-180455.log`). Its Info.plist has the
+hosted URL, the support email and the privacy policy URL, and no local-networking exception. It processed
+`VALID`, was added to `Roam Internal`, and is selected for the App Store version. Nothing was submitted for
+review. `project.yml` now reserves build 8 for the next upload.
 
 Do not substitute another Apple team. Keep private signing material out of xcconfig files, app bundles,
 Git, screenshots and logs.

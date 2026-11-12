@@ -2,3 +2,6 @@
 // Public client values only. Never place service-role keys or signing secrets here.
 ROAM_SUPABASE_URL = https:/$()/<project-ref>.supabase.co
 ROAM_SUPABASE_PUBLISHABLE_KEY = <publishable-key>
+// Public contact points shown in Settings › Support and Privacy. Release refuses to build without them.
+ROAM_SUPPORT_EMAIL = <public-support-address>
+ROAM_PRIVACY_POLICY_URL = https:/$()/<published-privacy-policy-url>
