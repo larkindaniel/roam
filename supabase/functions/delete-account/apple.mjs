@@ -11,7 +11,7 @@ function encoded(value) {
 
 export async function clientSecret(teamID, keyID, pem, now = Math.floor(Date.now() / 1000)) {
   if (!/^[A-Z0-9]{10}$/.test(teamID) || !/^[A-Z0-9]{10}$/.test(keyID)) throw new Error("Apple key configuration is invalid.");
-  const der = Uint8Array.from(atob(pem.replace(/-----[^-]+-----|\s/g, "")), c => c.charCodeAt(0));
+  const der = Uint8Array.from(atob(pem.replace(/\\n/g, "\n").replace(/-----[^-]+-----|\s/g, "")), c => c.charCodeAt(0));
   const key = await crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const input = `${encoded({ alg: "ES256", kid: keyID })}.${encoded({ iss: teamID, iat: now, exp: now + 300,
     aud: appleURL, sub: clientID })}`;
@@ -39,4 +39,16 @@ export async function exchangeCode(code, secret, fetcher = fetch) {
 export async function revokeToken(token, secret, fetcher = fetch) {
   await postApple("revoke", { client_id: clientID, client_secret: secret,
     token, token_type_hint: "refresh_token" }, fetcher);
+}
+
+// The token is received directly from Apple's HTTPS token endpoint. Match it to the
+// Supabase Apple identity before allowing this request to delete a Roam account.
+export function appleSubject(idToken, now = Math.floor(Date.now() / 1000)) {
+  try {
+    const part = idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "=")));
+    if (claims.iss !== appleURL || claims.aud !== clientID || typeof claims.sub !== "string"
+      || typeof claims.exp !== "number" || claims.exp <= now) return null;
+    return claims.sub;
+  } catch { return null; }
 }

@@ -25,6 +25,9 @@ when `ROAM_WORKER_ENV=hosted` and requires its service key from the process envi
 The key must never be put in the iOS app, repository, or workflow file. GitHub
 scheduled workflows run only from the repository's default branch; this branch
 does not activate the schedule on its own. Check workflow run history after merge.
+Draft public wording is in `docs/app-store-public-copy.md`. It contains explicit
+contact and publication fields because no public inbox or domain was supplied;
+do not submit a placeholder URL to Apple.
 
 ## App Store Connect packet
 
@@ -51,12 +54,13 @@ contracts before publishing the label.
 |---|---|
 | Email address and Apple sign-in identity | Supabase Auth account, login, confirmation and recovery |
 | User ID, handle, display name, bio, avatar and home city | Account and member profile |
-| Visits, place/city history, ratings, notes, photos, saved places and trip plans | Core travel log and sharing features; each visit has an audience setting |
-| Friends, likes, comments, posts and notifications | Social features |
+| Visits, place/city history, ratings, notes, photos, saved places, trip plans and taste answers | Core travel log and planning features; each visit has an audience setting |
+| Friends, trip membership, companions, direct shares, likes, comments, posts and notifications | Social features |
 | Reports, blocks and mutes | Safety and moderation; reports retain an anonymized record after account deletion |
 | App settings | Units, haptics and in-app notification preferences |
 | Device location | Requested for nearby search/sorting. Check actual transmission to MapKit and any server endpoint before answering the precise-location question. The app works without permission. |
 | Third-party content requests | MapKit, Google Places server-side, and Wikipedia imagery; confirm any IP/logging or image caching disclosures with their current terms |
+| Optional AI prompt handoff | The app builds a prompt from taste answers and liked places locally. The member can edit and copy it, then open ChatGPT or Claude. The prompt is not sent to either service until the member chooses to paste it there. |
 
 The code search found no ad SDK or analytics integration. That does **not** make
 the answer to Apple's "Do you collect data?" question "No." Do not choose "No"

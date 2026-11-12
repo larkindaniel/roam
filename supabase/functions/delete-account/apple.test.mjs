@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clientSecret, exchangeCode, revokeToken } from "./apple.mjs";
+import { appleSubject, clientSecret, exchangeCode, revokeToken } from "./apple.mjs";
 
 function decode(part) {
   return JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
@@ -42,4 +42,13 @@ test("authorization code is exchanged, then only the refresh token is revoked", 
 test("failed Apple exchange stops before deletion", async () => {
   await assert.rejects(exchangeCode("bad-code", "secret", async () => new Response(null, { status: 400 })),
     /Apple token returned 400/);
+});
+
+test("Apple token subject must match the native app and be unexpired", () => {
+  const token = claims => `header.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
+  const valid = { iss: "https://appleid.apple.com", aud: "com.daniellarkin.roam", sub: "apple-user", exp: 2000 };
+  assert.equal(appleSubject(token(valid), 1000), "apple-user");
+  assert.equal(appleSubject(token({ ...valid, aud: "another.app" }), 1000), null);
+  assert.equal(appleSubject(token({ ...valid, exp: 1000 }), 1000), null);
+  assert.equal(appleSubject("malformed", 1000), null);
 });

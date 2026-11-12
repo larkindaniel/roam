@@ -1,22 +1,12 @@
 // A recently reauthenticated Apple member submits Apple's one-use authorization code.
 // The code and exchanged tokens stay in this request only; no credential is logged or stored.
-import { clientSecret, exchangeCode, revokeToken } from "./apple.mjs";
+import { appleSubject, clientSecret, exchangeCode, revokeToken } from "./apple.mjs";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
 const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
-
-function appleSubject(idToken: string): string | null {
-  try {
-    const payload = idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const claims = JSON.parse(atob(payload));
-    if (claims.iss !== "https://appleid.apple.com" || claims.aud !== "com.daniellarkin.roam"
-      || typeof claims.sub !== "string" || typeof claims.exp !== "number" || claims.exp < Date.now() / 1000) return null;
-    return claims.sub;
-  } catch { return null; }
-}
 
 async function rpc(name: string, body: unknown, bearer: string, key: string) {
   return await fetch(`${url}/rest/v1/rpc/${name}`, {
