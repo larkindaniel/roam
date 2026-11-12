@@ -102,8 +102,18 @@ class CleanupUnitTests(unittest.TestCase):
             media_cleanup.Cleanup("http://127.0.0.1:54321", "key", transport=server).once()
         self.assertEqual(server.deleted, [])
 
-    def test_refuses_anything_but_the_local_loopback_stack(self):
+    def test_refuses_unapproved_remote_backend(self):
         with mock.patch.dict(os.environ, {"ROAM_API_URL": "https://example.supabase.co", "ROAM_SERVICE_ROLE_KEY": "x"}):
+            with self.assertRaises(RuntimeError):
+                media_cleanup.configuration()
+
+    def test_hosted_worker_requires_exact_project_and_process_secret(self):
+        hosted = "https://xnjzuotytfzyppubjcfi.supabase.co"
+        with mock.patch.dict(os.environ, {"ROAM_API_URL": hosted, "ROAM_WORKER_ENV": "hosted",
+                                       "ROAM_SERVICE_ROLE_KEY": "test-key"}):
+            self.assertEqual(media_cleanup.configuration(), (hosted, "test-key"))
+        with mock.patch.dict(os.environ, {"ROAM_API_URL": hosted, "ROAM_WORKER_ENV": "hosted",
+                                       "ROAM_SERVICE_ROLE_KEY": ""}):
             with self.assertRaises(RuntimeError):
                 media_cleanup.configuration()
 

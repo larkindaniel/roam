@@ -26,8 +26,14 @@ def configuration():
     values.update(os.environ)
     url = values.get("ROAM_API_URL", "")
     key = values.get("ROAM_SERVICE_ROLE_KEY", "")
-    if urllib.parse.urlparse(url).hostname not in {"localhost", "127.0.0.1", "::1"}:
-        raise RuntimeError("Cleanup is restricted to this project's loopback backend.")
+    parsed = urllib.parse.urlparse(url)
+    local = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+    hosted = (values.get("ROAM_WORKER_ENV") == "hosted"
+              and url.rstrip("/") == "https://xnjzuotytfzyppubjcfi.supabase.co")
+    if not (local or hosted):
+        raise RuntimeError("Cleanup requires the local backend or the explicitly selected Roam hosted project.")
+    if hosted and not os.environ.get("ROAM_SERVICE_ROLE_KEY"):
+        raise RuntimeError("The hosted worker requires its service key from the process environment.")
     if not key:
         raise RuntimeError("Run scripts/configure-local.sh to provision the ignored server environment.")
     return url.rstrip("/"), key

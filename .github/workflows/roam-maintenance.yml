@@ -1,0 +1,28 @@
+name: Roam hosted maintenance
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roam-hosted-maintenance
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ROAM_WORKER_ENV: hosted
+      ROAM_API_URL: https://xnjzuotytfzyppubjcfi.supabase.co
+      ROAM_SERVICE_ROLE_KEY: ${{ secrets.ROAM_BETA_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Process account deletions
+        run: python3 -I scripts/account-deletion.py --once
+      - name: Remove expired and deleted media
+        run: python3 -I scripts/media-cleanup.py --once
