@@ -37,9 +37,20 @@ struct SettingsView: View {
                 NavigationLink(value: AppRoute.taste) { Label("Your tastes", systemImage: "heart") }
                     .accessibilityIdentifier("settings-tastes")
             }
-            // Kept to the essentials for now; preferences, notifications and safety come back later.
+            // Kept to the essentials for now; preferences and notifications come back later.
             accountSection
+            // App Review needs blocking to be reversible and reports to be visible, so Safety stays.
+            Section("Safety") {
+                NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked people", systemImage: "hand.raised") }
+                    .accessibilityIdentifier("settings-blocked")
+                NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted people", systemImage: "speaker.slash") }
+                    .accessibilityIdentifier("settings-muted")
+                NavigationLink(value: AppRoute.reportHistory) { Label("Your reports", systemImage: "flag") }
+                    .accessibilityIdentifier("settings-reports")
+            }
             Section("About") {
+                NavigationLink(value: AppRoute.help(.support)) { Label("Support", systemImage: "questionmark.circle") }
+                    .accessibilityIdentifier("settings-help-support")
                 NavigationLink(value: AppRoute.help(.privacy)) { Label("Privacy", systemImage: "lock") }
                     .accessibilityIdentifier("settings-help-privacy")
                 NavigationLink(value: AppRoute.help(.terms)) { Label("Terms of use", systemImage: "doc.text") }

@@ -36,8 +36,9 @@ class AccountDeletion:
 
     @staticmethod
     def apple_revocation(job):
-        # No Apple revocation credentials exist locally; record that honestly.
-        return "not_applicable" if job.get("appleRevocation") == "not_applicable" else "not_configured"
+        # The Edge function may already have revoked Apple access. Never downgrade its result.
+        state = job.get("appleRevocation")
+        return state if state in {"not_applicable", "completed", "failed"} else "not_configured"
 
     def once(self):
         jobs = self.rpc("claim_account_deletions", {"p_worker": self.worker, "p_limit": 10})

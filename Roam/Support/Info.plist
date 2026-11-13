@@ -40,6 +40,10 @@
 	<string>$(ROAM_SUPABASE_URL)</string>
 	<key>RoamSupabasePublishableKey</key>
 	<string>$(ROAM_SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>RoamSupportEmail</key>
+	<string>$(ROAM_SUPPORT_EMAIL)</string>
+	<key>RoamPrivacyPolicyURL</key>
+	<string>$(ROAM_PRIVACY_POLICY_URL)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

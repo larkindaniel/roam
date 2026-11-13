@@ -96,6 +96,10 @@ class AccountDeletionUnitTests(unittest.TestCase):
         self.assertEqual(server.named("process_account_deletion")[0]["p_apple_revocation"], "not_configured",
                          "no Apple credentials exist locally, so nothing claims a revocation")
 
+    def test_preserves_an_edge_function_revocation_result(self):
+        self.assertEqual(account_deletion.AccountDeletion.apple_revocation({"appleRevocation": "completed"}), "completed")
+        self.assertEqual(account_deletion.AccountDeletion.apple_revocation({"appleRevocation": "failed"}), "failed")
+
     def test_a_failed_attempt_is_released_for_retry_without_details(self):
         server = FakeServer([{"id": "j3", "userID": "u", "appleRevocation": "not_applicable"}], [], fail_process=True)
         summary = account_deletion.AccountDeletion("http://127.0.0.1:54321", "key", worker="w3", transport=server).once()

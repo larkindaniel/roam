@@ -18,6 +18,29 @@ struct AppConfig: Equatable, Sendable {
     static let authCallbackURL = URL(string: "roam://auth-callback")!
 }
 
+/// Public contact points from Info.plist, shown in Settings › Support and Privacy. Release builds
+/// refuse to build without them (App Review needs a privacy policy link and a way to reach the
+/// operator); Debug builds without them hide the links.
+enum PublicLinks {
+    static var supportEmail: String? {
+        guard let value = string("RoamSupportEmail"), value.contains("@") else { return nil }
+        return value
+    }
+
+    static var supportMailURL: URL? { supportEmail.flatMap { URL(string: "mailto:\($0)") } }
+
+    static var privacyPolicyURL: URL? {
+        guard let value = string("RoamPrivacyPolicyURL"), let url = URL(string: value), url.scheme == "https" else { return nil }
+        return url
+    }
+
+    private static func string(_ key: String) -> String? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String,
+              !value.isEmpty, !value.hasPrefix("<"), !value.hasPrefix("$(") else { return nil }
+        return value
+    }
+}
+
 /// Debug launch options. Release builds ignore every fixture flag and always use the real backend.
 struct LaunchOptions: Equatable, Sendable {
     enum Backend: String, Sendable {

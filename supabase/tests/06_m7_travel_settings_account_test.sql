@@ -21,7 +21,7 @@ end $test$;
 grant execute on function public.set_follow(uuid,boolean) to authenticated;
 
 create extension if not exists pgtap with schema extensions;
-select plan(94);
+select plan(99);
 
 insert into auth.users(id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', email, '', now(),
@@ -375,6 +375,22 @@ select is(public.process_account_deletion(pg_temp.m7_id('apple-job'),'f7000000-0
 select is((select apple_revocation||'/'||attempts from app_private.account_deletion_jobs where id=pg_temp.m7_id('apple-job')),'not_configured/2',
           'the missing Apple revocation configuration is recorded, not reported as revoked');
 select is((select count(*)::int from auth.identities where user_id='e7000000-0000-4000-8000-000000000005'),0,'provider identities are removed with the user');
+
+-- The Apple Edge function can record a successful revocation while a worker holds a lease.
+select ok(not has_function_privilege('authenticated','public.set_account_deletion_apple_revocation(uuid,text)','execute'),
+          'members cannot mark their own Apple revocation complete');
+insert into app_private.account_deletion_jobs(user_id,apple_revocation)
+values ('b7000000-0000-4000-8000-000000000002','pending');
+select is(jsonb_array_length(public.claim_account_deletions('f7000000-0000-4000-8000-0000000000b6',10)),1,
+          'the worker can lease a pending Apple deletion');
+select is(public.set_account_deletion_apple_revocation('b7000000-0000-4000-8000-000000000002','completed'),true,
+          'the server records Apple revocation after the lease was taken');
+select is((select apple_revocation from app_private.account_deletion_jobs where user_id='b7000000-0000-4000-8000-000000000002'),
+          'completed','the job retains the recorded revocation');
+select is(public.process_account_deletion(
+            (select id from app_private.account_deletion_jobs where user_id='b7000000-0000-4000-8000-000000000002'),
+            'f7000000-0000-4000-8000-0000000000b6','not_configured')->>'appleRevocation',
+          'completed','the worker cannot downgrade a successful Apple revocation');
 
 select * from finish();
 rollback;

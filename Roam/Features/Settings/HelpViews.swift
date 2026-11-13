@@ -18,6 +18,7 @@ struct HelpView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .roamCard()
                 }
+                links
             }
             .padding()
         }
@@ -25,6 +26,35 @@ struct HelpView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .screenIdentifier("help-\(topic.rawValue)")
+    }
+
+    /// The published policy and the support address, from build configuration. Release always has them.
+    @ViewBuilder private var links: some View {
+        switch topic {
+        case .privacy:
+            if let url = PublicLinks.privacyPolicyURL {
+                Link(destination: url) { Label("Read the full privacy policy", systemImage: "arrow.up.right.square") }
+                    .font(.body.weight(.semibold))
+                    .frame(minHeight: Theme.minimumHitTarget)
+                    .accessibilityIdentifier("help-privacy-policy-link")
+            }
+        case .support, .terms:
+            if let email = PublicLinks.supportEmail, let url = PublicLinks.supportMailURL {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    Text("Contact").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+                    Text("Email Roam's support for account, privacy or safety help, or about a moderation decision. Include your handle, never your password.")
+                        .font(.body).fixedSize(horizontal: false, vertical: true)
+                    Link(destination: url) { Label(email, systemImage: "envelope") }
+                        .font(.body.weight(.semibold))
+                        .frame(minHeight: Theme.minimumHitTarget)
+                        .accessibilityIdentifier("help-support-email")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .roamCard()
+            }
+        case .ranking:
+            EmptyView()
+        }
     }
 
     private var title: String {
@@ -99,7 +129,7 @@ struct HelpView: View {
                     "Use Report on a place, post, comment, photo or profile. Your reports and their status are in Settings › Your reports. A report shows as reviewed only after someone has actually reviewed it.",
                 ]),
                 HelpSection(title: "Account help", paragraphs: [
-                    "Email accounts can get a password reset code from Settings › Account. Accounts that use Sign in with Apple are managed through Apple.",
+                    "If you use email and forget your password, sign out and choose Forgot password? on the email sign-in screen to get a reset code. Accounts that use Sign in with Apple are managed through Apple.",
                 ]),
             ]
         }

@@ -38,7 +38,8 @@ enum ImageProcessor {
                 kCGImageSourceThumbnailMaxPixelSize: pixel,
                 kCGImageSourceShouldCacheImmediately: true,
             ]
-            guard let image = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary) else { throw Failure.unreadable }
+            guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary),
+                  let image = eightBit(thumbnail) else { throw Failure.unreadable }
             for quality in [0.82, 0.7, 0.6, 0.5] {
                 if let data = encode(image, quality: quality), data.count <= byteLimit {
                     return Processed(data: data, width: image.width, height: image.height)
@@ -66,6 +67,20 @@ enum ImageProcessor {
         return Processed(data: data, width: image.width, height: image.height)
     }
 
+    /// 10-bit and HDR photos (iPhone HEIC) decode to images the JPEG encoder can't write.
+    /// Redraw those into 8 bits per channel, keeping a standard RGB color space (else Display P3).
+    private static func eightBit(_ image: CGImage) -> CGImage? {
+        if image.bitsPerComponent == 8, image.bitsPerPixel == 32 || image.bitsPerPixel == 24,
+           image.colorSpace?.model == .rgb, !(image.colorSpace.map(CGColorSpaceUsesExtendedRange) ?? false) { return image }
+        let space = image.colorSpace.flatMap { space in
+            space.model == .rgb && !CGColorSpaceUsesExtendedRange(space) && !CGColorSpaceUsesITUR_2100TF(space) && space.supportsOutput ? space : nil
+        } ?? CGColorSpace(name: CGColorSpace.displayP3)!
+        guard let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        return context.makeImage()
+    }
+
     /// Re-encodes without copying any source properties, so EXIF/GPS/TIFF metadata is dropped.
     private static func encode(_ image: CGImage, quality: Double) -> Data? {
         let output = NSMutableData()
@@ -75,8 +90,10 @@ enum ImageProcessor {
         return try? stripMetadataSegments(output as Data)
     }
 
-    /// ImageIO can add default metadata. Drop EXIF/XMP, IPTC and comments explicitly,
-    /// retaining JPEG coding tables and APP2 color profiles. Entropy-coded bytes stay intact.
+    /// ImageIO can add default metadata and private segments (for example Apple's APP10 "AROT"
+    /// decode index on large images). Keep only the APPn segments the server inspector accepts
+    /// (APP0 JFIF/JFXX, APP2 ICC profile, APP14 Adobe) and drop comments, retaining JPEG coding
+    /// tables. Entropy-coded bytes stay intact.
     static func stripMetadataSegments(_ data: Data) throws -> Data {
         let bytes = [UInt8](data)
         guard bytes.count >= 4, bytes[0] == 0xff, bytes[1] == 0xd8 else { throw Failure.unreadable }
@@ -100,10 +117,23 @@ enum ImageProcessor {
             guard offset + 2 <= bytes.count else { throw Failure.unreadable }
             let length = Int(bytes[offset]) * 256 + Int(bytes[offset + 1])
             guard length >= 2, offset + length <= bytes.count else { throw Failure.unreadable }
+            let payload = bytes[(offset + 2)..<(offset + length)]
             offset += length
-            if ![UInt8(0xe1), 0xed, 0xfe].contains(marker) { result.append(contentsOf: bytes[start..<offset]) }
+            if marker == 0xfe || ((0xe0...0xef).contains(marker) && !isAllowedAppSegment(marker, payload)) { continue }
+            result.append(contentsOf: bytes[start..<offset])
         }
         throw Failure.unreadable
+    }
+
+    /// Mirrors `supabase/functions/prepare-media/inspector.ts`; any other APPn is rejected there.
+    private static func isAllowedAppSegment(_ marker: UInt8, _ payload: ArraySlice<UInt8>) -> Bool {
+        func starts(_ tag: String) -> Bool { payload.starts(with: Array(tag.utf8)) }
+        switch marker {
+        case 0xe0: return starts("JFIF\0") || starts("JFXX\0")
+        case 0xe2: return starts("ICC_PROFILE\0")
+        case 0xee: return starts("Adobe")
+        default: return false
+        }
     }
 
     /// Metadata dictionaries of an encoded image (used by tests to prove GPS is gone).

@@ -33,8 +33,10 @@ class RoamUITestCase: XCTestCase {
         add(attachment)
     }
 
+    /// Roam's own tab bar (`tab-…` buttons labelled with the tab's title), else a system tab bar.
     func tab(_ title: String) -> XCUIElement {
-        app.tabBars.buttons[title].firstMatch
+        let custom = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-' AND label == %@", title)).firstMatch
+        return custom.exists ? custom : app.tabBars.buttons[title].firstMatch
     }
 
     /// Search, Explore and Profile open from Discover's navigation bar.

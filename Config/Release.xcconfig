@@ -1,0 +1,4 @@
+// Release uses the hosted beta backend. This required include deliberately fails
+// the build until the public hosted client configuration has been provisioned.
+// Never include Local.xcconfig here: its loopback URL cannot work on a phone.
+#include "Beta.xcconfig"

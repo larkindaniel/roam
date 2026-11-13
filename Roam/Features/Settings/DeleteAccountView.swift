@@ -21,20 +21,24 @@ final class DeleteAccountModel {
     var error: String?
     let canUsePassword: Bool
     let canUseApple: Bool
+    let userID: UUID
 
     private let auth: any AuthService
     private let account: any AccountService
     private var appleNonce: String?
+    private var appleAuthorizationCode: String?
 
-    init(auth: any AuthService, account: any AccountService, providers: [AuthProviderKind]) {
+    init(auth: any AuthService, account: any AccountService, providers: [AuthProviderKind], userID: UUID) {
         self.auth = auth
         self.account = account
-        canUsePassword = providers.contains(.email)
+        self.userID = userID
+        canUsePassword = providers.contains(.email) && !providers.contains(.apple)
         canUseApple = providers.contains(.apple)
     }
 
     func begin() {
         error = nil
+        appleAuthorizationCode = nil
         step = .reauthenticate
     }
 
@@ -63,11 +67,13 @@ final class DeleteAccountModel {
     func completeApple(_ result: Result<ASAuthorization, Error>) async {
         switch result {
         case .failure(let failure):
+            appleNonce = nil
             if let authError = failure as? ASAuthorizationError, authError.code == .canceled { return }
             error = "Sign in with Apple didn't complete. Try again."
         case .success(let authorization):
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
                   let tokenData = credential.identityToken, let token = String(data: tokenData, encoding: .utf8),
+                  let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8),
                   let nonce = appleNonce else {
                 error = "Sign in with Apple didn't return a valid identity. Try again."
                 return
@@ -75,7 +81,13 @@ final class DeleteAccountModel {
             busy = true
             defer { busy = false; appleNonce = nil }
             do {
-                _ = try await auth.signInWithApple(idToken: token, rawNonce: nonce)
+                let session = try await auth.signInWithApple(idToken: token, rawNonce: nonce)
+                guard session.userID == userID else {
+                    await auth.signOut()
+                    error = "This Apple account is different. Sign in to your Roam account again."
+                    return
+                }
+                appleAuthorizationCode = code
                 error = nil
                 step = .confirm
             } catch {
@@ -89,13 +101,23 @@ final class DeleteAccountModel {
         step = .deleting
         error = nil
         do {
-            step = .requested(try await account.requestDeletion())
+            if canUseApple {
+                guard let code = appleAuthorizationCode else {
+                    step = .reauthenticate
+                    error = "Sign in with Apple again to delete this account."
+                    return
+                }
+                appleAuthorizationCode = nil
+                step = .requested(try await account.requestDeletion(appleAuthorizationCode: code))
+            } else {
+                step = .requested(try await account.requestDeletion())
+            }
         } catch RoamError.reauthenticationRequired {
             error = RoamError.reauthenticationRequired.roamMessage
             step = .reauthenticate
         } catch {
-            self.error = "Your account wasn't deleted. \(error.roamMessage)"
-            step = .confirm
+            self.error = canUseApple ? "Deletion couldn't be confirmed. Sign in with Apple again to check and retry." : "Your account wasn't deleted. \(error.roamMessage)"
+            step = canUseApple ? .reauthenticate : .confirm
         }
     }
 
@@ -144,8 +166,9 @@ struct DeleteAccountView: View {
         // After the request the account can't act anywhere; Done is the only way on.
         .roamTabBar(hidden: isFinished)
         .task {
-            if model == nil {
-                model = DeleteAccountModel(auth: services.auth, account: services.account, providers: session.session?.providers ?? [])
+            if model == nil, let userID = session.userID {
+                model = DeleteAccountModel(auth: services.auth, account: services.account,
+                                           providers: session.session?.providers ?? [], userID: userID)
             }
         }
         .confirmationDialog("Delete your account permanently?", isPresented: $showsFinalConfirmation, titleVisibility: .visible) {

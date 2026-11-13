@@ -75,6 +75,9 @@ struct RootView: View {
                         case "search": router.openSearch()
                         case "explore": router.openExplore()
                         case "profile": router.push(.ownProfile)
+                        case "settings": router.push(.settings)
+                        case "help-support": router.push(.settings); router.push(.help(.support))
+                        case "help-privacy": router.push(.settings); router.push(.help(.privacy))
                         default: break
                         }
                         #endif
