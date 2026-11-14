@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A friend's log: a small line at the top (their picture, name · date), their own photos if any (never a
-/// stand-in), their note, then the place as a standard row (city, country under its name) that opens it.
+/// A friend's log: a photo (theirs, square; else the place's Google photo) with a small "picture, name · date" line set
+/// into its top, their note, then the place as a standard row (city, country under its name) that opens it.
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = true
@@ -11,8 +11,7 @@ struct ActivityCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            byline
-            photos
+            if hasPhoto { photos } else { byline(onPhoto: false) }
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
@@ -36,14 +35,24 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
     }
 
-    /// One small line: their picture, name · date. Where it was is on the place row below.
-    private var byline: some View {
+    private var hasPhoto: Bool { !item.media.isEmpty || item.experience.photoURL != nil }
+
+    /// One small line: their picture, name · date. Set into the top of the photo (white, on a soft dark fade), or on its
+    /// own when there's no photo at all. It opens their profile.
+    private func byline(onPhoto: Bool) -> some View {
         HStack(spacing: Theme.Spacing.s) {
             AvatarView(member: item.author, size: 28)
             Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-            Text("·").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            Text("·").font(.subheadline).opacity(0.7)
             date.font(.subheadline).lineLimit(1)
             Spacer(minLength: 0)
+        }
+        .foregroundStyle(onPhoto ? Color.white : Roam.ink)
+        .padding(onPhoto ? Theme.Spacing.m : 0)
+        .background {
+            if onPhoto {
+                LinearGradient(colors: [.black.opacity(0.55), .black.opacity(0.2), .clear], startPoint: .top, endPoint: .bottom)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { if MemberProfiles.available { router.push(.member(item.author.id)) } }
@@ -52,11 +61,21 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-author")
     }
 
-    /// Their own photos, square, swiping between several. Tapping a photo does nothing.
+    /// Their own photos, square, swiping between several; with none, the place's Google photo at its usual size. The
+    /// byline sits in the top of either. Tapping a photo does nothing.
     @ViewBuilder private var photos: some View {
-        if !item.media.isEmpty {
-            let media = item.media.sorted { $0.position < $1.position }
-            PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
+        Group {
+            if !item.media.isEmpty {
+                let media = item.media.sorted { $0.position < $1.position }
+                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
+            } else if let url = item.experience.photoURL {
+                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
+            }
+        }
+        .overlay(alignment: .top) {
+            byline(onPhoto: true)
+                // The gallery's own corners (24), so the fade follows them.
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
         }
     }
 
@@ -83,6 +102,6 @@ struct ActivityCardView: View {
 
     private var date: some View {
         Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
-            .foregroundStyle(Roam.inkMuted)
+            .opacity(0.75)
     }
 }
