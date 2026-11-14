@@ -73,14 +73,6 @@ struct ProfileView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let value = profile.value {
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: ShareText.profile(displayName: value.member.displayName, handle: value.member.handle,
-                                                      countryCount: value.countryCount, cityCount: value.cityCount)) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .accessibilityLabel("Share profile")
-                    .accessibilityIdentifier("share-profile")
-                }
                 if !value.relationship.isSelf {
                     ToolbarItem(placement: .topBarTrailing) { overflow(value) }
                 }
