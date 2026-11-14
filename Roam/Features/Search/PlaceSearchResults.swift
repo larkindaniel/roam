@@ -346,6 +346,8 @@ struct RoamSearchField: View {
     @Environment(\.onDarkBubble) private var onDarkBubble
     /// Extra to do when the × is tapped (closing a sheet's search, say).
     var onClear: (() -> Void)? = nil
+    /// The × shows while the field is focused even when empty; off where a close button already sits beside it.
+    var cancelWhenEmpty = true
 
     private var hasText: Bool { !text.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -362,7 +364,7 @@ struct RoamSearchField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityIdentifier(identifier)
-            if hasText || focus.wrappedValue {
+            if hasText || (cancelWhenEmpty && focus.wrappedValue) {
                 Button {
                     text = ""
                     focus.wrappedValue = false
@@ -399,7 +401,7 @@ struct SearchSheetBar: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            RoamSearchField(prompt: prompt, text: $text, focus: focus, identifier: identifier)
+            RoamSearchField(prompt: prompt, text: $text, focus: focus, identifier: identifier, cancelWhenEmpty: false)
                 .frame(height: 44)
             Button(action: onClose) {
                 Image(systemName: "xmark").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)

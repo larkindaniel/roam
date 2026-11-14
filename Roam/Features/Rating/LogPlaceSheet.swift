@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// + Add a place: one search for places and cities. A place goes on to its visit details; a city is simply marked as
+/// Log a place: one search for places and cities. A place goes on to its visit details; a city is simply marked as
 /// somewhere you've been.
 struct LogPlaceSheet: View {
     var onSaved: (LogRequest, RatingFlowCompletion) -> Void
@@ -40,11 +40,9 @@ struct LogPlaceSheet: View {
                         .padding(.vertical, Theme.Spacing.s)
                     }
                     .background(Roam.paper)
+                    // Just the search bubble, with an × beside it that closes the sheet; no title bar.
                     .safeAreaInset(edge: .top, spacing: 0) {
-                        RoamSearchField(prompt: "A place or a city", text: $query, focus: $searchFocused, identifier: "log-place-search")
-                            .frame(height: 44)
-                            .padding(.horizontal, Theme.Spacing.l)
-                            .padding(.vertical, Theme.Spacing.s)
+                        SearchSheetBar(prompt: "Log a place", text: $query, focus: $searchFocused, identifier: "log-place-search") { dismiss() }
                     }
                     .safeAreaInset(edge: .bottom) {
                         if hasQuery {
@@ -55,13 +53,7 @@ struct LogPlaceSheet: View {
                                 .accessibilityIdentifier("log-place-add-custom")
                         }
                     }
-                    .navigationTitle("Add a place")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { dismiss() }.accessibilityIdentifier("log-place-close")
-                        }
-                    }
+                    .toolbar(.hidden, for: .navigationBar)
                     .onAppear { searchFocused = true }
                 }
                 .roamSheetStyle()

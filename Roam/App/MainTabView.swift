@@ -23,11 +23,6 @@ struct MainTabView: View {
                 // Measured from the very bottom of the screen, not the home indicator, so the gaps match.
                 VStack(spacing: Theme.Spacing.s) {
                     Spacer(minLength: 0)
-                    if router.selectedTab == .friends, router.path(for: .friends).isEmpty {
-                        logPlaceButton
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.horizontal, RoamTabBar.sideMargin)
-                    }
                     RoamTabBar(selection: $router.selectedTab)
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -40,21 +35,6 @@ struct MainTabView: View {
             SheetContent(route: sheet)
                 .presentationBackground(Roam.paper)
         }
-    }
-
-    /// The Friends tab's "+ Log a place": a green bubble like "+ Add visit", in the Log button's green.
-    private var logPlaceButton: some View {
-        Button { router.sheet = .logPlace } label: {
-            Label("Log a place", systemImage: "plus")
-                .font(.headline)
-                .foregroundStyle(PlaceState.visited.markerColor)
-                .padding(.horizontal, Theme.Spacing.l)
-                .frame(height: Theme.minimumHitTarget)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor.opacity(0.15))
-        .accessibilityIdentifier("log-place")
     }
 
     @ViewBuilder private func stack(_ tab: AppTab) -> some View {

@@ -14,11 +14,10 @@ struct FeedRootView: View {
 
     private static let barHeight: CGFloat = 44
 
-    /// The title on the left, friends and notifications in one glass capsule, then your profile, as on Discover.
+    /// "+ Log a place" on the left, friends and notifications in one glass capsule, then your profile, as on Discover.
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
-            Text("Friends").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink)
-                .accessibilityAddTraits(.isHeader)
+            logPlaceButton
             Spacer(minLength: 0)
             HStack(spacing: 0) {
                 Button {
@@ -40,6 +39,21 @@ struct FeedRootView: View {
                 .floatingBubble(Circle())
         }
         .frame(height: Self.barHeight)
+    }
+
+    /// A green bubble like "+ Add visit", in the Log button's green.
+    private var logPlaceButton: some View {
+        Button { router.sheet = .logPlace } label: {
+            Label("Log a place", systemImage: "plus")
+                .font(.headline)
+                .foregroundStyle(PlaceState.visited.markerColor)
+                .padding(.horizontal, Theme.Spacing.l)
+                .frame(height: Self.barHeight)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor.opacity(0.15))
+        .accessibilityIdentifier("log-place")
     }
 
     private func barGlyph(_ symbol: String) -> some View {
