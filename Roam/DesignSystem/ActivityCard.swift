@@ -56,21 +56,14 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-author")
     }
 
-    /// Their own photos; with none, the place's photo stands in.
+    /// Their own photos (square, swipe between them); with none, the place's photo stands in. Tapping a photo does nothing.
     @ViewBuilder private var photos: some View {
-        if let visitID = item.visitID, !item.media.isEmpty {
+        if !item.media.isEmpty {
             let media = item.media.sorted { $0.position < $1.position }
-            PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, onOpenVisitPhoto: { path in
-                guard let photo = media.first(where: { $0.path == path }) else { return }
-                router.push(.visitPhoto(experienceID: item.experience.id, visitID: visitID, photoID: photo.id))
-            }, square: true)
+            PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
         } else if let url = item.experience.photoURL {
-            Button { router.push(.experience(item.experience.id)) } label: {
-                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
-                    .allowsHitTesting(false)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens the place")
+            PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
+                .allowsHitTesting(false)
         }
     }
 
