@@ -187,6 +187,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
+        // Short of fully up, the swipe belongs to the whole card, which stays put while its insides swap between the
+        // bubble and the card (a swipe held by the header was dropped by that swap, so the bubble couldn't be swiped up).
+        .contentShape(shape)
+        .simultaneousGesture(cardDrag, isEnabled: detent != .full)
         .background {
             // Lowered with no tint asked for, it's exactly the glass of the floating buttons over the map.
             if floating && peekOpacity == 0 {
@@ -227,7 +231,6 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         // Short of fully up, the content doesn't scroll: dragging anywhere on the card moves the card, as in Apple Maps.
         .scrollDisabled(detent != .full)
-        .simultaneousGesture(cardDrag, isEnabled: detent != .full)
         .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
     }
 
@@ -301,9 +304,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
-        // Alongside, not instead: the minimised bubble is mostly a search field, which would otherwise swallow the swipe.
-        // Taps still reach the field, since a drag only starts once the finger moves.
-        .simultaneousGesture(cardDrag)
+        // Fully up, dragging the header lowers the card (the content scrolls instead). Short of that, the whole card takes
+        // the swipe (see `card`).
+        .simultaneousGesture(cardDrag, isEnabled: detent == .full)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(headerLabel)
         .accessibilityHint(detent == .full ? "Shows the map" : "Minimizes the map")
