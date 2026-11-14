@@ -15,8 +15,11 @@ struct ActivityCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             if hasPhoto {
-                photos
-                placeChip
+                // The place card sits close under its photo.
+                VStack(spacing: Theme.Spacing.s) {
+                    photos
+                    placeChip
+                }
             }
             if !item.note.isEmpty {
                 Text(item.note)
