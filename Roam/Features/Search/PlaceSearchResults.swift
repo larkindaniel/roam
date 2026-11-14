@@ -343,13 +343,15 @@ struct RoamSearchField: View {
     /// White text, for dark glass over the globe.
     var onDark = false
     var identifier = "search-field"
+    @Environment(\.onDarkBubble) private var onDarkBubble
     /// Extra to do when the × is tapped (closing a sheet's search, say).
     var onClear: (() -> Void)? = nil
 
     private var hasText: Bool { !text.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.s) {
+        let onDark = onDark || onDarkBubble
+        return HStack(spacing: Theme.Spacing.s) {
             Image(systemName: "magnifyingglass").foregroundStyle(onDark ? Color.white.opacity(0.85) : Roam.inkMuted).accessibilityHidden(true)
             TextField("", text: $text, prompt: Text(prompt).foregroundStyle(onDark ? Color.white.opacity(0.75) : Roam.inkMuted))
                 .foregroundStyle(onDark ? Color.white : Roam.ink)

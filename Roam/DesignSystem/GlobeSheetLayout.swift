@@ -119,20 +119,26 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     /// Like Apple Maps: the minimised bubble floats with a wide margin and is most see-through; halfway up it has
     /// a narrow margin and less glass; fully up it is solid and runs to the edges of the screen.
-    private var sideMargin: CGFloat {
-        switch detent {
-        case .peek: return floatsWhenPeeking ? floatingSideMargin : Theme.Spacing.s
-        case .half: return Theme.Spacing.s
-        case .full: return 0
+    private func margins(_ position: GlobeSheetDetent) -> (side: CGFloat, bottom: CGFloat) {
+        switch position {
+        case .peek: return floatsWhenPeeking ? (floatingSideMargin, floatingBottomMargin) : (Theme.Spacing.s, Theme.Spacing.s)
+        case .half: return (Theme.Spacing.s, Theme.Spacing.s)
+        case .full: return (0, 0)
         }
     }
 
-    private var bottomMargin: CGFloat {
-        switch detent {
-        case .peek: return floatsWhenPeeking ? floatingBottomMargin : Theme.Spacing.s
-        case .half: return Theme.Spacing.s
-        case .full: return 0
+    /// The margins for the card at this height: between two positions they blend, so the card widens and narrows
+    /// smoothly as it's dragged (and as it settles) instead of jumping when it lands.
+    private func margins(at height: CGFloat, available: CGFloat) -> (side: CGFloat, bottom: CGFloat) {
+        let top = available - Self.topClearance
+        let stops = GlobeSheetDetent.allCases.map { (height: min($0.height(in: available, peek: peek), top), margins: margins($0)) }
+        guard let first = stops.first, height > first.height else { return stops.first?.margins ?? (0, 0) }
+        for (lower, upper) in zip(stops, stops.dropFirst()) where height <= upper.height {
+            let t = (height - lower.height) / max(upper.height - lower.height, 1)
+            return (lower.margins.side + (upper.margins.side - lower.margins.side) * t,
+                    lower.margins.bottom + (upper.margins.bottom - lower.margins.bottom) * t)
         }
+        return stops.last?.margins ?? (0, 0)
     }
 
     private var glassOpacity: Double {
@@ -145,6 +151,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private func card(height: CGFloat, available: CGFloat) -> some View {
         let floating = isFloating
+        let (sideMargin, bottomMargin) = margins(at: height, available: available)
         // Rounded like the screen itself: the bubble is pill-shaped, the card's top corners echo the display's.
         let pill = floatingHeight.map { $0 / 2 } ?? 32
         let top: CGFloat = floating ? pill : 38
@@ -195,7 +202,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .simultaneousGesture(cardDrag, isEnabled: detent != .full)
         .background {
             // Lowered with no tint asked for, it's exactly the glass of the floating buttons over the map.
-            if floating && peekOpacity == 0 {
+            if floating && dragOffset == 0 && peekOpacity == 0 {
                 // Dark, like the toolbar buttons that sit over the globe.
                 Color.clear.floatingBubble(shape).environment(\.colorScheme, .dark)
             } else {
@@ -294,6 +301,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .environment(\.onDarkBubble, isFloating && dragOffset == 0 && peekOpacity == 0)
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
         // The minimised height is measured while the header sits here.

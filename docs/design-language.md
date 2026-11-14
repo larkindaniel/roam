@@ -130,7 +130,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   `ScrolledTitleFade`: the swipe-up cards' dark fade with the page's name small, white and centred. Any scroll back up
   brings the row back.
 - **Glass over maps:** `floatingBubble(_:tint:)` gives Liquid Glass on iOS 26 and frosted material before it.
-- **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet. It has three heights:
+- **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet, is the only one: every card over a map
+  (My Places, city, place, country and state pages) uses it, so they all drag the same way. Never write another drag
+  for a card. The card follows the finger, then pops to the nearest of its three heights; its width, glass and dark
+  bubble look blend as it moves. It has three heights:
   1. **Peek:** a floating bubble, most see-through.
   2. **Half:** narrow margins, see-through grey inner cards.
   3. **Full:** solid and edge to edge, white inner cards, and the tab bar shows.

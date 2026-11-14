@@ -154,6 +154,9 @@ struct PillLabel: View {
 extension EnvironmentValues {
     /// Inside a swipe-up card that isn't fully up, cards are a see-through grey rather than white.
     @Entry var onGlass = false
+    /// A swipe-up card resting minimised as dark glass over the globe: text on it goes white. False the moment it's
+    /// dragged, when it turns into the ordinary light card glass.
+    @Entry var onDarkBubble = false
 }
 
 extension View {
