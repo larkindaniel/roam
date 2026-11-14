@@ -68,8 +68,6 @@ struct PublicMemory: Codable, Hashable, Identifiable, Sendable {
     var createdAt: Date
     var updatedAt: Date
     var isOwn: Bool
-    /// Latest feed post for this Visit; nil once rating activity was removed.
-    var activityID: UUID? = nil
     /// A friend's current score for this place, when they ranked it.
     var score: Score? = nil
     var companions: [MemberSummary]? = nil
@@ -111,7 +109,7 @@ struct ExperienceDetail: Codable, Hashable, Sendable {
     var myRating: MyRating?
     var myVisits: [Visit]
     var hasPrivateNote: Bool
-    var publicActivity: [ActivityItem]
+    var publicLogs: [ActivityItem]
 }
 
 /// A row in Been / Wishlist / Shared Wishlist.
@@ -179,7 +177,7 @@ struct ActivityItem: Codable, Hashable, Identifiable, Sendable {
 
 struct Comment: Codable, Hashable, Identifiable, Sendable {
     let id: UUID
-    var activityID: UUID
+    var visitID: UUID
     var author: MemberSummary
     var body: String
     var createdAt: Date
@@ -213,7 +211,7 @@ struct AppNotification: Codable, Hashable, Identifiable, Sendable {
     let id: UUID
     var type: NotificationType
     var actor: MemberSummary
-    var activityID: UUID?
+    var visitID: UUID?
     var experienceName: String?
     var commentPreview: String?
     var createdAt: Date
@@ -243,17 +241,15 @@ enum ReportReason: String, Codable, Hashable, Sendable, CaseIterable, Identifiab
 
 enum ReportTarget: Hashable, Sendable {
     case experience(UUID)
-    case activity(UUID)
     case comment(UUID)
     case media(UUID)
     case member(UUID)
-    /// A Visit's public note/photos (a memory), reportable even after its post was removed.
+    /// A log: its note and photos.
     case visit(UUID)
 
     var kind: String {
         switch self {
         case .experience: return "experience"
-        case .activity: return "activity"
         case .comment: return "comment"
         case .media: return "media"
         case .member: return "member"
@@ -263,7 +259,7 @@ enum ReportTarget: Hashable, Sendable {
 
     var targetID: UUID {
         switch self {
-        case .experience(let id), .activity(let id), .comment(let id), .media(let id), .member(let id), .visit(let id): return id
+        case .experience(let id), .comment(let id), .media(let id), .member(let id), .visit(let id): return id
         }
     }
 }

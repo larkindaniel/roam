@@ -64,17 +64,17 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   right, Add friends opens Friends and Requests (Find people is there and in the empty feed), then your profile.
   Notifications are off for now. Scrolling down swaps the row for a dark fade with "Friends" centred; scrolling back up
   brings it back as glass on the fade.
-- One card per dated friend visit, newest first. A rerank can appear as a separate rating update. Undated imports stay
-  on Been. Cards use the visit's audience, with the actual visit note and photos when available.
+- One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
+  audience allows show (Only me never does), with the log's own note and photos.
 - In “Maya visited Bar X in Toronto”, Maya opens her profile, Bar X opens its pin on the map, and Toronto opens its
   city map. A trip link appears for viewers with itinerary access. Tagged friends appear on the visit.
-- Likes and comments belong to each activity. The comment field stays above the keyboard, and retry keeps the draft.
-  The author can remove the activity while keeping the visit. A tagged friend can remove their own tag.
+- Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
+  deleted from its place page; a tagged friend can remove their own tag.
 
 ## Member profile
 
 - The header shows the avatar, name, handle, and friendship action. Settings opens your own profile.
-- Activity shows the member's visits and ratings that you can see. Friends can open their Passport and lists shared
+- Activity shows the member's logs that you can see. Friends can open their Passport and lists shared
   directly with them. The Passport counts places from visits visible to its viewer.
 
 ## My Places

@@ -42,10 +42,3 @@ extension SupabaseBackend: MemoryService {
         try await rpcVoid("delete_private_note", ["p_experience_id": RPC.uuid(experienceID), "p_operation_id": RPC.uuid(operationID)])
     }
 }
-
-extension SupabaseBackend {
-    /// Removes only the post; its Rating and Visit stay. Repeating it is harmless.
-    func deleteActivity(id: UUID) async throws {
-        let _: Bool = try await rpc("delete_activity", ["p_activity_id": RPC.uuid(id)])
-    }
-}

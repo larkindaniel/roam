@@ -299,8 +299,7 @@ struct TripDetailView: View {
                                entry.companions.flatMap { $0.isEmpty ? nil : "With " + $0.map(\.displayName).formatted(.list(type: .and)) }]
                     .compactMap { $0 }.joined(separator: " · ")
                 SocialNavigationRow(title: entry.experience.name, symbol: "mappin", subtitle: details, place: entry.experience) {
-                    if let activity = entry.activityID { router.push(.activity(activity)) }
-                    else { router.push(.experience(entry.experience.id)) }
+                    router.push(.activity(entry.id))
                 }
                 .accessibilityIdentifier("trip-entry-\(entry.experience.name)")
                 if entry.id != list.last?.id { RowSeparator() }

@@ -46,31 +46,27 @@ extension SupabaseBackend: SocialService {
 
 extension SupabaseBackend: FeedService {
     func friendsActivity(cursor: String?) async throws -> Page<ActivityItem> {
-        try await page("friends_activity", ["p_cursor": RPC.string(cursor)])
-    }
-
-    func feed(cursor: String?) async throws -> Page<ActivityItem> {
-        try await page("feed", ["p_cursor": RPC.string(cursor)])
+        try await page("friends_logs", ["p_cursor": RPC.string(cursor)])
     }
 
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem> {
-        try await page("profile_activity", ["p_user_id": RPC.uuid(userID), "p_cursor": RPC.string(cursor)])
+        try await page("profile_logs", ["p_user_id": RPC.uuid(userID), "p_cursor": RPC.string(cursor)])
     }
 
     func activity(id: UUID) async throws -> ActivityItem {
-        try await rpc("activity", ["p_activity_id": RPC.uuid(id)])
+        try await rpc("log", ["p_visit_id": RPC.uuid(id)])
     }
 
-    func setLike(activityID: UUID, liked: Bool) async throws -> Bool {
-        try await rpc("set_like", ["p_activity_id": RPC.uuid(activityID), "p_liked": RPC.bool(liked)])
+    func setLike(visitID: UUID, liked: Bool) async throws -> Bool {
+        try await rpc("set_like", ["p_visit_id": RPC.uuid(visitID), "p_liked": RPC.bool(liked)])
     }
 
-    func comments(activityID: UUID, cursor: String?) async throws -> Page<Comment> {
-        try await page("comments", ["p_activity_id": RPC.uuid(activityID), "p_cursor": RPC.string(cursor)])
+    func comments(visitID: UUID, cursor: String?) async throws -> Page<Comment> {
+        try await page("comments", ["p_visit_id": RPC.uuid(visitID), "p_cursor": RPC.string(cursor)])
     }
 
-    func postComment(activityID: UUID, body: String, operationID: UUID) async throws -> Comment {
-        try await rpc("post_comment", ["p_activity_id": RPC.uuid(activityID), "p_body": RPC.string(body), "p_operation_id": RPC.uuid(operationID)])
+    func postComment(visitID: UUID, body: String, operationID: UUID) async throws -> Comment {
+        try await rpc("post_comment", ["p_visit_id": RPC.uuid(visitID), "p_body": RPC.string(body), "p_operation_id": RPC.uuid(operationID)])
     }
 
     func deleteComment(id: UUID) async throws {

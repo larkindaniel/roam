@@ -10,7 +10,6 @@ struct ActivityDetailView: View {
     @Environment(ActivityChangeStore.self) private var changes
     @Environment(\.dismiss) private var dismiss
     @State private var model: ActivityDetailModel?
-    @State private var confirmingRemoval = false
     @State private var commentToDelete: Comment?
     @State private var reportTarget: ReportTarget?
     @State private var removingTag = false
@@ -30,10 +29,7 @@ struct ActivityDetailView: View {
             if let item = model?.item {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        if item.isOwn {
-                            Button(role: .destructive) { confirmingRemoval = true } label: { Label("Remove post", systemImage: "trash") }
-                                .accessibilityIdentifier("activity-remove")
-                        } else {
+                        if !item.isOwn {
                             if let visitID = item.visitID, item.companions?.contains(where: { $0.id == session.userID }) == true {
                                 Button("Remove my tag", role: .destructive) {
                                     Task { await removeTag(visitID) }
@@ -41,27 +37,13 @@ struct ActivityDetailView: View {
                                 .disabled(removingTag)
                                 .accessibilityIdentifier("remove-my-tag")
                             }
-                            Button { reportTarget = .activity(item.id) } label: { Label("Report post", systemImage: "flag") }
+                            Button { reportTarget = .visit(item.id) } label: { Label("Report", systemImage: "flag") }
                                 .accessibilityIdentifier("activity-report")
                         }
                     } label: { Image(systemName: "ellipsis.circle").accessibilityLabel("More") }
                     .accessibilityIdentifier("activity-overflow")
                 }
             }
-        }
-        .confirmationDialog("Remove this post?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
-            Button("Remove post", role: .destructive) {
-                Task {
-                    if await model?.removePost() == true {
-                        changes.publishRemoval(activityID)
-                        dismiss()
-                    }
-                }
-            }
-            .accessibilityIdentifier("confirm-remove-post")
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Only this post, its likes and comments are removed. Your ranking and visit stay. To remove those, use the place's own actions.")
         }
         .confirmationDialog("Delete your comment?", isPresented: Binding(get: { commentToDelete != nil }, set: { if !$0 { commentToDelete = nil } }),
                             titleVisibility: .visible, presenting: commentToDelete) { comment in
