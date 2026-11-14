@@ -20,7 +20,7 @@ struct ActivityCardView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             if hasPhoto {
                 // The place card sits close under its photo.
-                VStack(spacing: Theme.Spacing.s) {
+                VStack(spacing: Theme.Spacing.m) {
                     photos
                     placeChip
                 }
