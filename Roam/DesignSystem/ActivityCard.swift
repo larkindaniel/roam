@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A friend's log: who and where at the top (their picture, name, then place and date), their own photos if any (never a
-/// stand-in), their note, then the place as a standard row that opens it.
+/// A friend's log: a small line at the top (their picture, name · date), their own photos if any (never a
+/// stand-in), their note, then the place as a standard row (city, country under its name) that opens it.
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = true
@@ -36,17 +36,13 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
     }
 
-    /// Their picture and name, with where and when tucked under it.
+    /// One small line: their picture, name · date. Where it was is on the place row below.
     private var byline: some View {
-        HStack(spacing: Theme.Spacing.m) {
-            AvatarView(member: item.author, size: 44)
-            VStack(alignment: .leading, spacing: -2) {
-                Text(item.author.displayName).font(.headline).lineLimit(1)
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Spacing.xs) { area; Text("·").foregroundStyle(Roam.inkMuted); date }
-                    VStack(alignment: .leading, spacing: 0) { area; date }
-                }
-            }
+        HStack(spacing: Theme.Spacing.s) {
+            AvatarView(member: item.author, size: 28)
+            Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
+            Text("·").font(.subheadline).foregroundStyle(Roam.inkMuted)
+            date.font(.subheadline).lineLimit(1)
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
@@ -72,8 +68,8 @@ struct ActivityCardView: View {
                                symbol: item.experience.iconName, size: 48)
                 VStack(alignment: .leading, spacing: -2) {
                     Text(item.experience.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1).truncationMode(.tail)
-                    if let category = item.experience.category?.title {
-                        Text(category).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                    if !item.experience.areaLine.isEmpty {
+                        Text(item.experience.areaLine).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
                     }
                 }
                 Spacer(minLength: 0)
@@ -85,30 +81,8 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-place")
     }
 
-    @ViewBuilder private var area: some View {
-        if let city = item.experience.locality, !city.isEmpty {
-            let destination = Destination(name: city, region: item.experience.region, countryCode: item.experience.countryCode,
-                                          countryName: item.experience.countryName, latitude: item.experience.latitude,
-                                          longitude: item.experience.longitude, radiusMeters: 15_000)
-            Button { router.push(.city(destination)) } label: {
-                Text(item.experience.areaLine)
-                    .font(.footnote)
-                    .lineLimit(1)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Roam.inkMuted)
-            .accessibilityLabel("Open map of \(city)")
-        } else if let code = item.experience.countryCode, !item.experience.areaLine.isEmpty {
-            Button(item.experience.areaLine) { router.push(.country(code)) }
-                .buttonStyle(.plain)
-                .font(.footnote)
-                .foregroundStyle(Roam.inkMuted)
-        }
-    }
-
     private var date: some View {
         Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
-            .font(.footnote)
             .foregroundStyle(Roam.inkMuted)
     }
 }
