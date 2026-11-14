@@ -11,7 +11,7 @@ struct ActivityCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            if hasPhoto { photos } else { byline(onPhoto: false) }
+            if hasPhoto { photos }
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
@@ -28,8 +28,14 @@ struct ActivityCardView: View {
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
             }
-            // With a photo, the place is the small white card set into it; without, the standard row.
-            if !hasPhoto { placeRow }
+            // With a photo, the place is the glass card set into it; without, the line and the standard row in a card.
+            if !hasPhoto {
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    byline(onPhoto: false)
+                    placeRow
+                }
+                .roamCard(padding: Theme.Spacing.m)
+            }
         }
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)

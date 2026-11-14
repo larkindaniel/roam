@@ -66,7 +66,7 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   brings it back as glass on the fade.
 - One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
   audience allows show (Only me never does), with the log's own note and photos.
-- Each card: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
+- Logs sit straight on the page, with no card around them; the photos set them apart. Each log: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
   place's Google photo at its usual size. Set into the top of the photo is one small line: their picture, name · date,
   which opens their profile (with no photo at all, the line sits on its own). Tapping a photo does nothing. At the bottom of the photo, a slim glass card across it with
   the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then their

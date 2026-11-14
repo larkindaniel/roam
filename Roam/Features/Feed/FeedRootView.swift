@@ -135,7 +135,7 @@ struct FeedRootView: View {
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("feed-empty")
         } else {
-            LazyVStack(spacing: Theme.Spacing.l) {
+            LazyVStack(spacing: Theme.Spacing.xl) {
                 if let error = model.actionError ?? model.error {
                     InlineRetryView(message: error) { Task { await refresh() } }
                 }
@@ -173,7 +173,7 @@ struct FeedCard: View {
     @State private var showsComments = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             ActivityCardView(item: item)
             HStack(spacing: Theme.Spacing.m) {
                 LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending) { onLike(!item.likedByViewer) }
@@ -188,7 +188,7 @@ struct FeedCard: View {
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .roamCard()
+        // No card around it: the photos set the logs apart.
         .accessibilityElement(children: .contain)
         .sheet(isPresented: $showsComments) {
             NavigationStack {
