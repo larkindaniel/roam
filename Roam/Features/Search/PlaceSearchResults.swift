@@ -98,8 +98,13 @@ final class PlaceSearch {
     /// Places people added to Roam themselves, which Apple doesn't have.
     private var foundOnRoam: [ExperienceSummary] = []
 
+    /// From the first letter until every part of the search (places, cities, Roam's own) has come back, so "nothing
+    /// matches" never flashes up while results are still on their way.
+    private(set) var isSearching = false
+    private var generation = 0
+
     var phase: ExperienceSearchModel.Phase { model?.phase ?? .idle }
-    var finished: Bool { phase == .noResults || phase == .results }
+    var finished: Bool { !isSearching && (phase == .noResults || phase == .results) }
 
     var cities: [Destination] {
         let scoped = foundCities.filter { scope.contains($0.coordinate, country: $0.countryCode, region: $0.region) }
@@ -118,10 +123,16 @@ final class PlaceSearch {
 
     func run(_ query: String, services: AppServices, scope: PlaceSearchScope = .world) async {
         self.scope = scope
+        generation += 1
+        let current = generation
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
             model?.query = ""; foundCities = []; foundCountries = []; foundRegions = []; foundOnRoam = []
+            isSearching = false
             return
         }
+        isSearching = true
+        // A newer search takes over; only the latest one says it's done.
+        defer { if current == generation { isSearching = false } }
         try? await Task.sleep(for: Limits.searchDebounce)
         guard !Task.isCancelled else { return }
         services.location.requestAccessIfNeeded()
@@ -241,7 +252,7 @@ struct PlaceSearchResults: View {
             if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
             if rows.isEmpty {
                 switch placeSearch.phase {
-                case .idle, .loading:
+                case _ where placeSearch.isSearching, .idle, .loading:
                     // Still looking: rows are on their way, rather than a blank page.
                     SkeletonList(rows: 3)
                 case .failed(let message):

@@ -58,12 +58,14 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     /// height, so letting go never jumps.
     @State private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
+    /// The header as it is when minimised, which sets the minimised height; kept apart so it can't move mid-drag.
+    @State private var peekHeaderHeight: CGFloat?
     @State private var snapping = false
     @State private var contentScrolled = false
     @State private var scroll = ScrollPosition(edge: .top)
 
     /// Minimised, the card is just its header, sitting on the tab bar.
-    private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
+    private var peek: CGFloat { (peekHeaderHeight ?? headerHeight).map { $0 + bottomOverlap } ?? peekHeight }
 
     var body: some View {
         GeometryReader { proxy in
@@ -281,8 +283,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
         // The minimised height is measured while the header sits here.
-        // Only while minimised: the header changes size as the card rises, and the minimised height mustn't move mid-drag.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if detent == .peek && dragOffset == 0 { headerHeight = $0 } }
+        // The content's room under the header follows it always; the minimised height only takes it while minimised.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+            headerHeight = height
+            if detent == .peek && dragOffset == 0 { peekHeaderHeight = height }
+        }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
         .gesture(cardDrag)
