@@ -66,8 +66,9 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   brings it back as glass on the fade.
 - One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
   audience allows show (Only me never does), with the log's own note and photos.
-- In “Maya visited Bar X in Toronto”, Maya opens her profile, Bar X opens its pin on the map, and Toronto opens its
-  city map. A trip link appears for viewers with itinerary access. Tagged friends appear on the visit.
+- Each card: the friend's picture and name, with the place's city and the date under it; then their photos (swipe
+  between several, with dots at the bottom), or the place's Google photo when they have none; their note and who they
+  went with; then the place as a standard row that opens it. Likes and comments sit at the bottom.
 - Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
   deleted from its place page; a tagged friend can remove their own tag.
 
