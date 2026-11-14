@@ -68,7 +68,7 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   audience allows show (Only me never does), with the log's own note and photos.
 - Each card: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
   place's Google photo at its usual size. Set into the top of the photo is one small line: their picture, name · date,
-  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo does nothing. At the bottom of the photo, a small white card with
+  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo does nothing. At the bottom of the photo, a slim white card across it with
   the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then their
   note and who they went with. Like and comment sit at the bottom; comment opens the comments as a sheet. A card never opens a page of its own.
 - Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is

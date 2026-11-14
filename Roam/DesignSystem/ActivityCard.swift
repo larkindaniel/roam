@@ -84,7 +84,7 @@ struct ActivityCardView: View {
         }
     }
 
-    /// The place as a small white card in the bottom of the photo: its name, city and country, and a chevron. It opens
+    /// The place as a slim white card across the bottom of the photo: its name, city and country, and a chevron. It opens
     /// the place.
     private var placeChip: some View {
         Button { router.push(.experience(item.experience.id)) } label: {
@@ -95,10 +95,13 @@ struct ActivityCardView: View {
                         Text(item.experience.areaLine).font(.caption).foregroundStyle(Roam.inkMuted).lineLimit(1)
                     }
                 }
+                Spacer(minLength: 0)
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
             }
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.vertical, Theme.Spacing.s)
+            // As wide as the photo, less its margins.
+            .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Roam.paperRaised))
             .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
