@@ -178,7 +178,7 @@ struct FeedCard: View {
                 onLike(!item.likedByViewer)
             }
             Button { showsComments = true } label: {
-                Label("\(item.commentCount)", systemImage: "bubble.left")
+                Label("\(item.commentCount)", systemImage: "bubble.right")
                     .monospacedDigit()
                     .foregroundStyle(onPhoto ? Color.white : Roam.ink)
                     .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
