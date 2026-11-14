@@ -180,8 +180,10 @@ struct PlaceGallery: View {
     var onOpenVisitPhoto: ((String) -> Void)? = nil
     /// Square, as wide as its card (a friend's own photos on the Friends tab); otherwise 220 points tall.
     var square = false
-    /// Something set into the bottom of the picture (a friend's log puts the place there), above the dots.
+    /// Something set into the bottom of the picture, above the dots.
     var bottomAccessory: AnyView? = nil
+    /// Concentric with a card around it (its 38-point corners less a 16-point inset); squarer on its own (Friends).
+    var cornerRadius: CGFloat = 24
 
     @State private var index = 0
     @State private var showsLookAround = false
@@ -202,7 +204,7 @@ struct PlaceGallery: View {
                 .frame(maxWidth: .infinity)
                 .modifier(GallerySize(square: square))
                 // Concentric with the card around it: its 38-point corners less the 16-point inset.
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 if let bottomAccessory {
                     bottomAccessory
                         .padding(.horizontal, Theme.Spacing.m)

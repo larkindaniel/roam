@@ -3,6 +3,9 @@ import SwiftUI
 /// A friend's log: a photo (theirs, square; else the place's Google photo) with a small "picture, name · date" line set
 /// into its top, a slim card for the place under it, then their note.
 struct ActivityCardView: View {
+    /// Squarer corners for the photo and the place card than the app's usual cards.
+    static let corner: CGFloat = 12
+
     let item: ActivityItem
     var compact = true
 
@@ -79,16 +82,17 @@ struct ActivityCardView: View {
         Group {
             if !item.media.isEmpty {
                 let media = item.media.sorted { $0.position < $1.position }
-                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
+                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true,
+                             cornerRadius: Self.corner)
             } else if let url = item.experience.photoURL {
                 // The credit shows on the place's own page, a tap away.
-                PlaceGallery(items: [.photo(url, credit: nil)], placeName: item.experience.name)
+                PlaceGallery(items: [.photo(url, credit: nil)], placeName: item.experience.name, cornerRadius: Self.corner)
             }
         }
         .overlay(alignment: .top) {
             byline(onPhoto: true)
-                // The gallery's own corners (24), so the fade follows them.
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
+                // The photo's own corners, so the fade follows them.
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: Self.corner, topTrailingRadius: Self.corner, style: .continuous))
         }
     }
 
@@ -110,7 +114,8 @@ struct ActivityCardView: View {
             .padding(.vertical, Theme.Spacing.s)
             // As wide as the photo, less its margins.
             .frame(maxWidth: .infinity)
-            .roamCard(padding: 0)
+            .background(RoundedRectangle(cornerRadius: Self.corner, style: .continuous).fill(Theme.raisedCard))
+            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
