@@ -169,14 +169,12 @@ struct FeedCard: View {
     let onLike: (Bool) -> Void
     @Environment(AppRouter.self) private var router
 
-    @State private var showsComments = false
-
     private func actions(onPhoto: Bool) -> some View {
         HStack(spacing: Theme.Spacing.m) {
             LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending, tint: onPhoto ? .white : Roam.ink) {
                 onLike(!item.likedByViewer)
             }
-            Button { showsComments = true } label: {
+            Button { router.push(.activity(item.id)) } label: {
                 // The count tucked close to its icon.
                 HStack(spacing: 4) { Image(systemName: "bubble.right"); Text("\(item.commentCount)") }
                     .monospacedDigit()
@@ -199,10 +197,6 @@ struct FeedCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // No card around it: the photos set the logs apart.
         .accessibilityElement(children: .contain)
-        .sheet(isPresented: $showsComments) {
-            CommentsSheet(visitID: item.id)
-                .presentationDetents([.medium, .large])
-        }
         .accessibilityIdentifier("feed-card-\(item.id.uuidString)")
     }
 }

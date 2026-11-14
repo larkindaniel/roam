@@ -11,9 +11,23 @@ COMMENTS = {
         ("nihalmenon", "Did you actually eat there or just take photos outside"),
         ("daniellarkin", "Both. Langoustine soup was unreal"),
     ],
+    # A long thread near the top, to see how many comments look.
     ("dhyanpatel", "Kongobu-ji Danjo Garan (Elevated Precinct)"): [
         ("daniellarkin", "Adding this to the Japan trip"),
         ("kieranhulsman", "Go early, it gets busy by ten"),
+        ("dhyanpatel", "We got there at eight and it was empty"),
+        ("nihalmenon", "Did you stay overnight on the mountain?"),
+        ("dhyanpatel", "Yes, at a temple. Dinner was all vegetarian and so good"),
+        ("nihalmenon", "Okay that's going on the list"),
+        ("daniellarkin", "How do you even get up there"),
+        ("dhyanpatel", "Train from Osaka, then a cable car up the last bit"),
+        ("kieranhulsman", "The cable car is half the fun"),
+        ("daniellarkin", "How long did it take?"),
+        ("dhyanpatel", "About two hours door to door"),
+        ("nihalmenon", "Is one night enough?"),
+        ("dhyanpatel", "One night is perfect. Do the cemetery walk at dusk"),
+        ("kieranhulsman", "The lanterns at Okuno-in are something else"),
+        ("daniellarkin", "Booking it now"),
     ],
     ("dhyanpatel", "Alforat Iraqi Street Food (Toronto)"): [
         ("nihalmenon", "We need to go this week"),

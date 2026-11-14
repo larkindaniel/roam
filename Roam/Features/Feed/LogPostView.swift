@@ -1,39 +1,50 @@
 import SwiftUI
 
-/// A log's comments, as a sheet from the comment button: a title, the comments as plain rows (their picture, name and
-/// how long ago, then what they said), and a round glass field at the bottom with your picture and a send arrow.
-/// Long-press a comment to delete yours or report someone else's.
-struct CommentsSheet: View {
+/// A friend's log as its own page, from its comment button: the log as it is on the Friends tab, then the comments as
+/// plain rows (their picture, name and how long ago, then what they said), and a round field pinned at the bottom with
+/// your picture and a send arrow. Long-press a comment to delete yours or report someone else's.
+struct LogPostView: View {
     let visitID: UUID
+    /// Puts the cursor in the comment field as it opens.
+    var focusComment = false
 
     @Environment(AppServices.self) private var services
     @Environment(SessionStore.self) private var session
     @Environment(ActivityChangeStore.self) private var changes
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
     @State private var model: ActivityDetailModel?
     @State private var commentToDelete: Comment?
     @State private var reportTarget: ReportTarget?
     @FocusState private var composerFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text("Comments")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.top, Theme.Spacing.l)
-                .padding(.bottom, Theme.Spacing.s)
-                .accessibilityAddTraits(.isHeader)
-            ScrollView {
-                if let model { list(model) } else { SkeletonResults(kind: .people, rows: 3).padding(Theme.Spacing.l) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                if let model, let item = model.item {
+                    ActivityCardView(item: item, compact: false, actions: AnyView(actions(model, item: item)),
+                                     onDoubleTap: { if !item.likedByViewer { Task { await model.setLike(true) } } })
+                } else if model?.isUnavailable == true {
+                    EmptyStateView(systemImage: "eye.slash", title: "This isn't available",
+                                   message: "It was removed, or you can no longer see it.")
+                } else {
+                    SkeletonCards(count: 1)
+                }
+                if let model { list(model) }
             }
-            .scrollDismissesKeyboard(.interactively)
-            if let model { composer(model) }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.vertical, Theme.Spacing.m)
         }
-        .background(Roam.paperRaised)
-        .presentationDragIndicator(.visible)
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) { if let model, model.item != nil { composer(model) } }
+        .background(Roam.paper)
+        // The comment field sits at the bottom, where the tab bar would be.
+        .roamTabBar(hidden: true)
+        .navigationTitle("Post")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             if model == nil { model = ActivityDetailModel(activityID: visitID, service: services.feed) }
             await model?.load()
+            if focusComment { composerFocused = true }
         }
         .onDisappear { if let item = model?.item { changes.publish(item) } }
         .confirmationDialog("Delete your comment?", isPresented: Binding(get: { commentToDelete != nil }, set: { if !$0 { commentToDelete = nil } }),
@@ -42,11 +53,29 @@ struct CommentsSheet: View {
         }
         .sheet(item: $reportTarget) { ReportSheet(target: $0, title: "Report comment") }
         .onChange(of: model?.authError) { _, error in if let error { _ = session.handle(error) } }
-        .screenIdentifier("comments-sheet")
+        .screenIdentifier("log-post")
+    }
+
+    /// Like and comment, as on the Friends tab; comment puts the cursor in the field.
+    private func actions(_ model: ActivityDetailModel, item: ActivityItem) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: model.likePending, tint: .white) {
+                Task { await model.setLike(!item.likedByViewer) }
+            }
+            Button { composerFocused = true } label: {
+                HStack(spacing: 4) { Image(systemName: "bubble.right"); Text("\(item.commentCount)") }
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Comment")
+        }
     }
 
     @ViewBuilder private func list(_ model: ActivityDetailModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            if model.item != nil { Text("Comments").font(.headline).accessibilityAddTraits(.isHeader) }
             if let error = model.commentsError ?? model.loadError {
                 InlineRetryView(message: error) { Task { await model.load() } }
             }
@@ -56,7 +85,7 @@ struct CommentsSheet: View {
                     Text("Start the conversation.").font(.subheadline).foregroundStyle(Roam.inkMuted)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.top, Theme.Spacing.xxl)
+                .padding(.vertical, Theme.Spacing.l)
                 .accessibilityIdentifier("comments-empty")
             } else if !model.commentsLoaded {
                 SkeletonResults(kind: .people, rows: 3)
@@ -72,13 +101,12 @@ struct CommentsSheet: View {
                     .frame(minHeight: Theme.minimumHitTarget)
             }
         }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.vertical, Theme.Spacing.m)
     }
 
     private func row(_ comment: Comment, deleting: Bool) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
             AvatarView(member: comment.author, size: 36)
+                .onTapGesture { router.push(.member(comment.author.id)) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: Theme.Spacing.s) {
                     Text(comment.author.displayName).font(.subheadline.weight(.semibold))
@@ -142,6 +170,6 @@ struct CommentsSheet: View {
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.top, Theme.Spacing.s)
         .padding(.bottom, Theme.Spacing.s)
-        .background(Roam.paperRaised)
+        .background(.bar)
     }
 }

@@ -236,7 +236,7 @@ struct RouteDestinationView: View {
         case .visitPhoto(let experienceID, let visitID, let photoID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID, initialPhotoID: photoID)
         case .activity(let id):
-            ActivityDetailView(activityID: id)
+            LogPostView(visitID: id)
         case .notifications:
             NotificationsView()
         case .followGraph(let id, let segment):
