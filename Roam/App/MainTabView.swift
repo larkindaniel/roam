@@ -42,17 +42,18 @@ struct MainTabView: View {
         }
     }
 
+    /// The Friends tab's "+ Log a place": a green bubble like "+ Add visit", in the Log button's green.
     private var logPlaceButton: some View {
         Button { router.sheet = .logPlace } label: {
-            Image(systemName: "plus")
+            Label("Log a place", systemImage: "plus")
                 .font(.headline)
-                .foregroundStyle(Roam.ink)
-                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                .contentShape(Circle())
+                .foregroundStyle(PlaceState.visited.markerColor)
+                .padding(.horizontal, Theme.Spacing.l)
+                .frame(height: Theme.minimumHitTarget)
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .floatingBubble(Circle())
-        .accessibilityLabel("Log a place")
+        .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor.opacity(0.15))
         .accessibilityIdentifier("log-place")
     }
 
