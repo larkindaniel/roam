@@ -166,7 +166,7 @@ struct SkeletonResults: View {
                 }
                 .frame(minHeight: Theme.minimumHitTarget)
                 .padding(.vertical, kind == .places ? Theme.Spacing.xs : Theme.Spacing.s)
-                if index < rows - 1 { RowSeparator() }
+                if index < rows - 1 { RowSeparator(inset: (kind == .places ? 24 : 48) + Theme.Spacing.m) }
             }
         }
         .foregroundStyle(Theme.subtleFill)

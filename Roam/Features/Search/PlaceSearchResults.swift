@@ -266,7 +266,8 @@ struct PlaceSearchResults: View {
                 VStack(spacing: 0) {
                     ForEach(rows) { row in
                         rowView(row)
-                        if row.id != rows.last?.id { RowSeparator() }
+                        // From the text, past the small icon.
+                        if row.id != rows.last?.id { RowSeparator(inset: 24 + Theme.Spacing.m) }
                     }
                 }
                 .roamCard(padding: Theme.Spacing.m)
