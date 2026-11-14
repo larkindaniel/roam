@@ -10,7 +10,7 @@ when you change a screen. `docs/design-language.md` covers how they look.
 - **Tab bar:** Roam's own floating glass bar with Discover, Friends and My Places. Tapping a tab always goes back to its
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
   the card is fully up.
-- **Settings:** a cog in a glass circle at the top right of each tab opens Settings.
+- **Profile:** your profile picture in a glass circle at the top right of each tab opens your profile and settings.
 - **Swipe-up cards** (city, place, My Places) have three heights:
   - **Peek:** a short bubble.
   - **Half.**
@@ -40,7 +40,7 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 
 ## Discover
 
-- **Top:** a search bar and the settings cog. Scrolling down swaps them for a dark fade with "Discover" centred;
+- **Top:** a search bar and your profile picture. Scrolling down swaps them for a dark fade with "Discover" centred;
   scrolling back up brings them back.
 - **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading), ranked by Roam
   (see DECISIONS.md, "Suggestions").

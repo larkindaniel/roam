@@ -84,39 +84,47 @@ struct StatusMark: View {
 
 /// The signed-in member's avatar, opening their profile from any tab's navigation bar.
 struct ProfileAvatarButton: View {
-    /// The cog's size; the system toolbar draws its glyphs larger, so its copy passes a smaller one to match Discover's.
-    var glyphSize: CGFloat = 18
+    /// The picture's size; the system toolbar draws its own glass circle around it, so its copy passes a smaller one.
+    var size: CGFloat = 40
     @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
 
     var body: some View {
-        // A settings cog: for now your profile is just settings.
+        // Your profile picture (or initials) opens your profile and settings.
         Button { router.push(.ownProfile) } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: glyphSize, weight: .regular))
-                .foregroundStyle(Roam.ink)
-                .frame(width: 34, height: 34)
+            if let me = session.profile?.summary {
+                AvatarView(member: me, size: size)
+            } else {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: size * 0.6, weight: .regular))
+                    .foregroundStyle(Roam.ink)
+                    .frame(width: size, height: size)
+            }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
+        .accessibilityLabel("Profile and settings")
         .accessibilityIdentifier("open-profile")
     }
 }
 
-/// The settings cog at the top right of each tab, always in a glass circle of its own (on iOS 26 a spacer keeps it out
+/// Your profile picture at the top right of each tab, always in a glass circle of its own (on iOS 26 a spacer keeps it out
 /// of any group of buttons beside it), so it looks the same on Discover, Friends and My Places.
 struct SettingsToolbarItem: ToolbarContent {
     var body: some ToolbarContent {
         if #available(iOS 26.0, *) {
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
-        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(glyphSize: 15) }
+        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 32) }
     }
 }
 
 /// What a tab's top row turns into once you scroll down: the swipe-up cards' dark fade with just the page's name,
 /// small, white and centred (as on My Places). Scrolling back up brings the row back.
 struct ScrolledTitleFade: View {
-    let title: String
+    /// No title when it only sits behind the floating row, to keep the page clear of the glass.
+    var title: String?
+    /// How far the fade runs past the top safe area.
+    var depth: CGFloat = 64
 
     var body: some View {
         GeometryReader { proxy in
@@ -124,12 +132,14 @@ struct ScrolledTitleFade: View {
             ZStack(alignment: .top) {
                 // Down from the very top of the screen, so the clock and the name both sit on the dark.
                 LinearGradient(colors: [.black.opacity(0.6), .black.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
-                    .frame(height: top + 64)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .padding(.top, top + 2)
+                    .frame(height: top + depth)
+                if let title {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .padding(.top, top + 2)
+                }
             }
             .frame(maxWidth: .infinity)
             .ignoresSafeArea(edges: .top)

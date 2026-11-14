@@ -133,6 +133,7 @@ struct ForYouRootView: View {
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var barsHidden = false
+    @State private var scrolledDown = false
     @State private var navigationBarHidden = true
     @FocusState private var searchFocused: Bool
 
@@ -148,7 +149,7 @@ struct ForYouRootView: View {
             searchField
             if !searchActive {
                 // Your profile on the far right, the same on every tab.
-                // The same glass circle the system toolbar gives the cog on Friends and My Places.
+                // The same glass circle the system toolbar gives your picture on My Places.
                 ProfileAvatarButton()
                     .frame(width: 44, height: 44)
                     .floatingBubble(Circle())
@@ -208,14 +209,18 @@ struct ForYouRootView: View {
                 }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
-                    .solidTopEdge()
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
+                        if (new > 1) != scrolledDown { withAnimation(.easeOut(duration: 0.15)) { scrolledDown = new > 1 } }
                         let hide = new > 40 && new > old
                         if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
                         else if hide && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
                     }
+                // As soon as the page moves, the glass row floats on the fade, not on a solid band.
+                if scrolledDown && !collapsed {
+                    ScrolledTitleFade(depth: Theme.Spacing.xl).transition(.opacity)
+                }
             }
         }
         .background(Roam.paper)
@@ -241,8 +246,8 @@ struct ForYouRootView: View {
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
                 .accessibilityHidden(barsHidden && !hasQuery && !searchFocused)
                 .allowsHitTesting(!barsHidden || hasQuery || searchFocused)
-                // Tucked away, the page shows through under the fade.
-                .background(collapsed ? Color.clear.ignoresSafeArea(edges: .top) : Roam.paper.ignoresSafeArea(edges: .top))
+                // Never a solid band: the page shows through around the glass, on the fade once it moves.
+                .background(hasQuery ? Roam.paper.ignoresSafeArea(edges: .top) : Color.clear.ignoresSafeArea(edges: .top))
         }
         .overlay(alignment: .top) {
             if collapsed { ScrolledTitleFade(title: "Discover").transition(.opacity) }

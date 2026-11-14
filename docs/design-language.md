@@ -101,7 +101,8 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   grey with black text).
 - **Directions:** a solid blue 38pt circle (`arrow.triangle.turn.up.right.diamond.fill`). It opens a confirmation
   dialog with no title and two choices: Apple Maps and Google Maps.
-- **Settings:** `SettingsToolbarItem`, a cog in its own glass circle at the top right of each tab.
+- **Profile:** `SettingsToolbarItem` / `ProfileAvatarButton`, your profile picture (or initials) in its own glass circle
+  at the top right of each tab. It opens your profile and settings.
 - **Inside a swipe-up card's header,** use `onTapGesture` with `.accessibilityAddTraits(.isButton)` and an
   `accessibilityAction` instead of `Button`. Buttons there don't receive taps.
 
