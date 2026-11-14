@@ -22,7 +22,7 @@ struct FeedRootView: View {
             Spacer(minLength: 0)
             // Just Add friends for now; notifications come back later.
             Button {
-                if let me = session.userID { router.push(.followGraph(me, .friends)) }
+                router.showFindPeople()
             } label: { barGlyph("person.badge.plus") }
             .buttonStyle(.plain)
             .accessibilityLabel("Friends and requests")

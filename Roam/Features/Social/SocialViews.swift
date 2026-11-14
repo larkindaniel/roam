@@ -137,10 +137,12 @@ struct FollowListView: View {
     }
 
     private var isOwn: Bool { session.userID == userID }
+    /// Opened from Add friends' "Friend requests" row: just your requests.
+    private var requestsOnly: Bool { isOwn && initialSegment == .requests }
 
     var body: some View {
         VStack(spacing: 0) {
-            if isOwn {
+            if isOwn && !requestsOnly {
                 Picker("List", selection: $segment) {
                     ForEach(FollowSegment.allCases) { Text($0.title).tag($0) }
                 }
@@ -155,7 +157,7 @@ struct FollowListView: View {
         .navigationTitle(segment.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isOwn {
+            if isOwn && !requestsOnly {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { router.showFindPeople() } label: { Image(systemName: "person.badge.plus") }
                         .accessibilityLabel("Find people")

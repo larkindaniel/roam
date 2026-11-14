@@ -153,11 +153,10 @@ struct ProfileView: View {
                 router.push(.followGraph(userID, .friends))
             }
             .accessibilityIdentifier("profile-friends")
-            if value.relationship.isSelf || value.relationship.friendState == .friends {
-                RowSeparator()
-                SocialNavigationRow(title: "Passport", symbol: "book.closed") {
-                    router.push(.passport(ownerID: userID, name: value.member.displayName))
-                }
+            // Anyone's passport opens; it only counts the logs you're allowed to see.
+            RowSeparator()
+            SocialNavigationRow(title: "Passport", symbol: "book.closed") {
+                router.push(.passport(ownerID: userID, name: value.member.displayName))
             }
             if value.relationship.isSelf {
                 RowSeparator()

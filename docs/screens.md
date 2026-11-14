@@ -61,7 +61,7 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 ## Friends
 
 - **Top:** a green "+ Log a place" bubble on the left opens Log a place (a search; pick a place to log a visit). On the
-  right, Add friends opens Friends and Requests (Find people is there and in the empty feed), then your profile.
+  right, Add friends, then your profile.
   Notifications are off for now. Scrolling down swaps the row for a dark fade with "Friends" centred; scrolling back up
   brings it back as glass on the fade.
 - One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
@@ -71,11 +71,19 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 - Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
   deleted from its place page; a tagged friend can remove their own tag.
 
+## Add friends
+
+- A back button and a white "Search for friends" bar at the top.
+- Before you search: your friend requests, each with Accept. There's no separate requests page.
+- Search results show everyone by name or @handle, each with its own Add, Requested, Accept or Friends button, so
+  nothing takes two taps. Tapping a name opens that person's profile.
+
 ## Member profile
 
 - The header shows the avatar, name, handle, and friendship action. Settings opens your own profile.
-- Activity shows the member's logs that you can see. Friends can open their Passport and lists shared
-  directly with them. The Passport counts places from visits visible to its viewer.
+- Anyone's profile opens. Activity shows the logs you can see, and Passport (open for anyone) counts only logs whose
+  audience includes you; cities marked as been without a log show to friends only. Lists shared directly with you
+  appear too.
 
 ## My Places
 

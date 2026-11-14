@@ -41,7 +41,7 @@ struct AccountSearchResults: View {
 
     @ViewBuilder private var everyoneRows: some View {
         if !hasQuery {
-            EmptyStateView(systemImage: "person.2", title: "Find people", message: "Search by name or @handle, then add them as a friend.")
+            EmptyView()
         } else if let model = everyone {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 if let message = model.followError {
@@ -61,7 +61,7 @@ struct AccountSearchResults: View {
                         ForEach(model.rows) { row in
                             MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
                                           followState: FollowButtonState(row.friendState, pending: model.pendingFollows.contains(row.id)),
-                                          onOpen: MemberProfiles.available ? { router.push(.member(row.id)) } : nil,
+                                          onOpen: { router.push(.member(row.id)) },
                                           onToggleFollow: { Task { await model.toggleFollow(row) } })
                             if row.id != model.rows.last?.id { RowSeparator() }
                         }
@@ -156,29 +156,73 @@ struct AccountSearchResults: View {
     }
 }
 
-/// Find people: the accounts search on a page of its own, from the Friends tab.
+/// Add friends: a back button and the accounts search; before you search, your friend requests. Results carry their own Add,
+/// Accept or Friends button, so nothing takes two taps, and any name opens that person's profile.
 struct FindPeopleView: View {
+    @Environment(AppServices.self) private var services
+    @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
+    @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var requests: FollowListModel?
     @FocusState private var focused: Bool
+
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         ScrollView {
-            AccountSearchResults(query: query)
-                .padding(.horizontal, Theme.Spacing.l)
-                .padding(.vertical, Theme.Spacing.s)
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                if !hasQuery { requestsRow }
+                AccountSearchResults(query: query)
+            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.vertical, Theme.Spacing.s)
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .top, spacing: 0) {
-            RoamSearchField(prompt: "Name or @handle", text: $query, focus: $focused, identifier: "member-search-field")
-                .frame(height: 44)
-                .padding(.horizontal, Theme.Spacing.l)
-                .padding(.bottom, Theme.Spacing.s)
-                .background(Roam.paper)
+            HStack(spacing: Theme.Spacing.s) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                .floatingBubble(Circle())
+                .accessibilityLabel("Back")
+                // White glass, the same as Discover's search.
+                RoamSearchField(prompt: "Search for friends", text: $query, focus: $focused, style: .glass, identifier: "member-search-field")
+            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.s)
+            .background(Roam.paper)
         }
         .background(Roam.paper)
-        .navigationTitle("Find people")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { focused = true }
+        .toolbar(.hidden, for: .navigationBar)
+        .task {
+            guard let me = session.userID else { return }
+            if requests == nil { requests = FollowListModel(userID: me, segment: .requests, service: services.social) }
+            await requests?.load(query: "")
+        }
         .screenIdentifier("find-people")
+    }
+
+    /// Before you search: your friend requests, each with its own Accept. There's no separate requests page.
+    @ViewBuilder private var requestsRow: some View {
+        let pending = requests?.rows.filter { $0.friendState == .received || $0.friendState == .friends } ?? []
+        if let requests, !pending.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text("Friend requests").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+                VStack(spacing: 0) {
+                    ForEach(pending) { row in
+                        MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
+                                      followState: FollowButtonState(row.friendState, pending: requests.pendingFollow.contains(row.id)),
+                                      onOpen: { router.push(.member(row.id)) },
+                                      onToggleFollow: { Task { await requests.apply(row.friendState.primaryAction, to: row) } })
+                        if row.id != pending.last?.id { RowSeparator() }
+                    }
+                }
+                .roamCard(padding: Theme.Spacing.m)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("friend-requests")
+        }
     }
 }
