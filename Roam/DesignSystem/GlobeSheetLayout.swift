@@ -225,23 +225,27 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
     }
 
-    /// The screen height, for working out where a thrown card lands.
+
+    /// The screen height, for working out which position a released card is nearest.
     @State private var screenHeight: CGFloat = 0
 
-    /// Drags the card with the finger, then settles it at the nearest height, carried on by how fast it was thrown.
+    /// The card follows the finger freely; let go and it pops to the nearest of its three positions (minimised, halfway,
+    /// fully up), carried on a little by a flick. Measured against the screen, not the card: the card moves under the
+    /// finger, and measuring against it made the drag fight itself and shake.
     private var cardDrag: some Gesture {
-        DragGesture(minimumDistance: 6)
+        DragGesture(minimumDistance: 6, coordinateSpace: .global)
             .onChanged { value in
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
                 withTransaction(transaction) { dragOffset = value.translation.height }
             }
             .onEnded { value in
-                let current = detent.height(in: screenHeight, peek: peek)
-                let target = current - value.predictedEndTranslation.height
-                let next = GlobeSheetDetent.allCases.min {
-                    abs($0.height(in: screenHeight, peek: peek) - target) < abs($1.height(in: screenHeight, peek: peek) - target)
-                } ?? .half
+                let top = screenHeight - Self.topClearance
+                func height(_ position: GlobeSheetDetent) -> CGFloat { min(position.height(in: screenHeight, peek: peek), top) }
+                // Where the card is now, plus a share of the flick so a quick swipe carries on to the next position.
+                let released = height(detent) - value.translation.height
+                let landing = released - (value.predictedEndTranslation.height - value.translation.height) * 0.5
+                let next = GlobeSheetDetent.allCases.min { abs(height($0) - landing) < abs(height($1) - landing) } ?? .half
                 settle(at: next)
             }
     }
@@ -284,9 +288,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .padding(.horizontal, Self.contentInset)
         // The minimised height is measured while the header sits here.
         // The content's room under the header follows it always; the minimised height only takes it while minimised.
+        // Never mid-drag: re-measuring as the card moves shifted the content under the finger.
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+            guard dragOffset == 0 else { return }
             headerHeight = height
-            if detent == .peek && dragOffset == 0 { peekHeaderHeight = height }
+            if detent == .peek { peekHeaderHeight = height }
         }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
