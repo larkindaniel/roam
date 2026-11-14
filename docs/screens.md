@@ -60,9 +60,10 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 
 ## Friends
 
-- The floating **+** above the tab bar opens **Add a place**. Search for a place and select it to log a visit.
-- The toolbar opens Friends and Requests, existing notifications, and Settings. Find people is in Friends and in the
-  empty feed. Request notifications open Requests. Activity notifications open the activity.
+- **Top:** a green "+ Log a place" bubble on the left opens Log a place (a search; pick a place to log a visit). On the
+  right, Add friends opens Friends and Requests (Find people is there and in the empty feed), then your profile.
+  Notifications are off for now. Scrolling down swaps the row for a dark fade with "Friends" centred; scrolling back up
+  brings it back as glass on the fade.
 - One card per dated friend visit, newest first. A rerank can appear as a separate rating update. Undated imports stay
   on Been. Cards use the visit's audience, with the actual visit note and photos when available.
 - In “Maya visited Bar X in Toronto”, Maya opens her profile, Bar X opens its pin on the map, and Toronto opens its

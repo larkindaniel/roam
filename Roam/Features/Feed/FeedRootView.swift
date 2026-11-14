@@ -15,26 +15,19 @@ struct FeedRootView: View {
 
     private static let barHeight: CGFloat = 44
 
-    /// "+ Log a place" on the left, friends and notifications in one glass capsule, then your profile, as on Discover.
+    /// "+ Log a place" on the left, then Add friends and your profile, each in its own glass circle, as on Discover.
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
             logPlaceButton
             Spacer(minLength: 0)
-            HStack(spacing: 0) {
-                Button {
-                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
-                } label: { barGlyph("person.badge.plus") }
-                .accessibilityLabel("Friends and requests")
-                .accessibilityIdentifier("open-friends")
-                Button { router.push(.notifications) } label: {
-                    barGlyph((model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
-                }
-                .accessibilityLabel("Notifications, \(model?.unreadCount ?? 0) unread")
-                .accessibilityIdentifier("open-notifications")
-            }
+            // Just Add friends for now; notifications come back later.
+            Button {
+                if let me = session.userID { router.push(.followGraph(me, .friends)) }
+            } label: { barGlyph("person.badge.plus") }
             .buttonStyle(.plain)
-            .padding(.horizontal, Theme.Spacing.xs)
-            .floatingBubble(Capsule())
+            .accessibilityLabel("Friends and requests")
+            .accessibilityIdentifier("open-friends")
+            .floatingBubble(Circle())
             ProfileAvatarButton()
                 .frame(width: Self.barHeight, height: Self.barHeight)
                 .floatingBubble(Circle())
@@ -60,7 +53,6 @@ struct FeedRootView: View {
     private func barGlyph(_ symbol: String) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 18, weight: .regular))
-            .symbolRenderingMode(symbol.hasPrefix("bell") ? .hierarchical : .monochrome)
             .foregroundStyle(Roam.ink)
             .frame(width: Self.barHeight, height: Self.barHeight)
     }
