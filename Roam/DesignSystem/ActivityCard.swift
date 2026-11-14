@@ -14,7 +14,7 @@ struct ActivityCardView: View {
             byline
             if item.media.isEmpty {
                 // No photos of their own: the place's photo card, as on a city page, with its name on it. It opens the place.
-                DiscoverPlaceCard(experience: item.experience, cornerRadius: Theme.cornerRadius - Theme.Spacing.l) {
+                DiscoverPlaceCard(experience: item.experience, cornerRadius: Theme.cornerRadius - Theme.Spacing.l, showsRating: false) {
                     router.push(.experience(item.experience.id))
                 }
             } else {
