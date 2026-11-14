@@ -233,9 +233,7 @@ struct FollowButton: View {
                 Text("Friends").frame(minWidth: 70)
             }
         }
-        // Accept is green, like Log and Been.
-        .buttonStyle(PillButtonStyle(isSelected: state == .addFriend || state == .accept,
-                                     tint: state == .accept ? PlaceState.visited.markerColor : nil))
+        .buttonStyle(PillButtonStyle(isSelected: state == .addFriend || state == .accept))
         .disabled(state == .pending)
         .roamHaptic(.impact(weight: .light), trigger: state == .friends)
         .accessibilityLabel(accessibilityText)
