@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A friend's log: who and where at the top (their picture, name, then place and date), their photos, their note, then
-/// the place as a standard row that opens it.
+/// A friend's log: who and where at the top (their picture, name, then place and date), then their photos and the place
+/// as a standard row, or, with no photos, the place's photo card. Their note sits in between.
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = true
@@ -12,7 +12,14 @@ struct ActivityCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             byline
-            photos
+            if item.media.isEmpty {
+                // No photos of their own: the place's photo card, as on a city page, with its name on it. It opens the place.
+                DiscoverPlaceCard(experience: item.experience, cornerRadius: Theme.cornerRadius - Theme.Spacing.l) {
+                    router.push(.experience(item.experience.id))
+                }
+            } else {
+                photos
+            }
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
@@ -29,7 +36,7 @@ struct ActivityCardView: View {
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
             }
-            placeRow
+            if !item.media.isEmpty { placeRow }
         }
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
@@ -56,14 +63,11 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-author")
     }
 
-    /// Their own photos (square, swipe between them); with none, the place's photo stands in. Tapping a photo does nothing.
+    /// Their own photos, square, swiping between several. Tapping a photo does nothing.
     @ViewBuilder private var photos: some View {
         if !item.media.isEmpty {
             let media = item.media.sorted { $0.position < $1.position }
             PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
-        } else if let url = item.experience.photoURL {
-            PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
-                .allowsHitTesting(false)
         }
     }
 

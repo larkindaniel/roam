@@ -558,6 +558,8 @@ struct DiscoverPlaceCard: View {
     var path: String?
     /// Why it's suggested ("Theo sent you this"); the category shows when there's no reason.
     var evidence: String?
+    /// Smaller when it sits inside another card (a friend's log), so the corners stay concentric.
+    var cornerRadius: CGFloat = Theme.cornerRadius
     let action: () -> Void
 
     /// The full-photo card: the name in white with why it's suggested under it, and just the stars at the bottom right;
@@ -566,7 +568,7 @@ struct DiscoverPlaceCard: View {
         Button(action: action) {
             HeroPhotoCard(path: path, url: experience.photoURL, title: experience.name,
                           subtitle: evidence ?? experience.category?.title ?? "", symbol: experience.iconName,
-                          location: experience.coordinate)
+                          location: experience.coordinate, cornerRadius: cornerRadius)
                 .overlay(alignment: .bottomTrailing) {
                     if let rating = experience.googleRating {
                         Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
