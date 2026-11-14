@@ -28,7 +28,8 @@ struct ActivityCardView: View {
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
             }
-            placeRow
+            // With a photo, the place is the small white card set into it; without, the standard row.
+            if !hasPhoto { placeRow }
         }
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
@@ -69,9 +70,11 @@ struct ActivityCardView: View {
         Group {
             if !item.media.isEmpty {
                 let media = item.media.sorted { $0.position < $1.position }
-                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
+                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true,
+                             bottomAccessory: AnyView(placeChip))
             } else if let url = item.experience.photoURL {
-                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
+                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name,
+                             bottomAccessory: AnyView(placeChip))
             }
         }
         .overlay(alignment: .top) {
@@ -79,6 +82,29 @@ struct ActivityCardView: View {
                 // The gallery's own corners (24), so the fade follows them.
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
         }
+    }
+
+    /// The place as a small white card in the bottom of the photo: its name, city and country, and a chevron. It opens
+    /// the place.
+    private var placeChip: some View {
+        Button { router.push(.experience(item.experience.id)) } label: {
+            HStack(spacing: Theme.Spacing.s) {
+                VStack(alignment: .leading, spacing: -2) {
+                    Text(item.experience.name).font(.subheadline.weight(.semibold)).foregroundStyle(Roam.ink).lineLimit(1)
+                    if !item.experience.areaLine.isEmpty {
+                        Text(item.experience.areaLine).font(.caption).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                    }
+                }
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
+            }
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.vertical, Theme.Spacing.s)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Roam.paperRaised))
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("activity-place")
     }
 
     /// The place, as the standard row: its photo, name and where it is, and a chevron.
@@ -99,7 +125,7 @@ struct ActivityCardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("activity-place")
+        .accessibilityIdentifier("activity-place-row")
     }
 
     private var date: some View {
