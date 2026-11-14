@@ -125,6 +125,9 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   `.roamTabBar(hidden:)`, never `.toolbar(.hidden, for: .tabBar)`. Scrolling pages keep their last item clear of it
   (`contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)`). Tapping a tab returns
   it to its home page, scrolled to the top.
+- **Tab tops (Discover, Friends):** a floating row instead of a navigation bar. Scrolling down swaps it for
+  `ScrolledTitleFade`: the swipe-up cards' dark fade with the page's name small, white and centred. Any scroll back up
+  brings the row back.
 - **Glass over maps:** `floatingBubble(_:tint:)` gives Liquid Glass on iOS 26 and frosted material before it.
 - **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet. It has three heights:
   1. **Peek:** a floating bubble, most see-through.

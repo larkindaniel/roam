@@ -113,6 +113,32 @@ struct SettingsToolbarItem: ToolbarContent {
     }
 }
 
+/// What a tab's top row turns into once you scroll down: the swipe-up cards' dark fade with just the page's name,
+/// small, white and centred (as on My Places). Scrolling back up brings the row back.
+struct ScrolledTitleFade: View {
+    let title: String
+
+    var body: some View {
+        GeometryReader { proxy in
+            let top = proxy.safeAreaInsets.top
+            ZStack(alignment: .top) {
+                // Down from the very top of the screen, so the clock and the name both sit on the dark.
+                LinearGradient(colors: [.black.opacity(0.6), .black.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: top + 64)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.top, top + 2)
+            }
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Log a place, at the top left of each tab's main screen.
 struct LogPlaceToolbarButton: ToolbarContent {
     @Environment(AppRouter.self) private var router

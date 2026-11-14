@@ -40,7 +40,8 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 
 ## Discover
 
-- **Top:** a search bar and the settings cog.
+- **Top:** a search bar and the settings cog. Scrolling down swaps them for a dark fade with "Discover" centred;
+  scrolling back up brings them back.
 - **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading), ranked by Roam
   (see DECISIONS.md, "Suggestions").
   - Under each name: the country, then why it's suggested, such as "Portugal · Theo sent you a place here", "On your

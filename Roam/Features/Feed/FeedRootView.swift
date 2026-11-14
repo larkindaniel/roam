@@ -9,6 +9,47 @@ struct FeedRootView: View {
     @State private var model: FeedModel?
     @State private var scroll = ScrollPosition(edge: .top)
 
+    @State private var barsHidden = false
+    @State private var navigationBarHidden = true
+
+    private static let barHeight: CGFloat = 44
+
+    /// The title on the left, friends and notifications in one glass capsule, then your profile, as on Discover.
+    private var topBar: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Text("Friends").font(.title3.weight(.semibold)).foregroundStyle(Roam.ink)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 0)
+            HStack(spacing: 0) {
+                Button {
+                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
+                } label: { barGlyph("person.badge.plus") }
+                .accessibilityLabel("Friends and requests")
+                .accessibilityIdentifier("open-friends")
+                Button { router.push(.notifications) } label: {
+                    barGlyph((model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
+                }
+                .accessibilityLabel("Notifications, \(model?.unreadCount ?? 0) unread")
+                .accessibilityIdentifier("open-notifications")
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.xs)
+            .floatingBubble(Capsule())
+            ProfileAvatarButton()
+                .frame(width: Self.barHeight, height: Self.barHeight)
+                .floatingBubble(Circle())
+        }
+        .frame(height: Self.barHeight)
+    }
+
+    private func barGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 18, weight: .regular))
+            .symbolRenderingMode(symbol.hasPrefix("bell") ? .hierarchical : .monochrome)
+            .foregroundStyle(Roam.ink)
+            .frame(width: Self.barHeight, height: Self.barHeight)
+    }
+
     var body: some View {
         ScrollView {
             Group {
@@ -19,28 +60,32 @@ struct FeedRootView: View {
             .padding(.vertical, Theme.Spacing.m)
         }
         .scrollPosition($scroll)
-        .solidTopEdge()
+        // Reading down swaps the buttons for the fade; any move back up brings them back.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+            if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
+            else if new > old && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
+        }
         .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
+        // Room for the top row; the feed scrolls on underneath it.
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.barHeight + Theme.Spacing.s) }
+        .overlay(alignment: .top) {
+            if barsHidden {
+                ScrolledTitleFade(title: "Friends").transition(.opacity)
+            } else {
+                topBar
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.bottom, Theme.Spacing.s)
+                    .background(Roam.paper.ignoresSafeArea(edges: .top))
+                    .transition(.opacity)
+            }
+        }
         .background(Roam.paper)
         .navigationTitle("Friends")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
-                } label: { Image(systemName: "person.badge.plus") }
-                .accessibilityLabel("Friends and requests")
-                .accessibilityIdentifier("open-friends")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { router.push(.notifications) } label: {
-                    Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
-                        .symbolRenderingMode(.hierarchical)
-                }
-                .accessibilityLabel("Notifications, \(model?.unreadCount ?? 0) unread")
-                .accessibilityIdentifier("open-notifications")
-            }
-            SettingsToolbarItem()
+        .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
+        // As on Discover: coming back from a pushed page can leave the system bar showing over the row.
+        .onAppear {
+            navigationBarHidden = false
+            Task { @MainActor in navigationBarHidden = true }
         }
         .task(id: session.userID) {
             guard session.userID != nil else { model = nil; return }
@@ -52,7 +97,7 @@ struct FeedRootView: View {
         }
         .refreshable { await refresh() }
         .onChange(of: router.scrollToTopRequests[.friends]) { _, _ in
-            withAnimation { scroll.scrollTo(edge: .top) }
+            withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
         }
         .onChange(of: router.selectedTab) { _, tab in
             if tab == .friends { Task { await refresh() } }

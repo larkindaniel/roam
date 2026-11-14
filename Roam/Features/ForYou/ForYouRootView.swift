@@ -139,6 +139,8 @@ struct ForYouRootView: View {
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     /// While you're searching, the search bar takes the whole row.
     private var searchActive: Bool { searchFocused || hasQuery }
+    /// Scrolled down with no search going: the top row is tucked away under the fade.
+    private var collapsed: Bool { barsHidden && !hasQuery && !searchFocused }
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
@@ -239,7 +241,11 @@ struct ForYouRootView: View {
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
                 .accessibilityHidden(barsHidden && !hasQuery && !searchFocused)
                 .allowsHitTesting(!barsHidden || hasQuery || searchFocused)
-                .background(Roam.paper.ignoresSafeArea(edges: .top))
+                // Tucked away, the page shows through under the fade.
+                .background(collapsed ? Color.clear.ignoresSafeArea(edges: .top) : Roam.paper.ignoresSafeArea(edges: .top))
+        }
+        .overlay(alignment: .top) {
+            if collapsed { ScrolledTitleFade(title: "Discover").transition(.opacity) }
         }
         .navigationTitle("Discover")
         .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
