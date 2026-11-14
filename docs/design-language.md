@@ -128,7 +128,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   it to its home page, scrolled to the top.
 - **Tab tops (Discover, Friends):** a floating row instead of a navigation bar. Scrolling down swaps it for
   `ScrolledTitleFade`: the swipe-up cards' dark fade with the page's name small, white and centred. Any scroll back up
-  brings the row back.
+  brings the row back as glass floating on the fade, never on a solid band.
 - **Glass over maps:** `floatingBubble(_:tint:)` gives Liquid Glass on iOS 26 and frosted material before it.
 - **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet, is the only one: every card over a map
   (My Places, city, place, country and state pages) uses it, so they all drag the same way. Never write another drag
@@ -160,7 +160,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Search:** only three searches exist (`Features/Search/`): worldwide places and city/area places (`PlaceSearch` +
   `PlaceSearchResults`, with a `PlaceSearchScope`) and accounts (`AccountSearchResults`). Every field is
   `RoamSearchField` (`.filled` in cards and sheets, `.glass` over pages, `.bare` inside a lowered card's bubble); a
-  sheet that is only a search uses `SearchSheetBar`. Never build another search: pick one of these, narrow it with
+  sheet that is only a search uses `SearchSheetBar` (no title bar; the field's × closes the sheet). Never build another search: pick one of these, narrow it with
   `kinds`, or pass `onPick`. Cities show the signpost icon, countries their flag.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not
   "China mainland").

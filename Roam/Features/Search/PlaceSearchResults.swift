@@ -346,8 +346,8 @@ struct RoamSearchField: View {
     @Environment(\.onDarkBubble) private var onDarkBubble
     /// Extra to do when the × is tapped (closing a sheet's search, say).
     var onClear: (() -> Void)? = nil
-    /// The × shows while the field is focused even when empty; off where a close button already sits beside it.
-    var cancelWhenEmpty = true
+    /// The × always shows (a sheet that is only this search, where it closes the sheet).
+    var alwaysCancel = false
 
     private var hasText: Bool { !text.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -364,7 +364,7 @@ struct RoamSearchField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityIdentifier(identifier)
-            if hasText || (cancelWhenEmpty && focus.wrappedValue) {
+            if alwaysCancel || hasText || focus.wrappedValue {
                 Button {
                     text = ""
                     focus.wrappedValue = false
@@ -391,7 +391,7 @@ struct RoamSearchField: View {
     }
 }
 
-/// A sheet's top row for searching: the field and an × that closes the sheet.
+/// A sheet that is only a search: its field at the top, whose × closes the sheet. No title bar or separate close button.
 struct SearchSheetBar: View {
     let prompt: String
     @Binding var text: String
@@ -400,20 +400,11 @@ struct SearchSheetBar: View {
     let onClose: () -> Void
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            RoamSearchField(prompt: prompt, text: $text, focus: focus, identifier: identifier, cancelWhenEmpty: false)
-                .frame(height: 44)
-            Button(action: onClose) {
-                Image(systemName: "xmark").font(.headline).foregroundStyle(Roam.ink).frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .floatingBubble(Circle())
-            .accessibilityLabel("Close")
-            .accessibilityIdentifier("\(identifier)-close")
-        }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.top, Theme.Spacing.l)
-        .padding(.bottom, Theme.Spacing.s)
+        RoamSearchField(prompt: prompt, text: $text, focus: focus, identifier: identifier, onClear: onClose, alwaysCancel: true)
+            .frame(height: 44)
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.top, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.s)
     }
 }
 

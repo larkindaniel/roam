@@ -10,6 +10,7 @@ struct FeedRootView: View {
     @State private var scroll = ScrollPosition(edge: .top)
 
     @State private var barsHidden = false
+    @State private var scrolledDown = false
     @State private var navigationBarHidden = true
 
     private static let barHeight: CGFloat = 44
@@ -76,6 +77,7 @@ struct FeedRootView: View {
         .scrollPosition($scroll)
         // Reading down swaps the buttons for the fade; any move back up brings them back.
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+            if (new > 1) != scrolledDown { withAnimation(.easeOut(duration: 0.15)) { scrolledDown = new > 1 } }
             if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
             else if new > old && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
         }
@@ -86,11 +88,14 @@ struct FeedRootView: View {
             if barsHidden {
                 ScrolledTitleFade(title: "Friends").transition(.opacity)
             } else {
-                topBar
-                    .padding(.horizontal, Theme.Spacing.l)
-                    .padding(.bottom, Theme.Spacing.s)
-                    .background(Roam.paper.ignoresSafeArea(edges: .top))
-                    .transition(.opacity)
+                // Never a solid band: once the page moves, the glass buttons float on the fade, as on Discover.
+                ZStack(alignment: .top) {
+                    if scrolledDown { ScrolledTitleFade(depth: Self.barHeight + Theme.Spacing.xl).transition(.opacity) }
+                    topBar
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .padding(.bottom, Theme.Spacing.s)
+                }
+                .transition(.opacity)
             }
         }
         .background(Roam.paper)
