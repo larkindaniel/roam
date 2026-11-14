@@ -43,15 +43,17 @@ struct ActivityCardView: View {
         HStack(spacing: Theme.Spacing.s) {
             AvatarView(member: item.author, size: 28)
             Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-            Text("·").font(.subheadline).opacity(0.7)
-            date.font(.subheadline).lineLimit(1)
+            Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
+            date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
             Spacer(minLength: 0)
         }
         .foregroundStyle(onPhoto ? Color.white : Roam.ink)
         .padding(onPhoto ? Theme.Spacing.m : 0)
+        // A deeper, taller fade, so the white line reads on any photo.
+        .padding(.bottom, onPhoto ? Theme.Spacing.xl : 0)
         .background {
             if onPhoto {
-                LinearGradient(colors: [.black.opacity(0.55), .black.opacity(0.2), .clear], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [.black.opacity(0.7), .black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)
             }
         }
         .contentShape(Rectangle())
@@ -102,6 +104,5 @@ struct ActivityCardView: View {
 
     private var date: some View {
         Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
-            .opacity(0.75)
     }
 }
