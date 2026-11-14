@@ -114,7 +114,13 @@ struct SettingsToolbarItem: ToolbarContent {
         if #available(iOS 26.0, *) {
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
-        ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 32) }
+        if #available(iOS 26.0, *) {
+            // Just the picture: the toolbar's own glass ring is hidden.
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 36) }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 36) }
+        }
     }
 }
 

@@ -150,9 +150,8 @@ struct ForYouRootView: View {
             if !searchActive {
                 // Your profile on the far right, the same on every tab.
                 // The same glass circle the system toolbar gives your picture on My Places.
-                ProfileAvatarButton()
-                    .frame(width: 44, height: 44)
-                    .floatingBubble(Circle())
+                // Just the picture, no glass ring around it.
+                ProfileAvatarButton(size: 48)
             }
         }
         .animation(.spring(duration: 0.3), value: searchActive)

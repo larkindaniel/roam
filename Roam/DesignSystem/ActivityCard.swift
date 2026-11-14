@@ -10,6 +10,8 @@ struct ActivityCardView: View {
     var compact = true
     /// Like and comment, set into the bottom right of the photo on a dark fade (white).
     var actions: AnyView? = nil
+    /// Double-tapping the photo likes it.
+    var onDoubleTap: (() -> Void)? = nil
 
     static func hasPhoto(_ item: ActivityItem) -> Bool { !item.media.isEmpty || item.experience.photoURL != nil }
 
@@ -96,6 +98,8 @@ struct ActivityCardView: View {
                 PlaceGallery(items: [.photo(url, credit: nil)], placeName: item.experience.name, cornerRadius: Self.corner)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { onDoubleTap?() }
         .overlay(alignment: .top) {
             byline(onPhoto: true)
                 // The photo's own corners, so the fade follows them.
@@ -104,7 +108,9 @@ struct ActivityCardView: View {
         .overlay(alignment: .bottom) {
             if let actions {
                 actions
-                    .padding(.horizontal, Theme.Spacing.s)
+                    .padding(.leading, Theme.Spacing.s)
+                    .padding(.trailing, Theme.Spacing.m)
+                    .padding(.bottom, Theme.Spacing.xs)
                     .padding(.top, Theme.Spacing.xl)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .background(LinearGradient(colors: [.clear, .black.opacity(0.4), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom))
@@ -131,8 +137,8 @@ struct ActivityCardView: View {
             .padding(.vertical, Theme.Spacing.s)
             // As wide as the photo, less its margins.
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: Self.corner, style: .continuous).fill(Theme.raisedCard))
-            .shadow(color: .black.opacity(0.07), radius: 10, y: 2)
+            // Liquid Glass, like the floating buttons.
+            .floatingBubble(RoundedRectangle(cornerRadius: Self.corner, style: .continuous), clear: true)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

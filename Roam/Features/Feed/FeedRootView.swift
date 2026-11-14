@@ -28,9 +28,8 @@ struct FeedRootView: View {
             .accessibilityLabel("Friends and requests")
             .accessibilityIdentifier("open-friends")
             .floatingBubble(Circle())
-            ProfileAvatarButton()
-                .frame(width: Self.barHeight, height: Self.barHeight)
-                .floatingBubble(Circle())
+            // Just the picture, no glass ring around it.
+            ProfileAvatarButton(size: Self.barHeight)
         }
         .frame(height: Self.barHeight)
     }
@@ -193,22 +192,16 @@ struct FeedCard: View {
     var body: some View {
         // With a photo, like and comment sit in its bottom right (white); without, under the card.
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            ActivityCardView(item: item, actions: AnyView(actions(onPhoto: true)))
+            ActivityCardView(item: item, actions: AnyView(actions(onPhoto: true)),
+                             onDoubleTap: { if !item.likedByViewer { onLike(true) } })
             if !ActivityCardView.hasPhoto(item) { actions(onPhoto: false) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // No card around it: the photos set the logs apart.
         .accessibilityElement(children: .contain)
         .sheet(isPresented: $showsComments) {
-            NavigationStack {
-                ActivityDetailView(activityID: item.id, commentsOnly: true)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button { showsComments = false } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
-                        }
-                    }
-            }
-            .presentationDetents([.medium, .large])
+            CommentsSheet(visitID: item.id)
+                .presentationDetents([.medium, .large])
         }
         .accessibilityIdentifier("feed-card-\(item.id.uuidString)")
     }
@@ -235,3 +228,4 @@ struct LikeButton: View {
         .accessibilityIdentifier("like-button")
     }
 }
+
