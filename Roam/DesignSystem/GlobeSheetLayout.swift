@@ -54,9 +54,10 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
 
-    /// How far the finger has moved the card; it settles back to 0 in the same animation that moves the card to its new
-    /// height, so letting go never jumps.
-    @State private var dragOffset: CGFloat = 0
+    /// How far the finger has moved the card. The system puts it back to 0 whenever a drag ends or is interrupted (so the
+    /// card can never get stuck mid-drag), with the same spring that moves the card to its new height, so letting go
+    /// never jumps.
+    @GestureState(resetTransaction: Transaction(animation: .spring(duration: 0.32, bounce: 0))) private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
     /// The header as it is when minimised, which sets the minimised height; kept apart so it can't move mid-drag.
     @State private var peekHeaderHeight: CGFloat?
@@ -65,7 +66,12 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @State private var scroll = ScrollPosition(edge: .top)
 
     /// Minimised, the card is just its header, sitting on the tab bar.
-    private var peek: CGFloat { (peekHeaderHeight ?? headerHeight).map { $0 + bottomOverlap } ?? peekHeight }
+    private var peek: CGFloat {
+        // A floating bubble reaches from the bottom margin to its top, so dragging down lands exactly on it.
+        if floatsWhenPeeking, let bubble = floatingHeight ?? peekHeaderHeight { return bubble + floatingBottomMargin }
+        // Measured only while minimised; the taller halfway header would leave it stuck short of the bottom.
+        return peekHeaderHeight.map { $0 + bottomOverlap } ?? peekHeight
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -234,10 +240,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     /// finger, and measuring against it made the drag fight itself and shake.
     private var cardDrag: some Gesture {
         DragGesture(minimumDistance: 6, coordinateSpace: .global)
-            .onChanged { value in
-                var transaction = Transaction()
+            .updating($dragOffset) { value, offset, transaction in
                 transaction.disablesAnimations = true
-                withTransaction(transaction) { dragOffset = value.translation.height }
+                offset = value.translation.height
             }
             .onEnded { value in
                 let top = screenHeight - Self.topClearance
@@ -296,7 +301,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
-        .gesture(cardDrag)
+        // Alongside, not instead: the minimised bubble is mostly a search field, which would otherwise swallow the swipe.
+        // Taps still reach the field, since a drag only starts once the finger moves.
+        .simultaneousGesture(cardDrag)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(headerLabel)
         .accessibilityHint(detent == .full ? "Shows the map" : "Minimizes the map")
@@ -310,12 +317,8 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     private func settle(at next: GlobeSheetDetent) {
         if UIAccessibility.isReduceMotionEnabled {
             detent = next
-            dragOffset = 0
         } else {
-            withAnimation(.spring(duration: 0.32, bounce: 0)) {
-                detent = next
-                dragOffset = 0
-            }
+            withAnimation(.spring(duration: 0.32, bounce: 0)) { detent = next }
         }
     }
 }
