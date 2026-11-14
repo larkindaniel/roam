@@ -84,7 +84,7 @@ struct ActivityCardView: View {
         }
     }
 
-    /// The place as a slim white card across the bottom of the photo: its name, city and country, and a chevron. It opens
+    /// The place as a slim glass card across the bottom of the photo: its name, city and country, and a chevron. It opens
     /// the place.
     private var placeChip: some View {
         Button { router.push(.experience(item.experience.id)) } label: {
@@ -102,8 +102,8 @@ struct ActivityCardView: View {
             .padding(.vertical, Theme.Spacing.s)
             // As wide as the photo, less its margins.
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Roam.paperRaised))
-            .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+            // Liquid Glass over the photo, like the floating buttons.
+            .floatingBubble(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
