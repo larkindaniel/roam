@@ -254,7 +254,7 @@ struct PlaceSearchResults: View {
                 switch placeSearch.phase {
                 case _ where placeSearch.isSearching, .idle, .loading:
                     // Still looking: rows are on their way, rather than a blank page.
-                    SkeletonList(rows: 3)
+                    SkeletonResults(kind: .places)
                 case .failed(let message):
                     InlineRetryView(message: message) { Task { await placeSearch.retry(query) } }
                 case .noResults, .results:

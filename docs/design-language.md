@@ -151,7 +151,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Photo gallery** (`PlaceGallery`): swipeable pages with white dots in a dark capsule at the bottom. No counter and
   no arrows.
 - **Segmented selector** (My Places): one track with the chosen segment's pill sliding across in its state colour.
-- **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonList` where rows will. Errors use
+- **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonResults` (places or people) for search results, `SkeletonList` where other rows will. A placeholder has the shape of what replaces it. Errors use
   `InlineRetryView` with Try again.
 - **Reason lines:** a suggestion's card says why in a few words, built by `SuggestionReason` from the server's facts
   (`Domain/Suggestions.swift`). Never invent one; no reason means the plain subtitle. Never repeat Google's stars in it.

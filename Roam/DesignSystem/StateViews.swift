@@ -139,6 +139,49 @@ struct SkeletonList: View {
     }
 }
 
+/// Placeholder search results, the shape of the real ones inside the same card: a small icon (places) or an avatar and
+/// button (people), the name, and the line under it. Respects Reduce Motion.
+struct SkeletonResults: View {
+    enum Kind { case places, people }
+    var kind: Kind = .places
+    var rows = 4
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<rows, id: \.self) { index in
+                HStack(spacing: Theme.Spacing.m) {
+                    if kind == .places {
+                        RoundedRectangle(cornerRadius: 6).frame(width: 24, height: 24)
+                    } else {
+                        Circle().frame(width: 48, height: 48)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        RoundedRectangle(cornerRadius: 4).frame(width: [170, 130, 150, 115][index % 4], height: 15)
+                        RoundedRectangle(cornerRadius: 4).frame(width: [110, 90, 120, 80][index % 4], height: 11)
+                    }
+                    Spacer(minLength: 0)
+                    if kind == .people { Capsule().frame(width: 86, height: 34) }
+                }
+                .frame(minHeight: Theme.minimumHitTarget)
+                .padding(.vertical, kind == .places ? Theme.Spacing.xs : Theme.Spacing.s)
+                if index < rows - 1 { RowSeparator() }
+            }
+        }
+        .foregroundStyle(Theme.subtleFill)
+        .roamCard(padding: Theme.Spacing.m)
+        .opacity(reduceMotion ? 0.8 : (pulse ? 0.5 : 1))
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Loading")
+        .accessibilityIdentifier("loading-skeleton")
+    }
+}
+
 /// Placeholder photo cards, the shape of the big photo cards (Discover's cities and places): a 210pt rounded block
 /// with the title and subtitle bars at its bottom left. Respects Reduce Motion.
 struct SkeletonCards: View {

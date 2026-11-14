@@ -49,7 +49,7 @@ struct AccountSearchResults: View {
                 }
                 switch model.phase {
                 case .idle, .loading:
-                    SkeletonList(rows: 4)
+                    SkeletonResults(kind: .people)
                 case .failed(let message):
                     InlineRetryView(message: message) { Task { await model.search(query) } }
                 case .loaded where model.rows.isEmpty:
@@ -75,7 +75,7 @@ struct AccountSearchResults: View {
                 }
             }
         } else {
-            SkeletonList(rows: 4)
+            SkeletonResults(kind: .people)
         }
     }
 
@@ -84,7 +84,7 @@ struct AccountSearchResults: View {
     @ViewBuilder private func friendRows(_ selection: Binding<Set<UUID>>) -> some View {
         switch friends {
         case .idle, .loading:
-            SkeletonList(rows: 3)
+            SkeletonResults(kind: .people, rows: 3)
         case .failed(let message):
             InlineRetryView(message: message) { Task { await loadFriends(query) } }
         case .loaded(let rows):
