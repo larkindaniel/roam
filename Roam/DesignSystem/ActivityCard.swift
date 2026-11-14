@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A friend's log: a photo (theirs, square; else the place's Google photo) with a small "picture, name · date" line set
-/// into its top, their note, then the place as a standard row (city, country under its name) that opens it.
+/// into its top, a slim card for the place under it, then their note.
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = true
@@ -11,7 +11,10 @@ struct ActivityCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            if hasPhoto { photos }
+            if hasPhoto {
+                photos
+                placeChip
+            }
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
@@ -28,7 +31,7 @@ struct ActivityCardView: View {
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
             }
-            // With a photo, the place is the glass card set into it; without, the line and the standard row in a card.
+            // With a photo, the place is a slim card under it; without, the line and the standard row in a card.
             if !hasPhoto {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     byline(onPhoto: false)
@@ -76,11 +79,9 @@ struct ActivityCardView: View {
         Group {
             if !item.media.isEmpty {
                 let media = item.media.sorted { $0.position < $1.position }
-                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true,
-                             bottomAccessory: AnyView(placeChip))
+                PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
             } else if let url = item.experience.photoURL {
-                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name,
-                             bottomAccessory: AnyView(placeChip))
+                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
             }
         }
         .overlay(alignment: .top) {
@@ -90,7 +91,7 @@ struct ActivityCardView: View {
         }
     }
 
-    /// The place as a slim glass card across the bottom of the photo: its name, city and country, and a chevron. It opens
+    /// The place as a slim card under the photo, with no picture of its own: its name, city and country, and a chevron. It opens
     /// the place.
     private var placeChip: some View {
         Button { router.push(.experience(item.experience.id)) } label: {
@@ -108,9 +109,8 @@ struct ActivityCardView: View {
             .padding(.vertical, Theme.Spacing.s)
             // As wide as the photo, less its margins.
             .frame(maxWidth: .infinity)
-            // Liquid Glass over the photo, like the floating buttons.
-            .floatingBubble(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .roamCard(padding: 0)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("activity-place")
