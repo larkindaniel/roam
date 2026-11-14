@@ -4,7 +4,7 @@ logs with no photos, one photo and several. The photos aren't in the repo; pass 
 
     python3 scripts/fixtures/friend_photos.py path/to/photos
 
-Each photo goes on the log of a place it was taken at (or near). Metadata is stripped. Safe to run again. Local use only.
+Some photos go on the log of the place they were taken at; the rest fill logs near the top of the feed. Metadata is stripped. Safe to run again. Local use only.
 """
 import hashlib
 import importlib.util
@@ -25,6 +25,15 @@ PHOTOS = {
     ("daniellarkin", "Wasteland"): ["2.jpg", "16.jpg", "3.jpg"],
     ("daniellarkin", "Bastard Café"): ["4.jpg"],
     ("daniellarkin", "Plage du Pélican"): ["7.jpg", "19.jpg"],
+    # The rest go on logs near the top of the Friends tab, so photos show straight away: some one, some several, some
+    # none in between.
+    ("dhyanpatel", "Alforat Iraqi Street Food (Toronto)"): ["21.jpg"],
+    ("dhyanpatel", "Kongobu-ji Danjo Garan (Elevated Precinct)"): ["14.jpg", "15.jpg"],
+    ("daniellarkin", "Kopar"): ["20.jpg"],
+    ("daniellarkin", "Landmannalaugar"): ["5.jpg", "13.jpg"],
+    ("daniellarkin", "Park Necessidades"): ["10.jpg", "18.jpg", "9.jpg"],
+    ("dhyanpatel", "Okuno-in Cemetery"): ["11.jpg"],
+    ("dhyanpatel", "Parque Juan Carlos I"): ["6.jpg", "8.jpg"],
 }
 
 
