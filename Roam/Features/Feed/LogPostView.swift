@@ -139,12 +139,14 @@ struct LogPostView: View {
             }
             HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
                 if let me = session.profile?.summary { AvatarView(member: me, size: 36) }
+                // The send circle sits the same distance from the field's top, bottom and right edge.
                 HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
                     TextField("Add a comment", text: $model.draft, axis: .vertical)
                         .lineLimit(1...5)
                         .focused($composerFocused)
                         .disabled(model.isPosting)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 6)
+                        .frame(minHeight: 32)
                         .accessibilityIdentifier("comment-field")
                     Button {
                         Task { if await model.post() { composerFocused = false } }
@@ -153,17 +155,17 @@ struct LogPostView: View {
                             if model.isPosting { ProgressView() } else { Image(systemName: "arrow.up").font(.subheadline.weight(.bold)) }
                         }
                         .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 32, height: 32)
                         .background(Circle().fill(model.canPost ? Roam.ink : Roam.inkFaint))
                     }
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
-                    .padding(.bottom, 5)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
                     .accessibilityIdentifier("comment-send")
                 }
                 .padding(.leading, Theme.Spacing.m)
-                .padding(.trailing, 5)
+                .padding(.trailing, 6)
+                .padding(.vertical, 6)
                 .background(Capsule().fill(Roam.fill))
             }
         }
