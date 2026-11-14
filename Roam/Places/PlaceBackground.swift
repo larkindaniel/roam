@@ -162,6 +162,15 @@ enum PlaceGalleryItem: Identifiable {
     }
 }
 
+/// A gallery's size: square and as wide as its card, or 220 points tall. Only a square one gets an aspect ratio; given
+/// none, `.aspectRatio` falls back to the content's own size, which a paged view doesn't have, and the pictures vanish.
+private struct GallerySize: ViewModifier {
+    let square: Bool
+    func body(content: Content) -> some View {
+        if square { content.aspectRatio(1, contentMode: .fit) } else { content.frame(height: 220) }
+    }
+}
+
 /// A place's pictures: its photo first, then photos from visits. Swipe between them, with dots
 /// below, and a Look Around button opens Apple's street-level view of the spot.
 struct PlaceGallery: View {
@@ -189,8 +198,7 @@ struct PlaceGallery: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .background(Roam.fill)
                 .frame(maxWidth: .infinity)
-                .frame(height: square ? nil : 220)
-                .aspectRatio(square ? 1 : nil, contentMode: .fit)
+                .modifier(GallerySize(square: square))
                 // Concentric with the card around it: its 38-point corners less the 16-point inset.
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 if items.count > 1 {
