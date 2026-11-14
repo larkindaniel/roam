@@ -172,20 +172,28 @@ struct FeedCard: View {
 
     @State private var showsComments = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            ActivityCardView(item: item)
-            HStack(spacing: Theme.Spacing.m) {
-                LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending) { onLike(!item.likedByViewer) }
-                Button { showsComments = true } label: {
-                    Label("\(item.commentCount)", systemImage: "bubble.left")
-                        .monospacedDigit()
-                        .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-                }
-                .accessibilityLabel(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments")
-                .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
+    private func actions(onPhoto: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending, tint: onPhoto ? .white : Roam.ink) {
+                onLike(!item.likedByViewer)
             }
-            .buttonStyle(.plain)
+            Button { showsComments = true } label: {
+                Label("\(item.commentCount)", systemImage: "bubble.left")
+                    .monospacedDigit()
+                    .foregroundStyle(onPhoto ? Color.white : Roam.ink)
+                    .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+            }
+            .accessibilityLabel(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments")
+            .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
+        }
+        .buttonStyle(.plain)
+    }
+
+    var body: some View {
+        // With a photo, like and comment sit in its bottom right (white); without, under the card.
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            ActivityCardView(item: item, actions: AnyView(actions(onPhoto: true)))
+            if !ActivityCardView.hasPhoto(item) { actions(onPhoto: false) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // No card around it: the photos set the logs apart.
@@ -209,13 +217,15 @@ struct LikeButton: View {
     let liked: Bool
     let count: Int
     var pending = false
+    /// White over a photo.
+    var tint: Color = Roam.ink
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Label("\(count)", systemImage: liked ? "heart.fill" : "heart")
                 .monospacedDigit()
-                .foregroundStyle(Roam.ink)
+                .foregroundStyle(tint)
                 .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
         }
         .disabled(pending)

@@ -8,6 +8,10 @@ struct ActivityCardView: View {
 
     let item: ActivityItem
     var compact = true
+    /// Like and comment, set into the bottom right of the photo on a dark fade (white).
+    var actions: AnyView? = nil
+
+    static func hasPhoto(_ item: ActivityItem) -> Bool { !item.media.isEmpty || item.experience.photoURL != nil }
 
     @Environment(AppRouter.self) private var router
     @State private var expanded = false
@@ -51,7 +55,7 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
     }
 
-    private var hasPhoto: Bool { !item.media.isEmpty || item.experience.photoURL != nil }
+    private var hasPhoto: Bool { Self.hasPhoto(item) }
 
     /// One small line: their picture, name · date. Set into the top of the photo (white, on a soft dark fade), or on its
     /// own when there's no photo at all. It opens their profile.
@@ -96,6 +100,16 @@ struct ActivityCardView: View {
             byline(onPhoto: true)
                 // The photo's own corners, so the fade follows them.
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: Self.corner, topTrailingRadius: Self.corner, style: .continuous))
+        }
+        .overlay(alignment: .bottom) {
+            if let actions {
+                actions
+                    .padding(.horizontal, Theme.Spacing.s)
+                    .padding(.top, Theme.Spacing.xl)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .background(LinearGradient(colors: [.clear, .black.opacity(0.4), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom))
+                    .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: Self.corner, bottomTrailingRadius: Self.corner, style: .continuous))
+            }
         }
     }
 
