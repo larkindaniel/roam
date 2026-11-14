@@ -154,8 +154,11 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   (`Domain/Suggestions.swift`). Never invent one; no reason means the plain subtitle. Never repeat Google's stars in it.
 - **Not interested:** long-press a suggestion card (`.notInterested { … }`). It's a context menu, not a button on the
   card.
-- **Search results:** `PlaceSearchResults` is shared by Discover, My Places and city pages. Cities show the signpost
-  icon, countries show their flag, and towns never appear as places.
+- **Search:** only three searches exist (`Features/Search/`): worldwide places and city/area places (`PlaceSearch` +
+  `PlaceSearchResults`, with a `PlaceSearchScope`) and accounts (`AccountSearchResults`). Every field is
+  `RoamSearchField` (`.filled` in cards and sheets, `.glass` over pages, `.bare` inside a lowered card's bubble); a
+  sheet that is only a search uses `SearchSheetBar`. Never build another search: pick one of these, narrow it with
+  `kinds`, or pass `onPick`. Cities show the signpost icon, countries their flag.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not
   "China mainland").
 

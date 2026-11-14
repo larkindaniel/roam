@@ -165,27 +165,8 @@ struct ForYouRootView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            TextField("Search", text: $query, prompt: Text(searchActive ? "A city, neighbourhood or place" : "Search"))
-                // Type as you like: no capitalising or correcting.
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($searchFocused)
-                .submitLabel(.search)
-                .accessibilityIdentifier("discover-search")
-            // The field's own × ends the search: clears it and puts the keyboard away.
-            if searchActive {
-                Button { endSearch() } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Cancel search")
-                    .accessibilityIdentifier("discover-search-cancel")
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.m)
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-        .floatingBubble(Capsule())
+        RoamSearchField(prompt: searchActive ? "A city, neighbourhood or place" : "Search", text: $query, focus: $searchFocused,
+                        style: .glass, identifier: "discover-search", onClear: endSearch)
     }
 
     private func roundButton(_ symbol: String, label: String, identifier: String, tint: Color = Roam.ink, action: @escaping () -> Void) -> some View {

@@ -183,28 +183,8 @@ struct MyPlacesRootView: View {
     private var searchField: some View {
         // Lowered over the dark globe it's plain glass like the buttons there, with a more solid field and white text.
         let overGlobe = detent == .peek
-        return HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(overGlobe ? Color.white.opacity(0.85) : Roam.inkMuted).accessibilityHidden(true)
-            TextField("", text: $query, prompt: Text("Search places").foregroundStyle(overGlobe ? Color.white.opacity(0.75) : Roam.inkMuted))
-                .foregroundStyle(overGlobe ? Color.white : Roam.ink)
-                // A white, regular-sized cursor over the dark glass.
-                .tint(overGlobe ? Color.white : Roam.ink)
-                .font(.body)
-                .focused($searching)
-                .submitLabel(.search)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .accessibilityIdentifier("myplaces-search")
-            if hasQuery || searching {
-                Button { query = ""; searching = false } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Cancel search")
-            }
-        }
-        .padding(.horizontal, overGlobe ? 0 : Theme.Spacing.m)
-        .frame(height: 40)
-        // In the card, a darker field; lowered, just the glass bubble itself (one tone), with white text.
-        .background { if !overGlobe { Capsule().fill(Roam.ink.opacity(0.12)) } }
+        return RoamSearchField(prompt: "Search places", text: $query, focus: $searching, style: overGlobe ? .bare : .filled,
+                               onDark: overGlobe, identifier: "myplaces-search")
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
             // The card glides up; it rebuilds the field, so the cursor goes back once it has settled.

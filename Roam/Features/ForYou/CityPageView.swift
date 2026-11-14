@@ -26,7 +26,7 @@ struct CityPageView: View {
     @Environment(LibraryStore.self) private var library
     @State private var model: ForYouModel?
     @State private var friendActivity: LoadPhase<[FriendAreaActivity]> = .idle
-    @State private var search: ExperienceSearchModel?
+    @State private var placeSearch = PlaceSearch()
     @State private var query = ""
     @FocusState private var searching: Bool
     @Environment(\.openURL) private var openURL
@@ -124,11 +124,7 @@ struct CityPageView: View {
         // Saving, logging or a home change refreshes your spots and home without reloading the suggestions.
         .onChange(of: library.revision) { _, _ in Task { await refreshMine() } }
         .task(id: query) {
-            guard hasQuery else { search?.query = ""; return }
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            if search == nil { search = ExperienceSearchModel(services: services) }
-            await search?.search(query, near: destination)
+            await placeSearch.run(query, services: services, scope: .city(destination))
         }
         .alert("You've saved \(savedPlaceCount) \(savedPlaceCount == 1 ? "place" : "places") here", isPresented: $explainingSaved) {
             Button("OK", role: .cancel) {}
@@ -180,9 +176,6 @@ struct CityPageView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     HStack(spacing: Theme.Spacing.s) {
                         searchField
-                            .padding(.horizontal, Theme.Spacing.m)
-                            // A darker grey field inside the card, the same as My Places' search.
-                            .background(Capsule().fill(Roam.ink.opacity(0.12)))
                         directionsButton
                     }
                     cityHeader(showsPhoto: false)
@@ -291,87 +284,22 @@ struct CityPageView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            TextField("Search \(destination.name)", text: $query)
-                .focused($searching)
-                .submitLabel(.search)
-                // Type as you like: no capitalising or correcting.
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .accessibilityIdentifier("city-search")
-            if hasQuery || searching {
-                Button {
-                    query = ""
-                    searching = false
-                } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Cancel search")
-            }
-        }
-        .font(.body)
-        .frame(height: 40)
-        .frame(maxWidth: .infinity)
+        // Minimised it sits in the bubble; opened up, it's the grey field, the same as My Places' search.
+        RoamSearchField(prompt: "Search \(destination.name)", text: $query, focus: $searching,
+                        style: detent == .peek ? .bare : .filled, identifier: "city-search")
     }
 
-    /// Only what's in the city or just around it.
-    private var nearbyHits: [SearchHit] {
-        let center = CLLocation(latitude: destination.latitude, longitude: destination.longitude)
-        let limit = max(destination.radiusMeters * 3, 25_000)
-        return (search?.hits ?? []).filter {
-            CLLocation(latitude: $0.candidate.latitude, longitude: $0.candidate.longitude).distance(from: center) <= limit
-        }
-    }
-
+    /// Search 2: only cities near this one and places in or around it. A place opens on this map.
     @ViewBuilder private var searchResults: some View {
         if let openError { Text(openError).font(.footnote).foregroundStyle(Roam.signal) }
-        switch search?.phase ?? .loading {
-        case .idle, .loading:
-            SkeletonList(rows: 3)
-        case .failed(let message):
-            InlineRetryView(message: message) { Task { await search?.search(query, near: destination) } }
-        case .noResults, .results:
-            if nearbyHits.isEmpty {
-                Text("Nothing in \(destination.name) matches \u{201C}\(query)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(nearbyHits) { hit in
-                        Button { Task { await open(hit) } } label: {
-                            HStack(spacing: Theme.Spacing.m) {
-                                Image(systemName: hit.experience?.iconName ?? hit.candidate.iconName).foregroundStyle(Roam.inkMuted).frame(width: 24).accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink).lineLimit(1)
-                                    Text(shortAddress(hit.candidate)).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
-                                }
-                                Spacer(minLength: Theme.Spacing.s)
-                                if opening == hit.id { ProgressView() }
-                            }
-                            .frame(minHeight: Theme.minimumHitTarget)
-                            .padding(.vertical, Theme.Spacing.s)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(opening != nil)
-                        .accessibilityIdentifier("city-result-\(hit.candidate.name)")
-                        if hit.id != nearbyHits.last?.id { Divider().padding(.leading, 24 + Theme.Spacing.m) }
-                    }
-                }
-                .roamCard(padding: Theme.Spacing.m)
+        PlaceSearchResults(query: query, placeSearch: placeSearch, kinds: [.places, .cities]) { pick in
+            switch pick {
+            case .experience(let place): fly(to: place)
+            case .place(let hit): Task { await open(hit) }
+            case .city(let city): router.push(.city(city))
+            case .region, .country: break
             }
         }
-    }
-
-    /// The street and the city, stopping there: no province, postal code or country.
-    private func shortAddress(_ place: PlaceCandidate) -> String {
-        guard let address = place.address, !address.isEmpty else { return place.locality ?? "" }
-        let parts = address.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        var kept = Array(parts.prefix(2))
-        if let city = place.locality, let index = parts.firstIndex(where: { $0.localizedCaseInsensitiveContains(city) }) {
-            kept = Array(parts[...index])
-            // "Supía 178020" → "Supía": the city itself, not the postal code beside it.
-            kept[kept.count - 1] = city
-        }
-        return kept.joined(separator: ", ")
     }
 
     private func open(_ feature: MapFeature, moveMap: Bool = true) async {
@@ -398,8 +326,7 @@ struct CityPageView: View {
         opening = hit.id
         defer { opening = nil }
         do {
-            guard let search else { return }
-            let place = try await search.resolve(hit)
+            let place = try await placeSearch.resolve(hit)
             openError = nil
             fly(to: place)
         } catch { openError = error.roamMessage }

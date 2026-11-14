@@ -42,7 +42,8 @@ enum FollowSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
 /// Stable-ID routes pushed onto a tab's navigation stack. Deferred features have no case here.
 enum AppRoute: Hashable, Sendable {
     case experience(UUID)
-    case search
+    /// Find people: the accounts search.
+    case findPeople
     case ownProfile
     case trip(UUID)
     case placeGroup(title: String, subtitle: String?, ids: [UUID])
@@ -159,8 +160,6 @@ final class AppRouter {
     var selectedTab: AppTab
     var paths: [AppTab: [AppRoute]] = [:]
     var sheet: SheetRoute?
-    /// Requests the Search tab to show a segment (e.g. Find people → Members).
-    var searchSegmentRequest: SearchSegment?
 
     init(initialTab: AppTab = .forYou) {
         self.selectedTab = initialTab
@@ -199,13 +198,7 @@ final class AppRouter {
         scrollToTopRequests[tab, default: 0] += 1
     }
 
-    func showFindPeople() {
-        searchSegmentRequest = .members
-        openSearch()
-    }
-
-    /// Search and Explore are screens within a tab, not tabs of their own.
-    func openSearch() { push(.search) }
+    func showFindPeople() { push(.findPeople) }
 
     /// The map is a city's page: the one you're in.
     func openExplore() { push(.cityAt(latitude: nil, longitude: nil)) }
@@ -217,10 +210,4 @@ final class AppRouter {
     }
 }
 
-enum SearchSegment: String, Hashable, Sendable, CaseIterable, Identifiable {
-    case experiences
-    case members
 
-    var id: String { rawValue }
-    var title: String { self == .experiences ? "Places" : "People" }
-}

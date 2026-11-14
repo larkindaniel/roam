@@ -186,8 +186,8 @@ struct RouteDestinationView: View {
 
     var body: some View {
         switch route {
-        case .search:
-            SearchRootView()
+        case .findPeople:
+            FindPeopleView()
         case .ownProfile:
             ProfileRootView()
         case .trip(let id):

@@ -199,7 +199,6 @@ private struct ListsContent: View {
             }
             sortControl
                 .frame(maxWidth: .infinity, alignment: .leading)
-            SearchField(prompt: "Search names and places", text: $model.query, identifier: "list-search-field")
             if model.sort == .distance, let note = distanceNote ?? model.reference.map({ "Distance \($0.label)" }) {
                 Text(note).font(.caption).foregroundStyle(Theme.secondaryText).frame(maxWidth: .infinity, alignment: .leading)
             }

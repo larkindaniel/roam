@@ -12,17 +12,7 @@ struct AreaLogSheet: View {
     let around: Destination
     var onSaved: () -> Void
 
-    private enum Pick: Identifiable, Hashable {
-        case city(Destination)
-        case place(SearchHit)
-
-        var id: String {
-            switch self {
-            case .city(let city): return "city:\(city.id)"
-            case .place(let hit): return "place:\(hit.id)"
-            }
-        }
-    }
+    private typealias Pick = PlaceSearchPick
 
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
@@ -33,31 +23,25 @@ struct AreaLogSheet: View {
     @State private var end: Date?
     @State private var saving = false
     @State private var error: String?
+    @FocusState private var searchFocused: Bool
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    private func inArea(country: String?, region value: String?) -> Bool {
-        guard country?.uppercased() == countryCode.uppercased() else { return false }
-        guard let region else { return true }
-        guard let value, !value.isEmpty else { return false }
-        return [region.region, region.name].contains { $0?.caseInsensitiveCompare(value) == .orderedSame }
-    }
-
-    private var cityResults: [Destination] {
-        placeSearch.cities.filter { inArea(country: $0.countryCode, region: $0.region) && !picks.contains(.city($0)) }
-    }
-    private var placeResults: [SearchHit] {
-        (placeSearch.model?.hits ?? []).filter { hit in
-            inArea(country: hit.candidate.countryCode, region: hit.candidate.region) && !picks.contains { $0.id == "place:\(hit.id)" }
-        }
-    }
+    private var scope: PlaceSearchScope { .area(name: name, countryCode: countryCode, region: region, around: around) }
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if hasQuery {
-                    results
+                    // Search 2, inside the country or state: its cities and places, nothing else.
+                    ScrollView {
+                        PlaceSearchResults(query: query, placeSearch: placeSearch, kinds: [.places, .cities],
+                                           excluding: Set(picks.map(\.id))) { add($0) }
+                            .padding(.horizontal, Theme.Spacing.l)
+                            .padding(.vertical, Theme.Spacing.s)
+                    }
                 } else {
+                    List {
                     Section {
                         if picks.isEmpty {
                             Text("Search for the cities and places you went to.").foregroundStyle(Roam.inkMuted)
@@ -70,13 +54,17 @@ struct AreaLogSheet: View {
                     Section { DateRangeRow(start: $start, end: $end) }
                         .floatingFormRow()
                     if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
+                    }
+                    .scrollContentBackground(.hidden)
                 }
             }
-            .scrollContentBackground(.hidden)
             .background(Roam.paper)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Cities and places in \(name)")
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
+            .safeAreaInset(edge: .top, spacing: 0) {
+                RoamSearchField(prompt: "Cities and places in \(name)", text: $query, focus: $searchFocused, identifier: "area-search")
+                    .frame(height: 44)
+                    .padding(.horizontal, Theme.Spacing.l)
+                    .padding(.vertical, Theme.Spacing.s)
+            }
             .navigationTitle("Where in \(name)?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,44 +77,15 @@ struct AreaLogSheet: View {
                         .accessibilityIdentifier("area-log-save")
                 }
             }
-            .task(id: query) { await placeSearch.run(query, services: services, near: around, within: name) }
+            .task(id: query) { await placeSearch.run(query, services: services, scope: scope) }
         }
         .roamSheetStyle()
         .presentationDetents([.large])
         .screenIdentifier("area-log")
     }
 
-    @ViewBuilder private var results: some View {
-        if cityResults.isEmpty && placeResults.isEmpty {
-            if placeSearch.model?.phase == .noResults || placeSearch.model?.phase == .results {
-                Text("Nothing in \(name) matches \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
-            }
-        } else {
-            ForEach(cityResults) { city in
-                Button { add(.city(city)) } label: {
-                    row(symbol: "signpost.right.and.left", title: city.name, subtitle: city.subtitle)
-                }
-                .buttonStyle(.plain)
-            }
-            ForEach(placeResults) { hit in
-                Button { add(.place(hit)) } label: {
-                    row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, title: hit.candidate.name,
-                        subtitle: [hit.candidate.locality, CountryName.display(hit.candidate.countryName, code: hit.candidate.countryCode)]
-                            .compactMap { $0 }.uniqued().joined(separator: ", "))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
     private func pickRow(_ pick: Pick) -> some View {
-        switch pick {
-        case .city(let city):
-            return row(symbol: "signpost.right.and.left", title: city.name, subtitle: "City")
-        case .place(let hit):
-            return row(symbol: hit.experience?.iconName ?? hit.candidate.iconName, title: hit.candidate.name,
-                       subtitle: hit.category?.title ?? "Place")
-        }
+        row(symbol: pick.symbol, title: pick.title, subtitle: pick.kind)
     }
 
     private func row(symbol: String, title: String, subtitle: String) -> some View {
@@ -155,20 +114,7 @@ struct AreaLogSheet: View {
         let from = start.map { LocalDate(date: $0, timeZone: .current) }
         let to = end.map { LocalDate(date: $0, timeZone: .current) }
         do {
-            for pick in picks {
-                switch pick {
-                case .city(let city):
-                    try await services.plans.markCityVisited(city, start: from, end: to)
-                case .place(let hit):
-                    let place: ExperienceSummary
-                    if let known = hit.experience { place = known } else { place = try await services.experiences.resolve(hit.candidate) }
-                    // A visit with no rating; the place's own category files it.
-                    let visit = VisitPayload(date: from, timeZoneIdentifier: TimeZone.current.identifier, publicNote: "", mediaIDs: [],
-                                             audience: .public)
-                    _ = try await services.ranking.addVisit(AddVisitRequest(operationID: UUID(), experienceID: place.id, visit: visit,
-                                                                            category: place.category ?? hit.category ?? .activities))
-                }
-            }
+            for pick in picks { try await pick.logAsBeen(services: services, start: from, end: to) }
             onSaved()
             dismiss()
         } catch { self.error = error.roamMessage }

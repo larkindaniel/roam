@@ -9,16 +9,16 @@ struct LogPlaceSheet: View {
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
     @Environment(LibraryStore.self) private var library
-    @State private var model: ExperienceSearchModel?
-    @State private var cities: [Destination] = []
+    @State private var placeSearch = PlaceSearch()
     /// A city picked from the results, asking when you were there.
     @State private var datingCity: Destination?
     @State private var query = ""
     @State private var request: LogRequest?
-    @State private var opening: String?
     @State private var error: String?
-    @State private var onRoam: [ExperienceSummary] = []
     @State private var addingPlace = false
+    @FocusState private var searchFocused: Bool
+
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         Group {
@@ -26,139 +26,68 @@ struct LogPlaceSheet: View {
                 RatingFlowView(request: request) { onSaved(request, $0) }
             } else {
                 NavigationStack {
-                    searchList
-                        .scrollContentBackground(.hidden)
-                        .background(Roam.paper)
-                        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "A place or a city")
-                        // Type as you like: no capitalising or correcting.
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .navigationTitle("Add a place")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Close") { dismiss() }.accessibilityIdentifier("log-place-close")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                            if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
+                            // Search 1, worldwide: a city is marked as somewhere you've been; a place goes on to its details.
+                            if hasQuery {
+                                PlaceSearchResults(query: query, placeSearch: placeSearch, kinds: [.places, .cities]) { pick in
+                                    Task { await choose(pick) }
+                                }
                             }
                         }
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .padding(.vertical, Theme.Spacing.s)
+                    }
+                    .background(Roam.paper)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        RoamSearchField(prompt: "A place or a city", text: $query, focus: $searchFocused, identifier: "log-place-search")
+                            .frame(height: 44)
+                            .padding(.horizontal, Theme.Spacing.l)
+                            .padding(.vertical, Theme.Spacing.s)
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        if hasQuery {
+                            Button("Can't find it? Add it yourself") { addingPlace = true }
+                                .buttonStyle(.bordered)
+                                .buttonBorderShape(.capsule)
+                                .padding(.bottom, Theme.Spacing.s)
+                                .accessibilityIdentifier("log-place-add-custom")
+                        }
+                    }
+                    .navigationTitle("Add a place")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { dismiss() }.accessibilityIdentifier("log-place-close")
+                        }
+                    }
+                    .onAppear { searchFocused = true }
                 }
-        .roamSheetStyle()
+                .roamSheetStyle()
             }
         }
-        .task { if model == nil { model = ExperienceSearchModel(services: services) } }
-        .task(id: query) {
-            if !query.isEmpty { services.location.requestAccessIfNeeded() }
-            guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { model?.query = ""; onRoam = []; cities = []; return }
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            async let known = services.plans.searchRoamPlaces(query: query)
-            async let foundCities = services.places.searchDestinations(query: query)
-            await model?.search(query, near: nil)
-            onRoam = ((try? await known) ?? []).filter { $0.category != .dayTrips }
-            cities = Array(((try? await foundCities) ?? []).prefix(3))
-        }
+        .task(id: query) { await placeSearch.run(query, services: services) }
         .sheet(item: $datingCity) { city in
             CityVisitDatesSheet(city: city) { library.noteChanged(); dismiss() }
         }
         .sheet(isPresented: $addingPlace) {
-            AddCustomPlaceSheet(initialName: query) { place in Task { await choose(place) } }
+            AddCustomPlaceSheet(initialName: query) { place in Task { await choose(.experience(place)) } }
                 .presentationBackground(Roam.paper)
         }
         .screenIdentifier("log-place-sheet")
     }
 
-    private var searchList: some View {
-        List { Group {
-            if let error { Text(error).foregroundStyle(Roam.signal).listRowBackground(Roam.paperRaised) }
-            // Cities first: choosing one marks it as somewhere you've been, no place needed.
-            ForEach(cities) { city in
-                Button { datingCity = city } label: {
-                    HStack(spacing: Theme.Spacing.m) {
-                        Image(systemName: "building.2").foregroundStyle(PlaceState.visited.markerColor).frame(width: 24).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(city.name).font(.headline).foregroundStyle(Roam.ink)
-                            Text(city.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted)
-                        }
-                        Spacer(minLength: Theme.Spacing.s)
-                        if opening == city.id { ProgressView() }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
-                }
-                .disabled(opening != nil)
-                .accessibilityIdentifier("log-place-city-\(city.name)")
-                .listRowBackground(Roam.paperRaised)
-            }
-            ForEach(onRoam) { place in
-                Button { Task { await choose(place) } } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(place.name).font(.headline).foregroundStyle(Roam.ink)
-                        Text(place.areaLine).font(.footnote).foregroundStyle(Roam.inkMuted)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
-                }
-                .accessibilityIdentifier("log-place-known-\(place.name)")
-                .listRowBackground(Roam.paperRaised)
-            }
-            switch model?.phase ?? .idle {
-            case .idle:
-                EmptyView()
-            case .loading:
-                HStack { ProgressView(); Text("Searching…").foregroundStyle(Roam.inkMuted) }.listRowBackground(Roam.paperRaised)
-            case .failed(let message):
-                InlineRetryView(message: message) { Task { await model?.search(query, near: nil) } }.listRowBackground(Roam.paperRaised)
-            case .noResults:
-                if onRoam.isEmpty {
-                    Text("No places match \u{201C}\(query)\u{201D}.").foregroundStyle(Roam.inkMuted)
-                        .accessibilityIdentifier("log-place-no-results").listRowBackground(Roam.paperRaised)
-                }
-            case .results:
-                ForEach((model?.hits ?? []).filter { hit in !onRoam.contains { $0.name.lowercased() == hit.candidate.name.lowercased() } }) { hit in
-                    Button { Task { await choose(hit) } } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(hit.candidate.name).font(.headline).foregroundStyle(Roam.ink)
-                                Text(hit.candidate.address ?? [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.joined(separator: ", "))
-                                    .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(2)
-                            }
-                            Spacer(minLength: Theme.Spacing.s)
-                            if opening == hit.id { ProgressView() }
-                        }
-                        .frame(minHeight: Theme.minimumHitTarget)
-                    }
-                    .disabled(opening != nil)
-                    .accessibilityIdentifier("log-place-result-\(hit.candidate.name)")
-                    .listRowBackground(Roam.paperRaised)
-                }
-            }
-        }
-        .listRowBackground(Roam.paperRaised)
-        }
-        .listStyle(.insetGrouped)
-        .safeAreaInset(edge: .bottom) {
-            if !query.isEmpty {
-                Button("Can't find it? Add it yourself") { addingPlace = true }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .padding(.bottom, Theme.Spacing.s)
-                    .accessibilityIdentifier("log-place-add-custom")
-            }
-        }
-    }
-
-    private func choose(_ place: ExperienceSummary) async {
+    private func choose(_ pick: PlaceSearchPick) async {
         do {
+            let place: ExperienceSummary
+            switch pick {
+            case .city(let city): datingCity = city; return
+            case .region, .country: return
+            case .experience(let known): place = known
+            case .place(let hit): place = try await placeSearch.resolve(hit)
+            }
             var logRequest = try await services.makeLogRequest(experienceID: place.id)
-            logRequest.startsWithDetails = true
-            request = logRequest
-        } catch { self.error = error.roamMessage }
-    }
-
-    private func choose(_ hit: SearchHit) async {
-        opening = hit.id
-        defer { opening = nil }
-        do {
-            guard let model else { return }
-            let summary = try await model.resolve(hit)
-            var logRequest = try await services.makeLogRequest(experienceID: summary.id)
             logRequest.startsWithDetails = true
             request = logRequest
         } catch { self.error = error.roamMessage }

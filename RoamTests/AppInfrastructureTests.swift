@@ -17,11 +17,10 @@ final class AppRouterTests: XCTestCase {
         XCTAssertEqual(router.path(for: .myPlaces), [.globe(id)], "Popping one tab never affects another")
     }
 
-    func testFindPeopleRoutesToMembersSegment() {
+    func testFindPeopleOpensWithinTheCurrentTab() {
         let router = AppRouter(initialTab: .friends)
         router.showFindPeople()
-        XCTAssertEqual(router.searchSegmentRequest, .members)
-        XCTAssertEqual(router.path(for: .friends), [.search], "Search opens within the current tab")
+        XCTAssertEqual(router.path(for: .friends), [.findPeople])
     }
 
     func testResetAfterSetupLandsInYourLists() {

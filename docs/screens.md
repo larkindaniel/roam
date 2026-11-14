@@ -20,9 +20,15 @@ when you change a screen. `docs/design-language.md` covers how they look.
   it.
 - **Back:** a back button at the top left of pushed pages. Opening a place or city from another map stays on the same
   map (see City page), so there's no slide.
-- **Search** (Discover, My Places, city pages) uses the same results list:
-  - Your places, then cities, states and countries, then everything Apple Maps knows.
-  - A country opens its country page, a state its state page, a city its city page and a place its place page.
+- **Search:** there are exactly three, and every search field is one of them (`RoamSearchField`).
+  1. **Worldwide places** (Discover, My Places, Log a place, onboarding, city pickers): your places (My Places only),
+     countries, states, cities, then everything Apple Maps knows, places near you first. No filters. A city picker keeps
+     only the cities; onboarding keeps only places.
+  2. **A city or area** (city page, Add places when logging a city, "Where in Norway?"): only cities near it and places in
+     or around it.
+  3. **Accounts** (Find people, and picking friends for Send, trip invites and "went with", which lists only your
+     friends).
+  - Results look the same everywhere. Tapping one opens it, unless the screen is picking something.
   - The field's own × ends the search, and leaving the tab clears it. On Discover, tapping anywhere but a result ends it
     too.
 

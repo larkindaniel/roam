@@ -72,7 +72,7 @@ struct RootView: View {
                             router.push(.globe(userID))
                         }
                         switch services.options.initialRoute {
-                        case "search": router.openSearch()
+                        case "search": router.selectedTab = .forYou
                         case "explore": router.openExplore()
                         case "profile": router.push(.ownProfile)
                         case "settings": router.push(.settings)
