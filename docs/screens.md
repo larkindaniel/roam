@@ -23,7 +23,8 @@ when you change a screen. `docs/design-language.md` covers how they look.
 - **Search** (Discover, My Places, city pages) uses the same results list:
   - Your places, then cities, states and countries, then everything Apple Maps knows.
   - A country opens its country page, a state its state page, a city its city page and a place its place page.
-  - The field's own × ends the search, and leaving the tab clears it.
+  - The field's own × ends the search, and leaving the tab clears it. On Discover, tapping anywhere but a result ends it
+    too.
 
 ## Onboarding (end of setup)
 

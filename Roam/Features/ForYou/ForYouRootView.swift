@@ -158,6 +158,12 @@ struct ForYouRootView: View {
         .animation(.spring(duration: 0.3), value: searchActive)
     }
 
+    /// Leaves search: clears it and puts the keyboard away.
+    private func endSearch() {
+        query = ""
+        searchFocused = false
+    }
+
     private var searchField: some View {
         HStack(spacing: Theme.Spacing.s) {
             Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
@@ -170,10 +176,7 @@ struct ForYouRootView: View {
                 .accessibilityIdentifier("discover-search")
             // The field's own × ends the search: clears it and puts the keyboard away.
             if searchActive {
-                Button {
-                    query = ""
-                    searchFocused = false
-                } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                Button { endSearch() } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cancel search")
                     .accessibilityIdentifier("discover-search-cancel")
@@ -207,8 +210,13 @@ struct ForYouRootView: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.vertical, Theme.Spacing.s)
                 }
+                // Tapping anywhere but a result ends the search.
+                .contentShape(Rectangle())
+                .onTapGesture { endSearch() }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
+                    .contentShape(Rectangle())
+                    .onTapGesture { if searchFocused { endSearch() } }
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
