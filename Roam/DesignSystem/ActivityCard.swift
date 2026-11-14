@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A friend's log: who and where at the top (their picture, name, then place and date), then their photos and the place
-/// as a standard row, or, with no photos, the place's photo card. Their note sits in between.
+/// A friend's log: who and where at the top (their picture, name, then place and date), their own photos if any (never a
+/// stand-in), their note, then the place as a standard row that opens it.
 struct ActivityCardView: View {
     let item: ActivityItem
     var compact = true
@@ -12,14 +12,7 @@ struct ActivityCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             byline
-            if item.media.isEmpty {
-                // No photos of their own: the place's photo card, as on a city page, with its name on it. It opens the place.
-                DiscoverPlaceCard(experience: item.experience, cornerRadius: Theme.cornerRadius - Theme.Spacing.l, showsRating: false) {
-                    router.push(.experience(item.experience.id))
-                }
-            } else {
-                photos
-            }
+            photos
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
@@ -36,7 +29,7 @@ struct ActivityCardView: View {
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
             }
-            if !item.media.isEmpty { placeRow }
+            placeRow
         }
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
