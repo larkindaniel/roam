@@ -54,7 +54,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
 
-    @GestureState private var dragOffset: CGFloat = 0
+    /// How far the finger has moved the card; it settles back to 0 in the same animation that moves the card to its new
+    /// height, so letting go never jumps.
+    @State private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
     @State private var snapping = false
     @State private var contentScrolled = false
@@ -91,6 +93,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
+            .onChange(of: available, initial: true) { _, height in screenHeight = height }
         }
         .background(Color.black.opacity(seeThrough ? 0 : 1).ignoresSafeArea())
         // With no tab bar below, the card runs down to the bottom of the screen.
@@ -187,7 +190,6 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .padding(.horizontal, sideMargin)
         .padding(.bottom, bottomMargin)
-        .animation(.spring(duration: 0.35), value: detent)
     }
 
     private func scroller(topInset: CGFloat, fadesUnderHeader: Bool) -> some View {
@@ -201,15 +203,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .scrollPosition($scroll)
         .onChange(of: scrollToTopToken) { _, _ in withAnimation { scroll.scrollTo(edge: .top) } }
-        // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+        // Fully up, pulling down past the top of the content lowers the card.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, new in
             contentScrolled = new > 8
-            guard !snapping, detent != .peek else { return }
-            if new < -70 {
-                snap(to: detent == .full ? .half : .peek)
-            } else if detent == .half, new > 30, new > old {
-                snap(to: .full)
-            }
+            guard !snapping, detent == .full, dragOffset == 0 else { return }
+            if new < -60 { snap(to: .half) }
         }
         // Content fades out as it scrolls up under the header instead of being cut off at a hard edge.
         .mask {
@@ -219,8 +217,31 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 Rectangle()
             }
         }
-        .scrollDisabled(detent == .peek)
+        // Short of fully up, the content doesn't scroll: dragging anywhere on the card moves the card, as in Apple Maps.
+        .scrollDisabled(detent != .full)
+        .simultaneousGesture(cardDrag, isEnabled: detent != .full)
         .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
+    }
+
+    /// The screen height, for working out where a thrown card lands.
+    @State private var screenHeight: CGFloat = 0
+
+    /// Drags the card with the finger, then settles it at the nearest height, carried on by how fast it was thrown.
+    private var cardDrag: some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { dragOffset = value.translation.height }
+            }
+            .onEnded { value in
+                let current = detent.height(in: screenHeight, peek: peek)
+                let target = current - value.predictedEndTranslation.height
+                let next = GlobeSheetDetent.allCases.min {
+                    abs($0.height(in: screenHeight, peek: peek) - target) < abs($1.height(in: screenHeight, peek: peek) - target)
+                } ?? .half
+                settle(at: next)
+            }
     }
 
     private var grabber: some View {
@@ -260,19 +281,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
         // The minimised height is measured while the header sits here.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+        // Only while minimised: the header changes size as the card rises, and the minimised height mustn't move mid-drag.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if detent == .peek && dragOffset == 0 { headerHeight = $0 } }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .updating($dragOffset) { value, offset, _ in offset = value.translation.height }
-                .onEnded { value in
-                    let target = detent.height(in: available, peek: peek) - value.predictedEndTranslation.height
-                    setDetent(GlobeSheetDetent.allCases.min {
-                        abs($0.height(in: available, peek: peek) - target) < abs($1.height(in: available, peek: peek) - target)
-                    } ?? .half)
-                }
-        )
+        .gesture(cardDrag)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(headerLabel)
         .accessibilityHint(detent == .full ? "Shows the map" : "Minimizes the map")
@@ -280,11 +293,18 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .accessibilityIdentifier(headerIdentifier)
     }
 
-    private func setDetent(_ next: GlobeSheetDetent) {
+    private func setDetent(_ next: GlobeSheetDetent) { settle(at: next) }
+
+    /// Moves the card to a height and lets go of any drag in the same animation, with no bounce.
+    private func settle(at next: GlobeSheetDetent) {
         if UIAccessibility.isReduceMotionEnabled {
             detent = next
+            dragOffset = 0
         } else {
-            withAnimation(.spring(duration: 0.35)) { detent = next }
+            withAnimation(.spring(duration: 0.32, bounce: 0)) {
+                detent = next
+                dragOffset = 0
+            }
         }
     }
 }
