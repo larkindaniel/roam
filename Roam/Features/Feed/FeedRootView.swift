@@ -178,7 +178,8 @@ struct FeedCard: View {
                 onLike(!item.likedByViewer)
             }
             Button { showsComments = true } label: {
-                Label("\(item.commentCount)", systemImage: "bubble.right")
+                // The count tucked close to its icon.
+                HStack(spacing: 4) { Image(systemName: "bubble.right"); Text("\(item.commentCount)") }
                     .monospacedDigit()
                     .foregroundStyle(onPhoto ? Color.white : Roam.ink)
                     .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
@@ -223,7 +224,7 @@ struct LikeButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label("\(count)", systemImage: liked ? "heart.fill" : "heart")
+            HStack(spacing: 4) { Image(systemName: liked ? "heart.fill" : "heart"); Text("\(count)") }
                 .monospacedDigit()
                 .foregroundStyle(tint)
                 .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
