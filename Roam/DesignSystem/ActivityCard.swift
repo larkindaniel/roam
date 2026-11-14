@@ -81,7 +81,8 @@ struct ActivityCardView: View {
                 let media = item.media.sorted { $0.position < $1.position }
                 PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, square: true)
             } else if let url = item.experience.photoURL {
-                PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)
+                // The credit shows on the place's own page, a tap away.
+                PlaceGallery(items: [.photo(url, credit: nil)], placeName: item.experience.name)
             }
         }
         .overlay(alignment: .top) {
