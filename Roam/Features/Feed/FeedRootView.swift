@@ -170,12 +170,14 @@ struct FeedCard: View {
     let onLike: (Bool) -> Void
     @Environment(AppRouter.self) private var router
 
+    @State private var showsComments = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             ActivityCardView(item: item)
             HStack(spacing: Theme.Spacing.m) {
                 LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending) { onLike(!item.likedByViewer) }
-                Button { router.push(.activity(item.id)) } label: {
+                Button { showsComments = true } label: {
                     Label("\(item.commentCount)", systemImage: "bubble.left")
                         .monospacedDigit()
                         .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
@@ -188,6 +190,17 @@ struct FeedCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .roamCard()
         .accessibilityElement(children: .contain)
+        .sheet(isPresented: $showsComments) {
+            NavigationStack {
+                ActivityDetailView(activityID: item.id, commentsOnly: true)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button { showsComments = false } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
         .accessibilityIdentifier("feed-card-\(item.id.uuidString)")
     }
 }

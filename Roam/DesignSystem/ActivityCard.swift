@@ -60,10 +60,10 @@ struct ActivityCardView: View {
     @ViewBuilder private var photos: some View {
         if let visitID = item.visitID, !item.media.isEmpty {
             let media = item.media.sorted { $0.position < $1.position }
-            PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name) { path in
+            PlaceGallery(items: media.map { .visitPhoto(path: $0.path) }, placeName: item.experience.name, onOpenVisitPhoto: { path in
                 guard let photo = media.first(where: { $0.path == path }) else { return }
                 router.push(.visitPhoto(experienceID: item.experience.id, visitID: visitID, photoID: photo.id))
-            }
+            }, square: true)
         } else if let url = item.experience.photoURL {
             Button { router.push(.experience(item.experience.id)) } label: {
                 PlaceGallery(items: [.photo(url, credit: item.experience.photoCredit)], placeName: item.experience.name)

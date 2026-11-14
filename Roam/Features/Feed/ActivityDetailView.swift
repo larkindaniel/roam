@@ -3,6 +3,8 @@ import SwiftUI
 /// S23: full post, likes and flat comments with a composer pinned above the keyboard.
 struct ActivityDetailView: View {
     let activityID: UUID
+    /// Opened from a card's comment button: just the comments and the field, as a sheet. The card itself is never a page.
+    var commentsOnly = false
 
     @Environment(AppServices.self) private var services
     @Environment(AppRouter.self) private var router
@@ -23,7 +25,7 @@ struct ActivityDetailView: View {
         .background(Theme.groupedCanvas)
         // The comment field sits at the bottom, where the tab bar would cover it.
         .roamTabBar(hidden: true)
-        .navigationTitle("Post")
+        .navigationTitle(commentsOnly ? "Comments" : "Post")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let item = model?.item {
@@ -96,6 +98,7 @@ struct ActivityDetailView: View {
         } else if let item = model.item {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                    if !commentsOnly {
                     VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                         ActivityCardView(item: item, compact: false)
                         HStack(spacing: Theme.Spacing.l) {
@@ -108,6 +111,7 @@ struct ActivityDetailView: View {
                         }
                     }
                     .roamCard()
+                    }
                     if let tagError, let visitID = item.visitID {
                         InlineRetryView(message: tagError) { Task { await removeTag(visitID) } }
                     }
@@ -134,7 +138,7 @@ struct ActivityDetailView: View {
 
     private func comments(_ model: ActivityDetailModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("Comments").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader)
+            if !commentsOnly { Text("Comments").font(.roamTitle(.title3)).accessibilityAddTraits(.isHeader) }
             if let error = model.commentsError {
                 InlineRetryView(message: error) { Task { await model.load() } }
             }

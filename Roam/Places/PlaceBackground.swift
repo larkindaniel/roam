@@ -169,6 +169,8 @@ struct PlaceGallery: View {
     let placeName: String
     var lookAround: MKLookAroundScene?
     var onOpenVisitPhoto: ((String) -> Void)? = nil
+    /// Square, as wide as its card (a friend's own photos on the Friends tab); otherwise 220 points tall.
+    var square = false
 
     @State private var index = 0
     @State private var showsLookAround = false
@@ -187,7 +189,8 @@ struct PlaceGallery: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .background(Roam.fill)
                 .frame(maxWidth: .infinity)
-                .frame(height: 220)
+                .frame(height: square ? nil : 220)
+                .aspectRatio(square ? 1 : nil, contentMode: .fit)
                 // Concentric with the card around it: its 38-point corners less the 16-point inset.
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 if items.count > 1 {
@@ -220,7 +223,7 @@ struct PlaceGallery: View {
                     .accessibilityIdentifier("place-look-around")
                 }
             }
-            .frame(height: 220)
+            .frame(height: square ? nil : 220)
             switch current {
             case .lookAround:
                 Text("Tap to look around in Apple Maps").font(.caption2).foregroundStyle(Roam.inkMuted)
