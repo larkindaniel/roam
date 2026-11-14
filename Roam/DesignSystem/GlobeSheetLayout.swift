@@ -113,7 +113,9 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     private static var topClearance: CGFloat { 12 }
     private static var contentInset: CGFloat { 20 }
 
-    private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
+    /// Minimised as a bubble. It stays the bubble while it's dragged up (it just grows), because swapping its layout
+    /// mid-drag removed the view under the finger and iOS cancelled the swipe.
+    private var isFloating: Bool { floatsWhenPeeking && detent == .peek }
 
     /// Like Apple Maps: the minimised bubble floats with a wide margin and is most see-through; halfway up it has
     /// a narrow margin and less glass; fully up it is solid and runs to the edges of the screen.
@@ -180,11 +182,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                     // The grabber, title and buttons stay put; the rest scrolls beneath them.
                     handle(available: available)
                     scroller(topInset: 0, fadesUnderHeader: true)
-                        .frame(height: floating ? 0 : nil)
+                        .frame(height: floating && dragOffset == 0 ? 0 : nil)
                 }
             }
         }
-        .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
+        .frame(height: floating && dragOffset == 0 ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
         // Short of fully up, the swipe belongs to the whole card, which stays put while its insides swap between the
