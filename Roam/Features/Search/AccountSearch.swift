@@ -189,6 +189,8 @@ struct FindPeopleView: View {
                 .accessibilityLabel("Back")
                 // White glass, the same as Discover's search.
                 RoamSearchField(prompt: "Search for friends", text: $query, focus: $focused, style: .glass, identifier: "member-search-field")
+                // The beta's bug button, always right-most.
+                BugReportButton()
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.s)

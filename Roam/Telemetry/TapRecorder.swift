@@ -58,6 +58,7 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         defer { state = .failed }
         guard let start, let window = view as? UIWindow else { return }
         let began = began
+        let touchedAt = Date()
         let system = Self.uikitName(at: start, in: window)
         // iOS's own controls (back, toolbar buttons, the keyboard, map pins) can't be .tapID buttons: log them now, so
         // they come before what they cause.
@@ -71,12 +72,13 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
             return
         }
         // A named button reports itself right after this; only log here if none does.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             if let named = Self.lastNamedAt, named >= began { return }
             var props = ["x": "\(Int(start.x))", "y": "\(Int(start.y))"]
             if let label = system?.label, system?.identifier != nil { props["label"] = label }
             if let kind = system?.kind { props["view"] = kind }
-            Log.tap(system?.identifier ?? system?.label ?? system?.known ?? "unnamed", props)
+            // Logged a moment later, but with the time it happened.
+            Log.tap(system?.identifier ?? system?.label ?? system?.known ?? "unnamed", props, at: touchedAt)
         }
     }
 

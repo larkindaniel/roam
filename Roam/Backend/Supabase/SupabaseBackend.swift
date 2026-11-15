@@ -112,28 +112,32 @@ final class SupabaseBackend: @unchecked Sendable {
     /// Logs the action with the call's ids, switches and numbers. Text (notes, names, messages) never goes in.
     static func logAction(_ function: String, _ params: some Encodable) {
         guard let action = actionNames[function] else { return }
-        let textKeys: Set<String> = ["name", "handle", "display_name", "bio", "message", "text", "note", "query", "title",
+        let textKeys: Set<String> = ["handle", "display_name", "displayName", "note", "privateNote", "caption", "bio", "message", "text", "query", "title",
                                      "description", "comment", "body", "email", "password", "reason_text", "details"]
         var props: [String: String] = [:]
         if let data = try? RoamJSON.encoder.encode(params),
            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
-            for (key, value) in object {
+            // Ids, switches, numbers and short codes, one level into anything sent as a bundle (a log, a city).
+            func add(_ key: String, _ value: Any, depth: Int) {
                 let name = key.hasPrefix("p_") ? String(key.dropFirst(2)) : key
-                if textKeys.contains(name) { continue }
+                let leaf = name.split(separator: ".").last.map(String.init) ?? name
+                if textKeys.contains(leaf) || props.count >= 24 { return }
                 switch value {
                 case let flag as Bool: props[name] = flag ? "true" : "false"
                 case let number as NSNumber: props[name] = number.stringValue
-                case let object as [String: Any]:
-                    // A place, city or similar sent whole: just what says which one it is.
-                    for field in ["id", "name", "countryCode", "region", "kind"] {
-                        if let value = object[field], !(value is NSNull) { props["\(name).\(field)"] = "\(value)".prefix(60).description }
-                    }
-                case let text as String where UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }):
-                    // Ids and short codes ("request", "accepted", "CA", "2026-11-15"), not free text.
+                case let nested as [String: Any] where depth == 0:
+                    let prefix = (name == "request" || name == "payload") ? "" : "\(name)."
+                    for (k, v) in nested { add(prefix + k, v, depth: 1) }
+                case let text as String where leaf == "name" && depth == 1 && text.count <= 60:
+                    // A place's or city's name says which one it was (a list's name, typed by the member, isn't kept).
+                    props[name] = text
+                case let text as String where leaf != "name" && (UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" })):
+                    // Ids and short codes ("liked", "friends", "CA", "2026-11-15"), not free text.
                     props[name] = text
                 default: break
                 }
             }
+            for (key, value) in object { add(key, value, depth: 0) }
         }
         Log.action(action, props)
     }

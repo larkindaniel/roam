@@ -21,7 +21,7 @@ enum Log {
     typealias Props = [String: String]
 
     static func action(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.action, name, props: props) }
-    static func tap(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.tap, name, props: props) }
+    static func tap(_ name: String, _ props: Props = [:], at: Date? = nil) { Telemetry.shared.record(.tap, name, at: at, props: props) }
     static func nav(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.nav, name, props: props) }
     static func lifecycle(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.lifecycle, name, props: props) }
 
@@ -218,13 +218,13 @@ final class Telemetry: @unchecked Sendable {
     // MARK: Recording
 
     func record(_ kind: TelemetryEvent.Kind, _ name: String, screen: String? = nil, durationMs: Int? = nil,
-                props: [String: String] = [:]) {
+                at: Date? = nil, props: [String: String] = [:]) {
         let event: TelemetryEvent? = lock.withLock {
             if kind == .screen { lastShownScreen = name }
             if kind == .tap { lastTapAt = .now }
             seq += 1
             let trimmed = props.isEmpty ? nil : props.mapValues { String($0.prefix(500)) }
-            let event = TelemetryEvent(session: session.id, seq: seq, at: Date(), kind: kind, name: String(name.prefix(120)),
+            let event = TelemetryEvent(session: session.id, seq: seq, at: at ?? Date(), kind: kind, name: String(name.prefix(120)),
                                        screen: screen ?? overlays.last ?? pageScreen ?? lastShownScreen, durationMs: durationMs, props: trimmed)
             recent.append(event)
             if recent.count > 300 { recent.removeFirst(recent.count - 300) }

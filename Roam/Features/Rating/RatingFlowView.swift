@@ -403,7 +403,7 @@ struct RatingFlowView: View {
                 }
             }
         }
-        .screenIdentifier("rating-details", sheet: true)
+        .screenIdentifier("rating-details")
     }
 
     /// Near one of your home cities, a visit goes with that home. Otherwise it joins a trip covering this city
@@ -464,7 +464,7 @@ struct RatingFlowView: View {
             .frame(minHeight: Theme.minimumHitTarget)
             .padding(.top, Theme.Spacing.s)
         }
-        .screenIdentifier("rating-comparison", sheet: true)
+        .screenIdentifier("rating-comparison")
     }
 
     private func comparisonCard(name: String, city: String?, identifier: String, action: @escaping () -> Void) -> some View {
@@ -552,6 +552,7 @@ struct FeelingSlider: View {
                     }
                     .onEnded { value in
                         let index = min(max(Int(value.location.x / segment), 0), stops.count - 1)
+                        TapRecorder.named("feeling.\(stops[index].rawValue)")
                         pick(stops[index])
                     }
             )
@@ -616,6 +617,7 @@ struct OptionSlider: View {
                         let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
                         let isTap = abs(value.translation.width) < 6
                         if isTap, startSelection == .some(option) { selection = nil } else { selection = option }
+                        TapRecorder.named("option.\(option.lowercased().replacingOccurrences(of: " ", with: "-"))")
                         startSelection = nil
                     }
             )

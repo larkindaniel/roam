@@ -53,10 +53,10 @@ struct EmptyStateView: View {
             }
             VStack(spacing: Theme.Spacing.s) {
                 if let primaryTitle, let primaryAction {
-                    Button(primaryTitle, action: primaryAction).tapID("stateviews.button").buttonStyle(PrimaryButtonStyle(compact: true))
+                    Button(primaryTitle, action: primaryAction).tapID("empty-state.\(primaryTitle.lowercased().replacingOccurrences(of: " ", with: "-"))").buttonStyle(PrimaryButtonStyle(compact: true))
                 }
                 if let secondaryTitle, let secondaryAction {
-                    Button(secondaryTitle, action: secondaryAction).tapID("stateviews.button-2").buttonStyle(QuietButtonStyle())
+                    Button(secondaryTitle, action: secondaryAction).tapID("empty-state.\(secondaryTitle.lowercased().replacingOccurrences(of: " ", with: "-"))").buttonStyle(QuietButtonStyle())
                 }
             }
             .frame(maxWidth: 320)

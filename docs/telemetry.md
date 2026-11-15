@@ -69,11 +69,11 @@ update telemetry_settings set event_retention_days = 14;       -- how long event
 -- A bug report, and what the tester did up to it (with their previous session first, if they reopened the app to report)
 select * from bug_reports order by created_at desc;
 select session, seq, at, kind, name, screen, duration_ms, props
-from bug_report_trail where report_id = '…' and kind <> 'network' order by part, seq;
+from bug_report_trail where report_id = '…' and kind <> 'network' order by part, at, seq;
 
 -- The same report's network calls
 select session, seq, at, name, duration_ms, props ->> 'status' as status, props
-from bug_report_trail where report_id = '…' and kind = 'network' order by part, seq;
+from bug_report_trail where report_id = '…' and kind = 'network' order by part, at, seq;
 
 -- Everything someone did in a session
 select seq, at, kind, name, screen, duration_ms, props from app_events where session_id = '…' order by seq;
