@@ -84,7 +84,7 @@ struct ExperienceRow: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { onOpen?() }
+        .onTapGesture { TapRecorder.named("experiencerow.info"); onOpen?() }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(onOpen == nil ? [] : .isButton)
         .accessibilityAction { onOpen?() }
@@ -100,7 +100,7 @@ struct ExperienceRow: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { onOpen?() }
+        .onTapGesture { TapRecorder.named("experiencerow.badges"); onOpen?() }
     }
 
     private var titleText: Text {
@@ -141,7 +141,7 @@ struct ExperienceRow: View {
                     ProgressView().controlSize(.mini)
                     Text(target ? "Saving" : "Removing")
                 }
-            }
+            }.tapID("experiencerow.saving")
             .buttonStyle(PillButtonStyle(isSelected: target))
             .disabled(true)
         case .saved, .notSaved:
@@ -179,7 +179,7 @@ struct MemberRowView: View {
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
-            .onTapGesture { if MemberProfiles.available { onOpen?() } }
+            .onTapGesture { TapRecorder.named("experiencerow.body"); if MemberProfiles.available { onOpen?() } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(MemberProfiles.available && onOpen != nil ? .isButton : [])
             .accessibilityAction { if MemberProfiles.available { onOpen?() } }

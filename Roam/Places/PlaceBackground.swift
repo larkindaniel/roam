@@ -264,7 +264,7 @@ struct PlaceGallery: View {
             if let onOpenVisitPhoto {
                 Button { onOpenVisitPhoto(path) } label: {
                     RemoteImageView(path: path, accessibilityLabel: "Photo from a visit to \(placeName)")
-                }
+                }.tapID("placebackground.photo-from-a-visit-to")
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the photo viewer")
             } else {

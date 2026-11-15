@@ -101,7 +101,7 @@ struct PlaceBrowserView: View {
                         // A finger-sized target around the small dot.
                         .frame(width: 36, height: 36)
                         .contentShape(Circle())
-                        .onTapGesture { show(pin.place.id) }
+                        .onTapGesture { TapRecorder.named("experiencedetailview.map"); show(pin.place.id) }
                         .accessibilityAddTraits(.isButton)
                 }
                 .annotationTitles(.hidden)
@@ -351,7 +351,7 @@ struct ExperienceDetailView: View {
                                 .frame(height: 24)
                                 .background(Capsule().fill(Roam.ink.opacity(0.08)))
                                 .contentShape(Capsule())
-                                .onTapGesture { Task { await openCity(summary) } }
+                                .onTapGesture { TapRecorder.named("experiencedetailview.content"); Task { await openCity(summary) } }
                                 .accessibilityAddTraits(.isButton)
                                 .accessibilityAction { Task { await openCity(summary) } }
                                 .accessibilityLabel("Open \(city)")
@@ -369,7 +369,7 @@ struct ExperienceDetailView: View {
                     .frame(width: 38, height: 38)
                     .background(Circle().fill(PlaceState.planned.markerColor))
                     .contentShape(Circle().inset(by: -4))
-                    .onTapGesture { choosingMapsApp = true }
+                    .onTapGesture { TapRecorder.named("experiencedetailview.content-2"); choosingMapsApp = true }
                 // Sit in the bubble's rounded end: the same gap on the right as above and below.
                 .padding(.trailing, sheetDetent == .peek ? -(Theme.Spacing.l - Theme.Spacing.s) : 0)
                 .accessibilityAddTraits(.isButton)
@@ -404,7 +404,7 @@ struct ExperienceDetailView: View {
                                 Button { router.push(.member(share.sender.id)) } label: {
                                     Label("\(share.sender.displayName) sent you this", systemImage: "paperplane")
                                         .font(.subheadline.weight(.semibold))
-                                }
+                                }.tapID("experiencedetailview.paperplane")
                                 .buttonStyle(.plain)
                                 if !share.message.isEmpty { Text(share.message).font(.subheadline) }
                             }
@@ -597,7 +597,7 @@ struct ExperienceDetailView: View {
         }
         .frame(minWidth: 52)
         .contentShape(Rectangle())
-        .onTapGesture { if !inactive { action() } }
+        .onTapGesture { TapRecorder.named("experiencedetailview.circleaction"); if !inactive { action() } }
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { action() }

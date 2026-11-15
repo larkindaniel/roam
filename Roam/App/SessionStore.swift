@@ -137,8 +137,6 @@ final class SessionStore {
     /// Routes an error from any feature: an expired session keeps drafts and asks for sign-in.
     @discardableResult
     func handle(_ error: Error, routeIntent: AppRoute? = nil) -> String {
-        // Every error a screen shows passes through here, so they all land in the beta's trail.
-        Log.error("shown", error)
         if error as? RoamError == .sessionExpired || error as? RoamError == .notSignedIn {
             markSessionExpired(routeIntent: routeIntent)
         }

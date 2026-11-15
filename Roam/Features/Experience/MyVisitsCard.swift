@@ -101,7 +101,7 @@ struct SwipeToDelete<Content: View>: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Capsule().fill(.red))
-                }
+                }.tapID("myvisitscard.trash-fill")
                 .buttonStyle(.plain)
                 .frame(width: max(0, -offset - Theme.Spacing.s))
                 .padding(.vertical, Theme.Spacing.s)

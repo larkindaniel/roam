@@ -277,7 +277,7 @@ struct TripDetailView: View {
                     .frame(minHeight: Theme.minimumHitTarget)
                     .tapID("trip-invite")
             } else {
-                Button("Leave trip", role: .destructive) { confirmingLeave = true }
+                Button("Leave trip", role: .destructive) { confirmingLeave = true }.tapID("tripviews.leave-trip")
                     .frame(minHeight: Theme.minimumHitTarget)
             }
         }
@@ -794,7 +794,7 @@ extension View {
                         .padding(.horizontal, RoamTabBar.sideMargin)
                         // A touch higher than the tab bar's gap.
                         .padding(.bottom, RoamTabBar.margin + 6)
-                        .accessibilityIdentifier(identifier)
+                        .tapID(identifier)
                     }
                     .ignoresSafeArea(edges: .bottom)
                 }

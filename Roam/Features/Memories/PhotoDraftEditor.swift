@@ -56,7 +56,7 @@ struct PhotoDraftEditor: View {
                                 Text("Remove").foregroundStyle(Theme.disliked)
                             }
                                 .disabled(restoring)
-                                .accessibilityIdentifier("photo-remove-\(asset.id.uuidString)")
+                                .tapID("photo-remove-\(asset.id.uuidString)")
                             Spacer(minLength: 0)
                             Button { model.move(fromOffsets: IndexSet(integer: index), toOffset: index - 1) } label: {
                                 Image(systemName: "arrow.up").frame(width: 44, height: 44)
@@ -212,7 +212,7 @@ struct PhotoCarousel<Accessory: View>: View {
                     }
                     .overlay(alignment: .bottomLeading) {
                         if asset.status == .failed {
-                            Button("Retry") { Task { await model.retry(assetID: asset.id) } }
+                            Button("Retry") { Task { await model.retry(assetID: asset.id) } }.tapID("photodrafteditor.retry")
                                 .font(.subheadline.weight(.semibold))
                                 .buttonStyle(.borderedProminent)
                                 .padding(Theme.Spacing.l)
@@ -231,7 +231,7 @@ struct PhotoCarousel<Accessory: View>: View {
             } label: {
                 Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.white)
                     .frame(width: 32, height: 32).background(Circle().fill(.black.opacity(0.5)))
-            }
+            }.tapID("photodrafteditor.xmark")
             .buttonStyle(.plain)
             .padding(Theme.Spacing.l)
             .accessibilityLabel("Remove this photo")

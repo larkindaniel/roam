@@ -12,7 +12,7 @@ struct SignUpView: View {
                           hint: "\(Limits.passwordMin)–\(Limits.passwordMax) characters. A passphrase works well.", identifier: "password-field")
             if let error = model.error { ErrorText(error) }
         } footer: {
-            Button("I already have an account") { model.path = [.signIn] }
+            Button("I already have an account") { model.path = [.signIn] }.tapID("emailauthviews.i-already-have-an-account")
                 .buttonStyle(QuietButtonStyle())
         }
         .navigationTitle("")
@@ -86,7 +86,7 @@ struct ResetCodeView: View {
                 .onChange(of: model.code) { _, value in model.code = String(value.filter(\.isNumber).prefix(6)) }
             if let error = model.error { ErrorText(error) }
         } footer: {
-            Button("Send another code") { Task { await model.requestReset() } }
+            Button("Send another code") { Task { await model.requestReset() } }.tapID("emailauthviews.send-another-code")
                 .buttonStyle(QuietButtonStyle())
                 .disabled(model.busy)
         }
@@ -110,7 +110,7 @@ struct SetNewPasswordView: View {
                 RoamTextField(title: "New password", text: $password, isSecure: true, contentType: .newPassword, identifier: "new-password-field")
                 if let error { ErrorText(error) }
             } footer: {
-                Button("Cancel and sign out") { Task { await session.signOut() } }
+                Button("Cancel and sign out") { Task { await session.signOut() } }.tapID("emailauthviews.cancel-and-sign-out")
                     .buttonStyle(QuietButtonStyle())
             }
         }

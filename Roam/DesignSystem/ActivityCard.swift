@@ -39,7 +39,7 @@ struct ActivityCardView: View {
                     .lineLimit(compact && !expanded && item.note.count >= 160 ? 3 : nil)
                     .fixedSize(horizontal: false, vertical: true)
                 if compact && item.note.count >= 160 && !expanded {
-                    Button("More") { expanded = true }
+                    Button("More") { expanded = true }.tapID("activitycard.more")
                         .font(.footnote.weight(.semibold))
                         .frame(minHeight: Theme.minimumHitTarget)
                 }
@@ -98,7 +98,7 @@ struct ActivityCardView: View {
                     AvatarView(member: person, size: 28)
                         .overlay { if people.count > 1 { Circle().stroke(onPhoto ? Color.black.opacity(0.35) : Roam.paper, lineWidth: 1.5) } }
                         .contentShape(Circle())
-                        .onTapGesture { openProfile(person) }
+                        .onTapGesture { TapRecorder.named("activitycard.byline"); openProfile(person) }
                         .zIndex(Double(3 - index))
                 }
             }
@@ -109,19 +109,19 @@ struct ActivityCardView: View {
                     date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { openProfile(item.author) }
+                .onTapGesture { TapRecorder.named("activitycard.byline-2"); openProfile(item.author) }
             } else {
                 VStack(alignment: .leading, spacing: -1) {
                     HStack(spacing: 4) {
                         Text(item.author.displayName).font(.subheadline.weight(.semibold))
-                            .onTapGesture { openProfile(item.author) }
+                            .onTapGesture { TapRecorder.named("activitycard.byline-3"); openProfile(item.author) }
                         Text("with").font(.subheadline)
                         if others.count == 1 {
                             Text(others[0].displayName).font(.subheadline.weight(.semibold))
-                                .onTapGesture { openProfile(others[0]) }
+                                .onTapGesture { TapRecorder.named("activitycard.byline-4"); openProfile(others[0]) }
                         } else {
                             Text("\(others.count) others").font(.subheadline.weight(.semibold))
-                                .onTapGesture { openCollaborators() }
+                                .onTapGesture { TapRecorder.named("activitycard.byline-5"); openCollaborators() }
                                 .accessibilityAddTraits(.isButton)
                                 .accessibilityIdentifier("activity-collaborators")
                         }
@@ -163,8 +163,8 @@ struct ActivityCardView: View {
         }
         .contentShape(Rectangle())
         // Double first, so a single tap waits to be sure it isn't one.
-        .onTapGesture(count: 2) { onDoubleTap?() }
-        .onTapGesture { onTap?() }
+        .onTapGesture(count: 2) { TapRecorder.named("activitycard.photos"); onDoubleTap?() }
+        .onTapGesture { TapRecorder.named("activitycard.photos-2"); onTap?() }
         .overlay(alignment: .top) {
             byline(onPhoto: true)
                 // The photo's own corners, so the fade follows them.
@@ -248,7 +248,7 @@ private struct CollaboratorsSheet: View {
         ZStack {
             Color.black.opacity(shown ? 0.4 : 0)
                 .ignoresSafeArea()
-                .onTapGesture { close() }
+                .onTapGesture { TapRecorder.named("activitycard.body"); close() }
                 .accessibilityLabel("Close")
                 .accessibilityAddTraits(.isButton)
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -270,7 +270,7 @@ private struct CollaboratorsSheet: View {
                             }
                             .padding(.vertical, Theme.Spacing.s)
                             .contentShape(Rectangle())
-                        }
+                        }.tapID("activitycard.button")
                         .buttonStyle(.plain)
                         if person.id != people.last?.id { RowSeparator(inset: 40 + Theme.Spacing.m) }
                     }

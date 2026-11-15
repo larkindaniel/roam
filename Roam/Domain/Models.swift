@@ -275,7 +275,15 @@ enum RoamError: Error, Equatable, LocalizedError {
 }
 
 extension Error {
+    /// What to tell the member. Making it logs the error to the beta's trail: anything a screen shows passes here.
     var roamMessage: String {
+        let message = quietRoamMessage
+        Telemetry.shared.recordShownError(self, message: message)
+        return message
+    }
+
+    /// The same message without logging it (for the log itself).
+    var quietRoamMessage: String {
         if let roam = self as? RoamError { return roam.errorDescription ?? "Something went wrong." }
         if let local = self as? LocalizedError, let description = local.errorDescription { return description }
         return "Something went wrong. Try again."

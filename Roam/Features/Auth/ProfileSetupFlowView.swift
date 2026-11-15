@@ -196,7 +196,7 @@ private struct SetupSteps: View {
                             Button { model.removeHome(city) } label: {
                                 Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
                                     .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
-                            }
+                            }.tapID("profilesetupflowview.xmark")
                             .buttonStyle(.plain)
                             .accessibilityLabel("Remove \(city.name)")
                         }

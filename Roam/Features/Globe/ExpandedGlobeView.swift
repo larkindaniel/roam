@@ -208,7 +208,7 @@ struct ExpandedGlobeView: View {
                 Spacer()
                 Button { selected = nil } label: {
                     Image(systemName: "xmark").frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                }
+                }.tapID("expandedglobeview.xmark")
                 .accessibilityLabel("Close")
             }
             Button("View place") { router.push(.experience(pin.experienceID)) }
@@ -238,7 +238,7 @@ struct ExpandedGlobeView: View {
                                 Spacer()
                                 Text("\(country.count)").monospacedDigit().foregroundStyle(Theme.secondaryText)
                             }
-                        }
+                        }.tapID("expandedglobeview.button")
                         .accessibilityElement(children: .combine)
                     }
                 }

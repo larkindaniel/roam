@@ -81,7 +81,7 @@ struct LogPostView: View {
                     .monospacedDigit()
                     .foregroundStyle(.white)
                     .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-            }
+            }.tapID("logpostview.bubble-right")
             .buttonStyle(.plain)
             .accessibilityLabel("Comment")
         }
@@ -112,7 +112,7 @@ struct LogPostView: View {
                 row(comment, deleting: model.deletingCommentID == comment.id)
             }
             if model.commentsCursor != nil {
-                Button(model.loadingMoreComments ? "Loading…" : "Show more") { Task { await model.loadMoreComments() } }
+                Button(model.loadingMoreComments ? "Loading…" : "Show more") { Task { await model.loadMoreComments() } }.tapID("logpostview.loading")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Roam.inkMuted)
                     .disabled(model.loadingMoreComments)
@@ -125,7 +125,7 @@ struct LogPostView: View {
     private func commentRow(author: MemberSummary, date: Date, body: String, deleting: Bool = false) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
             AvatarView(member: author, size: 36)
-                .onTapGesture { router.push(.member(author.id)) }
+                .onTapGesture { TapRecorder.named("logpostview.commentrow"); router.push(.member(author.id)) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: Theme.Spacing.s) {
                     Text(author.displayName).font(.subheadline.weight(.semibold))

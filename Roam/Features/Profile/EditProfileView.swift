@@ -293,7 +293,7 @@ struct EditProfileView: View {
                     // starts typing, not just on the first line.
                     .padding(.vertical, 11)
                     .contentShape(Rectangle())
-                    .onTapGesture { bioFocused = true }
+                    .onTapGesture { TapRecorder.named("editprofileview.model"); bioFocused = true }
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .accessibilityIdentifier("edit-profile-bio")
                 issue(model.bioIssue)

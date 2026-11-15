@@ -75,7 +75,7 @@ struct SettingsView: View {
                             .font(.subheadline.weight(.semibold))
                             .frame(minHeight: Theme.minimumHitTarget)
                             .tapID("settings-retry")
-                        Button("Dismiss") { settings.dismissError() }
+                        Button("Dismiss") { settings.dismissError() }.tapID("settingsview.dismiss")
                             .font(.subheadline)
                             .frame(minHeight: Theme.minimumHitTarget)
                     }

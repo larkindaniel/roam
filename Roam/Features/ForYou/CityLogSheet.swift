@@ -174,7 +174,7 @@ struct CityLogSheet: View {
             Spacer(minLength: 0)
             Button { places.removeAll { $0.id == pick.id } } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkFaint)
-            }
+            }.tapID("citylogsheet.xmark-circle-fill")
             .buttonStyle(.plain)
             .accessibilityLabel("Remove")
         }

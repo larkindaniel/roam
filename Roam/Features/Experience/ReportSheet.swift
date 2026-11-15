@@ -52,7 +52,7 @@ struct ReportSheet: View {
                             // The field fills its whole box, so a tap anywhere in it starts typing.
                             .padding(.vertical, 11)
                             .contentShape(Rectangle())
-                            .onTapGesture { detailsFocused = true }
+                            .onTapGesture { TapRecorder.named("reportsheet.body"); detailsFocused = true }
                             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .accessibilityIdentifier("report-details")
                     } footer: {

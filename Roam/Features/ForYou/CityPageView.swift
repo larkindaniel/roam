@@ -259,7 +259,7 @@ struct CityPageView: View {
             .frame(width: 38, height: 38)
             .background(Circle().fill(PlaceState.planned.markerColor))
             .contentShape(Circle().inset(by: -4))
-            .onTapGesture { choosingMapsApp = true }
+            .onTapGesture { TapRecorder.named("citypageview.directionsbutton"); choosingMapsApp = true }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { choosingMapsApp = true }
             .accessibilityLabel("Directions to \(destination.name)")

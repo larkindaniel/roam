@@ -177,7 +177,7 @@ struct RatingFlowView: View {
                     .disabled(!canSave)
                     .padding(.horizontal, RoamTabBar.sideMargin)
                     .padding(.bottom, RoamTabBar.margin + 6)
-                    .accessibilityIdentifier("rating-okay")
+                    .tapID("rating-okay")
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -242,7 +242,7 @@ struct RatingFlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 44)
         .contentShape(Rectangle())
-        .onTapGesture { showsDate = true }
+        .onTapGesture { TapRecorder.named("ratingflowview.datebubble"); showsDate = true }
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("rating-edit-date")
         .roamCard(padding: 0)

@@ -53,10 +53,10 @@ struct EmptyStateView: View {
             }
             VStack(spacing: Theme.Spacing.s) {
                 if let primaryTitle, let primaryAction {
-                    Button(primaryTitle, action: primaryAction).buttonStyle(PrimaryButtonStyle(compact: true))
+                    Button(primaryTitle, action: primaryAction).tapID("stateviews.button").buttonStyle(PrimaryButtonStyle(compact: true))
                 }
                 if let secondaryTitle, let secondaryAction {
-                    Button(secondaryTitle, action: secondaryAction).buttonStyle(QuietButtonStyle())
+                    Button(secondaryTitle, action: secondaryAction).tapID("stateviews.button-2").buttonStyle(QuietButtonStyle())
                 }
             }
             .frame(maxWidth: 320)
@@ -281,7 +281,7 @@ struct SelectedPlaceCard: View {
                     Image(systemName: "xmark")
                         .font(.footnote.weight(.bold))
                         .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                }
+                }.tapID("stateviews.xmark")
                 .accessibilityLabel("Close selected place")
             }
         }

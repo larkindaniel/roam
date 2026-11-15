@@ -87,6 +87,7 @@ final class SupabaseBackend: @unchecked Sendable {
     /// Maps transport, auth and `roam:`-prefixed database errors to user-presentable errors.
     static func map(_ error: Error) -> Error {
         if error is CancellationError { return error }
+        logFailure(error)
         if let roam = error as? RoamError { return roam }
         if let urlError = error as? URLError {
             switch urlError.code {
@@ -131,6 +132,45 @@ final class SupabaseBackend: @unchecked Sendable {
         }
         if error is DecodingError { return RoamError.server("Roam received an unexpected response.") }
         return RoamError.server("Something went wrong. Try again.")
+    }
+
+    /// The real reason a call failed, for the beta's trail: the server's code and message, the network error, or what
+    /// didn't decode. The member only ever sees the friendly version.
+    static func logFailure(_ error: Error) {
+        var props: [String: String] = ["type": String(describing: type(of: error))]
+        switch error {
+        case let roam as RoamError: props["roam"] = String(describing: roam)
+        case let url as URLError:
+            props["code"] = "\(url.code.rawValue)"
+            props["url"] = url.failingURL.flatMap { NetworkRecorder.name(for: $0, method: nil) } ?? ""
+        case let postgrest as PostgrestError:
+            props["code"] = postgrest.code ?? ""
+            props["message"] = postgrest.message
+            props["detail"] = postgrest.detail ?? ""
+            props["hint"] = postgrest.hint ?? ""
+        case let auth as AuthError:
+            props["detail"] = String(describing: auth)
+        case let storage as StorageError:
+            props["code"] = storage.statusCode ?? ""
+            props["message"] = storage.message
+        case let decoding as DecodingError:
+            props["detail"] = Self.describe(decoding)
+        default:
+            props["detail"] = String(describing: error)
+        }
+        Log.error("backend", nil, props)
+    }
+
+    /// Which field didn't decode and why, without the payload.
+    private static func describe(_ error: DecodingError) -> String {
+        func path(_ context: DecodingError.Context) -> String { context.codingPath.map(\.stringValue).joined(separator: ".") }
+        switch error {
+        case .keyNotFound(let key, let context): return "missing \(key.stringValue) at \(path(context))"
+        case .typeMismatch(let type, let context): return "expected \(type) at \(path(context)): \(context.debugDescription)"
+        case .valueNotFound(let type, let context): return "no \(type) at \(path(context))"
+        case .dataCorrupted(let context): return "corrupted at \(path(context)): \(context.debugDescription)"
+        @unknown default: return String(describing: error)
+        }
     }
 
     static func mapDatabaseMessage(_ message: String, code: String?) -> RoamError {

@@ -94,7 +94,7 @@ struct RemoteImageView: View {
                         Text(path == nil ? "No photo" : "Photo unavailable · Retry").font(.caption2)
                     }
                     .foregroundStyle(Theme.secondaryText)
-                }
+                }.tapID("remoteimage.photo-badge-exclamationmark")
                 .disabled(path == nil)
                 .accessibilityLabel(path == nil ? "No photo" : "Photo unavailable. Retry")
             } else {

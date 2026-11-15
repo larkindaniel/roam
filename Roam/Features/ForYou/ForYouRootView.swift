@@ -195,11 +195,11 @@ struct ForYouRootView: View {
                 }
                 // Tapping anywhere but a result ends the search.
                 .contentShape(Rectangle())
-                .onTapGesture { endSearch() }
+                .onTapGesture { TapRecorder.named("foryourootview.body"); endSearch() }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
                     .contentShape(Rectangle())
-                    .onTapGesture { if searchFocused { endSearch() } }
+                    .onTapGesture { TapRecorder.named("foryourootview.body-2"); if searchFocused { endSearch() } }
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in

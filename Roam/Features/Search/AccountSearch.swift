@@ -183,7 +183,7 @@ struct FindPeopleView: View {
             HStack(spacing: Theme.Spacing.s) {
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
-                }
+                }.tapID("accountsearch.chevron-left")
                 .buttonStyle(.plain)
                 .floatingBubble(Circle())
                 .accessibilityLabel("Back")

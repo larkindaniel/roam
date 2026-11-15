@@ -29,7 +29,7 @@ enum Log {
         var props = props
         if let error {
             props["error"] = String(describing: error).prefix(300).description
-            props["message"] = error.roamMessage
+            props["message"] = error.quietRoamMessage
         }
         Telemetry.shared.record(.error, name, props: props)
     }
@@ -49,7 +49,7 @@ enum Log {
             timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "true"]) { $1 })
             return value
         } catch {
-            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.roamMessage]) { $1 })
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.quietRoamMessage]) { $1 })
             throw error
         }
     }
@@ -62,7 +62,7 @@ enum Log {
             timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "true"]) { $1 })
             return value
         } catch {
-            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.roamMessage]) { $1 })
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.quietRoamMessage]) { $1 })
             throw error
         }
     }
@@ -252,6 +252,22 @@ final class Telemetry: @unchecked Sendable {
     /// Switching tabs: the tab's top screen is current (tab pages stay alive, so they don't appear again).
     func setCurrentScreen(_ name: String) {
         lock.withLock { currentScreen = name }
+    }
+
+    /// The same error shown twice in a row (a message made twice) is logged once.
+    private var lastShownError: (key: String, at: ContinuousClock.Instant)?
+
+    func recordShownError(_ error: Error, message: String) {
+        if error is CancellationError { return }
+        let detail = String(String(describing: error).prefix(300))
+        let key = detail + message
+        let skip = lock.withLock { () -> Bool in
+            if let last = lastShownError, last.key == key, last.at.elapsedMilliseconds < 1_000 { return true }
+            lastShownError = (key, .now)
+            return false
+        }
+        guard !skip else { return }
+        record(.error, "shown", props: ["message": message, "error": detail])
     }
 
     // MARK: Disk

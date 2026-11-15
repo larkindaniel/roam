@@ -35,7 +35,8 @@ build run below) wherever they disagree.
   it, paste it anywhere or put any key in the app.
 - **Logging (beta):** every new or changed screen and button joins the event trail (see `docs/telemetry.md`).
   - Screens get `.screenIdentifier(…)`.
-  - Buttons get `.tapID(…)`, not `.accessibilityIdentifier`.
+  - Buttons get `.tapID(…)`, not `.accessibilityIdentifier`. `python3 scripts/tap_ids.py --check` lists any unnamed button or tap
+    gesture; `--fix` names them.
   - Anything that matters gets `Log.action`, a quietly handled failure `Log.error`, slow work `Log.span`/`Log.measure`.
   - Never log typed text or secrets.
 - **Feedback:** UI notes often come in quick succession. When a note reverses an earlier one, the latest wins. Remove

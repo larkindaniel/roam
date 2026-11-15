@@ -125,7 +125,7 @@ private struct ListRow: View {
             .foregroundStyle(Roam.ink)
             .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
-        }
+        }.tapID("listviews.list-bullet")
         .buttonStyle(.plain)
     }
 
@@ -426,7 +426,7 @@ struct AddToListSheet: View {
                             .focused($focusedField)
                             .textInputAutocapitalization(.never)
                             .accessibilityIdentifier("add-to-list-title")
-                        Button("Create") { Task { await createAndAdd() } }
+                        Button("Create") { Task { await createAndAdd() } }.tapID("listviews.create")
                             .font(.subheadline.weight(.semibold))
                             .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     }

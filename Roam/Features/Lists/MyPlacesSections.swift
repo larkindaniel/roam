@@ -550,7 +550,7 @@ struct HomeCitiesSection: View {
             }
             .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
-        }
+        }.tapID("myplacessections.house")
         .buttonStyle(.plain)
         .contextMenu {
             Button("Remove home city", role: .destructive) { Task { await model.setHome(city, present: false) } }
@@ -664,7 +664,7 @@ struct SavedSection: View {
                                 }
                                 .frame(minHeight: Theme.minimumHitTarget)
                                 .contentShape(Rectangle())
-                            }
+                            }.tapID("myplacessections.list-bullet")
                             .buttonStyle(.plain)
                             if list.id != model.lists.last?.id { Divider() }
                         }
@@ -759,7 +759,7 @@ struct WishlistCountryView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .contentShape(Capsule())
-                    }
+                    }.tapID("myplacessections.plan-a-trip")
                     .buttonStyle(.plain)
                     .floatingBubble(Capsule())
                     .padding(.horizontal, RoamTabBar.sideMargin)
@@ -1267,7 +1267,7 @@ struct TripDatesRow: View {
                     DatePicker(title, selection: Binding(get: { value }, set: { date.wrappedValue = $0; onPick($0) }),
                                in: (minimum ?? .distantPast)..., displayedComponents: .date)
                         .labelsHidden()
-                    Button { date.wrappedValue = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
+                    Button { date.wrappedValue = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }.tapID("myplacessections.xmark-circle-fill")
                         .buttonStyle(.plain)
                         .accessibilityLabel("Clear \(title.lowercased()) date")
                 }
@@ -1279,7 +1279,7 @@ struct TripDatesRow: View {
                 } label: { Label("Add", systemImage: "calendar") }
                     .buttonStyle(.bordered)
                     .accessibilityLabel("Add \(title.lowercased()) date")
-                    .accessibilityIdentifier("trip-\(title.lowercased())-date")
+                    .tapID("trip-\(title.lowercased())-date")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

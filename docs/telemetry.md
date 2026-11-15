@@ -17,7 +17,7 @@ bug button ──▶ Report a bug ──▶ bug-reports bucket + submit_bug_repo
 | `nav` | `AppRouter`, setup steps | tab changes, push, back, pop to root, sheets opening and closing |
 | `network` | `NetworkRecorder` (URLSession metrics) | every request: `rpc.<function>`, `auth.*`, `storage.<method>.<bucket>`, `fn.<function>`, with status, bytes and ms |
 | `timing` | `Log.span` / `Log.measure` | main screen loads (`load.feed`, `load.discover`, `load.place`, …) and heavy work (`compute.image_prepare`) |
-| `error` | `SessionStore.handle` | every error a screen shows |
+| `error` | `SupabaseBackend.map`, `roamMessage` | `backend`: why a call failed (server code and message, network error, what didn't decode); `shown`: every error message a screen shows |
 | `crash` | `CrashRecorder` | `unclean_exit` (the last session ended while the app was open), MetricKit `crash` and `hang` reports with stacks |
 | `lifecycle` | app | launch, foreground, background, MetricKit daily summaries |
 
@@ -26,7 +26,11 @@ Signed-out screens log too; a session is tied to whoever signs in during it.
 ## Adding to it when you build something
 
 - **Buttons:** use `.tapID("thing-action")` instead of `.accessibilityIdentifier` on every button, link and toggle.
-  It's the UI-test id and the name its taps log under.
+  It's the UI-test id and the name its taps log under. Run `python3 scripts/tap_ids.py --check` to list anything
+  unnamed. `--fix` names it from its label, and taps on `onTapGesture` views get a `TapRecorder.named` call.
+- **Failures:** logged on their own. Every backend failure logs its real reason (`error` / `backend`: the server's
+  code and message, the network error, or the field that didn't decode). Every message a screen shows logs as
+  `error` / `shown`.
 - **Screens:** give each new screen `.screenIdentifier("name")`.
 - **Things that matter:** `Log.action("log.saved", ["score": "8.1"])`.
 - **Failures you handle quietly:** `Log.error("photo.upload", error)`.

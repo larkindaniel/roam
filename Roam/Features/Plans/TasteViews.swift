@@ -119,7 +119,7 @@ struct ResearchBriefSheet: View {
             if let url = URL(string: url) { openURL(url) }
         } label: {
             PillLabel(title: title, systemImage: "arrow.up.right")
-        }
+        }.tapID("tasteviews.arrow-up-right")
         .buttonStyle(PillButtonStyle(tint: Color.pink))
         .accessibilityLabel("Open \(title)")
         .accessibilityHint("Copies the prompt, then opens the assistant")
