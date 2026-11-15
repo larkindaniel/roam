@@ -88,7 +88,11 @@ the tester:
 - **In:**
   - the tester's description
   - their screenshots, shown in the issue
-  - recordings, as links (attachment links last a year)
+  - recordings, as links
+
+  Attachments are committed to the `bug-report-attachments` branch, which never touches `main`, so GitHub can show
+  them. If that fails, the issue links to a copy in Supabase storage instead. That copy has a random name, so the
+  tester's account id isn't in the link, and the link lasts a year.
   - the app version, iOS version and device
   - the screen it was sent from
   - the SQL that lists every step before the report (the steps stay in Supabase)
@@ -101,7 +105,8 @@ Ids in the description show as `[id]`.
 To turn it on for the hosted beta:
 
 1. On GitHub, create a fine-grained personal access token that only covers this repository, with **Issues: read and
-   write**.
+   write** and **Contents: read and write**. Contents is for committing attachments to their branch. Protect `main`
+   (Settings → Branches) so the token can't change it.
 2. Run `supabase secrets set GITHUB_TOKEN=… GITHUB_REPO=larkindaniel/roam --project-ref xnjzuotytfzyppubjcfi`
 3. Run `supabase functions deploy bug-report-issue --project-ref xnjzuotytfzyppubjcfi`
 

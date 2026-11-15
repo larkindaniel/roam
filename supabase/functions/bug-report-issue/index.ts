@@ -36,6 +36,73 @@ async function rest(path: string) {
   return await response.json();
 }
 
+// Screenshots and recordings are committed here so the issue can show them. A branch of their own: it never touches
+// main. Needs the token to have Contents: read and write as well as Issues.
+const attachmentsBranch = Deno.env.get("GITHUB_ATTACHMENTS_BRANCH") ?? "bug-report-attachments";
+
+async function github(path: string, init: RequestInit = {}) {
+  return await fetch(`https://api.github.com/repos/${repo}/${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json",
+               "User-Agent": "roam-bug-reports", ...(init.headers ?? {}) },
+    signal: AbortSignal.timeout(30_000),
+  });
+}
+
+function base64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
+/// Commits the files to the attachments branch in one commit (making the branch on first use). Returns each file's
+/// raw link, or null if GitHub refused (logged with its status, never the token).
+async function commitAttachments(files: Array<{ path: string; bytes: Uint8Array }>, message: string): Promise<string[] | null> {
+  const ref = await github(`git/ref/heads/${attachmentsBranch}`);
+  let parent: string | null = null, baseTree: string | null = null;
+  if (ref.ok) {
+    parent = (await ref.json()).object.sha;
+    baseTree = (await (await github(`git/commits/${parent}`)).json()).tree.sha;
+  } else if (ref.status !== 404) {
+    console.error("bug-report-issue: reading the attachments branch failed", ref.status);
+    return null;
+  }
+  const tree = [];
+  for (const file of files) {
+    const blob = await github("git/blobs", { method: "POST", body: JSON.stringify({ content: base64(file.bytes), encoding: "base64" }) });
+    if (!blob.ok) { console.error("bug-report-issue: GitHub refused the file", blob.status, (await blob.text()).slice(0, 200)); return null; }
+    tree.push({ path: file.path, mode: "100644", type: "blob", sha: (await blob.json()).sha });
+  }
+  const madeTree = await github("git/trees", { method: "POST", body: JSON.stringify(baseTree ? { base_tree: baseTree, tree } : { tree }) });
+  if (!madeTree.ok) { console.error("bug-report-issue: tree failed", madeTree.status); return null; }
+  const commit = await github("git/commits", { method: "POST", body: JSON.stringify({
+    message, tree: (await madeTree.json()).sha, parents: parent ? [parent] : [] }) });
+  if (!commit.ok) { console.error("bug-report-issue: commit failed", commit.status); return null; }
+  const sha = (await commit.json()).sha;
+  const moved = parent
+    ? await github(`git/refs/heads/${attachmentsBranch}`, { method: "PATCH", body: JSON.stringify({ sha }) })
+    : await github("git/refs", { method: "POST", body: JSON.stringify({ ref: `refs/heads/${attachmentsBranch}`, sha }) });
+  if (!moved.ok) { console.error("bug-report-issue: moving the branch failed", moved.status); return null; }
+  return files.map(file => `https://raw.githubusercontent.com/${repo}/${sha}/${file.path}`);
+}
+
+/// A link to the file in Supabase storage, from a copy under a random name (the upload's own folder is the tester's
+/// account id). Works once the project is hosted; used if GitHub won't take the file.
+async function storageLink(path: string): Promise<string | null> {
+  const extension = path.split(".").pop() ?? "jpg";
+  const anonymous = `issues/${crypto.randomUUID()}.${extension}`;
+  const copied = await fetch(`${url}/storage/v1/object/copy`, {
+    method: "POST", headers: { ...asService, "Content-Type": "application/json" },
+    body: JSON.stringify({ bucketId: "bug-reports", sourceKey: path, destinationKey: anonymous }),
+  });
+  if (!copied.ok) { console.error("bug-report-issue: copy failed", copied.status); return null; }
+  const signed = await fetch(`${url}/storage/v1/object/sign/bug-reports/${anonymous}`, {
+    method: "POST", headers: { ...asService, "Content-Type": "application/json" },
+    body: JSON.stringify({ expiresIn: linkLifetime }),
+  });
+  return signed.ok ? `${url}/storage/v1${(await signed.json()).signedURL}` : null;
+}
+
 Deno.serve(async request => {
   if (request.method !== "POST") return json({ message: "Use POST." }, 405);
   const authorization = request.headers.get("authorization");
@@ -58,26 +125,23 @@ Deno.serve(async request => {
 
     let attachment = "";
     const files = (report.attachments ?? []) as Array<{ path: string; kind: string }>;
-    const shown: string[] = [];
-    let recordings = 0;
+    // Committed to the attachments branch so GitHub shows them; Supabase links if that doesn't work.
+    const downloaded: Array<{ path: string; bytes: Uint8Array }> = [];
     for (const file of files) {
-      // The upload sits in a folder named after the tester's account id, which a public link would show. Link a copy
-      // under a random name instead.
+      const object = await fetch(`${url}/storage/v1/object/bug-reports/${file.path}`, { headers: asService });
+      if (!object.ok) { console.error("bug-report-issue: download failed", object.status); continue; }
       const extension = file.path.split(".").pop() ?? "jpg";
-      const anonymous = `issues/${crypto.randomUUID()}.${extension}`;
-      const copied = await fetch(`${url}/storage/v1/object/copy`, {
-        method: "POST", headers: { ...asService, "Content-Type": "application/json" },
-        body: JSON.stringify({ bucketId: "bug-reports", sourceKey: file.path, destinationKey: anonymous }),
-      });
-      if (!copied.ok) { console.error("bug-report-issue: copy failed", copied.status); continue; }
-      const signed = await fetch(`${url}/storage/v1/object/sign/bug-reports/${anonymous}`, {
-        method: "POST", headers: { ...asService, "Content-Type": "application/json" },
-        body: JSON.stringify({ expiresIn: linkLifetime }),
-      });
-      if (!signed.ok) continue;
-      const link = `${url}/storage/v1${(await signed.json()).signedURL}`;
-      shown.push(file.kind === "screenshot" ? `<img src="${link}" width="320">` : `▶️ [Screen recording ${++recordings}](${link})`);
+      downloaded.push({ path: `reports/${crypto.randomUUID()}.${extension}`, bytes: new Uint8Array(await object.arrayBuffer()) });
     }
+    let links = downloaded.length ? await commitAttachments(downloaded, "Bug report attachments") : null;
+    if (!links) {
+      links = [];
+      for (const file of files) { const link = await storageLink(file.path); if (link) links.push(link); }
+    }
+    let recordings = 0;
+    const shown = links.map((link, index) => files[index]?.kind === "recording"
+      ? `▶️ [Screen recording ${++recordings}](${link})`
+      : `<img src="${link}" width="320">`);
     if (shown.length) attachment = `\n\n### Screenshots and recordings\n${shown.join("\n")}`;
 
     const description = scrub(String(report.description));
