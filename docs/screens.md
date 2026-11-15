@@ -124,7 +124,7 @@ the country in view.
 - **Peek:** "Search <city>" in the tab bar's spot, with a blue directions circle beside it that asks Apple Maps or
   Google Maps. Searching stays within the city and its surroundings.
 - **Opened:**
-  - **Name and home:** the name, with Set as home beside it. A home city shows a solid black house instead.
+  - **Name:** the name, with its country under it.
   - **Round buttons:**
     - **Log** (green): ticks straight away and shows Start → End dates under the buttons. The visit saves once both
       dates are picked or you leave. Once you've been, the dates you gave show there.
@@ -132,7 +132,8 @@ the country in view.
     - **Trip** (blue): add the city to an upcoming trip or start a new one.
     - **Send:** greyed out on city pages.
     - **Plan** (pink): opens the Plan with AI sheet (ChatGPT, Claude or copy).
-  - A home city shows only the house and Plan.
+    - **Home**, last: makes it one of your homes (a solid house once it is); tap again to remove it.
+  - A home city shows only Send, Plan and Home.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
   - **Friends who’ve been** shows friends with shared visits in the city. Tapping a friend opens their profile. The city map keeps showing your own pins.

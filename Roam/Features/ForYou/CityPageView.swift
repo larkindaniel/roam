@@ -389,7 +389,7 @@ struct CityPageView: View {
 
     /// When you were there, right under the buttons.
     private var logDates: some View {
-        // Green, as where you've been is, and the size of Set as home.
+        // Green, as where you've been is.
         DateRangeRow(start: $logStart, end: $logEnd, tint: PlaceState.visited.markerColor)
             .transition(.opacity.combined(with: .move(edge: .top)))
     }
@@ -672,21 +672,8 @@ struct CityHeader: View {
         }
     }
 
-    /// Set as home, on the title row; a home city shows as a solid black house.
-    @ViewBuilder private var homePill: some View {
-        if let onToggleHome {
-            Button(action: onToggleHome) {
-                if isHome { Image(systemName: "house.fill") } else { Label("Set as home", systemImage: "house") }
-            }
-            .buttonStyle(PillButtonStyle(isSelected: isHome, tint: Roam.home))
-            .accessibilityLabel(isHome ? "Home" : "Set as home")
-            .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
-            .accessibilityIdentifier("city-toggle-home")
-        }
-    }
-
     /// Round actions with a caption under each, laid out like a place's: been here (green), wishlist (yellow), add to a
-    /// trip (blue), send (indigo) and plan with AI (pink). A home city keeps just send and AI.
+    /// trip (blue), send (indigo), plan with AI (pink), then Set as home. A home city keeps just send, AI and home.
     private var actionRow: some View {
         // Spread evenly across the card's width.
         HStack(spacing: 0) {
@@ -728,6 +715,13 @@ struct CityHeader: View {
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {
                 router.sheet = .researchBrief(destination)
             }
+            // Home, last: a solid house once it's one of your homes.
+            if let onToggleHome {
+                circle(isHome ? "house.fill" : "house", tint: Roam.home, filled: isHome, caption: "Home",
+                       identifier: "city-toggle-home", action: onToggleHome)
+                    .accessibilityLabel(isHome ? "Home" : "Set as home")
+                    .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
+            }
         }
     }
 
@@ -754,20 +748,9 @@ struct CityHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            // The name with Set as home beside it, then the actions underneath, as on a place.
-            HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                title.layoutPriority(-1)
-                Spacer(minLength: Theme.Spacing.xs)
-                // A home city needs no row of actions: just its house, then Plan, beside the name.
-                homePill
-                if isHome {
-                    Button { router.sheet = .researchBrief(destination) } label: { Label("Plan", systemImage: "sparkles") }
-                        .buttonStyle(PillButtonStyle(tint: .pink))
-                        .accessibilityLabel("Plan with AI")
-                        .accessibilityIdentifier("foryou-research-open")
-                }
-            }
-            if !isHome { actionRow }
+            // The name, then the actions underneath, as on a place; Set as home is the last of them.
+            title
+            actionRow
             // Credited once, under the blurb that follows.
             if showsPhoto { CityPhoto(destination: destination) }
         }
