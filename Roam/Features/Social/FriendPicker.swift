@@ -12,7 +12,6 @@ struct FriendPickerRows: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             RoamSearchField(prompt: "Search friends", text: $query, focus: $focused, identifier: "friend-search")
-                .frame(height: 44)
             AccountSearchResults(query: query, picking: $selection, multiple: multiple, excluding: excluding)
         }
     }

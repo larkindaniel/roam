@@ -2,8 +2,9 @@ import Foundation
 import Observation
 import UIKit
 
-/// Progressive setup (S01). Server checkpoints make it resumable after interruption; typed name
-/// and handle are kept in an account-scoped local draft until the profile exists.
+/// Setup (S01). Name, handle, photo, preferences and home cities stay on the phone, and any step can be revisited, until
+/// Add friends: searching people needs a profile, so it's made (hidden from everyone) when you continue from home.
+/// Friend requests wait until "Start using Roam", which completes setup and makes the profile findable.
 @MainActor
 @Observable
 final class ProfileSetupModel {
@@ -30,12 +31,14 @@ final class ProfileSetupModel {
     var handleState: HandleState = .idle
     var avatarImage: UIImage?
     var avatarPath: String?
-    var avatarBusy = false
+    /// The chosen photo, ready to upload when the profile is made.
+    private var pendingAvatar: ImageProcessor.Processed?
+    /// Homes already saved to the server, so going back and changing them saves only the difference.
+    private var savedHomes: [Destination] = []
     /// Your home cities (as many as you like); the profile's own home city, if any, starts the list.
     var homeCities: [Destination] = []
     var suggestions: LoadPhase<[MemberRow]> = .idle
     var following: Set<UUID> = []
-    var pendingFollows: Set<UUID> = []
     /// Your answers to the preference questions (each optional).
     var taste = TasteProfile.empty
     var busy = false
@@ -60,7 +63,7 @@ final class ProfileSetupModel {
             let hasName = draft?.displayName.isEmpty == false || prefillName?.trimmingCharacters(in: .whitespaces).isEmpty == false
             step = hasName ? .handle : .name
         case .profileCreated?: step = .photo
-        case .optionalDetails?: step = .preferences
+        case .optionalDetails?: step = .friends
         case .complete?: step = .friends
         }
         if profile == nil, handle.isEmpty, !displayName.isEmpty { handle = Self.suggestedHandle(from: displayName) }
@@ -109,84 +112,77 @@ final class ProfileSetupModel {
         }
     }
 
-    /// Creates the profile. A handle lost to a race keeps every typed value on screen.
-    func createProfile() async {
-        guard Validation.handle(handle) == nil, nameIssue == nil else { return }
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            profile = try await services.profiles.createProfile(displayName: displayName, handle: handle)
-            services.storage.remove(name: "setup-draft", userID: auth.userID)
-            step = .photo
-        } catch RoamError.conflict(let message) {
-            handleState = .unavailable(message)
-            saveDraft()
-        } catch {
-            self.error = error.roamMessage
-            saveDraft()
-        }
+    /// On to the photo; nothing is saved yet (the handle's only been checked).
+    func continueFromHandle() {
+        guard Validation.handle(handle) == nil, handleState == .available || profile?.handle == handle else { return }
+        saveDraft()
+        step = .photo
     }
 
-    func uploadAvatar(_ data: Data) async {
-        avatarBusy = true
-        error = nil
-        defer { avatarBusy = false }
+    /// Keeps the chosen photo on the phone until the profile is made.
+    func pickAvatar(_ data: Data) {
         do {
             let processed = try ImageProcessor.prepare(data, maxPixel: 1_024)
-            let staged = try await services.media.stage(jpegData: processed.data, width: processed.width, height: processed.height, purpose: .avatar)
-            guard let current = profile else { return }
-            profile = try await services.profiles.updateProfile(ProfileUpdate(displayName: current.displayName, handle: current.handle,
-                                                                              bio: current.bio, homeCity: current.homeCity,
-                                                                              avatarPath: staged.path))
-            avatarPath = staged.path
-            if let image = UIImage(data: processed.data) {
-                avatarImage = image
-                services.images.store(image, for: staged.path)
-            }
+            pendingAvatar = processed
+            avatarImage = UIImage(data: processed.data)
+            error = nil
         } catch {
             self.error = error.roamMessage
         }
     }
 
-    /// After the photo come your preferences.
-    func finishPhotoStep() async {
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            profile = try await services.profiles.setSetupCheckpoint(.optionalDetails)
-            step = .preferences
-        } catch {
-            self.error = error.roamMessage
-        }
-    }
+    var hasPhoto: Bool { avatarImage != nil || avatarPath != nil }
+
+    func finishPhotoStep() { step = .preferences }
 
     func loadTaste() async {
         if let saved = try? await services.plans.taste() { taste = saved }
     }
 
-    /// Saves whichever questions were answered (none is fine), then on to your home city.
-    func savePreferences() async {
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            if taste != .empty { taste = try await services.plans.saveTaste(taste) }
-            step = .home
-        } catch {
-            self.error = error.roamMessage
-        }
-    }
+    func savePreferences() { step = .home }
 
-    /// Makes each chosen city a home (optional), then on to friends.
+    /// Continuing from home makes the profile (or brings it up to date after going back): name and handle, photo,
+    /// preferences and homes. It stays hidden from everyone until setup finishes. A handle lost to someone else in the
+    /// meantime goes back to the handle step with everything kept.
     func saveHome() async {
         busy = true
         error = nil
         defer { busy = false }
         do {
-            for city in homeCities { _ = try await services.plans.setHomeCity(city, present: true) }
+            if let current = profile {
+                if current.displayName != displayName || current.handle != handle {
+                    profile = try await services.profiles.updateProfile(ProfileUpdate(displayName: displayName, handle: handle,
+                                                                                      bio: current.bio, homeCity: current.homeCity,
+                                                                                      avatarPath: current.avatarPath))
+                }
+            } else {
+                profile = try await services.profiles.createProfile(displayName: displayName, handle: handle)
+                services.storage.remove(name: "setup-draft", userID: auth.userID)
+            }
+            if let photo = pendingAvatar, let current = profile {
+                let staged = try await services.media.stage(jpegData: photo.data, width: photo.width, height: photo.height, purpose: .avatar)
+                profile = try await services.profiles.updateProfile(ProfileUpdate(displayName: current.displayName, handle: current.handle,
+                                                                                  bio: current.bio, homeCity: current.homeCity,
+                                                                                  avatarPath: staged.path))
+                avatarPath = staged.path
+                if let image = UIImage(data: photo.data) { services.images.store(image, for: staged.path) }
+                pendingAvatar = nil
+            }
+            if taste != .empty { taste = try await services.plans.saveTaste(taste) }
+            for city in savedHomes where !homeCities.contains(where: { $0.id == city.id }) {
+                _ = try await services.plans.setHomeCity(city, present: false)
+            }
+            for city in homeCities where !savedHomes.contains(where: { $0.id == city.id }) {
+                _ = try await services.plans.setHomeCity(city, present: true)
+            }
+            savedHomes = homeCities
+            if profile?.setupCheckpoint != .optionalDetails {
+                profile = try await services.profiles.setSetupCheckpoint(.optionalDetails)
+            }
             step = .friends
+        } catch RoamError.conflict(let message) {
+            handleState = .unavailable(message)
+            step = .handle
         } catch {
             self.error = error.roamMessage
         }
@@ -198,8 +194,8 @@ final class ProfileSetupModel {
 
     func removeHome(_ city: Destination) { homeCities.removeAll { $0.id == city.id } }
 
-    /// One step back (the profile, once made, isn't undone: back from the photo goes nowhere).
-    var canGoBack: Bool { step == .handle || step.rawValue > Step.photo.rawValue }
+    /// Every step but the first can go back.
+    var canGoBack: Bool { step != .name }
 
     func goBack() {
         guard canGoBack, let previous = Step(rawValue: step.rawValue - 1) else { return }
@@ -215,25 +211,21 @@ final class ProfileSetupModel {
         }
     }
 
-    /// Explicit, member-initiated requests only — nothing is preselected.
-    func toggleFollow(_ member: MemberSummary) async {
-        guard !pendingFollows.contains(member.id) else { return }
-        let action: FriendAction = following.contains(member.id) ? .cancel : .request
-        pendingFollows.insert(member.id)
-        defer { pendingFollows.remove(member.id) }
-        do {
-            let persisted = try await services.social.friendAction(userID: member.id, action: action)
-            if persisted == .none { following.remove(member.id) } else { following.insert(member.id) }
-        } catch {
-            self.error = error.roamMessage
-        }
+    /// Who to ask, chosen by you (nothing preselected); the requests go when setup finishes.
+    func toggleFollow(_ member: MemberSummary) {
+        if following.contains(member.id) { following.remove(member.id) } else { following.insert(member.id) }
     }
 
+    /// "Start using Roam": sends the friend requests, then completes setup, which makes the profile findable.
     func finish() async -> OwnProfile? {
         busy = true
         error = nil
         defer { busy = false }
         do {
+            for id in following {
+                _ = try await services.social.friendAction(userID: id, action: .request)
+                following.remove(id)
+            }
             let completed = try await services.profiles.setSetupCheckpoint(.complete)
             profile = completed
             return completed

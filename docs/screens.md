@@ -20,7 +20,9 @@ when you change a screen. `docs/design-language.md` covers how they look.
   4. **Where's home?** Search cities and pick as many as you like; each shows as a row with × to take it off, and the
      search stays to add another. They become your home cities.
   5. **Add friends:** suggestions, or search for anyone, each with Add. "Start using Roam" finishes.
-  Setup never logs places.
+  Every step can go back. Nothing is saved until you continue from home: then the profile is made (name, handle,
+  photo, preferences, homes) but nobody can find it yet. The people you add are only asked, and the profile only becomes
+  findable, when you tap "Start using Roam". Setup never logs places.
 
 ## Everywhere
 

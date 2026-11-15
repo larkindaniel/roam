@@ -184,7 +184,7 @@ struct MyPlacesRootView: View {
         // Lowered over the dark globe it's plain glass like the buttons there, with a more solid field and white text.
         let overGlobe = detent == .peek
         // White text only while it rests as dark glass on the globe (the card says so); dragged up, it's ordinary.
-        return RoamSearchField(prompt: "Search places", text: $query, focus: $searching, style: overGlobe ? .bare : .filled,
+        return RoamSearchField(prompt: "Search places", text: $query, focus: $searching, style: overGlobe ? .bare : .glass,
                                identifier: "myplaces-search")
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }

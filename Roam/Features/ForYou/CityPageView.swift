@@ -286,7 +286,7 @@ struct CityPageView: View {
     private var searchField: some View {
         // Minimised it sits in the bubble; opened up, it's the grey field, the same as My Places' search.
         RoamSearchField(prompt: "Search \(destination.name)", text: $query, focus: $searching,
-                        style: detent == .peek ? .bare : .filled, identifier: "city-search")
+                        style: detent == .peek ? .bare : .glass, identifier: "city-search")
     }
 
     /// Search 2: only cities near this one and places in or around it. A place opens on this map.

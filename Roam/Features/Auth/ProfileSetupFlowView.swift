@@ -33,6 +33,8 @@ private struct SetupSteps: View {
     @State private var cityQuery = ""
     @State private var citySearch = PlaceSearch()
     @State private var friendQuery = ""
+    @State private var friendResults: LoadPhase<[MemberRow]> = .idle
+    @State private var friendSearchToken = 0
     @FocusState private var focused: Bool
     @Environment(AppServices.self) private var services
 
@@ -47,12 +49,29 @@ private struct SetupSteps: View {
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { await model.uploadAvatar(data) }
+                if let data = try? await item.loadTransferable(type: Data.self) { model.pickAvatar(data) }
                 photoItem = nil
             }
         }
         .task(id: cityQuery) { await citySearch.run(cityQuery, services: services) }
+        .task(id: "\(friendQuery)|\(friendSearchToken)") { await searchFriends() }
         .screenIdentifier("profile-setup")
+    }
+
+    private func searchFriends() async {
+        let query = friendQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { friendResults = .idle; return }
+        friendResults = .loading
+        try? await Task.sleep(for: Limits.searchDebounce)
+        guard !Task.isCancelled else { return }
+        do {
+            let page = try await services.social.searchMembers(query: query, cursor: nil)
+            guard !Task.isCancelled else { return }
+            friendResults = .loaded(page.items.filter { !$0.isSelf })
+        } catch {
+            guard !Task.isCancelled else { return }
+            friendResults = .failed(error.roamMessage)
+        }
     }
 
     private var page: some View {
@@ -126,7 +145,6 @@ private struct SetupSteps: View {
                     } else if let profile = model.profile {
                         AvatarView(member: profile.summary, size: 160)
                     }
-                    if model.avatarBusy { ProgressView() }
                 }
                 .frame(width: 160, height: 160)
                 .clipShape(Circle())
@@ -137,10 +155,9 @@ private struct SetupSteps: View {
                 }
             }
             .buttonStyle(.plain)
-            .disabled(model.avatarBusy)
             .frame(maxWidth: .infinity)
             .padding(.top, Theme.Spacing.l)
-            .accessibilityLabel(model.avatarPath == nil ? "Choose a photo" : "Choose a different photo")
+            .accessibilityLabel(model.hasPhoto ? "Choose a different photo" : "Choose a photo")
             .accessibilityIdentifier("choose-avatar")
         case .preferences:
             title("What do you like?")
@@ -184,7 +201,6 @@ private struct SetupSteps: View {
             // Search 1, worldwide, cities only.
             RoamSearchField(prompt: model.homeCities.isEmpty ? "Search cities" : "Add another city", text: $cityQuery,
                             focus: $focused, identifier: "setup-home-search")
-                .frame(height: 44)
             if !cityQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                 PlaceSearchResults(query: cityQuery, placeSearch: citySearch, kinds: .cities,
                                    isPicked: { pick in if case .city(let city) = pick { model.homeCities.contains { $0.id == city.id } } else { false } }) { pick in
@@ -194,12 +210,11 @@ private struct SetupSteps: View {
         case .friends:
             title("Add friends")
             RoamSearchField(prompt: "Search for friends", text: $friendQuery, focus: $focused, identifier: "setup-friend-search")
-                .frame(height: 44)
             if friendQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                 peopleList
             } else {
-                // Search 3: everyone, each with their own Add button.
-                AccountSearchResults(query: friendQuery)
+                // Search 3: everyone, each with Add; the requests go when setup finishes.
+                friendSearchResults
             }
         }
     }
@@ -210,16 +225,17 @@ private struct SetupSteps: View {
         case .name:
             primary("Continue", enabled: model.nameIssue == nil) { model.continueFromName() }
         case .handle:
-            primary("Continue", enabled: Validation.handle(model.handle) == nil && model.handleState != .checking) {
-                Task { await model.createProfile() }
+            primary("Continue", enabled: Validation.handle(model.handle) == nil
+                        && (model.handleState == .available || model.profile?.handle == model.handle)) {
+                model.continueFromHandle()
             }
         case .photo:
-            primary(model.avatarPath == nil ? "Skip for now" : "Continue", enabled: !model.avatarBusy, quiet: model.avatarPath == nil) {
-                Task { await model.finishPhotoStep() }
+            primary(model.hasPhoto ? "Continue" : "Skip for now", enabled: true, quiet: !model.hasPhoto) {
+                model.finishPhotoStep()
             }
         case .preferences:
             primary(model.taste == .empty ? "Skip for now" : "Continue", enabled: true, quiet: model.taste == .empty) {
-                Task { await model.savePreferences() }
+                model.savePreferences()
             }
         case .home:
             primary(model.homeCities.isEmpty ? "Skip for now" : "Continue", enabled: true, quiet: model.homeCities.isEmpty) {
@@ -275,6 +291,34 @@ private struct SetupSteps: View {
         }
     }
 
+    /// A person with Add (Requested once chosen); nothing is sent until "Start using Roam".
+    private func friendRow(_ row: MemberRow) -> some View {
+        let chosen = model.following.contains(row.member.id)
+        return MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
+                             followState: chosen ? .requested : FollowButtonState(row.friendState),
+                             onToggleFollow: { model.toggleFollow(row.member) })
+    }
+
+    @ViewBuilder private var friendSearchResults: some View {
+        switch friendResults {
+        case .idle, .loading:
+            SkeletonResults(kind: .people, rows: 3)
+        case .failed(let message):
+            InlineRetryView(message: message) { friendSearchToken += 1 }
+        case .loaded(let rows) where rows.isEmpty:
+            Text("No one matches \u{201C}\(friendQuery)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .loaded(let rows):
+            VStack(spacing: 0) {
+                ForEach(rows) { row in
+                    friendRow(row)
+                    if row.id != rows.last?.id { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
+        }
+    }
+
     @ViewBuilder private var peopleList: some View {
         switch model.suggestions {
         case .idle, .loading:
@@ -286,10 +330,7 @@ private struct SetupSteps: View {
         case .loaded(let rows):
             VStack(spacing: 0) {
                 ForEach(rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
-                                  followState: model.pendingFollows.contains(row.member.id) ? .pending
-                                      : (model.following.contains(row.member.id) ? .requested : FollowButtonState(row.friendState)),
-                                  onToggleFollow: { Task { await model.toggleFollow(row.member) } })
+                    friendRow(row)
                     if row.id != rows.last?.id { RowSeparator() }
                 }
             }

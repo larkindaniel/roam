@@ -161,7 +161,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   card.
 - **Search:** only three searches exist (`Features/Search/`): worldwide places and city/area places (`PlaceSearch` +
   `PlaceSearchResults`, with a `PlaceSearchScope`) and accounts (`AccountSearchResults`). Every field is
-  `RoamSearchField` (`.filled` in cards and sheets, `.glass` over pages, `.bare` inside a lowered card's bubble); a
+  `RoamSearchField`, always Discover's white glass bar (48pt), in cards, sheets and pages alike; only `.bare` inside a lowered card's bubble; a
   sheet that is only a search uses `SearchSheetBar` (no title bar; the field's × closes the sheet). Never build another search: pick one of these, narrow it with
   `kinds`, or pass `onPick`. Cities show the signpost icon, countries their flag.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not
