@@ -166,8 +166,8 @@ struct LogPostView: View {
                         .shadow(color: .black.opacity(0.12), radius: 6, y: 1)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                 }
-                // Along the bottom: on one line the send circle is centred; as the comment grows it stays at the bottom.
-                HStack(alignment: .bottom, spacing: Theme.Spacing.xs) {
+                // The send circle stays centred top to bottom, rising as the comment grows.
+                HStack(alignment: .center, spacing: Theme.Spacing.xs) {
                     TextField("Add a comment", text: $model.draft, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($composerFocused)
@@ -188,7 +188,6 @@ struct LogPostView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
-                    .padding(.bottom, Self.sendInset)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
                     .accessibilityIdentifier("comment-send")
                 }
@@ -203,14 +202,15 @@ struct LogPostView: View {
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { composerRowWidth = $0 }
-        // Whether the comment fits on one line in the room it has beside your picture.
+        // Whether the comment fits on one line beside your picture, judged on its natural one-line width, so the picture
+        // steps aside just before the text would reach the edge (the field never wraps beside it first).
         .background(alignment: .topLeading) {
             Text(model.draft.isEmpty ? " " : model.draft)
                 .font(.body)
-                .frame(width: max(narrowTextWidth, 1), alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .fixedSize()
                 .hidden()
-                .onGeometryChange(for: Bool.self) { $0.size.height > 30 } action: { wraps in
+                .onGeometryChange(for: Bool.self) { $0.size.width > narrowTextWidth - 6 || model.draft.contains("\n") } action: { wraps in
                     withAnimation(.easeOut(duration: 0.2)) { composerWraps = wraps }
                 }
         }
