@@ -262,14 +262,17 @@ struct ProfileView: View {
                         .font(.subheadline).foregroundStyle(Theme.secondaryText)
                         .accessibilityIdentifier("profile-activity-empty")
                 } else {
-                    ForEach(activity.items) { item in
-                        FeedCard(item: item, likePending: activity.likePending.contains(item.id),
-                                 onLike: { liked in
-                            Task {
-                                await activity.setLike(item.id, liked: liked)
-                                if let updated = activity.items.first(where: { $0.id == item.id }) { changes.publish(updated) }
-                            }
-                        })
+                    // The same gap between logs as the Friends tab.
+                    VStack(spacing: Theme.Spacing.xl) {
+                        ForEach(activity.items) { item in
+                            FeedCard(item: item, likePending: activity.likePending.contains(item.id),
+                                     onLike: { liked in
+                                Task {
+                                    await activity.setLike(item.id, liked: liked)
+                                    if let updated = activity.items.first(where: { $0.id == item.id }) { changes.publish(updated) }
+                                }
+                            })
+                        }
                     }
                     if activity.nextCursor != nil || activity.pageError != nil {
                         PaginationFooter(isLoading: activity.loadingMore, errorMessage: activity.pageError, hasMore: false) {
