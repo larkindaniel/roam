@@ -91,13 +91,12 @@ the tester:
   - recordings, as links (attachment links last a year)
   - the app version, iOS version and device
   - the screen it was sent from
-  - the last 100 steps with their details
+  - the SQL that lists every step before the report (the steps stay in Supabase)
 - **Out:**
   - who sent it
-  - account, session and other ids (shown as `[id]`)
   - emails (`[email]`) and phone numbers (`[number]`), in the description too
 
-The report id is in the issue, so the full report and its steps can be pulled up in Supabase.
+Ids in the description show as `[id]`.
 
 To turn it on for the hosted beta:
 
