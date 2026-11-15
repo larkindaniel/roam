@@ -106,7 +106,7 @@ struct WelcomeView: View {
                 } onCompletion: { result in
                     Task { await model.completeApple(result) }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .roamAppleButtonStyle()
                 .frame(height: 50)
                 .clipShape(Capsule())
                 .accessibilityIdentifier("sign-in-with-apple")
@@ -272,5 +272,21 @@ struct RoamTextField: View {
                 Text(hint).font(.caption).foregroundStyle(Roam.inkMuted).padding(.horizontal, Theme.Spacing.l)
             }
         }
+    }
+}
+
+extension View {
+    /// Apple's sign-in button in the style that stands out: black on light screens, white on dark ones (a black button
+    /// disappears into a dark background).
+    func roamAppleButtonStyle() -> some View { modifier(AppleButtonStyleForScheme()) }
+}
+
+private struct AppleButtonStyleForScheme: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
+            // The button doesn't redraw its style in place, so a new one is made when the appearance changes.
+            .id(scheme)
     }
 }

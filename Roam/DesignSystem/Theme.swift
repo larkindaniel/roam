@@ -16,7 +16,11 @@ enum Roam {
     static let ruleOnGlass = dynamic(light: 0xAEAEB2, dark: 0x5A5A5E)
     static let fill = dynamic(light: 0xE5E5EA, dark: 0x2C2C2E)
     static let onInk = dynamic(light: 0xF2F2F7, dark: 0x000000)
-    static let signal = dynamic(light: 0xB3261E, dark: 0xFF8A80)
+    /// Errors and destructive actions. Dark mode uses Apple's red, a true red on black rather than a washed-out pink.
+    static let signal = dynamic(light: 0xB3261E, dark: 0xFF453A)
+    /// The raised pill showing the picked choice in a grey track (sliders, segmented choices): white in light mode, and in
+    /// dark mode the lighter grey of Apple's own segmented control, since a card-coloured pill vanishes into the track.
+    static let knob = dynamic(light: 0xFCFCFD, dark: 0x5A5A5E)
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? uiColor(dark) : uiColor(light) })

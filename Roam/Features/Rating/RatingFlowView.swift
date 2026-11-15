@@ -497,7 +497,7 @@ struct FeelingSlider: View {
     private func fill(_ feeling: Sentiment) -> Color {
         switch feeling {
         case .disliked: return .red
-        case .fine: return Roam.paperRaised
+        case .fine: return Roam.knob
         case .liked: return PlaceState.visited.markerColor
         }
     }
@@ -583,7 +583,7 @@ struct OptionSlider: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.gray.opacity(0.18))
                 if let selection, let index = options.firstIndex(of: selection) {
-                    Capsule().fill(Roam.paperRaised)
+                    Capsule().fill(Roam.knob)
                         .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                         .padding(3)
                         .frame(width: segment)

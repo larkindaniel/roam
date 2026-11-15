@@ -277,7 +277,7 @@ struct DeleteAccountView: View {
                 } onCompletion: { result in
                     Task { await model.completeApple(result) }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .roamAppleButtonStyle()
                 .frame(height: 50)
                 .clipShape(Capsule())
                 .accessibilityIdentifier("delete-account-apple")
