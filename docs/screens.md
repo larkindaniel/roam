@@ -33,6 +33,16 @@ when you change a screen. `docs/design-language.md` covers how they look.
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
   the card is fully up.
 - **Profile:** your profile picture in a glass circle at the top right of each tab opens your profile and settings.
+- **Bug button (beta):** a red circle with a bug is the right-most button at the top of every page. That covers the
+  tab pages, everything pushed on them, welcome, sign-in and setup. It snaps the screen, then opens **Report a bug**
+  (its title top left, level with the ×):
+  - What went wrong, in a note card.
+  - The screenshot of the screen you were on, the full width of the page, with × to remove it. More appear under it.
+  - An **Add another** row with a photos icon, for more screenshots or recordings from Photos (up to six). With none
+    attached it says **Add screenshots or recordings**.
+  - **Send**, at the bottom.
+
+  Signed out, it's words only. The report is saved with the steps that led to it (see `docs/telemetry.md`).
 - **Swipe-up cards** (city, place, My Places) have three heights:
   - **Peek:** a short bubble.
   - **Half.**
@@ -229,6 +239,9 @@ tapping another place or pin swaps the card to it.
 - Recipients open the current contents from Lists or Sent to you. Sent to you includes the sender and their note.
 
 ## Settings
+
+White cards of standard rows, one per section (Profile, Account, Safety, About), each under a small grey name, with
+the standard `RowSeparator` between rows, starting at the text.
 
 - Your profile row opens Edit profile: photo, name, handle, bio, and home cities (add any number, swipe to remove).
   Cancel with changes asks to discard them.

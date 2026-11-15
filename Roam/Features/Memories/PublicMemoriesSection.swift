@@ -112,7 +112,7 @@ struct PublicMemoriesSection: View {
                 .lineLimit(1)
                 .fixedSize()
                 .frame(minHeight: Theme.minimumHitTarget)
-                .accessibilityIdentifier("detail-all-photos")
+                .tapID("detail-all-photos")
         }
     }
 
@@ -144,7 +144,7 @@ struct PublicMemoriesSection: View {
                     Button(model.loadingMore ? "Loading…" : "Show more memories") { Task { await model.loadMore() } }
                         .disabled(model.loadingMore)
                         .frame(minHeight: Theme.minimumHitTarget)
-                        .accessibilityIdentifier("memories-more")
+                        .tapID("memories-more")
                 }
             }
         }
@@ -255,14 +255,14 @@ struct FriendMemoriesSection: View {
                         .padding(.bottom, Theme.Spacing.s)
                 }
             }
-        }
+        }.tapID("publicmemoriessection.with")
         .buttonStyle(.plain)
         .accessibilityHint("Opens visits at this place")
         .contextMenu {
             Button { onReport(.visit(memory.id)) } label: { Label("Report", systemImage: "flag") }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("memory-card-\(memory.id.uuidString)")
+        .tapID("memory-card-\(memory.id.uuidString)")
     }
 }
 
@@ -287,7 +287,7 @@ struct PublicMemoryCard: View {
                         }
                     }
                     .frame(minHeight: Theme.minimumHitTarget, alignment: .leading)
-                }
+                }.tapID("publicmemoriessection.visited")
                 .buttonStyle(.plain)
                 .allowsHitTesting(MemberProfiles.available)
                 .accessibilityLabel("\(memory.author.displayName), \(memory.visitDate.displayString)")
@@ -307,7 +307,7 @@ struct PublicMemoryCard: View {
                     .lineLimit(compactNote && !expanded ? 4 : nil)
                     .fixedSize(horizontal: false, vertical: true)
                 if compactNote && memory.publicNote.count > 180 && !expanded {
-                    Button("See more") { expanded = true }.font(.footnote.weight(.semibold))
+                    Button("See more") { expanded = true }.tapID("publicmemoriessection.see-more").font(.footnote.weight(.semibold))
                 }
             }
             if !memory.media.isEmpty {
@@ -320,7 +320,7 @@ struct PublicMemoryCard: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityIdentifier("memory-photo-\(memory.id.uuidString)-\(index)")
+                            .tapID("memory-photo-\(memory.id.uuidString)-\(index)")
                         }
                     }
                 }

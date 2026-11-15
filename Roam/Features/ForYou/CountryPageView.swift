@@ -215,7 +215,7 @@ struct CountryPageView: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("region-open-country")
+                .tapID("region-open-country")
             } else if let flag = TripTitle.flag(code) {
                 Text(flag).font(.title3).accessibilityHidden(true)
             }
@@ -272,7 +272,7 @@ struct CountryPageView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(caption)
-        .accessibilityIdentifier(identifier)
+        .tapID(identifier)
     }
 
     // MARK: Content
@@ -317,7 +317,7 @@ struct CountryPageView: View {
                         }
                         .buttonStyle(.plain)
                         .notInterested { Task { await suggestions?.hide(city) } }
-                        .accessibilityIdentifier("country-suggested-\(city.destination.name)")
+                        .tapID("country-suggested-\(city.destination.name)")
                     }
                 }
             }
@@ -343,7 +343,7 @@ struct CountryPageView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Home: \(home.name)")
-                .accessibilityIdentifier("country-home-\(home.name)")
+                .tapID("country-home-\(home.name)")
                 if home.id != homes.last?.id { Divider() }
             }
         }
@@ -365,7 +365,7 @@ struct CountryPageView: View {
             CityPhotoCard(destination: city, isHome: isHome).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("country-city-\(city.name)")
+        .tapID("country-city-\(city.name)")
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -433,7 +433,7 @@ struct CountryPageView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("country-saved-region-\(saved.region)")
+        .tapID("country-saved-region-\(saved.region)")
     }
 
     // MARK: Loading

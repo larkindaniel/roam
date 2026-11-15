@@ -21,6 +21,8 @@ struct RootView: View {
             content
             #endif
         }
+        // Logs every tap for the beta's event trail.
+        .background(TapRecorderInstaller().allowsHitTesting(false))
         .environment(\.roamDistanceUnit, settingsStore.applied.distanceUnit)
         .environment(\.roamHapticsEnabled, settingsStore.applied.hapticsEnabled)
         .task { await session.bootstrap() }

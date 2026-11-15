@@ -1,0 +1,460 @@
+import Foundation
+import UIKit
+
+/// Roam's log: what a tester did, step by step, so a bug report can be replayed and slow spots measured.
+///
+/// Most of the trail is recorded for you:
+/// - every screen with `.screenIdentifier(_:)` logs when it shows (`screen`),
+/// - every tap on a button, row or control logs what was tapped (`tap`, see `TapRecorder`),
+/// - every push, back, tab change and sheet logs from `AppRouter` (`nav`),
+/// - every network request logs its endpoint, status and time (`network`, see `NetworkRecorder`),
+/// - crashes, hangs and launches log themselves (`crash`, `lifecycle`).
+///
+/// Add your own for what those can't see:
+/// ```swift
+/// Log.action("log.saved", ["score": "\(score)"])          // something happened that matters
+/// Log.error("photo.upload", error)                        // something failed
+/// let ranked = try await Log.measure("rank.compute") { … } // something that takes time
+/// ```
+/// Never log what people write (notes, messages, passwords) or anything secret: names of places and ids are fine.
+enum Log {
+    typealias Props = [String: String]
+
+    static func action(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.action, name, props: props) }
+    static func tap(_ name: String, _ props: Props = [:], at: Date? = nil) { Telemetry.shared.record(.tap, name, at: at, props: props) }
+    static func nav(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.nav, name, props: props) }
+    static func lifecycle(_ name: String, _ props: Props = [:]) { Telemetry.shared.record(.lifecycle, name, props: props) }
+
+    static func error(_ name: String, _ error: Error? = nil, _ props: Props = [:]) {
+        var props = props
+        if let error {
+            props["error"] = String(describing: error).prefix(300).description
+            props["message"] = error.quietRoamMessage
+        }
+        Telemetry.shared.record(.error, name, props: props)
+    }
+
+    static func timing(_ name: String, ms: Int, _ props: Props = [:]) {
+        Telemetry.shared.record(.timing, name, durationMs: ms, props: props)
+    }
+
+    /// Starts timing; `end()` logs it. For a whole function: `let span = Log.span("load.feed"); defer { span.end() }`.
+    static func span(_ name: String, _ props: Props = [:]) -> LogSpan { LogSpan(name: name, props: props, start: .now) }
+
+    /// Times `work` and logs it as a `timing` event, with `ok: false` if it throws.
+    static func measure<T>(_ name: String, _ props: Props = [:], _ work: () async throws -> T) async rethrows -> T {
+        let start = ContinuousClock.now
+        do {
+            let value = try await work()
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "true"]) { $1 })
+            return value
+        } catch {
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.quietRoamMessage]) { $1 })
+            throw error
+        }
+    }
+
+    /// The same, for work that isn't async (ranking, geometry, image processing).
+    static func measure<T>(_ name: String, _ props: Props = [:], sync work: () throws -> T) rethrows -> T {
+        let start = ContinuousClock.now
+        do {
+            let value = try work()
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "true"]) { $1 })
+            return value
+        } catch {
+            timing(name, ms: start.elapsedMilliseconds, props.merging(["ok": "false", "error": error.quietRoamMessage]) { $1 })
+            throw error
+        }
+    }
+}
+
+struct LogSpan {
+    let name: String
+    let props: Log.Props
+    let start: ContinuousClock.Instant
+    func end(_ more: Log.Props = [:]) { Log.timing(name, ms: start.elapsedMilliseconds, props.merging(more) { $1 }) }
+}
+
+extension ContinuousClock.Instant {
+    var elapsedMilliseconds: Int {
+        let elapsed = ContinuousClock.now - self
+        return Int(elapsed.components.seconds * 1_000 + elapsed.components.attoseconds / 1_000_000_000_000_000)
+    }
+}
+
+/// One step in the trail.
+struct TelemetryEvent: Codable, Sendable, Equatable {
+    enum Kind: String, Codable, Sendable { case screen, tap, nav, action, network, timing, error, crash, lifecycle }
+    var session: UUID
+    var seq: Int
+    var at: Date
+    var kind: Kind
+    var name: String
+    var screen: String?
+    var durationMs: Int?
+    var props: [String: String]?
+}
+
+/// The phone and app a session ran on: sent once per session, not with every event.
+struct TelemetrySession: Codable, Sendable {
+    var id: UUID
+    var startedAt: Date
+    var appVersion: String
+    var build: String
+    var osVersion: String
+    var deviceModel: String
+    var locale: String?
+
+    static func current() -> TelemetrySession {
+        let info = Bundle.main.infoDictionary
+        return TelemetrySession(id: UUID(), startedAt: Date(),
+                                appVersion: info?["CFBundleShortVersionString"] as? String ?? "?",
+                                build: info?["CFBundleVersion"] as? String ?? "?",
+                                osVersion: UIDevice.current.systemVersion,
+                                deviceModel: deviceModel(),
+                                locale: Locale.current.identifier)
+    }
+
+    private static func deviceModel() -> String {
+        if let simulated = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] { return simulated + " (Simulator)" }
+        var system = utsname()
+        uname(&system)
+        return withUnsafeBytes(of: &system.machine) { raw in
+            String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+        }
+    }
+}
+
+/// What the server says to record (one row in `telemetry_settings`), cached for the next launch.
+struct TelemetrySettings: Codable, Sendable, Equatable {
+    var eventsEnabled = true
+    var bugReportsEnabled = true
+    var mutedKinds: [String] = []
+}
+
+/// Where the trail goes: the backend's `log_events`, or nowhere (fixtures, UI tests).
+protocol TelemetryTransport: Sendable {
+    func settings() async throws -> TelemetrySettings
+    func send(session: TelemetrySession, events: [TelemetryEvent]) async throws
+    func markUnclean(session: UUID) async throws
+}
+
+/// Records the trail, keeps it on disk until it's uploaded (so a crash doesn't lose it), and uploads it in batches.
+/// Thread-safe: log from anywhere.
+final class Telemetry: @unchecked Sendable {
+    static let shared = Telemetry()
+
+    /// This session: one app launch, or since the account last changed.
+    var session: TelemetrySession { lock.withLock { currentSession } }
+    private var currentSession = TelemetrySession.current()
+    /// Who the session belongs to, so a different account (or signing out) starts a new one.
+    private var account: UUID?
+    /// Set while the trail uploads: the uploader's own failures aren't logged (they'd only add to what's waiting).
+    @TaskLocal static var quiet = false
+    /// The settings in force (last server answer, or defaults).
+    private(set) var settings: TelemetrySettings
+    /// The screen the member is on: an open sheet if there is one, else the top page of the current tab, else the
+    /// last screen that showed (before the tabs exist: welcome, sign-in, setup).
+    var currentScreen: String? { lock.withLock { overlays.last ?? pageScreen ?? lastShownScreen } }
+    /// The top page of the current tab, from AppRouter.
+    private var pageScreen: String?
+    /// Sheets and full-screen covers showing over it, newest last.
+    private var overlays: [String] = []
+    private var lastShownScreen: String?
+    private(set) var lastTapAt: ContinuousClock.Instant?
+
+    private let lock = NSLock()
+    private var seq = 0
+    private var pending: [TelemetryEvent] = []
+    /// The last events of this session, for a bug report's summary.
+    private var recent: [TelemetryEvent] = []
+    private var transport: (any TelemetryTransport)?
+    private var recording = false
+    private var uploading = false
+    /// Earlier sessions being uploaded right now, so two uploads don't send the same file.
+    private var uploadingEarlier: Set<String> = []
+    private let io = DispatchQueue(label: "roam.telemetry.io")
+    private let directory: URL
+    private var handle: FileHandle?
+    private static let settingsKey = "roam.telemetry.settings"
+    private static let batchSize = 200
+    private static let pendingCap = 2_000
+
+    private init() {
+        directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("telemetry", isDirectory: true)
+        if let data = UserDefaults.standard.data(forKey: Self.settingsKey),
+           let saved = try? JSONDecoder().decode(TelemetrySettings.self, from: data) {
+            settings = saved
+        } else {
+            settings = TelemetrySettings()
+        }
+    }
+
+    var bugReportsEnabled: Bool { lock.withLock { settings.bugReportsEnabled } }
+
+    /// The sequence number of the latest event, so a bug report can say "everything up to here".
+    var lastSeq: Int { lock.withLock { seq } }
+
+    /// The last `count` events, oldest first.
+    func recentEvents(_ count: Int = 40) -> [TelemetryEvent] { lock.withLock { Array(recent.suffix(count)) } }
+
+    /// Starts recording. With no transport (fixtures, UI tests) nothing is written to disk or sent.
+    func start(transport: (any TelemetryTransport)?) {
+        lock.withLock {
+            self.transport = transport
+            recording = transport != nil
+        }
+        guard transport != nil else { return }
+        io.sync { openSessionFile() }
+        CrashRecorder.shared.start()
+        let previousUnclean = CrashRecorder.shared.previousSessionEndedUncleanly
+        Log.lifecycle("app.launch", ["session": currentSession.id.uuidString,
+                                     "previous_unclean": previousUnclean.map(\.uuidString) ?? "none"])
+        if let previousUnclean {
+            record(.crash, "unclean_exit", props: ["previous_session": previousUnclean.uuidString,
+                                                   "why": "The last session ended while the app was open: a crash, a hang the system killed, or running out of memory."])
+        }
+        Task.detached(priority: .utility) { [self] in
+            await refreshSettings()
+            if let previousUnclean { try? await transport?.markUnclean(session: previousUnclean) }
+            await uploadEarlierSessions()
+            await uploadLoop()
+        }
+    }
+
+    // MARK: Recording
+
+    func record(_ kind: TelemetryEvent.Kind, _ name: String, screen: String? = nil, durationMs: Int? = nil,
+                at: Date? = nil, props: [String: String] = [:]) {
+        let event: TelemetryEvent? = lock.withLock {
+            if kind == .screen { lastShownScreen = name }
+            if kind == .tap { lastTapAt = .now }
+            seq += 1
+            let trimmed = props.isEmpty ? nil : props.mapValues { String($0.prefix(500)) }
+            let event = TelemetryEvent(session: currentSession.id, seq: seq, at: at ?? Date(), kind: kind, name: String(name.prefix(120)),
+                                       screen: screen ?? overlays.last ?? pageScreen ?? lastShownScreen, durationMs: durationMs, props: trimmed)
+            recent.append(event)
+            if recent.count > 300 { recent.removeFirst(recent.count - 300) }
+            guard recording, settings.eventsEnabled, !settings.mutedKinds.contains(kind.rawValue) else { return nil }
+            pending.append(event)
+            if pending.count > Self.pendingCap { pending.removeFirst(pending.count - Self.pendingCap) }
+            return event
+        }
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["ROAM_LOG_CONSOLE"] != nil {
+            print("[roam] \(kind.rawValue) \(name) \(props)")
+        }
+        #endif
+        guard let event else { return }
+        io.async { [self] in append(event) }
+    }
+
+    /// A sheet (or full-screen cover) showed: it's the current screen until it closes.
+    func overlayShown(_ name: String) {
+        lock.withLock {
+            overlays.removeAll { $0 == name }
+            overlays.append(name)
+        }
+    }
+
+    /// A sheet closed (by ×, Done or a swipe down): logged, with the screen it went back to.
+    func overlayClosed(_ name: String) {
+        let under: String? = lock.withLock {
+            guard overlays.contains(name) else { return nil }
+            overlays.removeAll { $0 == name }
+            return overlays.last ?? pageScreen ?? "unknown"
+        }
+        guard let under else { return }
+        record(.nav, "closed", screen: under, props: ["screen": name, "back_to": under])
+    }
+
+    /// The top page of the current tab changed (a push, back, tab switch); nil when the tabs go away.
+    func setPageScreen(_ name: String?) {
+        lock.withLock { pageScreen = name }
+    }
+
+    /// The same error shown twice in a row (a message made twice) is logged once.
+    private var lastShownError: (key: String, at: ContinuousClock.Instant)?
+
+    func recordShownError(_ error: Error, message: String) {
+        if error is CancellationError || Telemetry.quiet { return }
+        let detail = String(String(describing: error).prefix(300))
+        let key = detail + message
+        let skip = lock.withLock { () -> Bool in
+            if let last = lastShownError, last.key == key, last.at.elapsedMilliseconds < 1_000 { return true }
+            lastShownError = (key, .now)
+            return false
+        }
+        guard !skip else { return }
+        record(.error, "shown", props: ["message": message, "error": detail])
+    }
+
+    // MARK: Disk
+
+    private func openSessionFile() {
+        let current = session
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let info = directory.appendingPathComponent("\(current.id.uuidString).session.json")
+        try? RoamJSON.encoder.encode(current).write(to: info, options: .atomic)
+        let events = directory.appendingPathComponent("\(current.id.uuidString).events.jsonl")
+        FileManager.default.createFile(atPath: events.path, contents: nil)
+        try? handle?.close()
+        handle = try? FileHandle(forWritingTo: events)
+    }
+
+    // MARK: Accounts
+
+    /// The signed-in account changed. Signing out, or a different account signing in, starts a new session, so each
+    /// account's steps stay in its own; what the old session hadn't sent yet still goes up.
+    func accountChanged(to newAccount: UUID?) {
+        let rotate = lock.withLock { () -> Bool in
+            defer { account = newAccount }
+            return recording && account != nil && account != newAccount
+        }
+        guard rotate else { return }
+        lock.withLock {
+            currentSession = TelemetrySession.current()
+            seq = 0
+            pending.removeAll()
+            recent.removeAll()
+        }
+        // The old session's file holds what it hadn't sent; it goes up as an earlier session.
+        io.sync { openSessionFile() }
+        CrashRecorder.shared.markForeground(session: session.id)
+        Log.lifecycle("session.new", ["why": newAccount == nil ? "signed out" : "another account signed in"])
+        Task.detached(priority: .utility) { [self] in await uploadEarlierSessions() }
+    }
+
+    private func append(_ event: TelemetryEvent) {
+        guard let handle, var line = try? RoamJSON.encoder.encode(event) else { return }
+        line.append(0x0A)
+        try? handle.seekToEnd()
+        try? handle.write(contentsOf: line)
+    }
+
+    /// Rewrites this session's file with just what's still to send.
+    private func rewrite(_ events: [TelemetryEvent]) {
+        var data = Data()
+        for event in events {
+            guard let line = try? RoamJSON.encoder.encode(event) else { continue }
+            data.append(line)
+            data.append(0x0A)
+        }
+        try? handle?.truncate(atOffset: 0)
+        try? handle?.seek(toOffset: 0)
+        try? handle?.write(contentsOf: data)
+    }
+
+    // MARK: Upload
+
+    private func refreshSettings() async {
+        guard let transport = lock.withLock({ transport }),
+              let fresh = try? await transport.settings() else { return }
+        lock.withLock {
+            settings = fresh
+            if !fresh.eventsEnabled { pending.removeAll() }
+            pending.removeAll { fresh.mutedKinds.contains($0.kind.rawValue) }
+        }
+        if let data = try? JSONEncoder().encode(fresh) { UserDefaults.standard.set(data, forKey: Self.settingsKey) }
+    }
+
+    private func uploadLoop() async {
+        while true {
+            try? await Task.sleep(for: .seconds(15))
+            await flush()
+        }
+    }
+
+    /// Sends what's waiting, in batches. Safe to call often; only one upload runs at a time.
+    func flush() async {
+        guard let transport = lock.withLock({ () -> (any TelemetryTransport)? in
+            guard !uploading, !pending.isEmpty else { return nil }
+            uploading = true
+            return transport
+        }) else { return }
+        defer { lock.withLock { uploading = false } }
+        while let (sending, batch) = lock.withLock({ () -> (TelemetrySession, [TelemetryEvent])? in
+            pending.isEmpty ? nil : (currentSession, Array(pending.prefix(Self.batchSize)))
+        }) {
+            var rejected = false
+            do {
+                try await Telemetry.$quiet.withValue(true) { try await transport.send(session: sending, events: batch) }
+            } catch let error as RoamError where error == .forbidden || Self.isValidation(error) {
+                // The server won't ever take this batch; drop it rather than retry forever.
+                rejected = true
+            } catch {
+                return
+            }
+            let lastSent = batch.last?.seq ?? 0
+            let remaining = lock.withLock { () -> [TelemetryEvent]? in
+                pending.removeAll { $0.session == sending.id && $0.seq <= lastSent }
+                return currentSession.id == sending.id ? pending : nil
+            }
+            if let remaining { io.async { [self] in rewrite(remaining) } }
+            if rejected { return }
+        }
+    }
+
+    private static func isValidation(_ error: RoamError) -> Bool {
+        if case .validation = error { return true }
+        return false
+    }
+
+    /// Earlier sessions' leftovers (the app was killed or offline before they went), then their files are removed.
+    private func uploadEarlierSessions() async {
+        guard let transport = lock.withLock({ transport }) else { return }
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        for info in files where info.lastPathComponent.hasSuffix(".session.json") {
+            let id = info.lastPathComponent.replacingOccurrences(of: ".session.json", with: "")
+            guard id != session.id.uuidString, !uploadingEarlier.contains(id) else { continue }
+            lock.withLock { _ = uploadingEarlier.insert(id) }
+            defer { lock.withLock { _ = uploadingEarlier.remove(id) } }
+            let eventsURL = directory.appendingPathComponent("\(id).events.jsonl")
+            guard let data = try? Data(contentsOf: info), let earlier = try? RoamJSON.decoder.decode(TelemetrySession.self, from: data) else {
+                try? FileManager.default.removeItem(at: info)
+                try? FileManager.default.removeItem(at: eventsURL)
+                continue
+            }
+            let lines = (try? String(contentsOf: eventsURL, encoding: .utf8))?.split(separator: "\n") ?? []
+            let events = lines.compactMap { try? RoamJSON.decoder.decode(TelemetryEvent.self, from: Data($0.utf8)) }
+            var sent = true
+            for start in stride(from: 0, to: events.count, by: Self.batchSize) {
+                let batch = Array(events[start..<min(start + Self.batchSize, events.count)])
+                do {
+                    try await Telemetry.$quiet.withValue(true) { try await transport.send(session: earlier, events: batch) }
+                } catch let error as RoamError where error == .forbidden || Self.isValidation(error) {
+                    continue
+                } catch { sent = false; break }
+            }
+            // Old leftovers that can't be sent after a week aren't worth keeping.
+            let stale = earlier.startedAt < Date().addingTimeInterval(-7 * 86_400)
+            if sent || stale {
+                try? FileManager.default.removeItem(at: info)
+                try? FileManager.default.removeItem(at: eventsURL)
+            }
+        }
+    }
+
+    // MARK: App lifecycle
+
+    /// Going to the background: say so, and send what's waiting while iOS gives us time.
+    @MainActor func didEnterBackground() {
+        Log.lifecycle("app.background")
+        CrashRecorder.shared.markBackgrounded()
+        let application = UIApplication.shared
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = application.beginBackgroundTask(withName: "roam.telemetry") {
+            application.endBackgroundTask(task)
+        }
+        Task {
+            await flush()
+            application.endBackgroundTask(task)
+        }
+    }
+
+    @MainActor func didBecomeActive() {
+        CrashRecorder.shared.markForeground(session: session.id)
+        Log.lifecycle("app.foreground")
+    }
+}

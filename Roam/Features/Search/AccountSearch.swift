@@ -111,7 +111,7 @@ struct AccountSearchResults: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(picked ? .isSelected : [])
-                    .accessibilityIdentifier("pick-friend-\(row.member.handle)")
+                    .tapID("pick-friend-\(row.member.handle)")
                     if row.id != visible.last?.id { RowSeparator() }
                 }
                 if visible.isEmpty && friendsCursor == nil {
@@ -183,12 +183,14 @@ struct FindPeopleView: View {
             HStack(spacing: Theme.Spacing.s) {
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
-                }
+                }.tapID("accountsearch.chevron-left")
                 .buttonStyle(.plain)
                 .floatingBubble(Circle())
                 .accessibilityLabel("Back")
                 // White glass, the same as Discover's search.
                 RoamSearchField(prompt: "Search for friends", text: $query, focus: $focused, style: .glass, identifier: "member-search-field")
+                // The beta's bug button, always right-most.
+                BugReportButton()
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.s)

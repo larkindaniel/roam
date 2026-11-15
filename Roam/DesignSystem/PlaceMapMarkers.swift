@@ -145,7 +145,7 @@ struct PlaceMapView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(item.experience.name), \(item.state.markerTitle)")
-                    .accessibilityIdentifier("map-marker-\(item.experience.name)")
+                    .tapID("map-marker-\(item.experience.name)")
                 }
                 .annotationTitles(.hidden)
             }
@@ -168,7 +168,7 @@ struct PlaceMapView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(Theme.Spacing.s)
-                .accessibilityIdentifier("map-selected-place")
+                .tapID("map-selected-place")
             }
         }
     }

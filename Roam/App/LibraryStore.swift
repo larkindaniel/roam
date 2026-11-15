@@ -22,6 +22,7 @@ final class LibraryStore {
     init(lists: any ListService) { self.lists = lists }
 
     func refresh() async {
+        let span = Log.span("load.my_places"); defer { span.end() }
         let generation = accountGeneration
         let requestedRevision = revision
         if let latest = try? await lists.library(), generation == accountGeneration, requestedRevision == revision {

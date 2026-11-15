@@ -53,10 +53,10 @@ struct EmptyStateView: View {
             }
             VStack(spacing: Theme.Spacing.s) {
                 if let primaryTitle, let primaryAction {
-                    Button(primaryTitle, action: primaryAction).buttonStyle(PrimaryButtonStyle(compact: true))
+                    Button(primaryTitle, action: primaryAction).tapID("empty-state.\(primaryTitle.lowercased().replacingOccurrences(of: " ", with: "-"))").buttonStyle(PrimaryButtonStyle(compact: true))
                 }
                 if let secondaryTitle, let secondaryAction {
-                    Button(secondaryTitle, action: secondaryAction).buttonStyle(QuietButtonStyle())
+                    Button(secondaryTitle, action: secondaryAction).tapID("empty-state.\(secondaryTitle.lowercased().replacingOccurrences(of: " ", with: "-"))").buttonStyle(QuietButtonStyle())
                 }
             }
             .frame(maxWidth: 320)
@@ -86,7 +86,7 @@ struct InlineRetryView: View {
                 Button(retryTitle, action: retry)
                     .font(.subheadline.weight(.semibold))
                     .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("retry-button")
+                    .tapID("retry-button")
             }
             Spacer(minLength: 0)
         }
@@ -255,7 +255,7 @@ struct MapListToggle: View {
                 .shadow(color: .black.opacity(0.10), radius: 9, y: 6)
         }
         .frame(minHeight: Theme.minimumHitTarget)
-        .accessibilityIdentifier("map-list-toggle")
+        .tapID("map-list-toggle")
     }
 }
 
@@ -281,7 +281,7 @@ struct SelectedPlaceCard: View {
                     Image(systemName: "xmark")
                         .font(.footnote.weight(.bold))
                         .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                }
+                }.tapID("stateviews.xmark")
                 .accessibilityLabel("Close selected place")
             }
         }

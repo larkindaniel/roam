@@ -40,7 +40,7 @@ struct SocialNavigationRow: View {
             .foregroundStyle(Roam.ink)
             .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
-        }
+        }.tapID("receivedsharesview.chevron-right")
         .buttonStyle(.plain)
     }
 }

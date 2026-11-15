@@ -155,9 +155,69 @@ struct LogRequest: Hashable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AppRouter {
-    var selectedTab: AppTab
-    var paths: [AppTab: [AppRoute]] = [:]
-    var sheet: SheetRoute?
+    // Every tab change, push, back and sheet goes into the beta's event trail.
+    var selectedTab: AppTab {
+        didSet {
+            guard selectedTab != oldValue else { return }
+            updatePageScreen()
+            Log.nav("tab", ["to": selectedTab.rawValue, "from": oldValue.rawValue])
+        }
+    }
+    var paths: [AppTab: [AppRoute]] = [:] {
+        didSet {
+            Self.logPathChanges(from: oldValue, to: paths)
+            updatePageScreen()
+        }
+    }
+    var sheet: SheetRoute? {
+        didSet {
+            if let sheet { Log.nav("sheet.open", ["sheet": sheet.logName, "detail": sheet.logDetail]) }
+            else if let oldValue { Log.nav("sheet.close", ["sheet": oldValue.logName]) }
+        }
+    }
+
+    /// Whether the tabs are on screen (not welcome, sign-in or setup), set by MainTabView.
+    var tabsShowing = false {
+        didSet { updatePageScreen() }
+    }
+
+    /// Tells the event trail which page is on top of the current tab, while the tabs are showing.
+    func updatePageScreen() {
+        guard tabsShowing else { Telemetry.shared.setPageScreen(nil); return }
+        Telemetry.shared.setPageScreen(paths[selectedTab]?.last.map(Self.screenName) ?? Self.rootScreens[selectedTab])
+    }
+
+    private static let rootScreens: [AppTab: String] = [.forYou: "foryou-root", .friends: "feed-root", .myPlaces: "myplaces-root"]
+
+    /// The screen name a route's page logs under (the same names as `.screenIdentifier`).
+    static func screenName(_ route: AppRoute) -> String {
+        let names = ["experience": "experience-detail", "city": "city-page", "cityAt": "city-page", "country": "country-page",
+                     "region": "country-page", "member": "profile-root", "ownProfile": "profile-root", "trip": "trip-detail",
+                     "list": "place-list-detail", "lists": "place-lists", "receivedShares": "received-shares",
+                     "tripInvitations": "trip-invitations", "taste": "taste-editor", "settings": "settings",
+                     "editProfile": "edit-profile", "activity": "log-post", "notifications": "notifications",
+                     "followGraph": "follow-list", "memberList": "member-lists", "sharedWants": "shared-wants",
+                     "globe": "expanded-globe", "travelFilter": "expanded-globe", "newThisYear": "new-this-year-list",
+                     "gallery": "visit-gallery", "visitPhoto": "visit-gallery", "passport": "passport",
+                     "passportCountry": "passport-country", "passportCity": "passport-city", "homeCity": "home-city",
+                     "wishlistCountry": "wishlist-country", "placeGroup": "place-group", "findPeople": "find-people",
+                     "safetyList": "safety", "reportHistory": "report-history", "help": "help", "deleteAccount": "delete-account"]
+        return names[route.logName] ?? route.logName
+    }
+
+    private static func logPathChanges(from old: [AppTab: [AppRoute]], to new: [AppTab: [AppRoute]]) {
+        for tab in Set(old.keys).union(new.keys) {
+            let before = old[tab] ?? [], after = new[tab] ?? []
+            guard before != after else { continue }
+            if after.count > before.count, let route = after.last {
+                Log.nav("push", ["tab": tab.rawValue, "route": route.logName, "detail": route.logDetail, "depth": "\(after.count)"])
+            } else if after.isEmpty && before.count > 1 {
+                Log.nav("pop_to_root", ["tab": tab.rawValue, "from_depth": "\(before.count)"])
+            } else {
+                Log.nav("back", ["tab": tab.rawValue, "to": after.last?.logName ?? "root", "depth": "\(after.count)"])
+            }
+        }
+    }
 
     init(initialTab: AppTab = .forYou) {
         self.selectedTab = initialTab
@@ -209,3 +269,15 @@ final class AppRouter {
 }
 
 
+
+/// Short names for the event trail: the case name, and its values (ids, a city's name) as detail.
+protocol LogNamed {}
+extension LogNamed {
+    var logName: String { Mirror(reflecting: self).children.first?.label ?? "\(self)" }
+    var logDetail: String {
+        guard let value = Mirror(reflecting: self).children.first?.value else { return "" }
+        return String(String(describing: value).prefix(200))
+    }
+}
+extension AppRoute: LogNamed {}
+extension SheetRoute: LogNamed {}

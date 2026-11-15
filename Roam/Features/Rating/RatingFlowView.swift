@@ -81,7 +81,7 @@ struct RatingFlowView: View {
             }
         }
         .roamSheetStyle()
-        .screenIdentifier("rating-flow")
+        .screenIdentifier("rating-flow", sheet: true)
     }
 
     private func savingFromComparison(_ model: RatingFlowModel) -> Bool {
@@ -140,7 +140,7 @@ struct RatingFlowView: View {
                     if !fromComparison { details(model) }
                 case .retry:
                     Button("Retry save") { Task { await model.retrySave() } }
-                        .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
+                        .buttonStyle(PrimaryButtonStyle()).tapID("rating-retry")
                 }
             }
             .padding(Theme.Spacing.l)
@@ -177,7 +177,7 @@ struct RatingFlowView: View {
                     .disabled(!canSave)
                     .padding(.horizontal, RoamTabBar.sideMargin)
                     .padding(.bottom, RoamTabBar.margin + 6)
-                    .accessibilityIdentifier("rating-okay")
+                    .tapID("rating-okay")
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -234,7 +234,7 @@ struct RatingFlowView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Remove date")
-                .accessibilityIdentifier("rating-clear-date")
+                .tapID("rating-clear-date")
             }
         }
         .padding(.leading, Theme.Spacing.m)
@@ -242,7 +242,7 @@ struct RatingFlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 44)
         .contentShape(Rectangle())
-        .onTapGesture { showsDate = true }
+        .onTapGesture { TapRecorder.named("ratingflowview.datebubble"); showsDate = true }
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("rating-edit-date")
         .roamCard(padding: 0)
@@ -292,7 +292,7 @@ struct RatingFlowView: View {
                 Button("Skip ranking") { model.logWithoutRanking() }
                     .buttonStyle(QuietButtonStyle())
                     .disabled(model.category == nil)
-                    .accessibilityIdentifier("rating-skip-ranking")
+                    .tapID("rating-skip-ranking")
             }
         }
     }
@@ -346,7 +346,7 @@ struct RatingFlowView: View {
                 }
                 .buttonStyle(.plain)
                 .roamCard(padding: 0)
-                .accessibilityIdentifier("rating-with")
+                .tapID("rating-with")
             }
             // Photos: the system picker straight away; once there are some, they show one at a time, swiping for more.
             if let photos = model.photos {
@@ -451,12 +451,12 @@ struct RatingFlowView: View {
             HStack(spacing: Theme.Spacing.l) {
                 if model.canUndo {
                     Button { model.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                        .accessibilityIdentifier("rating-undo")
+                        .tapID("rating-undo")
                 }
                 Button("Too tough") { Task { await model.choose(.tooTough) } }
-                    .accessibilityIdentifier("rating-too-tough")
+                    .tapID("rating-too-tough")
                 Button("Skip") { Task { await model.choose(.skip) } }
-                    .accessibilityIdentifier("rating-skip")
+                    .tapID("rating-skip")
             }
             .font(.subheadline.weight(.medium))
             .foregroundStyle(Theme.secondaryText)
@@ -479,7 +479,7 @@ struct RatingFlowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier)
+        .tapID(identifier)
     }
 
 }
@@ -552,6 +552,7 @@ struct FeelingSlider: View {
                     }
                     .onEnded { value in
                         let index = min(max(Int(value.location.x / segment), 0), stops.count - 1)
+                        TapRecorder.named("feeling.\(stops[index].rawValue)")
                         pick(stops[index])
                     }
             )
@@ -616,6 +617,7 @@ struct OptionSlider: View {
                         let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
                         let isTap = abs(value.translation.width) < 6
                         if isTap, startSelection == .some(option) { selection = nil } else { selection = option }
+                        TapRecorder.named("option.\(option.lowercased().replacingOccurrences(of: " ", with: "-"))")
                         startSelection = nil
                     }
             )

@@ -42,7 +42,7 @@ struct ReportSheet: View {
                                 .frame(minHeight: Theme.minimumHitTarget)
                             }
                             .accessibilityAddTraits(reason == option ? .isSelected : [])
-                            .accessibilityIdentifier("report-reason-\(option.rawValue)")
+                            .tapID("report-reason-\(option.rawValue)")
                         }
                     }
                     Section {
@@ -52,7 +52,7 @@ struct ReportSheet: View {
                             // The field fills its whole box, so a tap anywhere in it starts typing.
                             .padding(.vertical, 11)
                             .contentShape(Rectangle())
-                            .onTapGesture { detailsFocused = true }
+                            .onTapGesture { TapRecorder.named("reportsheet.body"); detailsFocused = true }
                             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .accessibilityIdentifier("report-details")
                     } footer: {
@@ -73,7 +73,7 @@ struct ReportSheet: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Send") { Task { await submit() } }
                             .disabled(reason == nil || busy || text.count > Limits.reportTextMax)
-                            .accessibilityIdentifier("report-send")
+                            .tapID("report-send")
                     }
                 }
             }

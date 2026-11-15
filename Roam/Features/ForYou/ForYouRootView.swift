@@ -24,6 +24,7 @@ final class ForYouModel {
 
     /// Picks aren't tied to a destination, so they show even before one is chosen.
     func loadPicks() async {
+        let span = Log.span("load.discover"); defer { span.end() }
         if let shares = try? await plans.sharedWithMe() { picks = shares }
     }
 
@@ -87,7 +88,7 @@ struct NotInterestedMenu: ViewModifier {
     func body(content: Content) -> some View {
         content.contextMenu {
             Button("Not interested", systemImage: "eye.slash", action: action)
-                .accessibilityIdentifier("suggestion-not-interested")
+                .tapID("suggestion-not-interested")
         }
     }
 }
@@ -152,6 +153,8 @@ struct ForYouRootView: View {
                 // The same glass circle the system toolbar gives your picture on My Places.
                 // Just the picture, no glass ring around it.
                 ProfileAvatarButton()
+                // The beta's bug button, always right-most.
+                BugReportButton()
             }
         }
         .animation(.spring(duration: 0.3), value: searchActive)
@@ -176,7 +179,7 @@ struct ForYouRootView: View {
         .buttonStyle(.plain)
         .floatingBubble(Circle())
         .accessibilityLabel(label)
-        .accessibilityIdentifier(identifier)
+        .tapID(identifier)
     }
 
     var body: some View {
@@ -192,11 +195,11 @@ struct ForYouRootView: View {
                 }
                 // Tapping anywhere but a result ends the search.
                 .contentShape(Rectangle())
-                .onTapGesture { endSearch() }
+                .onTapGesture { TapRecorder.named("foryourootview.body"); endSearch() }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
                     .contentShape(Rectangle())
-                    .onTapGesture { if searchFocused { endSearch() } }
+                    .onTapGesture { TapRecorder.named("foryourootview.body-2"); if searchFocused { endSearch() } }
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
@@ -280,7 +283,7 @@ struct ForYouRootView: View {
                 Section("Places") {
                     ForEach(found.onRoam) { place in
                         Button { router.push(.experience(place.id)) } label: { placeResultLabel(name: place.name, category: place.category, area: place.areaLine, experience: place) }
-                            .accessibilityIdentifier("discover-place-\(place.name)")
+                            .tapID("discover-place-\(place.name)")
                     }
                     ForEach(found.places) { hit in placeResult(hit) }
                 }
@@ -298,7 +301,7 @@ struct ForYouRootView: View {
                             }
                             .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget, alignment: .leading)
                         }
-                        .accessibilityIdentifier("discover-result-\(destination.name)")
+                        .tapID("discover-result-\(destination.name)")
                     }
                 }
                 .listRowBackground(Roam.paperRaised)
@@ -311,7 +314,7 @@ struct ForYouRootView: View {
             placeResultLabel(name: hit.candidate.name, category: hit.category,
                              area: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.uniqued().joined(separator: ", "), experience: hit.experience)
         }
-        .accessibilityIdentifier("discover-place-\(hit.candidate.name)")
+        .tapID("discover-place-\(hit.candidate.name)")
     }
 
     private func placeResultLabel(name: String, category: ExperienceCategory?, area: String, experience: ExperienceSummary?) -> some View {
@@ -379,7 +382,7 @@ struct ForYouRootView: View {
         }
         .buttonStyle(.plain)
         .notInterested { Task { await model?.hide(city) } }
-        .accessibilityIdentifier("discover-city-\(city.destination.name)")
+        .tapID("discover-city-\(city.destination.name)")
     }
 
     /// "Portugal · Theo sent you a place here": the country, then why it's suggested.

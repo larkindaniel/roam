@@ -78,6 +78,7 @@ final class FeedModel {
     }
 
     func refresh() async {
+        let span = Log.span("load.feed"); defer { span.end() }
         generation += 1
         let token = generation
         isLoading = true

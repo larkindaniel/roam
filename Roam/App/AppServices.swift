@@ -27,10 +27,15 @@ final class AppServices {
     let storage: AccountStorage
     let location: LocationService
     let images: ImageStore
+    /// Where bug reports go (the backend, or nowhere in fixtures).
+    let bugReports: any BugReportService
+    /// Where the event trail goes; nil means it isn't recorded (fixtures, UI tests).
+    let telemetry: (any TelemetryTransport)?
     private let healthCheck: (@Sendable () async -> Bool)?
 
     init<Backend>(options: LaunchOptions, isFixture: Bool, isConfigured: Bool, backend: Backend, places: any PlaceSearchProviding,
-                  storage: AccountStorage, healthCheck: (@Sendable () async -> Bool)?)
+                  storage: AccountStorage, healthCheck: (@Sendable () async -> Bool)?,
+                  bugReports: any BugReportService = FixtureBugReports(), telemetry: (any TelemetryTransport)? = nil)
     where Backend: AuthService & ProfileService & ExperienceService & ListService & RankingService & MemoryService & MediaService
         & SocialService & FeedService & NotificationService & SettingsService & TravelService & AccountService & PlanService {
         self.options = options
@@ -55,6 +60,8 @@ final class AppServices {
         self.location = LocationService(simulated: options.simulateLocation)
         self.images = ImageStore(media: backend)
         self.healthCheck = healthCheck
+        self.bugReports = bugReports
+        self.telemetry = telemetry
     }
 
     func backendIsHealthy() async -> Bool {
@@ -92,6 +99,7 @@ final class AppServices {
         let backend = SupabaseBackend(config: config ?? AppConfig(supabaseURL: URL(string: "http://127.0.0.1:54321")!, publishableKey: "unconfigured"))
         return AppServices(options: options, isFixture: false, isConfigured: config != nil, backend: backend,
                            places: MapKitPlaceSearchProvider(), storage: storage,
-                           healthCheck: { await backend.health() })
+                           healthCheck: { await backend.health() },
+                           bugReports: backend, telemetry: options.uiTesting || config == nil ? nil : backend)
     }
 }

@@ -26,10 +26,12 @@ struct FeedRootView: View {
             } label: { barGlyph("person.badge.plus") }
             .buttonStyle(.plain)
             .accessibilityLabel("Friends and requests")
-            .accessibilityIdentifier("open-friends")
+            .tapID("open-friends")
             .floatingBubble(Circle())
             // Just the picture, no glass ring around it.
             ProfileAvatarButton()
+            // The beta's bug button, always right-most.
+            BugReportButton()
         }
         .frame(height: Self.barHeight)
     }
@@ -46,7 +48,7 @@ struct FeedRootView: View {
         }
         .buttonStyle(.plain)
         .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor.opacity(0.15))
-        .accessibilityIdentifier("log-place")
+        .tapID("log-place")
     }
 
     private func barGlyph(_ symbol: String) -> some View {
@@ -192,7 +194,7 @@ struct FeedCard: View {
                     .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
             }
             .accessibilityLabel(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments")
-            .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
+            .tapID("feed-comments-\(item.id.uuidString)")
         }
         .buttonStyle(.plain)
     }
@@ -237,7 +239,7 @@ struct LikeButton: View {
         .disabled(pending)
         .roamHaptic(.impact(weight: .light), trigger: liked)
         .accessibilityLabel(liked ? "Liked, \(count) \(count == 1 ? "like" : "likes"). Unlike" : "Like, \(count) \(count == 1 ? "like" : "likes")")
-        .accessibilityIdentifier("like-button")
+        .tapID("like-button")
     }
 }
 

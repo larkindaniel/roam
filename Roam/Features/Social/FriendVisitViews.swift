@@ -20,7 +20,7 @@ struct FriendAreaRows: View {
             }
             .roamCard(padding: Theme.Spacing.m)
         }
-        .screenIdentifier("area-friends")
+        .accessibilityElement(children: .contain).accessibilityIdentifier("area-friends")
     }
 
     private func subtitle(_ item: FriendAreaActivity) -> String {

@@ -26,7 +26,7 @@ struct FilterSheet: View {
                 if kind == .been {
                     Section {
                         Toggle("Unranked places only", isOn: $draft.unrankedMemories)
-                            .accessibilityIdentifier("filter-unranked")
+                            .tapID("filter-unranked")
                     } footer: {
                         Text("Show only places you've visited but not ranked.")
                     }
@@ -55,7 +55,7 @@ struct FilterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("filter-cancel")
+                    Button("Cancel") { dismiss() }.tapID("filter-cancel")
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -66,13 +66,13 @@ struct FilterSheet: View {
                     Button("Clear all") { draft = ListFilter() }
                         .buttonStyle(SecondaryButtonStyle())
                         .disabled(draft.isEmpty)
-                        .accessibilityIdentifier("filter-clear")
+                        .tapID("filter-clear")
                     Button(draft.activeCount > 0 ? "Apply (\(draft.activeCount))" : "Apply") {
                         onApply(draft)
                         dismiss()
                     }
                     .buttonStyle(PrimaryButtonStyle())
-                    .accessibilityIdentifier("filter-apply")
+                    .tapID("filter-apply")
                 }
                 .padding(Theme.Spacing.l)
                 .background(.bar)
@@ -80,7 +80,7 @@ struct FilterSheet: View {
             .onAppear { draft = applied }
         }
         .roamSheetStyle()
-        .screenIdentifier("filter-sheet")
+        .screenIdentifier("filter-sheet", sheet: true)
     }
 
     private func checkRow(_ option: FacetOption, isOn: Bool, toggle: @escaping () -> Void) -> some View {
@@ -97,7 +97,7 @@ struct FilterSheet: View {
             .frame(minHeight: Theme.minimumHitTarget)
         }
         .accessibilityAddTraits(isOn ? .isSelected : [])
-        .accessibilityIdentifier("filter-option-\(option.title)")
+        .tapID("filter-option-\(option.title)")
     }
 }
 
@@ -127,7 +127,7 @@ struct FlowChips: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
-                    .accessibilityIdentifier("chip-\(item.id)")
+                    .tapID("chip-\(item.id)")
                 }
             }
         } else {
@@ -136,7 +136,7 @@ struct FlowChips: View {
                     Button { toggle(item.id) } label: { PillLabel(title: item.title, systemImage: item.symbol) }
                         .buttonStyle(PillButtonStyle(isSelected: selected.contains(item.id)))
                         .accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
-                        .accessibilityIdentifier("chip-\(item.id)")
+                        .tapID("chip-\(item.id)")
                 }
             }
         }

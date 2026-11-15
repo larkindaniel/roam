@@ -1,0 +1,153 @@
+# Beta telemetry: event trail, bug reports, latency and crashes
+
+All of it goes through one pipeline into Supabase. There's no third-party SDK and no extra account.
+
+```
+app ──Log.*──▶ Telemetry (memory + a file per session) ──every 15 s / on background──▶ log_events() ──▶ app_events
+                                                                                                      app_sessions
+bug button ──▶ Report a bug ──▶ bug-reports bucket + submit_bug_report() ──▶ bug_reports ──▶ bug-report-issue ──▶ GitHub issue
+```
+
+## What gets recorded on its own
+
+| Kind | From | What |
+|---|---|---|
+| `screen` | `.screenIdentifier(_:)` | each time a screen shows, with `since_tap_ms` (how long after the tap that opened it) |
+| `tap` | `.tapID(_:)` and `TapRecorder` | named buttons by their id, system bar buttons by their label, anything else as `unnamed` with x/y |
+| `nav` | `AppRouter`, setup steps | tab changes, push, back, pop to root, sheets opening and closing |
+| `network` | `NetworkRecorder` (URLSession metrics) | every request: `rpc.<function>`, `auth.*`, `storage.<method>.<bucket>`, `fn.<function>`, with status, bytes and ms |
+| `timing` | `Log.span` / `Log.measure` | main screen loads (`load.feed`, `load.discover`, `load.place`, …) and heavy work (`compute.image_prepare`) |
+| `error` | `SupabaseBackend.map`, `roamMessage` | `backend`: why a call failed (server code and message, network error, what didn't decode); `shown`: every error message a screen shows |
+| `crash` | `CrashRecorder` | `unclean_exit` (the last session ended while the app was open), MetricKit `crash` and `hang` reports with stacks |
+| `lifecycle` | app | launch, foreground, background, MetricKit daily summaries |
+
+Signed-out screens log too; a session is tied to whoever signs in during it.
+
+## Adding to it when you build something
+
+- **Buttons:** use `.tapID("thing-action")` instead of `.accessibilityIdentifier` on every button, link and toggle.
+  It's the UI-test id and the name its taps log under. Run `python3 scripts/tap_ids.py --check` to list anything
+  unnamed. `--fix` names it from its label, and taps on `onTapGesture` views get a `TapRecorder.named` call.
+- **Failures:** logged on their own. Every backend failure logs its real reason (`error` / `backend`: the server's
+  code and message, the network error, or the field that didn't decode). Every message a screen shows logs as
+  `error` / `shown`.
+- **Screens:** give each new screen `.screenIdentifier("name")`. If it's a sheet or full-screen cover, use
+  `.screenIdentifier("name", sheet: true)`, so it counts as the current screen until it closes. Pages pushed on a tab
+  take the current screen from `AppRouter`; give a new route a name in `AppRouter.screenName`. Sections inside a page
+  use a plain `accessibilityIdentifier`, not `screenIdentifier`.
+- **Things that matter:** `Log.action("log.saved", ["score": "8.1"])`.
+- **Failures you handle quietly:** `Log.error("photo.upload", error)`.
+- **Slow things:** `let span = Log.span("load.trip"); defer { span.end() }`, or wrap in `Log.measure("x") { … }`.
+- **Never** log what people type (notes, messages, search text, passwords) or anything secret. Ids and place names
+  are fine.
+
+## Switching things on and off
+
+One row, read by the app at launch:
+
+```sql
+update telemetry_settings set events_enabled = false;          -- stop the trail
+update telemetry_settings set bug_reports_enabled = false;     -- hide the bug button
+update telemetry_settings set muted_kinds = '{network}';       -- drop one kind (screen, tap, nav, network, …)
+update telemetry_settings set event_retention_days = 14;       -- how long events are kept
+```
+
+## Keeping storage small
+
+- Device and app details are stored once per session, not on each event.
+- Props are capped at 500 characters each and 16 KB in total, and batches at 200 events.
+- A daily `pg_cron` job (`prune-app-events`) deletes events past the retention window (30 days by default). Sessions
+  and bug reports stay.
+- Roughly 200 bytes per event. A tester using the app for 20 minutes makes about 400 events, so 80 KB. 50 testers
+  doing that every day is about 4 MB a day: roughly 120 MB at 30 days' retention, or about 250 MB with indexes. The
+  free tier holds 500 MB. If it gets tight, lower `event_retention_days` or mute `network`.
+- Each install keeps at most 2,000 unsent events on the phone, and drops leftovers older than a week.
+
+## Reading it
+
+```sql
+-- A bug report, and what the tester did up to it (with their previous session first, if they reopened the app to report)
+select * from bug_reports order by created_at desc;
+select session, seq, at, kind, name, screen, duration_ms, props
+from bug_report_trail where report_id = '…' and kind <> 'network' order by part, at, seq;
+
+-- The same report's network calls
+select session, seq, at, name, duration_ms, props ->> 'status' as status, props
+from bug_report_trail where report_id = '…' and kind = 'network' order by part, at, seq;
+
+-- Everything someone did in a session
+select seq, at, kind, name, screen, duration_ms, props from app_events where session_id = '…' order by seq;
+
+-- What's slow: p50 / p95 per call, screen load and computation over the last week
+select * from latency_last_7_days;
+
+-- Crashes, hangs and unclean exits
+select * from recent_crashes;
+```
+
+Screenshots and recordings are in the private `bug-reports` bucket (Dashboard → Storage).
+
+MetricKit stacks aren't symbolicated. Symbolicate them against the build's dSYM, or use TestFlight's own crash
+reports (App Store Connect → TestFlight → Crashes), which are.
+
+## GitHub issues
+
+The `bug-report-issue` edge function opens an issue for each report.
+
+The repo is public, so anyone can read these issues. Each one has what helps fix the bug and nothing that identifies
+the tester:
+
+- **In:**
+  - the tester's description
+  - their screenshots, shown in the issue
+  - recordings, as links
+
+  Attachments are committed to the `bug-report-attachments` branch, which never touches `main`, so GitHub can show
+  them. If that fails, the issue links to a copy in Supabase storage instead. That copy has a random name, so the
+  tester's account id isn't in the link, and the link lasts a year.
+  - the app version, iOS version and device
+  - the screen it was sent from
+  - two SQL queries, one for what the tester did and one for the network calls (the steps themselves stay in Supabase)
+- **Out:**
+  - who sent it
+  - emails (`[email]`) and phone numbers (`[number]`), in the description too
+
+Ids in the description show as `[id]`.
+
+To turn it on for the hosted beta:
+
+1. On GitHub, create a fine-grained personal access token that only covers this repository, with **Issues: read and
+   write** and **Contents: read and write**. Contents is for committing attachments to their branch. Protect `main`
+   (Settings → Branches) so the token can't change it.
+2. Run `supabase secrets set GITHUB_TOKEN=… GITHUB_REPO=larkindaniel/roam --project-ref xnjzuotytfzyppubjcfi`
+3. Run `supabase functions deploy bug-report-issue --project-ref xnjzuotytfzyppubjcfi`
+
+Without those secrets the function does nothing, and the reports are still saved. Locally, put the two values in
+`supabase/functions/.env` and restart Supabase.
+
+Issues get the `bug` and `user-reported-bug` labels. Create `user-reported-bug` in the repo once (Issues → Labels),
+because the token can only add labels that already exist.
+
+## Why not a hosted tool
+
+Sentry (crashes, traces, breadcrumbs) or PostHog (product analytics and session replay) would give dashboards and
+symbolicated stacks for free. But each is another SDK, another account and another place the data lives. At beta
+scale Postgres handles this volume easily, and percentiles in SQL are enough. ClickHouse only pays off at millions of
+events a day. If crash stacks become the bottleneck, add Sentry for crashes alone and keep this trail.
+
+## Testing it
+
+- `supabase/tests/10_telemetry_test.sql` (run with `supabase test db --local`) covers:
+  - members can't read the tables or views, and the settings are readable signed out
+  - signed-out sessions are claimed at sign-in, and nobody else can write to or mark someone's session
+  - repeated batches are ignored, unknown kinds dropped, and batches over 200 refused
+  - the switches: events off, bug reports off, muted kinds
+  - report rules: a description, at most six attachments, only your own files, words only when signed out
+  - the trail stops at the report and puts the previous session first, but only when it was recent
+  - the server can read reports and record the issue
+  - clean-up removes old events
+- `node --test supabase/functions/bug-report-issue/scrub.test.mjs` checks what's taken out of public issues: emails,
+  phone numbers and ids. Dates, times, coordinates, sizes and place names stay.
+- `python3 scripts/tap_ids.py --check` lists any button or tap gesture without a name.
+- An end-to-end check is to use the app for a minute, send a report, and read its trail with the two queries in the
+  issue.

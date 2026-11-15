@@ -108,7 +108,7 @@ struct ProfileAvatarButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Profile and settings")
-        .accessibilityIdentifier("open-profile")
+        .tapID("open-profile")
     }
 }
 
@@ -168,7 +168,7 @@ struct LogPlaceToolbarButton: ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button { router.sheet = .logPlace } label: { Image(systemName: "plus") }
                 .accessibilityLabel("Log a place")
-                .accessibilityIdentifier("log-place")
+                .tapID("log-place")
         }
     }
 }

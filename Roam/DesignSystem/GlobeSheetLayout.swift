@@ -313,7 +313,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             if detent == .peek { peekHeaderHeight = height }
         }
         .contentShape(Rectangle())
-        .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
+        .onTapGesture { TapRecorder.named("globesheetlayout.handle"); if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
         // Fully up, dragging the header lowers the card (the content scrolls instead). Short of that, the whole card takes
         // the swipe (see `card`).
         .simultaneousGesture(cardDrag, isEnabled: detent == .full)

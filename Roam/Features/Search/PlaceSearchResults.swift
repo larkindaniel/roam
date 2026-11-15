@@ -305,7 +305,7 @@ struct PlaceSearchResults: View {
         }
         .buttonStyle(.plain)
         .disabled(opening != nil)
-        .accessibilityIdentifier("search-result-\(row.title)")
+        .tapID("search-result-\(row.title)")
     }
 
     private func pick(_ pick: PlaceSearchPick) async {
@@ -371,7 +371,7 @@ struct RoamSearchField: View {
                 } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cancel search")
-                    .accessibilityIdentifier("\(identifier)-cancel")
+                    .tapID("\(identifier)-cancel")
             }
         }
         .font(.body)

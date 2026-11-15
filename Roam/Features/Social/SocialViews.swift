@@ -19,7 +19,7 @@ struct NotificationsView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Mark all read") { Task { await model?.markAllRead() } }
                     .disabled(model?.unread.isEmpty ?? true)
-                    .accessibilityIdentifier("notifications-mark-all")
+                    .tapID("notifications-mark-all")
             }
         }
         .task {
@@ -102,7 +102,7 @@ struct NotificationsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel((notification.isUnread ? "Unread. " : "") + Self.message(notification))
-        .accessibilityIdentifier("notification-\(notification.type.rawValue)-\(notification.actor.handle)")
+        .tapID("notification-\(notification.type.rawValue)-\(notification.actor.handle)")
     }
 
     static func message(_ notification: AppNotification) -> String {
@@ -161,7 +161,7 @@ struct FollowListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { router.showFindPeople() } label: { Image(systemName: "person.badge.plus") }
                         .accessibilityLabel("Find people")
-                        .accessibilityIdentifier("find-people")
+                        .tapID("find-people")
                 }
             }
         }

@@ -173,7 +173,7 @@ struct DeleteAccountView: View {
         }
         .confirmationDialog("Delete your account permanently?", isPresented: $showsFinalConfirmation, titleVisibility: .visible) {
             Button("Delete account", role: .destructive) { Task { await model?.delete() } }
-                .accessibilityIdentifier("delete-account-final")
+                .tapID("delete-account-final")
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This can't be undone.")
@@ -192,7 +192,7 @@ struct DeleteAccountView: View {
             explanation
             Button("Continue") { model.begin() }
                 .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("delete-account-continue")
+                .tapID("delete-account-continue")
         case .reauthenticate:
             reauthentication(model)
         case .confirm:
@@ -206,7 +206,7 @@ struct DeleteAccountView: View {
             errorText(model)
             Button("Delete my account", role: .destructive) { showsFinalConfirmation = true }
                 .buttonStyle(PrimaryButtonStyle(fill: Theme.destructive))
-                .accessibilityIdentifier("delete-account-confirm")
+                .tapID("delete-account-confirm")
         case .deleting:
             ProgressView("Deleting your account…")
                 .frame(maxWidth: .infinity)
@@ -227,7 +227,7 @@ struct DeleteAccountView: View {
             .accessibilityIdentifier("delete-account-status")
             Button("Done") { Task { await finish(status) } }
                 .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("delete-account-done")
+                .tapID("delete-account-done")
         }
     }
 
@@ -269,7 +269,7 @@ struct DeleteAccountView: View {
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.password.isEmpty || model.busy)
-                .accessibilityIdentifier("delete-account-reauth")
+                .tapID("delete-account-reauth")
             }
             if model.canUseApple {
                 SignInWithAppleButton(.signIn) { request in

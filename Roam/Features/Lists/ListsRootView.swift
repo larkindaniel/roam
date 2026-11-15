@@ -277,7 +277,7 @@ struct MyPlacesRootView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { router.selectedTab = .forYou } label: { Image(systemName: "chevron.left") }
                         .accessibilityLabel("Back to Discover")
-                        .accessibilityIdentifier("myplaces-back")
+                        .tapID("myplaces-back")
                 }
             }
             // Recentring only matters while the globe is in view.
@@ -285,7 +285,7 @@ struct MyPlacesRootView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showWorld() } label: { Image(systemName: "scope") }
                         .accessibilityLabel("Recenter globe")
-                        .accessibilityIdentifier("recenter-globe")
+                        .tapID("recenter-globe")
                 }
             }
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }

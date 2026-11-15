@@ -60,14 +60,14 @@ struct TripInvitationsView: View {
             } else {
                 Button("Accept") { Task { await respond(.accept, to: invitation) } }
                     .buttonStyle(PillButtonStyle(isSelected: true))
-                    .accessibilityIdentifier("accept-trip-invitation")
+                    .tapID("accept-trip-invitation")
                 Button { Task { await respond(.decline, to: invitation) } } label: {
                     Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
                         .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Decline")
-                .accessibilityIdentifier("decline-trip-invitation")
+                .tapID("decline-trip-invitation")
             }
         }
         .padding(.vertical, Theme.Spacing.s)

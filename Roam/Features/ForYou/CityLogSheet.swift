@@ -97,7 +97,7 @@ struct CityLogSheet: View {
         .roamSheetStyle()
         .presentationDetents([.large])
         .interactiveDismissDisabled(hasChanges)
-        .screenIdentifier("city-log")
+        .screenIdentifier("city-log", sheet: true)
     }
 
     /// Photos as on a place's log: Add photos opens the picker; once there are some, they show one at a time.
@@ -157,7 +157,7 @@ struct CityLogSheet: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("city-log-add-places")
+        .tapID("city-log-add-places")
     }
 
     /// Somewhere you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.
@@ -174,7 +174,7 @@ struct CityLogSheet: View {
             Spacer(minLength: 0)
             Button { places.removeAll { $0.id == pick.id } } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkFaint)
-            }
+            }.tapID("citylogsheet.xmark-circle-fill")
             .buttonStyle(.plain)
             .accessibilityLabel("Remove")
         }

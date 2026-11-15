@@ -31,6 +31,9 @@ struct MainTabView: View {
         }
         .animation(.spring(duration: 0.3), value: tabBar.isHidden(on: router.selectedTab))
         .environment(tabBar)
+        // The event trail's current page comes from here while the tabs are up.
+        .onAppear { router.tabsShowing = true }
+        .onDisappear { router.tabsShowing = false }
         .sheet(item: $router.sheet) { sheet in
             SheetContent(route: sheet)
                 .presentationBackground(Roam.paper)
@@ -50,10 +53,12 @@ struct MainTabView: View {
             root()
                 .scrollContentBackground(.hidden)
                 .background(Roam.paper)
+                .bugReportToolbar()
                 .navigationDestination(for: AppRoute.self) { route in
                     RouteDestinationView(route: route)
                         .scrollContentBackground(.hidden)
                         .background(Roam.paper)
+                        .bugReportToolbar()
                 }
         }
         // Content scrolls clear of the floating bar.
@@ -149,7 +154,7 @@ struct RoamTabBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
-                .accessibilityIdentifier("tab-\(tab.rawValue)")
+                .tapID("tab-\(tab.rawValue)")
             }
         }
         .padding(4)

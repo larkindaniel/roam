@@ -60,7 +60,7 @@ struct MyVisitsCard: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .accessibilityHint("Edit this visit")
-        .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
+        .tapID("detail-edit-visit-\(visit.id.uuidString)")
     }
 
     /// A light green bubble the full width, like + New trip's in blue.
@@ -76,7 +76,7 @@ struct MyVisitsCard: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .accessibilityIdentifier("detail-add-visit-bottom")
+        .tapID("detail-add-visit-bottom")
     }
 }
 
@@ -101,7 +101,7 @@ struct SwipeToDelete<Content: View>: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Capsule().fill(.red))
-                }
+                }.tapID("myvisitscard.trash-fill")
                 .buttonStyle(.plain)
                 .frame(width: max(0, -offset - Theme.Spacing.s))
                 .padding(.vertical, Theme.Spacing.s)

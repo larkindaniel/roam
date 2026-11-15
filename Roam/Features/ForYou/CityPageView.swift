@@ -259,7 +259,7 @@ struct CityPageView: View {
             .frame(width: 38, height: 38)
             .background(Circle().fill(PlaceState.planned.markerColor))
             .contentShape(Circle().inset(by: -4))
-            .onTapGesture { choosingMapsApp = true }
+            .onTapGesture { TapRecorder.named("citypageview.directionsbutton"); choosingMapsApp = true }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { choosingMapsApp = true }
             .accessibilityLabel("Directions to \(destination.name)")
@@ -436,6 +436,7 @@ struct CityPageView: View {
     }
 
     private func refreshMine() async {
+        let span = Log.span("load.city"); defer { span.end() }
         let own = await loadSpots(of: session.userID)
         mySpotCount = own.count
         if isOwn { spots = own; homes = (try? await services.plans.homeCities()) ?? homes }
@@ -582,7 +583,7 @@ struct DiscoverPlaceCard: View {
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("foryou-place-\(experience.name)")
+        .tapID("foryou-place-\(experience.name)")
     }
 }
 
@@ -661,7 +662,7 @@ struct CityHeader: View {
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("city-open-country")
+                    .tapID("city-open-country")
                     if let region = destination.region, !region.isEmpty, region != destination.name {
                         Text(region).font(.subheadline).foregroundStyle(Roam.inkMuted).lineLimit(1)
                     }
@@ -728,7 +729,7 @@ struct CityHeader: View {
         Button(action: action) { circleLabel(symbol, tint: tint, filled: filled, caption: caption) }
             .buttonStyle(.plain)
             .accessibilityLabel(caption)
-            .accessibilityIdentifier(identifier)
+            .tapID(identifier)
     }
 
     private func circleLabel(_ symbol: String, tint: Color, filled: Bool, caption: String) -> some View {
@@ -756,12 +757,12 @@ struct CityHeader: View {
                             .buttonStyle(PillButtonStyle(isSelected: true, tint: Roam.home))
                             .accessibilityLabel("Home")
                             .accessibilityHint("Removes it as a home city")
-                            .accessibilityIdentifier("city-toggle-home")
+                            .tapID("city-toggle-home")
                     }
                     Button { router.sheet = .researchBrief(destination) } label: { Label("Plan", systemImage: "sparkles") }
                         .buttonStyle(PillButtonStyle(tint: .pink))
                         .accessibilityLabel("Plan with AI")
-                        .accessibilityIdentifier("foryou-research-open")
+                        .tapID("foryou-research-open")
                 }
             } else {
                 // The name, then the actions underneath, as on a place; Home is the last of them.
@@ -837,7 +838,7 @@ struct CityVisitDatesSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
                         .disabled(saving)
-                        .accessibilityIdentifier("city-dates-save")
+                        .tapID("city-dates-save")
                 }
             }
         }

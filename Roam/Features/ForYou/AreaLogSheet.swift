@@ -73,14 +73,14 @@ struct AreaLogSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
                         .disabled(saving || picks.isEmpty)
-                        .accessibilityIdentifier("area-log-save")
+                        .tapID("area-log-save")
                 }
             }
             .task(id: query) { await placeSearch.run(query, services: services, scope: scope) }
         }
         .roamSheetStyle()
         .presentationDetents([.large])
-        .screenIdentifier("area-log")
+        .screenIdentifier("area-log", sheet: true)
     }
 
     private func pickRow(_ pick: Pick) -> some View {

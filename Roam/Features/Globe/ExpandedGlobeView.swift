@@ -51,12 +51,12 @@ struct ExpandedGlobeView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if !showsList {
                     Button(flatMap ? "Globe" : "Flat map") { flatMap.toggle(); focusToken += 1 }
-                        .accessibilityIdentifier("globe-style-toggle")
+                        .tapID("globe-style-toggle")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(showsList ? "Map" : "List") { showsList.toggle() }
-                    .accessibilityIdentifier("globe-list-toggle")
+                    .tapID("globe-list-toggle")
             }
         }
         .task { if travel.value == nil { await load() } }
@@ -116,7 +116,7 @@ struct ExpandedGlobeView: View {
                     Button("Show all") { self.filter = nil; selected = nil; focusToken += 1 }
                         .font(.subheadline)
                         .frame(minHeight: Theme.minimumHitTarget)
-                        .accessibilityIdentifier("globe-filter-clear")
+                        .tapID("globe-filter-clear")
                 }
             }
         }
@@ -208,12 +208,12 @@ struct ExpandedGlobeView: View {
                 Spacer()
                 Button { selected = nil } label: {
                     Image(systemName: "xmark").frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                }
+                }.tapID("expandedglobeview.xmark")
                 .accessibilityLabel("Close")
             }
             Button("View place") { router.push(.experience(pin.experienceID)) }
                 .buttonStyle(PillButtonStyle(isSelected: true))
-                .accessibilityIdentifier("globe-pin-open")
+                .tapID("globe-pin-open")
         }
         .roamCard(padding: Theme.Spacing.m)
         .padding()
@@ -238,7 +238,7 @@ struct ExpandedGlobeView: View {
                                 Spacer()
                                 Text("\(country.count)").monospacedDigit().foregroundStyle(Theme.secondaryText)
                             }
-                        }
+                        }.tapID("expandedglobeview.button")
                         .accessibilityElement(children: .combine)
                     }
                 }
@@ -255,7 +255,7 @@ struct ExpandedGlobeView: View {
                             Text(visitLine(pin)).font(.caption).foregroundStyle(Theme.secondaryText)
                         }
                     }
-                    .accessibilityIdentifier("globe-list-row-\(pin.name)")
+                    .tapID("globe-list-row-\(pin.name)")
                 }
             }
         }

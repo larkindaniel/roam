@@ -52,7 +52,7 @@ struct LogPlaceSheet: View {
         .sheet(item: $datingCity) { city in
             CityVisitDatesSheet(city: city) { library.noteChanged(); dismiss() }
         }
-        .screenIdentifier("log-place-sheet")
+        .screenIdentifier("log-place-sheet", sheet: true)
     }
 
     private func choose(_ pick: PlaceSearchPick) async {

@@ -101,6 +101,8 @@ final class SessionStore {
         self.profile = nil
         sessionExpired = false
         phase = .launching
+        Telemetry.shared.accountChanged(to: session.userID)
+        Log.action("auth.signed_in")
         do {
             let profile = try await loadProfile()
             guard token == generation, self.userID == session.userID else { return }
@@ -175,6 +177,7 @@ final class SessionStore {
     private(set) var expiredUserID: UUID?
 
     func signOut() async {
+        Log.action("auth.signed_out")
         generation += 1
         let token = generation
         let userID = session?.userID ?? expiredUserID
@@ -215,6 +218,8 @@ final class SessionStore {
     }
 
     private func enterExpiredState(owner: UUID) {
+        Log.action("auth.session_expired")
+        Telemetry.shared.accountChanged(to: nil)
         services.images.clear()
         expiredUserID = owner
         session = nil
@@ -227,6 +232,7 @@ final class SessionStore {
     }
 
     private func clearLocalState(for userID: UUID?) {
+        Telemetry.shared.accountChanged(to: nil)
         if let userID { services.storage.clearAccount(userID) }
         pendingAppleName = nil
         services.images.clear()

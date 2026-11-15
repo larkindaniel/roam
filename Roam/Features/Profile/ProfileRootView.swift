@@ -17,7 +17,7 @@ struct ProfileRootView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { router.push(.settings) } label: { Image(systemName: "gearshape") }
                     .accessibilityLabel("Settings")
-                    .accessibilityIdentifier("open-settings")
+                    .tapID("open-settings")
             }
         }
     }
@@ -54,7 +54,7 @@ struct ProfileView: View {
                     if value.relationship.isSelf {
                         Button { router.push(.editProfile) } label: { PillLabel(title: "Edit profile", systemImage: "pencil") }
                             .buttonStyle(PillButtonStyle())
-                            .accessibilityIdentifier("profile-edit")
+                            .tapID("profile-edit")
                     } else {
                         relationshipActions(value)
                     }
@@ -80,7 +80,7 @@ struct ProfileView: View {
         }
         .confirmationDialog("Block @\(profile.value?.member.handle ?? "")?", isPresented: $confirmingBlock, titleVisibility: .visible) {
             Button("Block", role: .destructive) { Task { await block() } }
-                .accessibilityIdentifier("confirm-block")
+                .tapID("confirm-block")
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll stop being friends and won't see each other's profiles, posts, lists, photos or comments. Unblocking later doesn't restore follows.")
@@ -99,6 +99,7 @@ struct ProfileView: View {
     }
 
     private func load() async {
+        let span = Log.span("load.profile"); defer { span.end() }
         if profile.value == nil { profile = .loading }
         if activity == nil {
             let feed = services.feed, id = userID, plans = services.plans
@@ -183,11 +184,11 @@ struct ProfileView: View {
             Button { Task { await setMute(!value.relationship.isMuted) } } label: {
                 Label(value.relationship.isMuted ? "Unmute" : "Mute", systemImage: value.relationship.isMuted ? "speaker.wave.2" : "speaker.slash")
             }
-            .accessibilityIdentifier("profile-mute")
+            .tapID("profile-mute")
             Button(role: .destructive) { confirmingBlock = true } label: { Label("Block", systemImage: "hand.raised") }
-                .accessibilityIdentifier("profile-block")
+                .tapID("profile-block")
             Button { reportTarget = .member(userID) } label: { Label("Report", systemImage: "flag") }
-                .accessibilityIdentifier("profile-report")
+                .tapID("profile-report")
         } label: {
             Image(systemName: "ellipsis.circle").accessibilityLabel("More")
         }
@@ -283,7 +284,7 @@ struct ProfileView: View {
                             Button(activity.loadingMore ? "Loading…" : "Show more posts") { Task { await activity.loadMore() } }
                                 .disabled(activity.loadingMore)
                                 .frame(minHeight: Theme.minimumHitTarget)
-                                .accessibilityIdentifier("profile-activity-more")
+                                .tapID("profile-activity-more")
                         }
                     }
                 }

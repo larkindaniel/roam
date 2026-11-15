@@ -39,10 +39,13 @@ final class DestinationCompleter: NSObject, MKLocalSearchCompleterDelegate {
 
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         let results = completer.results
+        // Discover's search: how long the query was and how many places came back, never the words.
+        Log.action("search.destinations", ["query_length": "\(completer.queryFragment.count)", "results": "\(results.count)"])
         Task { @MainActor in self.finish(.success(results)) }
     }
 
     nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        Log.error("search.destinations", error)
         Task { @MainActor in self.finish(.failure(error)) }
     }
 }

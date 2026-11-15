@@ -74,7 +74,7 @@ struct PlaceListsView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("list-new")
+        .tapID("list-new")
     }
 
     private func load() async {
@@ -125,7 +125,7 @@ private struct ListRow: View {
             .foregroundStyle(Roam.ink)
             .padding(.vertical, Theme.Spacing.s)
             .contentShape(Rectangle())
-        }
+        }.tapID("listviews.list-bullet")
         .buttonStyle(.plain)
     }
 
@@ -184,7 +184,7 @@ struct PlaceListDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsShare = true } label: { Image(systemName: "paperplane").foregroundStyle(.indigo) }
                         .accessibilityLabel("Send list")
-                        .accessibilityIdentifier("list-send")
+                        .tapID("list-send")
                 }
                 // Two separate round buttons rather than one shared capsule.
                 if #available(iOS 26.0, *) { ToolbarSpacer(.fixed, placement: .topBarTrailing) }
@@ -242,7 +242,7 @@ struct PlaceListDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Rename list")
-                    .accessibilityIdentifier("list-rename")
+                    .tapID("list-rename")
                 }
             }
             // A friend's list says whose, as a small chip that opens their profile.
@@ -288,7 +288,7 @@ struct PlaceListDetailView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(owner.displayName)'s list")
-        .accessibilityIdentifier("list-owner")
+        .tapID("list-owner")
     }
 
     /// Green full-width bubble under the places: opens the place search.
@@ -304,7 +304,7 @@ struct PlaceListDetailView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("list-add-place")
+        .tapID("list-add-place")
     }
 
     private func load() async {
@@ -360,7 +360,7 @@ struct AddPlacesToListSheet: View {
         }
         .roamSheetStyle()
         .task(id: query) { await placeSearch.run(query, services: services) }
-        .screenIdentifier("list-add-places")
+        .screenIdentifier("list-add-places", sheet: true)
     }
 
     private func isPicked(_ pick: PlaceSearchPick) -> Bool {
@@ -426,7 +426,7 @@ struct AddToListSheet: View {
                             .focused($focusedField)
                             .textInputAutocapitalization(.never)
                             .accessibilityIdentifier("add-to-list-title")
-                        Button("Create") { Task { await createAndAdd() } }
+                        Button("Create") { Task { await createAndAdd() } }.tapID("listviews.create")
                             .font(.subheadline.weight(.semibold))
                             .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
@@ -532,11 +532,13 @@ struct ShareSheet: View {
                         if sending { ProgressView() } else { Text(selection.count > 1 ? "Send to \(selection.count) friends" : "Send").fontWeight(.semibold) }
                     }
                     .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+                    // The whole bubble takes the tap, not just the words.
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
                 .disabled(selection.isEmpty || sending || message.count > 500)
-                .accessibilityIdentifier("share-send")
+                .tapID("share-send")
                 .padding(Theme.Spacing.l)
             }
         }
