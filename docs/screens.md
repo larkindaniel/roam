@@ -5,7 +5,7 @@ when you change a screen. `docs/design-language.md` covers how they look.
 
 ## Everywhere
 
-- **Keyboard:** scrolling any page or list puts it away; notes have their own Done.
+- **Keyboard:** scrolling any page or list puts it away; on a log, tapping anywhere off the note does too.
 
 - **Tab bar:** Roam's own floating glass bar with Discover, Friends and My Places. Tapping a tab always goes back to its
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
@@ -229,7 +229,7 @@ tapping another place or pin swaps the card to it.
   - The name with its city under it.
   - The feeling picker: Didn't like, Neutral or Liked it. It starts at Neutral.
   - A date chip: × clears it, and tapping it opens a calendar. Tapping a day picks it; Done picks the day shown.
-  - The note has a Done button above the keyboard. Scrolling any page puts the keyboard away.
+  - The note has no Done button: tapping anywhere off it drops the cursor and puts the keyboard away, as does scrolling.
   - "Part of": a trip happening nearby, or Home, or any trip.
   - Add photos opens the picker; photos then swipe in a carousel.
   - A note, and who can see the visit.

@@ -18,6 +18,8 @@ struct RatingFlowView: View {
     @State private var home: Destination?
     /// Saving straight from a comparison: the log form stays away while it saves and closes.
     @State private var fromComparison = false
+    /// Where the note box is, so a tap anywhere else on the form puts the keyboard away.
+    @State private var noteFrame: CGRect = .zero
 
     var body: some View {
         NavigationStack {
@@ -144,6 +146,11 @@ struct RatingFlowView: View {
             .padding(Theme.Spacing.l)
         }
         .accessibilityIdentifier("rating-scroll")
+        // Tapping off the note (or any field) drops the cursor and the keyboard; there's no Done button.
+        .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
+            guard !noteFrame.contains(tap.location) else { return }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
         // Save sits where the other bottom buttons do: the tab bar's width and height, the same low gap from the bottom of
         // the screen, with room left above it for the content.
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -380,6 +387,7 @@ struct RatingFlowView: View {
             NoteBox(text: Binding(get: { model.visit.publicNote },
                                   set: { _ = model.updateDetails(note: $0, date: model.visit.date) }))
                 .accessibilityIdentifier("rating-note")
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { noteFrame = $0 }
             if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
