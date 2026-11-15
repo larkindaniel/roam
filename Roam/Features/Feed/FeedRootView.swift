@@ -100,7 +100,9 @@ struct FeedRootView: View {
         .task(id: session.userID) {
             guard session.userID != nil else { model = nil; return }
             let feed = services.feed
-            model = FeedModel(service: feed, notifications: services.notifications) { cursor in
+            let plans = services.plans
+            model = FeedModel(service: feed, notifications: services.notifications,
+                              fetchPlacePhotos: { await plans.refreshGoogleDetails(experienceIDs: $0) }) { cursor in
                 try await feed.friendsActivity(cursor: cursor)
             }
             await refresh()

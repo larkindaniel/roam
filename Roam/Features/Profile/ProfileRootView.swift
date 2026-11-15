@@ -101,8 +101,9 @@ struct ProfileView: View {
     private func load() async {
         if profile.value == nil { profile = .loading }
         if activity == nil {
-            let feed = services.feed, id = userID
+            let feed = services.feed, id = userID, plans = services.plans
             activity = FeedModel(service: feed, notifications: services.notifications,
+                                 fetchPlacePhotos: { await plans.refreshGoogleDetails(experienceIDs: $0) },
                                  source: { try await feed.profileActivity(userID: id, cursor: $0) })
         }
         do {

@@ -44,14 +44,37 @@ final class FeedModel {
     private let service: any FeedService
     private let notifications: any NotificationService
     private let load: (String?) async throws -> Page<ActivityItem>
+    /// Fetches Google's photo for places that don't have one yet; true when any arrived.
+    private let fetchPlacePhotos: (([UUID]) async -> Bool)?
+    /// Places already asked about, so each is fetched at most once.
+    private var askedForPhotos: Set<UUID> = []
     private var generation = 0
 
     /// `source` defaults to the home feed; profiles pass their own activity page.
     init(service: any FeedService, notifications: any NotificationService,
+         fetchPlacePhotos: (([UUID]) async -> Bool)? = nil,
          source: ((String?) async throws -> Page<ActivityItem>)? = nil) {
         self.service = service
         self.notifications = notifications
+        self.fetchPlacePhotos = fetchPlacePhotos
         self.load = source ?? { try await service.friendsActivity(cursor: $0) }
+    }
+
+    /// Logs with no photo of their own show the place's Google photo, which is only saved once someone looks the place up.
+    /// So fetch any that are missing from this page, then load the page again and fill them in.
+    private func fillPlacePhotos(page: Page<ActivityItem>, cursor: String?, token: Int) async {
+        guard let fetchPlacePhotos else { return }
+        let missing = Set(page.items.filter { $0.media.isEmpty && $0.experience.photoURL == nil }.map(\.experience.id))
+            .subtracting(askedForPhotos)
+        guard !missing.isEmpty else { return }
+        askedForPhotos.formUnion(missing)
+        guard await fetchPlacePhotos(Array(missing)), token == generation,
+              let again = try? await load(cursor), token == generation else { return }
+        var photos: [UUID: URL] = [:]
+        for item in again.items { if let url = item.experience.photoURL { photos[item.experience.id] = url } }
+        for index in items.indices where items[index].experience.photoURL == nil {
+            if let url = photos[items[index].experience.id] { items[index].experience.photoURL = url }
+        }
     }
 
     func refresh() async {
@@ -68,6 +91,7 @@ final class FeedModel {
             hasLoaded = true
             error = nil
             pageError = nil
+            Task { await fillPlacePhotos(page: page, cursor: nil, token: token) }
         } catch {
             guard token == generation, !(error is CancellationError) else { return }
             record(error, into: \.error)
@@ -85,6 +109,7 @@ final class FeedModel {
             items = uniqueByID(items + page.items)
             nextCursor = page.nextCursor
             pageError = nil
+            Task { await fillPlacePhotos(page: page, cursor: cursor, token: token) }
         } catch {
             guard token == generation, !(error is CancellationError) else { return }
             record(error, into: \.pageError)
