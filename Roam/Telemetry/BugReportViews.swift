@@ -203,7 +203,8 @@ struct BugReportSheet: View {
                         .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
                     }
                     .buttonStyle(.plain)
-                    .floatingBubble(Capsule())
+                    // Glass with a near-solid white wash, so it reads clearly over the screenshots behind it.
+                    .floatingBubble(Capsule(), tint: Roam.paperRaised.opacity(0.85))
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending || loadingAttachment)
                     .tapID("bug-report-send")
                     .padding(Theme.Spacing.l)

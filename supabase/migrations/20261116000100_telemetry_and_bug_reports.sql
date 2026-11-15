@@ -263,6 +263,11 @@ order by e.at desc;
 
 revoke all on public.bug_report_trail, public.latency_last_7_days, public.recent_crashes from anon, authenticated;
 
+-- The server (the bug-report-issue function, scripts) reads reports and their steps, and records the issue it opened.
+grant select on public.app_sessions, public.app_events, public.telemetry_settings to service_role;
+grant select, update on public.bug_reports to service_role;
+grant select on public.bug_report_trail, public.latency_last_7_days, public.recent_crashes to service_role;
+
 -- Keeps the event table small: drops events past the retention window once a day.
 create or replace function app_private.prune_app_events()
 returns void

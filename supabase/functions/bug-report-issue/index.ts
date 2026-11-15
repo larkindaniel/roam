@@ -25,6 +25,17 @@ function scrub(text: string): string {
     .replace(/\+?\d[\d ().-]{8,}\d/g, match => match.replace(/\D/g, "").length >= 10 ? "[number]" : match);
 }
 
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
+  { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+
+const asService = { apikey: service, Authorization: `Bearer ${service}` };
+
+async function rest(path: string) {
+  const response = await fetch(`${url}/rest/v1/${path}`, { headers: asService, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`rest ${response.status}`);
+  return await response.json();
+}
+
 Deno.serve(async request => {
   if (request.method !== "POST") return json({ message: "Use POST." }, 405);
   const authorization = request.headers.get("authorization");
@@ -50,7 +61,16 @@ Deno.serve(async request => {
     const shown: string[] = [];
     let recordings = 0;
     for (const file of files) {
-      const signed = await fetch(`${url}/storage/v1/object/sign/bug-reports/${file.path}`, {
+      // The upload sits in a folder named after the tester's account id, which a public link would show. Link a copy
+      // under a random name instead.
+      const extension = file.path.split(".").pop() ?? "jpg";
+      const anonymous = `issues/${crypto.randomUUID()}.${extension}`;
+      const copied = await fetch(`${url}/storage/v1/object/copy`, {
+        method: "POST", headers: { ...asService, "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketId: "bug-reports", sourceKey: file.path, destinationKey: anonymous }),
+      });
+      if (!copied.ok) { console.error("bug-report-issue: copy failed", copied.status); continue; }
+      const signed = await fetch(`${url}/storage/v1/object/sign/bug-reports/${anonymous}`, {
         method: "POST", headers: { ...asService, "Content-Type": "application/json" },
         body: JSON.stringify({ expiresIn: linkLifetime }),
       });
@@ -81,15 +101,19 @@ Deno.serve(async request => {
     // Labels the repo doesn't have can be refused; the issue matters more than its labels.
     let issue = await open(["bug", "user-reported-bug"]);
     if (issue.status === 422) issue = await open([]);
-    if (!issue.ok) return json({ message: "GitHub didn't take it." }, 502);
+    if (!issue.ok) {
+      console.error("bug-report-issue: GitHub said", issue.status, (await issue.text()).slice(0, 300));
+      return json({ message: "GitHub didn't take it." }, 502);
+    }
     const { html_url } = await issue.json();
     await fetch(`${url}/rest/v1/bug_reports?id=eq.${reportId}`, {
       method: "PATCH", headers: { ...asService, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({ github_issue_url: html_url }),
     });
     return json({ url: html_url });
-  } catch {
-    // The report itself is already saved; no token or report text goes into logs.
+  } catch (error) {
+    // The report itself is already saved. Only the error's own message is logged, never the token or the report.
+    console.error("bug-report-issue failed:", error instanceof Error ? error.message : String(error));
     return json({ message: "Couldn't open an issue." }, 503);
   }
 });
