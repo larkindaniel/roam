@@ -101,8 +101,8 @@ extension View {
     }
 }
 
-/// Report a bug: what went wrong, and optionally the screenshot taken as the button was tapped, or a screenshot or
-/// screen recording from Photos. It's sent with the steps that led up to it.
+/// Report a bug: what went wrong, the screenshot taken as the button was tapped, and any more screenshots or screen
+/// recordings from Photos (up to six). It's sent with the steps that led up to it.
 struct BugReportSheet: View {
     let context: BugReportContext
 
@@ -110,8 +110,8 @@ struct BugReportSheet: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
-    @State private var attachment: Attachment = .none
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var attachments: [Attachment] = []
+    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var loadingAttachment = false
     @State private var sending = false
     @State private var sent = false
@@ -119,15 +119,28 @@ struct BugReportSheet: View {
     @FocusState private var focused: Bool
     @State private var noteFrame: CGRect = .zero
 
-    enum Attachment {
-        case none
-        case screenshot(UIImage)
-        case recording(URL, thumbnail: UIImage?)
+    struct Attachment: Identifiable {
+        enum Content {
+            case screenshot(UIImage)
+            case recording(URL, thumbnail: UIImage?)
+        }
+        let id = UUID()
+        var content: Content
+
+        var preview: UIImage? {
+            switch content {
+            case .screenshot(let image): image
+            case .recording(_, let thumbnail): thumbnail
+            }
+        }
+        var isRecording: Bool { if case .recording = content { true } else { false } }
     }
+
+    static let maxAttachments = 6
 
     init(context: BugReportContext) {
         self.context = context
-        _attachment = State(initialValue: context.screenshot.map(Attachment.screenshot) ?? .none)
+        _attachments = State(initialValue: context.screenshot.map { [Attachment(content: .screenshot($0))] } ?? [])
     }
 
     private var signedIn: Bool { session.userID != nil }
@@ -188,26 +201,39 @@ struct BugReportSheet: View {
         }
         .interactiveDismissDisabled(sending)
         .roamSheetStyle()
-        .task(id: pickerItem) { await load(pickerItem) }
+        .task(id: pickerItems) { await load(pickerItems) }
         .onAppear { Log.action("bug_report.opened", ["screen": context.screen ?? ""]) }
         .screenIdentifier("bug-report")
     }
 
-    /// What's attached as a standard row (picture, what it is, × to remove), then the grey "Add" bubble from the log
-    /// sheets. Signed out, it's words only.
+    /// What's attached, big enough to read: a row of tall previews with × on each, then a tile to add another.
+    /// With nothing attached it's the grey "Add" bubble from the log sheets. Signed out, it's words only.
     @ViewBuilder private var attachmentSection: some View {
-        switch attachment {
-        case .none:
-            EmptyView()
-        case .screenshot(let image):
-            attachmentRow(Image(uiImage: image), title: context.screenshot === image ? "Screenshot of this screen" : "Screenshot")
-        case .recording(_, let thumbnail):
-            attachmentRow(thumbnail.map(Image.init(uiImage:)) ?? Image(systemName: "video"), title: "Screen recording")
+        if !attachments.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.s) {
+                    ForEach(attachments) { attachment in preview(attachment) }
+                    if signedIn, attachments.count < Self.maxAttachments {
+                        picker {
+                            VStack(spacing: Theme.Spacing.xs) {
+                                Image(systemName: "plus").font(.title2.weight(.semibold))
+                                Text("Add another").font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundStyle(Roam.ink)
+                            .frame(width: 120, height: Self.previewHeight)
+                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Roam.fill))
+                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+            .scrollClipDisabled()
         }
         if loadingAttachment { ProgressView().frame(maxWidth: .infinity) }
-        if signedIn {
-            PhotosPicker(selection: $pickerItem, matching: .any(of: [.screenshots, .screenRecordings, .images, .videos])) {
-                Label(hasAttachment ? "Choose a different one" : "Add a screenshot or recording", systemImage: "photo.on.rectangle")
+        if signedIn, attachments.isEmpty {
+            picker {
+                Label("Add screenshots or recordings", systemImage: "photo.on.rectangle")
                     .font(.subheadline.weight(.semibold))
                     .imageScale(.small)
                     .foregroundStyle(Roam.ink)
@@ -216,48 +242,72 @@ struct BugReportSheet: View {
                     .background(Capsule().fill(Roam.fill))
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("bug-report-photos")
         }
     }
 
-    private var hasAttachment: Bool { if case .none = attachment { false } else { true } }
+    private static let previewHeight: CGFloat = 340
 
-    private func attachmentRow(_ image: Image, title: String) -> some View {
-        HStack(spacing: Theme.Spacing.m) {
-            image.resizable().scaledToFill()
-                .frame(width: 44, height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Roam.ink.opacity(0.08)))
-            Text(title).font(.body.weight(.medium)).foregroundStyle(Roam.ink)
-            Spacer(minLength: 0)
-            Button { attachment = .none; pickerItem = nil } label: {
-                Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Roam.inkMuted)
+    private func picker<Label: View>(@ViewBuilder label: () -> Label) -> some View {
+        PhotosPicker(selection: $pickerItems, maxSelectionCount: Self.maxAttachments - attachments.count,
+                     matching: .any(of: [.screenshots, .screenRecordings, .images, .videos])) { label() }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("bug-report-photos")
+    }
+
+    /// A screenshot (or a recording's first frame) at its own shape, tall enough to read, with × to remove it.
+    private func preview(_ attachment: Attachment) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let image = attachment.preview
+        let ratio = image.map { $0.size.width / max($0.size.height, 1) } ?? 0.46
+        return ZStack {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Roam.fill
+            }
+            if attachment.isRecording {
+                Image(systemName: "play.fill").font(.title2).foregroundStyle(.white)
+                    .frame(width: 52, height: 52).background(Circle().fill(.black.opacity(0.45)))
+            }
+        }
+        .frame(width: Self.previewHeight * ratio, height: Self.previewHeight)
+        .clipShape(shape)
+        .overlay(shape.stroke(Roam.ink.opacity(0.08)))
+        .shadow(color: .black.opacity(0.12), radius: 6, y: 1)
+        .overlay(alignment: .topTrailing) {
+            Button { attachments.removeAll { $0.id == attachment.id } } label: {
+                Image(systemName: "xmark").font(.system(size: 13, weight: .bold)).foregroundStyle(Roam.ink)
+                    .frame(width: 30, height: 30)
+                    .floatingBubble(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Remove \(title.lowercased())")
+            .padding(Theme.Spacing.s)
+            .accessibilityLabel(attachment.isRecording ? "Remove recording" : "Remove screenshot")
             .tapID("bug-report-remove-attachment")
         }
-        .roamCard(padding: Theme.Spacing.m)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(attachment.isRecording ? "Screen recording" : "Screenshot")
     }
 
     // MARK: Attachments
 
-    private func load(_ item: PhotosPickerItem?) async {
-        guard let item else { return }
+    private func load(_ items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
         loadingAttachment = true
-        defer { loadingAttachment = false }
+        defer { loadingAttachment = false; pickerItems = [] }
         error = nil
-        do {
-            if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
-                guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { return }
-                attachment = .recording(movie.url, thumbnail: await Self.thumbnail(movie.url))
-            } else if let data = try await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                attachment = .screenshot(image)
+        for item in items where attachments.count < Self.maxAttachments {
+            do {
+                if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
+                    guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { continue }
+                    attachments.append(Attachment(content: .recording(movie.url, thumbnail: await Self.thumbnail(movie.url))))
+                } else if let data = try await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                    attachments.append(Attachment(content: .screenshot(image)))
+                }
+            } catch {
+                self.error = "Couldn't open one of those. Try another."
+                Log.error("bug_report.attachment", error)
             }
-        } catch {
-            self.error = "Couldn't open that one. Try another."
-            Log.error("bug_report.attachment", error)
         }
     }
 
@@ -275,15 +325,15 @@ struct BugReportSheet: View {
         error = nil
         defer { sending = false }
         do {
-            let file = try await prepareAttachment()
+            let files = try await prepareAttachments()
             // The steps so far go up first, so the report lines up with them.
             await Telemetry.shared.flush()
             let telemetry = Telemetry.shared
             let draft = BugReportDraft(description: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                                       screen: context.screen, attachment: file,
+                                       screen: context.screen, attachments: files,
                                        sessionID: telemetry.session.id, lastSeq: telemetry.lastSeq, device: telemetry.session)
             let id = try await services.bugReports.submitBugReport(draft)
-            Log.action("bug_report.sent", ["report": id.uuidString, "attachment": file?.kind.rawValue ?? "none"])
+            Log.action("bug_report.sent", ["report": id.uuidString, "attachments": "\(files.count)"])
             sent = true
             try? await Task.sleep(for: .seconds(1.2))
             dismiss()
@@ -293,18 +343,19 @@ struct BugReportSheet: View {
         }
     }
 
-    private func prepareAttachment() async throws -> BugReportDraft.Attachment? {
-        guard signedIn else { return nil }
-        switch attachment {
-        case .none:
-            return nil
-        case .screenshot(let image):
-            guard let data = Self.jpeg(image) else { return nil }
-            return .init(kind: .screenshot, data: data, contentType: "image/jpeg", fileExtension: "jpg")
-        case .recording(let url, _):
-            let data = try await Self.compressedMovie(url)
-            return .init(kind: .recording, data: data, contentType: "video/mp4", fileExtension: "mp4")
+    private func prepareAttachments() async throws -> [BugReportDraft.Attachment] {
+        guard signedIn else { return [] }
+        var files: [BugReportDraft.Attachment] = []
+        for attachment in attachments {
+            switch attachment.content {
+            case .screenshot(let image):
+                guard let data = Self.jpeg(image) else { continue }
+                files.append(.init(kind: .screenshot, data: data, contentType: "image/jpeg", fileExtension: "jpg"))
+            case .recording(let url, _):
+                files.append(.init(kind: .recording, data: try await Self.compressedMovie(url), contentType: "video/mp4", fileExtension: "mp4"))
+            }
         }
+        return files
     }
 
     /// At most 1600 px on the long side, which keeps text readable and the file well under a megabyte.

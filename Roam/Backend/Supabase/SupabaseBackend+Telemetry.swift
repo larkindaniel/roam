@@ -18,8 +18,8 @@ extension SupabaseBackend: TelemetryTransport {
 extension SupabaseBackend: BugReportService {
     func submitBugReport(_ draft: BugReportDraft) async throws -> UUID {
         let snapshot = try await requestSnapshot()
-        var attachmentPath: String?
-        if let attachment = draft.attachment {
+        var uploaded: [AnyJSON] = []
+        for attachment in draft.attachments {
             guard let actor = snapshot.userID else { throw RoamError.notSignedIn }
             let path = "\(actor.uuidString.lowercased())/\(UUID().uuidString.lowercased()).\(attachment.fileExtension)"
             var upload = URLRequest(url: config.supabaseURL.appendingPathComponent("storage/v1/object/bug-reports/\(path)"))
@@ -34,18 +34,17 @@ extension SupabaseBackend: BugReportService {
                 guard (200..<300).contains(status) else {
                     Log.error("bug_report.upload", nil, ["status": "\(status)", "body": String(decoding: body.prefix(200), as: UTF8.self)])
                     throw status == 413 ? RoamError.validation("That recording is too big. Try a shorter one.")
-                                        : RoamError.server("Couldn't upload the attachment. Try again.")
+                                        : RoamError.server("Couldn't upload an attachment. Try again.")
                 }
             } catch let error as RoamError { throw error } catch { throw Self.map(error) }
-            attachmentPath = path
+            uploaded.append(.object(["path": .string(path), "kind": .string(attachment.kind.rawValue)]))
         }
         let report: [String: AnyJSON] = [
             "description": .string(draft.description),
             "screen": RPC.string(draft.screen),
             "sessionId": RPC.uuid(draft.sessionID),
             "lastSeq": RPC.int(draft.lastSeq),
-            "attachmentPath": RPC.string(attachmentPath),
-            "attachmentKind": RPC.string(draft.attachment?.kind.rawValue),
+            "attachments": .array(uploaded),
             "appVersion": .string(draft.device.appVersion),
             "build": .string(draft.device.build),
             "osVersion": .string(draft.device.osVersion),

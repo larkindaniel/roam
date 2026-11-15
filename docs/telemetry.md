@@ -80,9 +80,18 @@ reports (App Store Connect → TestFlight → Crashes), which are.
 
 ## GitHub issues
 
-The `bug-report-issue` edge function opens an issue for each report. The issue has the description, a 30-day link to
-the screenshot or recording, the device, the last 40 steps, and the SQL for the whole trail. To turn it on for the
-hosted beta:
+The `bug-report-issue` edge function opens an issue for each report.
+
+The repo is public, so anyone can read these issues. By default an issue carries only:
+- the tester's description
+- the app version and device
+- the report id, and the SQL to pull up the full report
+
+Who sent it, the screenshots and recordings, and the steps (places and people) stay in Supabase. If issues ever go to
+a private repo, set `GITHUB_INCLUDE_DETAILS=true` to add 30-day links to the attachments, the reporter and the last 40
+steps.
+
+To turn it on for the hosted beta:
 
 1. On GitHub, create a fine-grained personal access token that only covers this repository, with **Issues: read and
    write**.

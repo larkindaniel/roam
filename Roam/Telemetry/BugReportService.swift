@@ -1,6 +1,6 @@
 import Foundation
 
-/// A tester's bug report, ready to send: what they wrote, an optional screenshot or recording, and where it came from.
+/// A tester's bug report, ready to send: what they wrote, any screenshots or recordings, and where it came from.
 struct BugReportDraft: Sendable {
     struct Attachment: Sendable {
         enum Kind: String, Sendable { case screenshot, recording }
@@ -12,7 +12,8 @@ struct BugReportDraft: Sendable {
 
     var description: String
     var screen: String?
-    var attachment: Attachment?
+    /// Up to six screenshots and recordings.
+    var attachments: [Attachment]
     var sessionID: UUID
     var lastSeq: Int
     var device: TelemetrySession

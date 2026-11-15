@@ -66,15 +66,14 @@ create table public.bug_reports (
   created_at timestamptz not null default now(),
   description text not null check (char_length(btrim(description)) between 1 and 4000),
   screen text check (char_length(screen) <= 80),
-  attachment_path text check (char_length(attachment_path) <= 300),
-  attachment_kind text check (attachment_kind in ('screenshot', 'recording')),
+  -- Screenshots and recordings, each {"path": "<user>/<file>", "kind": "screenshot" | "recording"}; up to six.
+  attachments jsonb not null default '[]' check (jsonb_typeof(attachments) = 'array' and jsonb_array_length(attachments) <= 6),
   app_version text check (char_length(app_version) <= 32),
   build text check (char_length(build) <= 32),
   os_version text check (char_length(os_version) <= 32),
   device_model text check (char_length(device_model) <= 64),
   status text not null default 'new' check (status in ('new', 'triaged', 'fixed', 'wontfix')),
-  github_issue_url text,
-  check ((attachment_path is null) = (attachment_kind is null))
+  github_issue_url text
 );
 create index bug_reports_created on public.bug_reports (created_at desc);
 alter table public.bug_reports enable row level security;
@@ -171,8 +170,8 @@ $$;
 revoke execute on function public.mark_session_unclean(uuid) from public;
 grant execute on function public.mark_session_unclean(uuid) to anon, authenticated;
 
--- A tester's report. Signed out (welcome, sign-in) it's words only; signed in it can carry a screenshot or recording
--- from the reporter's own folder of the bug-reports bucket.
+-- A tester's report. Signed out (welcome, sign-in) it's words only; signed in it can carry up to six screenshots or
+-- recordings from the reporter's own folder of the bug-reports bucket.
 create or replace function public.submit_bug_report(p_report jsonb)
 returns uuid
 language plpgsql
@@ -181,7 +180,7 @@ set search_path = ''
 as $$
 declare
   actor uuid := auth.uid();
-  path text := p_report ->> 'attachmentPath';
+  files jsonb := coalesce(p_report -> 'attachments', '[]');
   report_id uuid;
 begin
   if not (select bug_reports_enabled from public.telemetry_settings) then
@@ -190,7 +189,16 @@ begin
   if char_length(btrim(coalesce(p_report ->> 'description', ''))) = 0 then
     raise exception 'roam:validation:Say what went wrong.';
   end if;
-  if path is not null and (actor is null or split_part(path, '/', 1) <> actor::text) then raise exception 'roam:forbidden'; end if;
+  if jsonb_typeof(files) <> 'array' or jsonb_array_length(files) > 6 then
+    raise exception 'roam:validation:Attach up to six screenshots or recordings.';
+  end if;
+  if jsonb_array_length(files) > 0 and (actor is null or exists (
+       select 1 from jsonb_array_elements(files) f
+       where split_part(f ->> 'path', '/', 1) <> actor::text
+          or char_length(f ->> 'path') > 300
+          or coalesce(f ->> 'kind', '') not in ('screenshot', 'recording'))) then
+    raise exception 'roam:forbidden';
+  end if;
   if actor is not null and (select count(*) from public.bug_reports where user_id = actor and created_at > now() - interval '1 hour') >= 20 then
     raise exception 'roam:validation:That''s a lot of reports in an hour. Try again later.';
   end if;
@@ -198,15 +206,14 @@ begin
     raise exception 'roam:validation:Too many reports right now. Try again later.';
   end if;
 
-  insert into public.bug_reports (user_id, session_id, last_seq, description, screen, attachment_path, attachment_kind,
+  insert into public.bug_reports (user_id, session_id, last_seq, description, screen, attachments,
                                   app_version, build, os_version, device_model)
   values (actor,
           (select id from public.app_sessions where id = (p_report ->> 'sessionId')::uuid and (user_id is null or user_id = actor)),
           (p_report ->> 'lastSeq')::integer,
           left(btrim(p_report ->> 'description'), 4000),
           left(p_report ->> 'screen', 80),
-          path,
-          case when path is null then null else p_report ->> 'attachmentKind' end,
+          (select coalesce(jsonb_agg(jsonb_build_object('path', f ->> 'path', 'kind', f ->> 'kind')), '[]') from jsonb_array_elements(files) f),
           left(p_report ->> 'appVersion', 32), left(p_report ->> 'build', 32),
           left(p_report ->> 'osVersion', 32), left(p_report ->> 'deviceModel', 64))
   returning id into report_id;
