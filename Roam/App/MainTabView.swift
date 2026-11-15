@@ -32,8 +32,8 @@ struct MainTabView: View {
         .animation(.spring(duration: 0.3), value: tabBar.isHidden(on: router.selectedTab))
         .environment(tabBar)
         // The event trail's current page comes from here while the tabs are up.
-        .onAppear { router.updatePageScreen() }
-        .onDisappear { Telemetry.shared.setPageScreen(nil) }
+        .onAppear { router.tabsShowing = true }
+        .onDisappear { router.tabsShowing = false }
         .sheet(item: $router.sheet) { sheet in
             SheetContent(route: sheet)
                 .presentationBackground(Roam.paper)

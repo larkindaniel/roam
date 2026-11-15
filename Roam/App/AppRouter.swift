@@ -176,8 +176,14 @@ final class AppRouter {
         }
     }
 
-    /// Tells the event trail which page is on top of the current tab.
+    /// Whether the tabs are on screen (not welcome, sign-in or setup), set by MainTabView.
+    var tabsShowing = false {
+        didSet { updatePageScreen() }
+    }
+
+    /// Tells the event trail which page is on top of the current tab, while the tabs are showing.
     func updatePageScreen() {
+        guard tabsShowing else { Telemetry.shared.setPageScreen(nil); return }
         Telemetry.shared.setPageScreen(paths[selectedTab]?.last.map(Self.screenName) ?? Self.rootScreens[selectedTab])
     }
 
