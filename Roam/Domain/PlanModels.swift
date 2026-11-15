@@ -475,6 +475,7 @@ struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
 
 enum ShareTarget: Hashable, Sendable {
     case place(UUID)
+    case city(Destination)
     case list(UUID)
     case trip(UUID)
 }
@@ -488,8 +489,9 @@ struct DirectShare: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary?
     var list: PlaceList?
     var trip: TripSummary?
+    var city: Destination?
 
-    var title: String { experience?.name ?? list?.title ?? trip?.name ?? "" }
+    var title: String { experience?.name ?? city?.name ?? list?.title ?? trip?.name ?? "" }
 }
 
 /// Declared preferences only. Roam never presents these as something it learned.

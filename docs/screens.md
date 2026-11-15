@@ -130,7 +130,8 @@ the country in view.
       dates are picked or you leave. Once you've been, the dates you gave show there.
     - **Wishlist** (yellow): saves the city. It greys out once you've been.
     - **Trip** (blue): add the city to an upcoming trip or start a new one.
-    - **Send:** greyed out on city pages.
+    - **Send:** send the city to one or more friends, with an optional note. It shows in their Sent to you, with the
+      city's photo, and opens its city page.
     - **Plan** (pink): opens the Plan with AI sheet (ChatGPT, Claude or copy).
     - **Home**, last: makes it one of your homes.
   - A home city has no round buttons: a solid house (tap to remove it as home) and Plan sit beside the name.

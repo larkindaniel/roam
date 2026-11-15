@@ -5,6 +5,8 @@ struct SocialNavigationRow: View {
     let symbol: String
     var subtitle: String? = nil
     var place: ExperienceSummary? = nil
+    /// A city someone sent: its photo, like a city card.
+    var city: Destination? = nil
     var member: MemberSummary? = nil
     let action: () -> Void
 
@@ -16,6 +18,8 @@ struct SocialNavigationRow: View {
                 } else if let place {
                     PlaceThumbnail(id: place.id.uuidString, path: nil, url: place.photoURL,
                                    coordinate: place.coordinate, symbol: place.iconName, size: 48)
+                } else if let city {
+                    CityThumbnail(destination: city, size: 48)
                 } else {
                     Image(systemName: symbol)
                         .font(.headline)
@@ -48,9 +52,10 @@ struct ReceivedShareRow: View {
     var body: some View {
         let sender = "From \(share.sender.displayName)"
         let context = share.message.isEmpty ? sender : "\(sender) · \(share.message)"
-        SocialNavigationRow(title: share.title, symbol: share.list != nil ? "list.bullet" : "airplane",
-                            subtitle: context, place: share.experience) {
+        SocialNavigationRow(title: share.title, symbol: share.list != nil ? "list.bullet" : share.city != nil ? "building.2" : "airplane",
+                            subtitle: context, place: share.experience, city: share.city) {
             if let place = share.experience { router.push(.experience(place.id)) }
+            else if let city = share.city { router.push(.city(city)) }
             else if let list = share.list { router.push(.list(list.id)) }
             else if let trip = share.trip { router.push(.trip(trip.id)) }
         }
@@ -100,5 +105,21 @@ struct ReceivedSharesView: View {
         if phase.value == nil { phase = .loading }
         do { phase = .loaded(try await services.plans.sharedWithMe()) }
         catch { phase = .failed(session.handle(error)) }
+    }
+}
+
+/// A city as a row thumbnail: its Google photo (Wikipedia's when Google has none), else its map.
+struct CityThumbnail: View {
+    let destination: Destination
+    var size: CGFloat = 48
+    @Environment(AppServices.self) private var services
+    @State private var photo: AreaPhotos.Photo?
+
+    var body: some View {
+        PlaceThumbnail(id: "city-\(destination.id)", url: photo?.url, coordinate: destination.coordinate, symbol: "building.2", size: size)
+            .task(id: destination.id) {
+                photo = await AreaPhotos.city(services, name: destination.name, region: destination.region,
+                                              country: destination.countryName, coordinate: destination.coordinate)
+            }
     }
 }
