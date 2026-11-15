@@ -1,18 +1,41 @@
 // Opens a GitHub issue for a bug report the caller just sent.
 //
-// The app calls this with the report's id right after submit_bug_report. It reads the report with the service role,
-// makes 30-day links to its screenshots and recordings, adds the last steps from the event trail, and opens an issue in
-// GITHUB_REPO ("owner/name") with GITHUB_TOKEN (a fine-grained token with Issues: read and write on that repo only).
-// Without those two secrets it does nothing, and the report is still saved for the team to read in SQL.
+// The app calls this with the report's id right after submit_bug_report. It reads the report with the service role and
+// opens an issue in GITHUB_REPO ("owner/name") with GITHUB_TOKEN (a fine-grained token with Issues: read and write on
+// that repo only). Without those two secrets it does nothing, and the report is still saved for the team to read in SQL.
+//
+// The repo is public, so the issue has what helps fix the bug and nothing that identifies the tester:
+//   in:  their description, the screenshots (shown inline) and recordings (linked), app, iOS and device, the screen,
+//        and the steps before the report with their details
+//   out: who sent it, account and session ids (any id in the steps becomes [id]), emails and phone numbers
 const url = Deno.env.get("SUPABASE_URL")!;
 const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
 const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const token = Deno.env.get("GITHUB_TOKEN");
 const repo = Deno.env.get("GITHUB_REPO");
-// Issues on a public repo are readable by anyone, so by default they carry only the tester's words, the app and device
-// and the report id. Screenshots, who sent it and the steps (places, people) stay in Supabase. Set this to "true" only
-// when GITHUB_REPO is private.
-const includeDetails = Deno.env.get("GITHUB_INCLUDE_DETAILS") === "true";
+// Attachment links last a year, so the pictures keep showing in the issue.
+const linkLifetime = 60 * 60 * 24 * 365;
+const stepCount = 80;
+
+/// Takes out what could identify someone: emails, phone numbers and ids (user, session and place ids alike).
+function scrub(text: string): string {
+  return text
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email]")
+    .replace(/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g, "[id]")
+    // Ten or more digits in a run (with spaces, dashes or brackets) reads as a phone number; dates and sizes don't.
+    .replace(/\+?\d[\d ().-]{8,}\d/g, match => match.replace(/\D/g, "").length >= 10 ? "[number]" : match);
+}
+
+/// Markdown table cells can't hold pipes or new lines.
+const cell = (value: unknown) => scrub(String(value ?? "")).replace(/\|/g, "/").replace(/\s+/g, " ").slice(0, 160);
+
+/// A step's details, minus the ones that only say which session or report it was.
+function details(props: Record<string, string> | null): string {
+  if (!props) return "";
+  return Object.entries(props)
+    .filter(([key]) => !["session", "previous_session", "report", "stack"].includes(key))
+    .map(([key, value]) => `${key}=${value}`).join(", ");
+}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -45,39 +68,44 @@ Deno.serve(async request => {
     if (!report || report.user_id !== user.id) return json({ message: "Not found." }, 404);
     if (report.github_issue_url) return json({ url: report.github_issue_url });
 
-    const [profile] = includeDetails ? await rest(`profiles?id=eq.${user.id}&select=handle,display_name`) : [];
-    const steps = includeDetails && report.session_id
-      ? await rest(`bug_report_trail?report_id=eq.${reportId}&select=seq,at,kind,name,screen,duration_ms&order=seq.desc&limit=40`)
+    const steps = report.session_id
+      ? await rest(`bug_report_trail?report_id=eq.${reportId}&select=seq,at,kind,name,screen,duration_ms,props&order=seq.desc&limit=${stepCount}`)
       : [];
 
     let attachment = "";
     const files = (report.attachments ?? []) as Array<{ path: string; kind: string }>;
     const shown: string[] = [];
-    for (const [index, file] of (includeDetails ? files : []).entries()) {
+    let recordings = 0;
+    for (const file of files) {
       const signed = await fetch(`${url}/storage/v1/object/sign/bug-reports/${file.path}`, {
         method: "POST", headers: { ...asService, "Content-Type": "application/json" },
-        body: JSON.stringify({ expiresIn: 60 * 60 * 24 * 30 }),
+        body: JSON.stringify({ expiresIn: linkLifetime }),
       });
       if (!signed.ok) continue;
       const link = `${url}/storage/v1${(await signed.json()).signedURL}`;
-      shown.push(file.kind === "screenshot" ? `<img src="${link}" width="240">` : `[Screen recording ${index + 1}](${link})`);
+      shown.push(file.kind === "screenshot" ? `<img src="${link}" width="320">` : `▶️ [Screen recording ${++recordings}](${link})`);
     }
-    if (shown.length) attachment = `\n\n### Attached\n${shown.join(" ")}\n(links last 30 days)`;
+    if (shown.length) attachment = `\n\n### Screenshots and recordings\n${shown.join("\n")}`;
 
-    const trail = (steps as Array<Record<string, unknown>>).reverse().map(step =>
-      `| ${step.seq} | ${String(step.at).slice(11, 19)} | ${step.kind} | \`${step.name}\` | ${step.screen ?? ""} | ${step.duration_ms ?? ""} |`,
+    type Step = { seq: number; at: string; kind: string; name: string; screen: string | null; duration_ms: number | null;
+                  props: Record<string, string> | null };
+    const ordered = (steps as Step[]).reverse();
+    const trail = ordered.map(step =>
+      `| ${step.seq} | ${String(step.at).slice(11, 19)} | ${step.kind} | ${cell(step.name)} | ${cell(step.screen)} | ${step.duration_ms ?? ""} | ${cell(details(step.props))} |`,
     ).join("\n");
-    const firstLine = String(report.description).split("\n")[0].slice(0, 80);
+    const description = scrub(String(report.description));
+    const firstLine = description.split("\n")[0].slice(0, 80);
     const body = [
-      String(report.description),
+      description,
       attachment,
       "\n\n### Where",
-      includeDetails ? `- From: @${profile?.handle ?? "?"} (${profile?.display_name ?? "?"})` : `- ${files.length} attachment(s) in Supabase`,
       `- Screen: \`${report.screen ?? "?"}\``,
       `- App ${report.app_version} (${report.build}), iOS ${report.os_version}, ${report.device_model}`,
-      `- Report \`${report.id}\`, session \`${report.session_id ?? "none"}\``,
-      trail ? `\n### The last ${steps.length} steps\n| # | time (UTC) | kind | name | screen | ms |\n|---|---|---|---|---|---|\n${trail}` : "",
-      `\n\nThe report and its steps: \`select * from bug_reports where id = '${report.id}'; select * from bug_report_trail where report_id = '${report.id}';\``,
+      trail
+        ? `\n### What happened before (the last ${ordered.length} steps, oldest first)\n<details open><summary>Steps</summary>\n\n` +
+          `| # | time (UTC) | kind | name | screen | ms | details |\n|---|---|---|---|---|---|---|\n${trail}\n\n</details>`
+        : "",
+      `\n\nFull report and every step, in Supabase SQL: \`select * from bug_report_trail where report_id = '${report.id}';\``,
     ].join("\n");
 
     const open = (labels: string[]) => fetch(`https://api.github.com/repos/${repo}/issues`, {
