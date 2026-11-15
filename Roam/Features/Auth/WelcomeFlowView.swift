@@ -73,7 +73,7 @@ struct WelcomeView: View {
                 }
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxHeight: 340)
-                VStack(spacing: -4) {
+                VStack(spacing: 2) {
                     Text("Roam")
                         .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Roam.ink)
