@@ -3,11 +3,21 @@
 
 Uses the explicitly approved project-scoped token in ignored .env.beta. Migration SQL and
 its original CLI-compatible history entry commit together. No fixtures or seeds are deployed.
+
+    python3 -I scripts/deploy-beta.py plan        # migrations not yet on the beta, and functions there now
+    python3 -I scripts/deploy-beta.py migrate     # apply them
+    python3 -I scripts/deploy-beta.py functions   # deploy every edge function in supabase/functions
+    python3 -I scripts/deploy-beta.py check       # health, buckets, migrations, Auth and functions
+    python3 -I scripts/deploy-beta.py deploy      # migrate, then functions, then check
+
+Edge function secrets (GITHUB_TOKEN, GOOGLE_PLACES_KEY, ...) are set in the dashboard, never here.
 """
 import argparse
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import urllib.error
 import urllib.request
 
@@ -111,10 +121,54 @@ def configure_auth():
     print("Configured beta Auth redirects, Apple audience, password policy and email templates.")
 
 
+def local_functions():
+    """Every edge function in the repo: a folder in supabase/functions with an index.ts."""
+    return sorted(p.name for p in (ROOT / "supabase/functions").iterdir() if (p / "index.ts").exists())
+
+
+def remote_functions():
+    return {item["slug"]: item for item in request("/functions") or []}
+
+
+def deploy_functions(names=None):
+    """Deploys edge functions with the Supabase CLI, bundled on Supabase's side (no Docker needed)."""
+    values = environment()
+    cli = shutil.which("supabase") or str(Path.home() / ".local/bin/supabase")
+    if not Path(cli).exists() and not shutil.which(cli):
+        raise RuntimeError("The Supabase CLI isn't installed (brew install supabase/tap/supabase).")
+    env = dict(os.environ, SUPABASE_ACCESS_TOKEN=values["SUPABASE_ACCESS_TOKEN"])
+    for name in names or local_functions():
+        result = subprocess.run([cli, "functions", "deploy", name, "--project-ref", PROJECT, "--use-api"],
+                                cwd=ROOT, env=env, capture_output=True, text=True)
+        output = (result.stdout + result.stderr).replace(values["SUPABASE_ACCESS_TOKEN"], "[redacted]")
+        if result.returncode != 0:
+            raise RuntimeError(f"Deploying {name} failed:\n{output[-1200:]}")
+        print("Deployed:", name, flush=True)
+    print("Functions deployed. Their secrets are set in the dashboard (Edge Functions -> Secrets).")
+
+
+def print_functions():
+    remote = remote_functions()
+    for name in local_functions():
+        item = remote.get(name)
+        print(f"Function {name}: " + (f"version {item.get('version')}, {item.get('status')}" if item else "not deployed"))
+
+
+def publishable_key():
+    config = ROOT / "Config/Beta.xcconfig"
+    if config.exists():
+        return next(line.split("=", 1)[1].strip() for line in config.read_text().splitlines()
+                    if line.startswith("ROAM_SUPABASE_PUBLISHABLE_KEY"))
+    # Without the app's beta config, ask the project for its public client key.
+    keys = request("/api-keys") or []
+    key = next((k.get("api_key") for k in keys if k.get("type") == "publishable" or k.get("name") == "anon"), None)
+    if not key:
+        raise RuntimeError("Couldn't find the beta's publishable key (Config/Beta.xcconfig or the API).")
+    return key
+
+
 def check():
-    config = (ROOT / "Config/Beta.xcconfig").read_text()
-    key = next(line.split("=", 1)[1].strip() for line in config.splitlines()
-               if line.startswith("ROAM_SUPABASE_PUBLISHABLE_KEY"))
+    key = publishable_key()
     req = urllib.request.Request(f"https://{PROJECT}.supabase.co/rest/v1/rpc/roam_health",
         data=b"{}", headers={"apikey": key, "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as response:
@@ -129,17 +183,28 @@ def check():
         "site_url", "uri_allow_list", "password_min_length", "mailer_otp_length",
         "external_apple_enabled", "external_apple_client_id", "external_apple_skip_nonce_check",
     )}))
+    print_functions()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["plan", "migrate", "configure-auth", "check"])
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("action", choices=["plan", "migrate", "functions", "configure-auth", "check", "deploy"])
+    parser.add_argument("names", nargs="*", help="functions: just these (default: all of them)")
     args = parser.parse_args()
     try:
-        if args.action in ("plan", "migrate"):
-            migrations(args.action == "migrate")
+        if args.action == "plan":
+            migrations(False)
+            print_functions()
+        elif args.action == "migrate":
+            migrations(True)
+        elif args.action == "functions":
+            deploy_functions(args.names)
         elif args.action == "configure-auth":
             configure_auth()
+        elif args.action == "deploy":
+            migrations(True)
+            deploy_functions()
+            check()
         else:
             check()
     except (RuntimeError, urllib.error.URLError) as error:
