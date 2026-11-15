@@ -136,8 +136,8 @@ private struct ListRow: View {
 }
 
 /// One list, laid out like the app's other pages: its name (with an edit pencil on your own), whose it is as a small chip
-/// on a friend's, round Send and Access buttons, then its places as standard rows in one card (swipe to remove).
-/// Add a place opens the worldwide place search; Delete is a round bin at the top.
+/// on a friend's, then its places as standard rows in one card (swipe to remove).
+/// Add a place opens the worldwide place search; Send and Delete are round buttons at the top right.
 struct PlaceListDetailView: View {
     let listID: UUID
 
@@ -147,7 +147,6 @@ struct PlaceListDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: LoadPhase<PlaceListDetail> = .idle
     @State private var showsShare = false
-    @State private var showingAccess = false
     @State private var addingPlaces = false
     @State private var renaming = false
     @State private var newTitle = ""
@@ -181,6 +180,14 @@ struct PlaceListDetailView: View {
                     .opacity(scrolledPastTitle ? 1 : 0).accessibilityHidden(!scrolledPastTitle)
             }
             if detail.value?.summary.isOwn == true {
+                // Send (indigo) to the left of the bin. A list is private: only friends you send it to can open it.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showsShare = true } label: { Image(systemName: "paperplane").foregroundStyle(.indigo) }
+                        .accessibilityLabel("Send list")
+                        .accessibilityIdentifier("list-send")
+                }
+                // Two separate round buttons rather than one shared capsule.
+                if #available(iOS 26.0, *) { ToolbarSpacer(.fixed, placement: .topBarTrailing) }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) { confirmingDelete = true } label: { Image(systemName: "trash").foregroundStyle(.red) }
                         // Attached to the bin, so the confirmation pops up from it.
@@ -202,7 +209,6 @@ struct PlaceListDetailView: View {
         .sheet(isPresented: $showsShare) {
             ShareSheet(target: .list(listID), title: detail.value?.summary.title ?? "this list").presentationBackground(Roam.paper)
         }
-        .sheet(isPresented: $showingAccess) { ListAccessSheet(listID: listID) }
         .sheet(isPresented: $addingPlaces, onDismiss: { Task { await load() } }) {
             AddPlacesToListSheet(listID: listID, inList: Set(detail.value?.items.map(\.id) ?? []))
         }
@@ -245,7 +251,6 @@ struct PlaceListDetailView: View {
                 Text(value.summary.description).font(.body).foregroundStyle(Roam.inkMuted)
             }
         }
-        if own { actionRow }
         if let actionError { Text(actionError).font(.footnote).foregroundStyle(Roam.signal) }
         if !value.items.isEmpty {
             VStack(spacing: 0) {
@@ -284,34 +289,6 @@ struct PlaceListDetailView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(owner.displayName)'s list")
         .accessibilityIdentifier("list-owner")
-    }
-
-    /// Round actions with a caption under each, as on a place or city, the same widths: send (indigo) and who has it.
-    /// Adding places is the green bubble under them.
-    private var actionRow: some View {
-        HStack(spacing: 0) {
-            roundAction("paperplane", tint: .indigo, caption: "Send", identifier: "list-send") { showsShare = true }
-            roundAction("person.2", tint: Roam.ink, caption: "Access", identifier: "list-access") { showingAccess = true }
-            ForEach(0..<3, id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 1) }
-        }
-    }
-
-    private func roundAction(_ symbol: String, tint: Color, caption: String, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.headline)
-                    .foregroundStyle(tint)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(tint.opacity(0.15)))
-                Text(caption).font(.caption2).foregroundStyle(Roam.ink).lineLimit(1).fixedSize()
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(caption)
-        .accessibilityIdentifier(identifier)
     }
 
     /// Green full-width bubble under the places: opens the place search.
@@ -493,75 +470,6 @@ struct AddToListSheet: View {
         do {
             let list = try await services.plans.saveList(id: nil, title: newTitle, description: "")
             await add(to: list.id)
-        } catch { self.error = error.roamMessage }
-    }
-}
-
-private struct ListAccessSheet: View {
-    let listID: UUID
-    @Environment(AppServices.self) private var services
-    @Environment(\.dismiss) private var dismiss
-    @State private var people: LoadPhase<[MemberSummary]> = .idle
-    @State private var pending: UUID?
-    @State private var error: String?
-
-    var body: some View {
-        NavigationStack {
-            List {
-                switch people {
-                case .idle, .loading: SkeletonList(rows: 2)
-                case .failed(let message):
-                    InlineRetryView(message: message) { Task { await load() } }
-                case .loaded(let members):
-                    if members.isEmpty {
-                        Text("This list is private").foregroundStyle(Roam.inkMuted)
-                    }
-                    ForEach(members) { member in
-                        HStack(spacing: Theme.Spacing.m) {
-                            AvatarView(member: member, size: 48)
-                            Text(member.displayName).font(.headline)
-                            Spacer(minLength: 0)
-                            Menu {
-                                Button("Remove access", role: .destructive) {
-                                    Task { await revoke(member.id) }
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis").frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-                            }
-                            .disabled(pending != nil)
-                            .accessibilityLabel("Access for \(member.displayName)")
-                        }
-                    }
-                }
-                if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Roam.paper)
-            .navigationTitle("List access")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
-                }
-            }
-            .task { await load() }
-        }
-        .roamSheetStyle()
-    }
-
-    private func load() async {
-        do { people = .loaded(try await services.plans.listRecipients(listID: listID)) }
-        catch { people = .failed(error.roamMessage) }
-    }
-
-    private func revoke(_ recipient: UUID) async {
-        guard pending == nil else { return }
-        pending = recipient
-        error = nil
-        defer { pending = nil }
-        do {
-            try await services.plans.revokeListShare(listID: listID, recipientID: recipient)
-            await load()
         } catch { self.error = error.roamMessage }
     }
 }

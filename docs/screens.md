@@ -211,8 +211,9 @@ tapping another place or pin swaps the card to it.
 
 - **Lists** (My Places › Saved › Lists): your lists as standard rows (name, number of places), then lists friends sent
   you, and a New list bubble that names it and opens it.
-- **A list:** its name big, with an edit pencil on your own (rename) and a round red bin at the top (delete). A friend's
-  list has a small chip with their picture and name, opening their profile. Round Send (indigo) and Access buttons, then
+- **A list:** its name big, with an edit pencil on your own (rename) and, at the top right, Send (indigo) then a red bin (delete). A list is private: only friends you send it to can
+  open it. A friend's
+  list has a small chip with their picture and name, opening their profile. Then
   its places as standard rows in one card (swipe left to remove one from your own list), then a green "Add a place"
   bubble. That opens the place search: tapping a result adds it with a tick, tapping again takes it off; × closes.
 - From a place's page, Add to list shows your lists as rows (tap one to add), a new list by name, and an optional note.
