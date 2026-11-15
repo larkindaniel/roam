@@ -8,8 +8,9 @@ when you change a screen. `docs/design-language.md` covers how they look.
 - **Welcome:** the Roam logo (the app icon, as big as the screen allows), "Roam", and "Find places you love from people
   you trust." Continue with Apple (black) and I already have an account (grey) sit at the bottom.
 - **Sign in, and the email steps** (create account, code, forgot password, new password): the round glass back button,
-  a big title, grey rounded fields, quiet links under them, and the black action pinned at the bottom.
-- **Setup** (a new account), one page per step with a round back button and a thin progress bar at the top, and the
+  a big title (no line under it), grey rounded fields, quiet links under them, and the black action pinned at the bottom.
+- **Setup** (a new account), one page per step (just a title, no line under it) with a round back button and a thin
+  progress bar at the top, and the
   step's button pinned at the bottom (grey "Skip for now" when nothing's chosen, black "Continue" once something is):
   1. **What's your name?**, then **your handle** (a tick once it's free). These make the profile.
   2. **A profile photo**: tap the big circle to choose one.

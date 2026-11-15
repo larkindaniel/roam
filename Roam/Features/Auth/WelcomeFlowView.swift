@@ -190,11 +190,10 @@ struct InfoText: View {
     }
 }
 
-/// Shared form chrome, like the app's other pages: the system's round glass back button, a big title, a short line under
-/// it, the fields, and the black action pinned at the bottom.
+/// Shared form chrome, like the app's other pages: the system's round glass back button, a big title, the fields, and
+/// the black action pinned at the bottom.
 struct AuthFormScaffold<Fields: View, Footer: View>: View {
     let title: String
-    let message: String
     let actionTitle: String
     let actionEnabled: Bool
     let busy: Bool
@@ -205,12 +204,8 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                    if !message.isEmpty {
-                        Text(message).font(.subheadline).foregroundStyle(Roam.inkMuted)
-                    }
-                }
+                // Just the title: no line under it.
+                Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
                 VStack(spacing: Theme.Spacing.s) { fields }
                 footer
             }

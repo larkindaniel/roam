@@ -94,12 +94,12 @@ private struct SetupSteps: View {
     @ViewBuilder private var content: some View {
         switch model.step {
         case .name:
-            title("What's your name?", "This is how other people see you.")
+            title("What's your name?")
             RoamTextField(title: "Your name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
                 .focused($focused)
                 .onChange(of: model.displayName) { _, _ in model.saveDraft() }
         case .handle:
-            title("Choose your handle", "Letters, numbers and underscores.")
+            title("Choose your handle")
             RoamTextField(title: "Handle", text: $model.handle, identifier: "handle-field")
                 .focused($focused)
                 .overlay(alignment: .trailing) { handleMark.padding(.trailing, Theme.Spacing.l) }
@@ -111,7 +111,7 @@ private struct SetupSteps: View {
                 .task(id: model.handle) { await model.checkHandle() }
             handleStatus
         case .photo:
-            title("Add a profile photo", "It helps friends recognise you.")
+            title("Add a profile photo")
             PhotosPicker(selection: $photoItem, matching: .images) {
                 ZStack {
                     if let image = model.avatarImage {
@@ -136,7 +136,7 @@ private struct SetupSteps: View {
             .accessibilityLabel(model.avatarPath == nil ? "Choose a photo" : "Choose a different photo")
             .accessibilityIdentifier("choose-avatar")
         case .preferences:
-            title("What do you like?", "Pick what fits. Skip any you like.")
+            title("What do you like?")
             ForEach(TasteProfile.questions) { question in
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     Text(question.title).font(.headline)
@@ -152,7 +152,7 @@ private struct SetupSteps: View {
             }
             .task { await model.loadTaste() }
         case .home:
-            title("Where's home?", "Your home city.")
+            title("Where's home?")
             if let city = model.homeCity {
                 HStack(spacing: Theme.Spacing.m) {
                     CityThumbnail(destination: city, size: 48)
@@ -181,7 +181,7 @@ private struct SetupSteps: View {
                 }
             }
         case .friends:
-            title("Add friends", "Friends see each other's places once you both agree.")
+            title("Add friends")
             RoamSearchField(prompt: "Search for friends", text: $friendQuery, focus: $focused, identifier: "setup-friend-search")
                 .frame(height: 44)
             if friendQuery.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -236,11 +236,9 @@ private struct SetupSteps: View {
         if quiet { button.buttonStyle(GreyBubbleButtonStyle()) } else { button.buttonStyle(PrimaryButtonStyle()) }
     }
 
-    private func title(_ title: String, _ message: String) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text(message).font(.subheadline).foregroundStyle(Roam.inkMuted)
-        }
+    /// Just the question: no line under it.
+    private func title(_ title: String) -> some View {
+        Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder private var handleMark: some View {

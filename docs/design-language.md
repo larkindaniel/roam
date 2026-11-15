@@ -12,6 +12,8 @@ and patterns, then add it to this page. `docs/screens.md` describes each screen 
   "12 places" on a city). Don't repeat what's already on screen.
 - **Marks over headings.** Cards are usually untitled: the coloured mark on each row says what it is (been, saved,
   trip, home).
+- **Titles stand alone.** No subtitle or explanation line under a title unless the screen can't be understood without
+  it. Sign-in and setup have none.
 - **Short, plain words.** "Been", not "Been here". A destructive choice is just "Delete".
 - **Reuse before you build.** Every row, card, button and chip below already exists. Match it exactly (sizes, fonts,
   spacing). If a new screen needs a row, it's the standard row.

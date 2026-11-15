@@ -4,7 +4,7 @@ struct SignUpView: View {
     @Bindable var model: AuthFlowModel
 
     var body: some View {
-        AuthFormScaffold(title: "Create your account", message: "We'll email you a code to confirm it.",
+        AuthFormScaffold(title: "Create your account",
                          actionTitle: "Create account", actionEnabled: model.emailIssue == nil && model.passwordIssue == nil,
                          busy: model.busy, action: { Task { await model.signUp() } }) {
             RoamTextField(title: "Email", text: $model.email, contentType: .username, keyboard: .emailAddress, identifier: "email-field")
@@ -24,7 +24,7 @@ struct VerifyEmailView: View {
     @Bindable var model: AuthFlowModel
 
     var body: some View {
-        AuthFormScaffold(title: "Check your email", message: "Enter the 6-digit code we sent to \(model.email).",
+        AuthFormScaffold(title: "Check your email",
                          actionTitle: "Confirm email", actionEnabled: model.code.count == 6, busy: model.busy,
                          action: { Task { await model.verifySignUp() } }) {
             RoamTextField(title: "Code", text: $model.code, contentType: .oneTimeCode, keyboard: .numberPad, identifier: "code-field")
@@ -45,7 +45,7 @@ struct SignInView: View {
     @Bindable var model: AuthFlowModel
 
     var body: some View {
-        AuthFormScaffold(title: "Welcome back", message: "", actionTitle: "Sign in",
+        AuthFormScaffold(title: "Welcome back", actionTitle: "Sign in",
                          actionEnabled: model.emailIssue == nil && !model.password.isEmpty, busy: model.busy,
                          action: { Task { await model.signIn() } }) {
             RoamTextField(title: "Email", text: $model.email, contentType: .username, keyboard: .emailAddress, identifier: "email-field")
@@ -64,7 +64,7 @@ struct ForgotPasswordView: View {
     @Bindable var model: AuthFlowModel
 
     var body: some View {
-        AuthFormScaffold(title: "Reset your password", message: "We'll email you a 6-digit code.",
+        AuthFormScaffold(title: "Reset your password",
                          actionTitle: "Send reset code", actionEnabled: model.emailIssue == nil, busy: model.busy,
                          action: { Task { await model.requestReset() } }) {
             RoamTextField(title: "Email", text: $model.email, contentType: .username, keyboard: .emailAddress, identifier: "email-field")
@@ -78,7 +78,7 @@ struct ResetCodeView: View {
     @Bindable var model: AuthFlowModel
 
     var body: some View {
-        AuthFormScaffold(title: "Enter your code", message: "Then you'll choose a new password.",
+        AuthFormScaffold(title: "Enter your code",
                          actionTitle: "Continue", actionEnabled: model.code.count == 6, busy: model.busy,
                          action: { Task { await model.verifyReset() } }) {
             if let info = model.info { InfoText(info) }
@@ -104,7 +104,7 @@ struct SetNewPasswordView: View {
 
     var body: some View {
         NavigationStack {
-            AuthFormScaffold(title: "Choose a new password", message: "Use \(Limits.passwordMin)–\(Limits.passwordMax) characters.",
+            AuthFormScaffold(title: "Choose a new password",
                              actionTitle: "Save password", actionEnabled: Validation.password(password) == nil, busy: busy,
                              action: { Task { await save() } }) {
                 RoamTextField(title: "New password", text: $password, isSecure: true, contentType: .newPassword, identifier: "new-password-field")
