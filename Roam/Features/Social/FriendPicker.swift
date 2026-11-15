@@ -36,10 +36,6 @@ struct FriendSelectionSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     FriendPickerRows(selection: $selection, multiple: multiple, excluding: excluding)
                         .disabled(saving)
-                    if multiple && !selection.isEmpty {
-                        Button("Clear selection") { selection.removeAll() }
-                            .disabled(saving)
-                    }
                     if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
                 }
                 .padding(Theme.Spacing.l)
@@ -63,6 +59,8 @@ struct FriendSelectionSheet: View {
                         if saving { ProgressView() } else { Text(action).fontWeight(.semibold) }
                     }
                     .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+                    // The whole pill takes the tap, not just the word.
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
