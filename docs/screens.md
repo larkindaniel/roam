@@ -10,7 +10,7 @@ when you change a screen. `docs/design-language.md` covers how they look.
 - **Tab bar:** Roam's own floating glass bar with Discover, Friends and My Places. Tapping a tab always goes back to its
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
   the card is fully up.
-- **Settings:** a cog in a glass circle at the top right of each tab opens Settings.
+- **Profile:** your profile picture in a glass circle at the top right of each tab opens your profile and settings.
 - **Swipe-up cards** (city, place, My Places) have three heights:
   - **Peek:** a short bubble.
   - **Half.**
@@ -20,10 +20,17 @@ when you change a screen. `docs/design-language.md` covers how they look.
   it.
 - **Back:** a back button at the top left of pushed pages. Opening a place or city from another map stays on the same
   map (see City page), so there's no slide.
-- **Search** (Discover, My Places, city pages) uses the same results list:
-  - Your places, then cities, states and countries, then everything Apple Maps knows.
-  - A country opens its country page, a state its state page, a city its city page and a place its place page.
-  - The field's own × ends the search, and leaving the tab clears it.
+- **Search:** there are exactly three, and every search field is one of them (`RoamSearchField`).
+  1. **Worldwide places** (Discover, My Places, Log a place, onboarding, city pickers): your places (My Places only),
+     countries, states, cities, then everything Apple Maps knows, places near you first. No filters. A city picker keeps
+     only the cities; onboarding keeps only places.
+  2. **A city or area** (city page, Add places when logging a city, "Where in Norway?"): only cities near it and places in
+     or around it.
+  3. **Accounts** (Find people, and picking friends for Send, trip invites and "went with", which lists only your
+     friends).
+  - Results look the same everywhere. Tapping one opens it, unless the screen is picking something.
+  - The field's own × ends the search, and leaving the tab clears it. On Discover, tapping anywhere but a result ends it
+    too.
 
 ## Onboarding (end of setup)
 
@@ -40,7 +47,8 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 
 ## Discover
 
-- **Top:** a search bar and the settings cog.
+- **Top:** a search bar and your profile picture. Scrolling down swaps them for a dark fade with "Discover" centred;
+  scrolling back up brings them back.
 - **Body:** "Places we think you'd enjoy", big city photo cards (grey placeholder cards while loading), ranked by Roam
   (see DECISIONS.md, "Suggestions").
   - Under each name: the country, then why it's suggested, such as "Portugal · Theo sent you a place here", "On your
@@ -52,21 +60,32 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
 
 ## Friends
 
-- The floating **+** above the tab bar opens **Add a place**. Search for a place and select it to log a visit.
-- The toolbar opens Friends and Requests, existing notifications, and Settings. Find people is in Friends and in the
-  empty feed. Request notifications open Requests. Activity notifications open the activity.
-- One card per dated friend visit, newest first. A rerank can appear as a separate rating update. Undated imports stay
-  on Been. Cards use the visit's audience, with the actual visit note and photos when available.
-- In “Maya visited Bar X in Toronto”, Maya opens her profile, Bar X opens its pin on the map, and Toronto opens its
-  city map. A trip link appears for viewers with itinerary access. Tagged friends appear on the visit.
-- Likes and comments belong to each activity. The comment field stays above the keyboard, and retry keeps the draft.
-  The author can remove the activity while keeping the visit. A tagged friend can remove their own tag.
+- **Top:** a green "+ Log a place" bubble on the left opens Log a place (a search; pick a place to log a visit). On the
+  right, Add friends, then your profile.
+  Notifications are off for now. Scrolling down swaps the row for a dark fade with "Friends" centred; scrolling back up
+  brings it back as glass on the fade.
+- One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
+  audience allows show (Only me never does), with the log's own note and photos.
+- Logs sit straight on the page, with no card around them; the photos set them apart. Each log: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
+  place's Google photo at its usual size. Set into the top of the photo is one small line: their picture, name · date,
+  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo opens the log's own page; double-tapping likes it. Under the photo, a slim card with the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then their
+  note and who they went with. Like and comment sit in white in the photo's bottom right, on a dark fade (under the card when there's no photo); comment opens the log as its own page (the log, then its comments as plain rows, long-press to delete yours or report someone else's, and a white field pinned at the bottom with your picture (which slides away once the comment wraps) and a send arrow). Double-tapping a photo likes it. A card never opens a page of its own.
+- Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
+  deleted from its place page; a tagged friend can remove their own tag.
+
+## Add friends
+
+- A back button and a white "Search for friends" bar at the top.
+- Before you search: your friend requests, each with Accept. There's no separate requests page.
+- Search results show everyone by name or @handle, each with its own Add, Requested, Accept or Friends button, so
+  nothing takes two taps. Tapping a name opens that person's profile.
 
 ## Member profile
 
 - The header shows the avatar, name, handle, and friendship action. Settings opens your own profile.
-- Activity shows the member's visits and ratings that you can see. Friends can open their Passport and lists shared
-  directly with them. The Passport counts places from visits visible to its viewer.
+- Anyone's profile opens. Activity shows the logs you can see, and Passport (open for anyone) counts only logs whose
+  audience includes you; cities marked as been without a log show to friends only. Lists shared directly with you
+  appear too.
 
 ## My Places
 

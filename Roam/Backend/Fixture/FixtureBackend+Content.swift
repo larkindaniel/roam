@@ -55,7 +55,7 @@ extension FixtureBackend: ExperienceService {
                                 provider: c.provider, providerStatus: place.status, isLocality: c.isLocality,
                                 categoryLocked: experience.categoryLocked, myRating: myRating, myVisits: myVisits,
                                 hasPrivateNote: privateNotes[Pair(a: me, b: experienceID)] != nil,
-                                publicActivity: publicRows.prefix(Limits.pageSize).compactMap { activityItem($0, viewer: me) })
+                                publicLogs: publicRows.prefix(Limits.pageSize).compactMap { activityItem($0, viewer: me) })
     }
 
     func experiences(in bounds: GeoBounds, category: ExperienceCategory?) async throws -> [ExperienceSummary] {
@@ -236,7 +236,7 @@ extension FixtureBackend: RankingService {
         activities[activityID] = ActivityRow(id: activityID, author: me, type: request.intent == .firstLog ? .rating : .rerank,
                                              experience: request.experienceID, visit: visitID, rating: ratingID, category: request.category,
                                              score: placement.score, rank: placement.rank, sentiment: placement.sentiment, publishedAt: now)
-        let result = RatingCommitResult(ratingID: ratingID, visitID: request.intent == .firstLog ? visitID : nil, activityID: activityID,
+        let result = RatingCommitResult(ratingID: ratingID, visitID: request.intent == .firstLog ? visitID : nil,
                                         category: request.category, sentiment: placement.sentiment, score: placement.score, rank: placement.rank,
                                         groupSize: placement.groupSize, categoryCount: updated.entryCount, revision: updated.revision)
         receipts[key] = (digest, result)
@@ -282,7 +282,7 @@ extension FixtureBackend: RankingService {
         activities[activityID] = ActivityRow(id: activityID, author: me, type: .revisit, experience: request.experienceID, visit: visitID,
                                              rating: rating?.id, category: category, score: placement?.score, rank: placement?.rank,
                                              sentiment: placement?.sentiment, publishedAt: now)
-        let result = AddVisitResult(visitID: visitID, activityID: activityID)
+        let result = AddVisitResult(visitID: visitID)
         receipts[key] = (digest, result)
         return result
     }

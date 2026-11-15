@@ -49,7 +49,7 @@ final class FeedModel {
          source: ((String?) async throws -> Page<ActivityItem>)? = nil) {
         self.service = service
         self.notifications = notifications
-        self.load = source ?? { try await service.feed(cursor: $0) }
+        self.load = source ?? { try await service.friendsActivity(cursor: $0) }
     }
 
     func refresh() async {
@@ -102,7 +102,7 @@ final class FeedModel {
         items[index].likeCount = max(0, before.likeCount + (liked ? 1 : -1))
         actionError = nil
         do {
-            let persisted = try await service.setLike(activityID: id, liked: liked)
+            let persisted = try await service.setLike(visitID: id, liked: liked)
             if persisted != liked, let current = items.firstIndex(where: { $0.id == id }) {
                 items[current].likedByViewer = persisted
                 items[current].likeCount = before.likeCount
@@ -155,8 +155,6 @@ final class ActivityDetailModel {
     private(set) var likePending = false
     private(set) var actionError: String?
     private(set) var deletingCommentID: UUID?
-    private(set) var isRemoving = false
-    private(set) var wasRemoved = false
     private(set) var authError: RoamError?
     private let service: any FeedService
     private var generation = 0
@@ -181,7 +179,7 @@ final class ActivityDetailModel {
             item = loaded
             loadError = nil
             isUnavailable = false
-            let page = try await service.comments(activityID: activityID, cursor: nil)
+            let page = try await service.comments(visitID: activityID, cursor: nil)
             guard token == generation else { return }
             comments = uniqueByID(page.items)
             commentsCursor = page.nextCursor
@@ -207,7 +205,7 @@ final class ActivityDetailModel {
         loadingMoreComments = true
         defer { loadingMoreComments = false }
         do {
-            let page = try await service.comments(activityID: activityID, cursor: cursor)
+            let page = try await service.comments(visitID: activityID, cursor: cursor)
             guard commentsCursor == cursor else { return }
             comments = uniqueByID(comments + page.items)
             commentsCursor = page.nextCursor
@@ -227,7 +225,7 @@ final class ActivityDetailModel {
         postError = nil
         defer { isPosting = false }
         do {
-            let comment = try await service.postComment(activityID: activityID, body: body, operationID: operation)
+            let comment = try await service.postComment(visitID: activityID, body: body, operationID: operation)
             comments = uniqueByID(comments + [comment])
             if var current = item, !comments.dropLast().contains(where: { $0.id == comment.id }) {
                 current.commentCount = max(current.commentCount, comments.count)
@@ -271,28 +269,12 @@ final class ActivityDetailModel {
         current.likeCount = max(0, before.likeCount + (liked ? 1 : -1))
         item = current
         do {
-            let persisted = try await service.setLike(activityID: activityID, liked: liked)
+            let persisted = try await service.setLike(visitID: activityID, liked: liked)
             if persisted != liked { item = before }
         } catch {
             item = before
             actionError = error.roamMessage
             authCheck(error)
-        }
-    }
-
-    /// Removes only this post; the Rating and Visit stay.
-    func removePost() async -> Bool {
-        guard item?.isOwn == true, !isRemoving else { return false }
-        isRemoving = true
-        defer { isRemoving = false }
-        do {
-            try await service.deleteActivity(id: activityID)
-            wasRemoved = true
-            return true
-        } catch {
-            actionError = error.roamMessage
-            authCheck(error)
-            return false
         }
     }
 
@@ -387,7 +369,7 @@ final class NotificationsModel {
         case .friendRequest:
             return viewerID.map { .followGraph($0, .requests) } ?? .member(notification.actor.id)
         case .follow, .friendAccept: return .member(notification.actor.id)
-        case .like, .comment: return notification.activityID.map(AppRoute.activity)
+        case .like, .comment: return notification.visitID.map(AppRoute.activity)
         }
     }
 

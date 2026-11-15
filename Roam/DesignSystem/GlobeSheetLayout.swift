@@ -54,14 +54,24 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
 
-    @GestureState private var dragOffset: CGFloat = 0
+    /// How far the finger has moved the card. The system puts it back to 0 whenever a drag ends or is interrupted (so the
+    /// card can never get stuck mid-drag), with the same spring that moves the card to its new height, so letting go
+    /// never jumps.
+    @GestureState(resetTransaction: Transaction(animation: .spring(duration: 0.32, bounce: 0))) private var dragOffset: CGFloat = 0
     @State private var headerHeight: CGFloat?
+    /// The header as it is when minimised, which sets the minimised height; kept apart so it can't move mid-drag.
+    @State private var peekHeaderHeight: CGFloat?
     @State private var snapping = false
     @State private var contentScrolled = false
     @State private var scroll = ScrollPosition(edge: .top)
 
     /// Minimised, the card is just its header, sitting on the tab bar.
-    private var peek: CGFloat { headerHeight.map { $0 + bottomOverlap } ?? peekHeight }
+    private var peek: CGFloat {
+        // A floating bubble reaches from the bottom margin to its top, so dragging down lands exactly on it.
+        if floatsWhenPeeking, let bubble = floatingHeight ?? peekHeaderHeight { return bubble + floatingBottomMargin }
+        // Measured only while minimised; the taller halfway header would leave it stuck short of the bottom.
+        return peekHeaderHeight.map { $0 + bottomOverlap } ?? peekHeight
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -91,6 +101,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 }
             }
             .frame(width: proxy.size.width, height: available, alignment: .bottom)
+            .onChange(of: available, initial: true) { _, height in screenHeight = height }
         }
         .background(Color.black.opacity(seeThrough ? 0 : 1).ignoresSafeArea())
         // With no tab bar below, the card runs down to the bottom of the screen.
@@ -102,24 +113,32 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
     private static var topClearance: CGFloat { 12 }
     private static var contentInset: CGFloat { 20 }
 
-    private var isFloating: Bool { floatsWhenPeeking && detent == .peek && dragOffset == 0 }
+    /// Minimised as a bubble. It stays the bubble while it's dragged up (it just grows), because swapping its layout
+    /// mid-drag removed the view under the finger and iOS cancelled the swipe.
+    private var isFloating: Bool { floatsWhenPeeking && detent == .peek }
 
     /// Like Apple Maps: the minimised bubble floats with a wide margin and is most see-through; halfway up it has
     /// a narrow margin and less glass; fully up it is solid and runs to the edges of the screen.
-    private var sideMargin: CGFloat {
-        switch detent {
-        case .peek: return floatsWhenPeeking ? floatingSideMargin : Theme.Spacing.s
-        case .half: return Theme.Spacing.s
-        case .full: return 0
+    private func margins(_ position: GlobeSheetDetent) -> (side: CGFloat, bottom: CGFloat) {
+        switch position {
+        case .peek: return floatsWhenPeeking ? (floatingSideMargin, floatingBottomMargin) : (Theme.Spacing.s, Theme.Spacing.s)
+        case .half: return (Theme.Spacing.s, Theme.Spacing.s)
+        case .full: return (0, 0)
         }
     }
 
-    private var bottomMargin: CGFloat {
-        switch detent {
-        case .peek: return floatsWhenPeeking ? floatingBottomMargin : Theme.Spacing.s
-        case .half: return Theme.Spacing.s
-        case .full: return 0
+    /// The margins for the card at this height: between two positions they blend, so the card widens and narrows
+    /// smoothly as it's dragged (and as it settles) instead of jumping when it lands.
+    private func margins(at height: CGFloat, available: CGFloat) -> (side: CGFloat, bottom: CGFloat) {
+        let top = available - Self.topClearance
+        let stops = GlobeSheetDetent.allCases.map { (height: min($0.height(in: available, peek: peek), top), margins: margins($0)) }
+        guard let first = stops.first, height > first.height else { return stops.first?.margins ?? (0, 0) }
+        for (lower, upper) in zip(stops, stops.dropFirst()) where height <= upper.height {
+            let t = (height - lower.height) / max(upper.height - lower.height, 1)
+            return (lower.margins.side + (upper.margins.side - lower.margins.side) * t,
+                    lower.margins.bottom + (upper.margins.bottom - lower.margins.bottom) * t)
         }
+        return stops.last?.margins ?? (0, 0)
     }
 
     private var glassOpacity: Double {
@@ -132,6 +151,7 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
 
     private func card(height: CGFloat, available: CGFloat) -> some View {
         let floating = isFloating
+        let (sideMargin, bottomMargin) = margins(at: height, available: available)
         // Rounded like the screen itself: the bubble is pill-shaped, the card's top corners echo the display's.
         let pill = floatingHeight.map { $0 / 2 } ?? 32
         let top: CGFloat = floating ? pill : 38
@@ -169,16 +189,20 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                     // The grabber, title and buttons stay put; the rest scrolls beneath them.
                     handle(available: available)
                     scroller(topInset: 0, fadesUnderHeader: true)
-                        .frame(height: floating ? 0 : nil)
+                        .frame(height: floating && dragOffset == 0 ? 0 : nil)
                 }
             }
         }
-        .frame(height: floating ? nil : height - bottomMargin, alignment: .top)
+        .frame(height: floating && dragOffset == 0 ? nil : height - bottomMargin, alignment: .top)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
+        // Short of fully up, the swipe belongs to the whole card, which stays put while its insides swap between the
+        // bubble and the card (a swipe held by the header was dropped by that swap, so the bubble couldn't be swiped up).
+        .contentShape(shape)
+        .simultaneousGesture(cardDrag, isEnabled: detent != .full)
         .background {
             // Lowered with no tint asked for, it's exactly the glass of the floating buttons over the map.
-            if floating && peekOpacity == 0 {
+            if floating && dragOffset == 0 && peekOpacity == 0 {
                 // Dark, like the toolbar buttons that sit over the globe.
                 Color.clear.floatingBubble(shape).environment(\.colorScheme, .dark)
             } else {
@@ -187,7 +211,6 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .padding(.horizontal, sideMargin)
         .padding(.bottom, bottomMargin)
-        .animation(.spring(duration: 0.35), value: detent)
     }
 
     private func scroller(topInset: CGFloat, fadesUnderHeader: Bool) -> some View {
@@ -201,15 +224,11 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         }
         .scrollPosition($scroll)
         .onChange(of: scrollToTopToken) { _, _ in withAnimation { scroll.scrollTo(edge: .top) } }
-        // Scrolling drives the card: pull down past the top to lower it, scroll up from halfway to raise it.
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+        // Fully up, pulling down past the top of the content lowers the card.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, new in
             contentScrolled = new > 8
-            guard !snapping, detent != .peek else { return }
-            if new < -70 {
-                snap(to: detent == .full ? .half : .peek)
-            } else if detent == .half, new > 30, new > old {
-                snap(to: .full)
-            }
+            guard !snapping, detent == .full, dragOffset == 0 else { return }
+            if new < -60 { snap(to: .half) }
         }
         // Content fades out as it scrolls up under the header instead of being cut off at a hard edge.
         .mask {
@@ -219,8 +238,33 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
                 Rectangle()
             }
         }
-        .scrollDisabled(detent == .peek)
+        // Short of fully up, the content doesn't scroll: dragging anywhere on the card moves the card, as in Apple Maps.
+        .scrollDisabled(detent != .full)
         .opacity(detent == .peek && dragOffset == 0 ? 0 : 1)
+    }
+
+
+    /// The screen height, for working out which position a released card is nearest.
+    @State private var screenHeight: CGFloat = 0
+
+    /// The card follows the finger freely; let go and it pops to the nearest of its three positions (minimised, halfway,
+    /// fully up), carried on a little by a flick. Measured against the screen, not the card: the card moves under the
+    /// finger, and measuring against it made the drag fight itself and shake.
+    private var cardDrag: some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .global)
+            .updating($dragOffset) { value, offset, transaction in
+                transaction.disablesAnimations = true
+                offset = value.translation.height
+            }
+            .onEnded { value in
+                let top = screenHeight - Self.topClearance
+                func height(_ position: GlobeSheetDetent) -> CGFloat { min(position.height(in: screenHeight, peek: peek), top) }
+                // Where the card is now, plus a share of the flick so a quick swipe carries on to the next position.
+                let released = height(detent) - value.translation.height
+                let landing = released - (value.predictedEndTranslation.height - value.translation.height) * 0.5
+                let next = GlobeSheetDetent.allCases.min { abs(height($0) - landing) < abs(height($1) - landing) } ?? .half
+                settle(at: next)
+            }
     }
 
     private var grabber: some View {
@@ -257,22 +301,22 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .environment(\.onDarkBubble, isFloating && dragOffset == 0 && peekOpacity == 0)
         // The same gap to the left of the title as there is above it.
         .padding(.horizontal, Self.contentInset)
         // The minimised height is measured while the header sits here.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+        // The content's room under the header follows it always; the minimised height only takes it while minimised.
+        // Never mid-drag: re-measuring as the card moves shifted the content under the finger.
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+            guard dragOffset == 0 else { return }
+            headerHeight = height
+            if detent == .peek { peekHeaderHeight = height }
+        }
         .contentShape(Rectangle())
         .onTapGesture { if headerTapToggles { setDetent(detent == .half ? .full : .half) } }
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .updating($dragOffset) { value, offset, _ in offset = value.translation.height }
-                .onEnded { value in
-                    let target = detent.height(in: available, peek: peek) - value.predictedEndTranslation.height
-                    setDetent(GlobeSheetDetent.allCases.min {
-                        abs($0.height(in: available, peek: peek) - target) < abs($1.height(in: available, peek: peek) - target)
-                    } ?? .half)
-                }
-        )
+        // Fully up, dragging the header lowers the card (the content scrolls instead). Short of that, the whole card takes
+        // the swipe (see `card`).
+        .simultaneousGesture(cardDrag, isEnabled: detent == .full)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(headerLabel)
         .accessibilityHint(detent == .full ? "Shows the map" : "Minimizes the map")
@@ -280,11 +324,14 @@ struct GlobeSheetLayout<Globe: View, Header: View, Content: View>: View {
         .accessibilityIdentifier(headerIdentifier)
     }
 
-    private func setDetent(_ next: GlobeSheetDetent) {
+    private func setDetent(_ next: GlobeSheetDetent) { settle(at: next) }
+
+    /// Moves the card to a height and lets go of any drag in the same animation, with no bounce.
+    private func settle(at next: GlobeSheetDetent) {
         if UIAccessibility.isReduceMotionEnabled {
             detent = next
         } else {
-            withAnimation(.spring(duration: 0.35)) { detent = next }
+            withAnimation(.spring(duration: 0.32, bounce: 0)) { detent = next }
         }
     }
 }

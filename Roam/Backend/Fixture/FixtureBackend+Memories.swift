@@ -40,7 +40,7 @@ extension FixtureBackend: MemoryService {
             return PublicMemory(id: visit.id, author: memberSummary($0.owner), experienceID: visit.experienceID,
                                 visitDate: visit.visitDate, publicNote: visit.publicNote, media: visit.media,
                                 createdAt: visit.createdAt, updatedAt: visit.updatedAt, isOwn: $0.owner == me,
-                                activityID: latestPost?.id, companions: visit.companions)
+                                companions: visit.companions)
         }, nextCursor: rows.count > Limits.pageSize ? page.last.map { Self.cursor(date: $0.createdAt, id: $0.id) } : nil)
     }
 

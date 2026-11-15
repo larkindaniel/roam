@@ -23,7 +23,6 @@ final class OnboardingTasteModel {
     }
 
     private(set) var candidates: LoadPhase<[ExperienceSummary]> = .idle
-    private(set) var searchResults: [SearchHit] = []
     private(set) var selected: [ExperienceSummary] = []
     private(set) var stage: Stage = .picking
     private(set) var session: InsertionSession?
@@ -52,22 +51,6 @@ final class OnboardingTasteModel {
             candidates = .loaded(try await services.plans.onboardingPlaces(in: bounds).filter { Self.category(of: $0) != nil })
         } catch {
             candidates = .failed(error.roamMessage)
-        }
-    }
-
-    func search(_ text: String, near home: Destination?) async {
-        let query = text.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { searchResults = []; return }
-        do {
-            let found = try await services.places.searchPlaces(query: query, around: home).filter {
-                !$0.isLocality && ($0.suggestedCategory ?? PlaceCategoryMapper.suggestedCategory(rawProviderCategory: $0.providerCategory, isLocality: false)) != nil
-            }
-            let known = (try? await services.experiences.matches(for: found)) ?? [:]
-            guard !Task.isCancelled else { return }
-            searchResults = found.prefix(8).map { SearchHit(candidate: $0, experience: known[$0.id]) }
-                .filter { $0.experience.map { !$0.viewer.hasVisits && $0.viewer.myScore == nil } ?? true }
-        } catch {
-            searchResults = []
         }
     }
 

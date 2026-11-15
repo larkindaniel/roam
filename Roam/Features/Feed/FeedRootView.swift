@@ -9,6 +9,53 @@ struct FeedRootView: View {
     @State private var model: FeedModel?
     @State private var scroll = ScrollPosition(edge: .top)
 
+    @State private var barsHidden = false
+    @State private var scrolledDown = false
+    @State private var navigationBarHidden = true
+
+    private static let barHeight: CGFloat = 44
+
+    /// "+ Log a place" on the left, then Add friends and your profile, each in its own glass circle, as on Discover.
+    private var topBar: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            logPlaceButton
+            Spacer(minLength: 0)
+            // Just Add friends for now; notifications come back later.
+            Button {
+                router.showFindPeople()
+            } label: { barGlyph("person.badge.plus") }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Friends and requests")
+            .accessibilityIdentifier("open-friends")
+            .floatingBubble(Circle())
+            // Just the picture, no glass ring around it.
+            ProfileAvatarButton()
+        }
+        .frame(height: Self.barHeight)
+    }
+
+    /// A green bubble like "+ Add visit", in the Log button's green.
+    private var logPlaceButton: some View {
+        Button { router.sheet = .logPlace } label: {
+            Label("Log a place", systemImage: "plus")
+                .font(.headline)
+                .foregroundStyle(PlaceState.visited.markerColor)
+                .padding(.horizontal, Theme.Spacing.l)
+                .frame(height: Self.barHeight)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .floatingBubble(Capsule(), tint: PlaceState.visited.markerColor.opacity(0.15))
+        .accessibilityIdentifier("log-place")
+    }
+
+    private func barGlyph(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 18, weight: .regular))
+            .foregroundStyle(Roam.ink)
+            .frame(width: Self.barHeight, height: Self.barHeight)
+    }
+
     var body: some View {
         ScrollView {
             Group {
@@ -19,28 +66,36 @@ struct FeedRootView: View {
             .padding(.vertical, Theme.Spacing.m)
         }
         .scrollPosition($scroll)
-        .solidTopEdge()
+        // Reading down swaps the buttons for the fade; any move back up brings them back.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+            if (new > 1) != scrolledDown { withAnimation(.easeOut(duration: 0.15)) { scrolledDown = new > 1 } }
+            if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
+            else if new > old && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
+        }
         .contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)
+        // Room for the top row; the feed scrolls on underneath it.
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.barHeight + Theme.Spacing.s) }
+        .overlay(alignment: .top) {
+            if barsHidden {
+                ScrolledTitleFade(title: "Friends").transition(.opacity)
+            } else {
+                // Never a solid band: once the page moves, the glass buttons float on the fade, as on Discover.
+                ZStack(alignment: .top) {
+                    if scrolledDown { ScrolledTitleFade(depth: Self.barHeight + Theme.Spacing.xl).transition(.opacity) }
+                    topBar
+                        .padding(.horizontal, Theme.Spacing.l)
+                        .padding(.bottom, Theme.Spacing.s)
+                }
+                .transition(.opacity)
+            }
+        }
         .background(Roam.paper)
         .navigationTitle("Friends")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    if let me = session.userID { router.push(.followGraph(me, .friends)) }
-                } label: { Image(systemName: "person.badge.plus") }
-                .accessibilityLabel("Friends and requests")
-                .accessibilityIdentifier("open-friends")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { router.push(.notifications) } label: {
-                    Image(systemName: (model?.unreadCount ?? 0) > 0 ? "bell.badge.fill" : "bell")
-                        .symbolRenderingMode(.hierarchical)
-                }
-                .accessibilityLabel("Notifications, \(model?.unreadCount ?? 0) unread")
-                .accessibilityIdentifier("open-notifications")
-            }
-            SettingsToolbarItem()
+        .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)
+        // As on Discover: coming back from a pushed page can leave the system bar showing over the row.
+        .onAppear {
+            navigationBarHidden = false
+            Task { @MainActor in navigationBarHidden = true }
         }
         .task(id: session.userID) {
             guard session.userID != nil else { model = nil; return }
@@ -52,7 +107,7 @@ struct FeedRootView: View {
         }
         .refreshable { await refresh() }
         .onChange(of: router.scrollToTopRequests[.friends]) { _, _ in
-            withAnimation { scroll.scrollTo(edge: .top) }
+            withAnimation { scroll.scrollTo(edge: .top); barsHidden = false }
         }
         .onChange(of: router.selectedTab) { _, tab in
             if tab == .friends { Task { await refresh() } }
@@ -79,7 +134,7 @@ struct FeedRootView: View {
                            primaryTitle: "Find people", primaryAction: { router.showFindPeople() })
                 .accessibilityIdentifier("feed-empty")
         } else {
-            LazyVStack(spacing: Theme.Spacing.l) {
+            LazyVStack(spacing: Theme.Spacing.xl) {
                 if let error = model.actionError ?? model.error {
                     InlineRetryView(message: error) { Task { await refresh() } }
                 }
@@ -114,23 +169,34 @@ struct FeedCard: View {
     let onLike: (Bool) -> Void
     @Environment(AppRouter.self) private var router
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            ActivityCardView(item: item)
-            HStack(spacing: Theme.Spacing.m) {
-                LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending) { onLike(!item.likedByViewer) }
-                Button { router.push(.activity(item.id)) } label: {
-                    Label("\(item.commentCount)", systemImage: "bubble.left")
-                        .monospacedDigit()
-                        .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
-                }
-                .accessibilityLabel(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments")
-                .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
+    private func actions(onPhoto: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending, tint: onPhoto ? .white : Roam.ink) {
+                onLike(!item.likedByViewer)
             }
-            .buttonStyle(.plain)
+            Button { router.push(.activity(item.id)) } label: {
+                // The count tucked close to its icon.
+                HStack(spacing: 4) { Image(systemName: "bubble.right"); Text("\(item.commentCount)") }
+                    .monospacedDigit()
+                    .foregroundStyle(onPhoto ? Color.white : Roam.ink)
+                    .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
+            }
+            .accessibilityLabel(item.commentCount == 1 ? "1 comment" : "\(item.commentCount) comments")
+            .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
+        }
+        .buttonStyle(.plain)
+    }
+
+    var body: some View {
+        // With a photo, like and comment sit in its bottom right (white); without, under the card.
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            ActivityCardView(item: item, actions: AnyView(actions(onPhoto: true)),
+                             onDoubleTap: { if !item.likedByViewer { onLike(true) } },
+                             onTap: { router.push(.activity(item.id)) })
+            if !ActivityCardView.hasPhoto(item) { actions(onPhoto: false) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .roamCard()
+        // No card around it: the photos set the logs apart.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("feed-card-\(item.id.uuidString)")
     }
@@ -140,13 +206,15 @@ struct LikeButton: View {
     let liked: Bool
     let count: Int
     var pending = false
+    /// White over a photo.
+    var tint: Color = Roam.ink
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label("\(count)", systemImage: liked ? "heart.fill" : "heart")
+            HStack(spacing: 4) { Image(systemName: liked ? "heart.fill" : "heart"); Text("\(count)") }
                 .monospacedDigit()
-                .foregroundStyle(Roam.ink)
+                .foregroundStyle(tint)
                 .frame(minWidth: Theme.minimumHitTarget, minHeight: Theme.minimumHitTarget)
         }
         .disabled(pending)
@@ -155,3 +223,4 @@ struct LikeButton: View {
         .accessibilityIdentifier("like-button")
     }
 }
+

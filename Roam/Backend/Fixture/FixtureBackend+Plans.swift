@@ -376,7 +376,6 @@ extension FixtureBackend: PlanService {
         let category = ratings.values.first { $0.owner == row.owner && $0.experience == row.experience }?.category
         return TripFeedEntry(id: row.id, experience: place, publicNote: row.note, visitDate: visit.visitDate, media: visit.media, createdAt: row.createdAt,
                              score: category.flatMap { ranking(owner: row.owner, category: $0).placement(forExperience: row.experience)?.score },
-                             activityID: activities.values.filter { $0.visit == row.id }.max { $0.publishedAt < $1.publishedAt }?.id,
                              author: memberSummary(row.owner), companions: visit.companions)
     }
 

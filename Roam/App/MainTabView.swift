@@ -23,11 +23,6 @@ struct MainTabView: View {
                 // Measured from the very bottom of the screen, not the home indicator, so the gaps match.
                 VStack(spacing: Theme.Spacing.s) {
                     Spacer(minLength: 0)
-                    if router.selectedTab == .friends, router.path(for: .friends).isEmpty {
-                        logPlaceButton
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.horizontal, RoamTabBar.sideMargin)
-                    }
                     RoamTabBar(selection: $router.selectedTab)
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -40,20 +35,6 @@ struct MainTabView: View {
             SheetContent(route: sheet)
                 .presentationBackground(Roam.paper)
         }
-    }
-
-    private var logPlaceButton: some View {
-        Button { router.sheet = .logPlace } label: {
-            Image(systemName: "plus")
-                .font(.headline)
-                .foregroundStyle(Roam.ink)
-                .frame(width: Theme.minimumHitTarget, height: Theme.minimumHitTarget)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .floatingBubble(Circle())
-        .accessibilityLabel("Log a place")
-        .accessibilityIdentifier("log-place")
     }
 
     @ViewBuilder private func stack(_ tab: AppTab) -> some View {
@@ -186,8 +167,8 @@ struct RouteDestinationView: View {
 
     var body: some View {
         switch route {
-        case .search:
-            SearchRootView()
+        case .findPeople:
+            FindPeopleView()
         case .ownProfile:
             ProfileRootView()
         case .trip(let id):
@@ -255,7 +236,7 @@ struct RouteDestinationView: View {
         case .visitPhoto(let experienceID, let visitID, let photoID):
             VisitGalleryView(experienceID: experienceID, visitID: visitID, initialPhotoID: photoID)
         case .activity(let id):
-            ActivityDetailView(activityID: id)
+            LogPostView(visitID: id)
         case .notifications:
             NotificationsView()
         case .followGraph(let id, let segment):

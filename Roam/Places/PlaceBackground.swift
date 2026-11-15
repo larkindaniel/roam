@@ -162,6 +162,15 @@ enum PlaceGalleryItem: Identifiable {
     }
 }
 
+/// A gallery's size: square and as wide as its card, or 220 points tall. Only a square one gets an aspect ratio; given
+/// none, `.aspectRatio` falls back to the content's own size, which a paged view doesn't have, and the pictures vanish.
+private struct GallerySize: ViewModifier {
+    let square: Bool
+    func body(content: Content) -> some View {
+        if square { content.aspectRatio(1, contentMode: .fit) } else { content.frame(height: 220) }
+    }
+}
+
 /// A place's pictures: its photo first, then photos from visits. Swipe between them, with dots
 /// below, and a Look Around button opens Apple's street-level view of the spot.
 struct PlaceGallery: View {
@@ -169,6 +178,12 @@ struct PlaceGallery: View {
     let placeName: String
     var lookAround: MKLookAroundScene?
     var onOpenVisitPhoto: ((String) -> Void)? = nil
+    /// Square, as wide as its card (a friend's own photos on the Friends tab); otherwise 220 points tall.
+    var square = false
+    /// Something set into the bottom of the picture, above the dots.
+    var bottomAccessory: AnyView? = nil
+    /// Concentric with a card around it (its 38-point corners less a 16-point inset); squarer on its own (Friends).
+    var cornerRadius: CGFloat = 24
 
     @State private var index = 0
     @State private var showsLookAround = false
@@ -187,9 +202,15 @@ struct PlaceGallery: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .background(Roam.fill)
                 .frame(maxWidth: .infinity)
-                .frame(height: 220)
+                .modifier(GallerySize(square: square))
                 // Concentric with the card around it: its 38-point corners less the 16-point inset.
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                if let bottomAccessory {
+                    bottomAccessory
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .padding(.bottom, items.count > 1 ? Theme.Spacing.s + 27 : Theme.Spacing.m)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                }
                 if items.count > 1 {
                     HStack(spacing: 6) {
                         ForEach(items.indices, id: \.self) { offset in
@@ -220,7 +241,7 @@ struct PlaceGallery: View {
                     .accessibilityIdentifier("place-look-around")
                 }
             }
-            .frame(height: 220)
+            .frame(height: square ? nil : 220)
             switch current {
             case .lookAround:
                 Text("Tap to look around in Apple Maps").font(.caption2).foregroundStyle(Roam.inkMuted)

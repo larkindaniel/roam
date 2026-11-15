@@ -11,7 +11,6 @@ struct FilterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft = ListFilter()
-    @State private var citySearch = ""
 
     var body: some View {
         NavigationStack {
@@ -33,14 +32,8 @@ struct FilterSheet: View {
                     }
                 }
                 Section("City") {
-                    if cities.count > 6 {
-                        TextField("Search cities", text: $citySearch)
-                            // Type as you like: no capitalising or correcting.
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
                     if cities.isEmpty { Text("No cities yet").foregroundStyle(Theme.secondaryText) }
-                    ForEach(cities.filter { citySearch.isEmpty || $0.title.localizedCaseInsensitiveContains(citySearch) }) { option in
+                    ForEach(cities) { option in
                         checkRow(option, isOn: draft.cityKeys.contains(option.id)) {
                             if draft.cityKeys.contains(option.id) { draft.cityKeys.remove(option.id) } else { draft.cityKeys.insert(option.id) }
                         }

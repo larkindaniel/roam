@@ -157,7 +157,7 @@ extension FixtureBackend: FeedService {
         return item
     }
 
-    func setLike(activityID: UUID, liked: Bool) async throws -> Bool {
+    func setLike(visitID activityID: UUID, liked: Bool) async throws -> Bool {
         let me = try await authenticatedActor()
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         let key = Pair(a: me, b: activityID)
@@ -174,7 +174,7 @@ extension FixtureBackend: FeedService {
         return likes[key] != nil
     }
 
-    func comments(activityID: UUID, cursor: String?) async throws -> Page<Comment> {
+    func comments(visitID activityID: UUID, cursor: String?) async throws -> Page<Comment> {
         let me = try await authenticatedActor()
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
         let all = comments.values.filter { $0.activity == activityID && isVisibleMember($0.author, to: me) || ($0.activity == activityID && $0.author == me) }
@@ -185,11 +185,11 @@ extension FixtureBackend: FeedService {
         }
         let slice = Array(remaining.prefix(Limits.pageSize))
         let next = remaining.count > Limits.pageSize ? slice.last.map { Self.cursor(date: $0.createdAt, id: $0.id) } : nil
-        return Page(items: slice.map { Comment(id: $0.id, activityID: $0.activity, author: memberSummary($0.author), body: $0.body,
+        return Page(items: slice.map { Comment(id: $0.id, visitID: $0.activity, author: memberSummary($0.author), body: $0.body,
                                                createdAt: $0.createdAt, isOwn: $0.author == me) }, nextCursor: next)
     }
 
-    func postComment(activityID: UUID, body: String, operationID: UUID) async throws -> Comment {
+    func postComment(visitID activityID: UUID, body: String, operationID: UUID) async throws -> Comment {
         let me = try await authenticatedActor()
         if let issue = Validation.comment(body) { throw RoamError.validation(issue.localizedDescription) }
         guard let row = activities[activityID], canSeeActivity(row, viewer: me) else { throw RoamError.unavailable }
@@ -197,7 +197,7 @@ extension FixtureBackend: FeedService {
             guard existing.activity == activityID, existing.body == body else {
                 throw RoamError.conflict("This save was already used for a different change.")
             }
-            return Comment(id: existing.id, activityID: existing.activity, author: memberSummary(me), body: existing.body, createdAt: existing.createdAt, isOwn: true)
+            return Comment(id: existing.id, visitID: existing.activity, author: memberSummary(me), body: existing.body, createdAt: existing.createdAt, isOwn: true)
         }
         let id = UUID()
         let now = Date()
@@ -205,7 +205,7 @@ extension FixtureBackend: FeedService {
         notify(recipient: row.author, actor: me, type: .comment, activity: activityID, comment: id, eventKey: "comment:\(id)", now: now)
         // The comment is stored but the response is lost once; the retry must not duplicate it.
         if scenario == "comment-uncertain", injectedContentFaults.insert("comment-post").inserted { throw RoamError.timeout }
-        return Comment(id: id, activityID: activityID, author: memberSummary(me), body: body, createdAt: now, isOwn: true)
+        return Comment(id: id, visitID: activityID, author: memberSummary(me), body: body, createdAt: now, isOwn: true)
     }
 
     func deleteComment(id: UUID) async throws {
@@ -240,7 +240,7 @@ extension FixtureBackend: NotificationService {
         let next = rows.count > Limits.pageSize ? slice.last.map { Self.cursor(date: $0.createdAt, id: $0.id) } : nil
         return Page(items: slice.map { row in
             let activity = row.activity.flatMap { activities[$0] }
-            return AppNotification(id: row.id, type: row.type, actor: memberSummary(row.actor), activityID: row.activity,
+            return AppNotification(id: row.id, type: row.type, actor: memberSummary(row.actor), visitID: row.activity,
                                    experienceName: activity.map { placeName($0.experience) },
                                    commentPreview: row.comment.flatMap { comments[$0]?.body },
                                    createdAt: row.createdAt, readAt: row.readAt,

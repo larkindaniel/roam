@@ -379,7 +379,6 @@ struct TripFeedEntry: Codable, Hashable, Identifiable, Sendable {
     var media: [MediaRef]
     var createdAt: Date
     var score: Score?
-    var activityID: UUID?
     var author: MemberSummary? = nil
     var companions: [MemberSummary]? = nil
 }

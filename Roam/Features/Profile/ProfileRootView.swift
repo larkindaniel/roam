@@ -73,14 +73,6 @@ struct ProfileView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let value = profile.value {
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(item: ShareText.profile(displayName: value.member.displayName, handle: value.member.handle,
-                                                      countryCount: value.countryCount, cityCount: value.cityCount)) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .accessibilityLabel("Share profile")
-                    .accessibilityIdentifier("share-profile")
-                }
                 if !value.relationship.isSelf {
                     ToolbarItem(placement: .topBarTrailing) { overflow(value) }
                 }
@@ -153,11 +145,10 @@ struct ProfileView: View {
                 router.push(.followGraph(userID, .friends))
             }
             .accessibilityIdentifier("profile-friends")
-            if value.relationship.isSelf || value.relationship.friendState == .friends {
-                RowSeparator()
-                SocialNavigationRow(title: "Passport", symbol: "book.closed") {
-                    router.push(.passport(ownerID: userID, name: value.member.displayName))
-                }
+            // Anyone's passport opens; it only counts the logs you're allowed to see.
+            RowSeparator()
+            SocialNavigationRow(title: "Passport", symbol: "book.closed") {
+                router.push(.passport(ownerID: userID, name: value.member.displayName))
             }
             if value.relationship.isSelf {
                 RowSeparator()

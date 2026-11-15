@@ -133,12 +133,15 @@ struct ForYouRootView: View {
     @State private var results: LoadPhase<DiscoverResults> = .idle
     @State private var openError: String?
     @State private var barsHidden = false
+    @State private var scrolledDown = false
     @State private var navigationBarHidden = true
     @FocusState private var searchFocused: Bool
 
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     /// While you're searching, the search bar takes the whole row.
     private var searchActive: Bool { searchFocused || hasQuery }
+    /// Scrolled down with no search going: the top row is tucked away under the fade.
+    private var collapsed: Bool { barsHidden && !hasQuery && !searchFocused }
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.s) {
@@ -146,40 +149,23 @@ struct ForYouRootView: View {
             searchField
             if !searchActive {
                 // Your profile on the far right, the same on every tab.
-                // The same glass circle the system toolbar gives the cog on Friends and My Places.
+                // The same glass circle the system toolbar gives your picture on My Places.
+                // Just the picture, no glass ring around it.
                 ProfileAvatarButton()
-                    .frame(width: 44, height: 44)
-                    .floatingBubble(Circle())
             }
         }
         .animation(.spring(duration: 0.3), value: searchActive)
     }
 
+    /// Leaves search: clears it and puts the keyboard away.
+    private func endSearch() {
+        query = ""
+        searchFocused = false
+    }
+
     private var searchField: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            TextField("Search", text: $query, prompt: Text(searchActive ? "A city, neighbourhood or place" : "Search"))
-                // Type as you like: no capitalising or correcting.
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($searchFocused)
-                .submitLabel(.search)
-                .accessibilityIdentifier("discover-search")
-            // The field's own × ends the search: clears it and puts the keyboard away.
-            if searchActive {
-                Button {
-                    query = ""
-                    searchFocused = false
-                } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Cancel search")
-                    .accessibilityIdentifier("discover-search-cancel")
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.m)
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
-        .floatingBubble(Capsule())
+        RoamSearchField(prompt: searchActive ? "A city, neighbourhood or place" : "Search", text: $query, focus: $searchFocused,
+                        style: .glass, identifier: "discover-search", onClear: endSearch)
     }
 
     private func roundButton(_ symbol: String, label: String, identifier: String, tint: Color = Roam.ink, action: @escaping () -> Void) -> some View {
@@ -204,16 +190,25 @@ struct ForYouRootView: View {
                         .padding(.horizontal, Theme.Spacing.l)
                         .padding(.vertical, Theme.Spacing.s)
                 }
+                // Tapping anywhere but a result ends the search.
+                .contentShape(Rectangle())
+                .onTapGesture { endSearch() }
             } else {
                 ScrollView { landing.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.xxl) }
-                    .solidTopEdge()
+                    .contentShape(Rectangle())
+                    .onTapGesture { if searchFocused { endSearch() } }
                     .scrollPosition($scroll)
                     // Reading down hides the top buttons and search; any move back up brings them back.
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { old, new in
+                        if (new > 1) != scrolledDown { withAnimation(.easeOut(duration: 0.15)) { scrolledDown = new > 1 } }
                         let hide = new > 40 && new > old
                         if new <= 40 || new < old - 4 { if barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = false } } }
                         else if hide && !barsHidden { withAnimation(.easeOut(duration: 0.2)) { barsHidden = true } }
                     }
+                // As soon as the page moves, the glass row floats on the fade, not on a solid band.
+                if scrolledDown && !collapsed {
+                    ScrolledTitleFade(depth: Theme.Spacing.xl).transition(.opacity)
+                }
             }
         }
         .background(Roam.paper)
@@ -239,7 +234,11 @@ struct ForYouRootView: View {
                 .opacity(barsHidden && !hasQuery && !searchFocused ? 0 : 1)
                 .accessibilityHidden(barsHidden && !hasQuery && !searchFocused)
                 .allowsHitTesting(!barsHidden || hasQuery || searchFocused)
-                .background(Roam.paper.ignoresSafeArea(edges: .top))
+                // Never a solid band: the page shows through around the glass, on the fade once it moves.
+                .background(hasQuery ? Roam.paper.ignoresSafeArea(edges: .top) : Color.clear.ignoresSafeArea(edges: .top))
+        }
+        .overlay(alignment: .top) {
+            if collapsed { ScrolledTitleFade(title: "Discover").transition(.opacity) }
         }
         .navigationTitle("Discover")
         .toolbar(navigationBarHidden ? .hidden : .visible, for: .navigationBar)

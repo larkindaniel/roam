@@ -27,9 +27,7 @@ struct ProfileSetupFlowView: View {
 private struct SetupSteps: View {
     @Bindable var model: ProfileSetupModel
     @Environment(SessionStore.self) private var session
-    @Environment(DestinationStore.self) private var destinations
     @State private var photoItem: PhotosPickerItem?
-    @State private var showsHomePicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,12 +53,6 @@ private struct SetupSteps: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Theme.groupedCanvas)
-        .sheet(isPresented: $showsHomePicker) {
-            DestinationPickerSheet(purpose: .homeCity)
-        }
-        .onChange(of: destinations.pickedHomeCity) { _, picked in
-            if let picked { model.homeCity = picked; destinations.pickedHomeCity = nil }
-        }
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task {
@@ -123,34 +115,10 @@ private struct SetupSteps: View {
             .disabled(model.avatarBusy)
             .accessibilityIdentifier("choose-avatar")
             if model.avatarPath == nil {
-                Button("Not now") { model.finishPhotoStep() }.buttonStyle(QuietButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+                Button("Not now") { Task { await model.finishPhotoStep() } }.buttonStyle(QuietButtonStyle()).disabled(model.avatarBusy || model.busy).accessibilityIdentifier("setup-continue")
             } else {
-                Button("Continue") { model.finishPhotoStep() }.buttonStyle(PrimaryButtonStyle()).disabled(model.avatarBusy).accessibilityIdentifier("setup-continue")
+                Button("Continue") { Task { await model.finishPhotoStep() } }.buttonStyle(PrimaryButtonStyle()).disabled(model.avatarBusy || model.busy).accessibilityIdentifier("setup-continue")
             }
-        case .home:
-            question("Where's home?", "Optional. Roam uses it as your starting point for search. Home never counts as a place you've visited.")
-            Button {
-                showsHomePicker = true
-            } label: {
-                HStack {
-                    Image(systemName: "house")
-                    Text(model.homeCity?.displayName ?? "Choose a city")
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.footnote)
-                }
-                .padding(Theme.Spacing.m)
-                .frame(minHeight: Theme.minimumHitTarget)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Theme.raisedCard))
-            }
-            .accessibilityIdentifier("choose-home-city")
-            Button {
-                Task { await model.saveHomeAndContinue() }
-            } label: {
-                if model.busy { ProgressView().tint(Roam.onInk) } else { Text(model.homeCity == nil ? "Skip" : "Continue") }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(model.busy)
-            .accessibilityIdentifier("setup-continue")
         case .people:
             question("Find friends", "Optional. Friends see each other's places once both of you agree. Nobody is added unless you choose.")
             peopleList

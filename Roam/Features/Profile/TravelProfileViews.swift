@@ -112,7 +112,7 @@ struct TravelProfileSection: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if isSelf {
-                Button("Find a place to log") { router.openSearch() }
+                Button("Find a place to log") { router.sheet = .logPlace }
                     .buttonStyle(SecondaryButtonStyle())
                     .accessibilityIdentifier("travel-empty-log")
             }

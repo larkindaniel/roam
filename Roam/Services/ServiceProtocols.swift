@@ -177,7 +177,6 @@ struct RatingCommitRequest: Codable, Hashable, Sendable {
 struct RatingCommitResult: Codable, Hashable, Sendable {
     let ratingID: UUID
     let visitID: UUID?
-    let activityID: UUID
     let category: ExperienceCategory
     let sentiment: Sentiment
     let score: Score
@@ -197,7 +196,6 @@ struct AddVisitRequest: Codable, Hashable, Sendable {
 
 struct AddVisitResult: Codable, Hashable, Sendable {
     let visitID: UUID
-    let activityID: UUID
 }
 
 struct DeleteVisitResult: Codable, Hashable, Sendable {
@@ -295,23 +293,17 @@ protocol SocialService: AnyObject, Sendable {
     func myReports() async throws -> [ReportReceipt]
 }
 
+/// Friends' logs, with their likes and comments. A log is a visit; there are no separate posts.
 protocol FeedService: AnyObject, Sendable {
-    func feed(cursor: String?) async throws -> Page<ActivityItem>
     func friendsActivity(cursor: String?) async throws -> Page<ActivityItem>
     func profileActivity(userID: UUID, cursor: String?) async throws -> Page<ActivityItem>
     func activity(id: UUID) async throws -> ActivityItem
-    func setLike(activityID: UUID, liked: Bool) async throws -> Bool
-    func comments(activityID: UUID, cursor: String?) async throws -> Page<Comment>
-    func postComment(activityID: UUID, body: String, operationID: UUID) async throws -> Comment
+    func setLike(visitID: UUID, liked: Bool) async throws -> Bool
+    func comments(visitID: UUID, cursor: String?) async throws -> Page<Comment>
+    func postComment(visitID: UUID, body: String, operationID: UUID) async throws -> Comment
     func deleteComment(id: UUID) async throws
-    func deleteActivity(id: UUID) async throws
 }
 
-extension FeedService {
-    func friendsActivity(cursor: String?) async throws -> Page<ActivityItem> {
-        try await feed(cursor: cursor)
-    }
-}
 
 protocol NotificationService: AnyObject, Sendable {
     func notifications(cursor: String?) async throws -> Page<AppNotification>

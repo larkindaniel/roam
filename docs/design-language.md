@@ -101,7 +101,8 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   grey with black text).
 - **Directions:** a solid blue 38pt circle (`arrow.triangle.turn.up.right.diamond.fill`). It opens a confirmation
   dialog with no title and two choices: Apple Maps and Google Maps.
-- **Settings:** `SettingsToolbarItem`, a cog in its own glass circle at the top right of each tab.
+- **Profile:** `SettingsToolbarItem` / `ProfileAvatarButton`, your profile picture (or initials) in its own glass circle
+  at the top right of each tab. It opens your profile and settings.
 - **Inside a swipe-up card's header,** use `onTapGesture` with `.accessibilityAddTraits(.isButton)` and an
   `accessibilityAction` instead of `Button`. Buttons there don't receive taps.
 
@@ -125,8 +126,14 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   `.roamTabBar(hidden:)`, never `.toolbar(.hidden, for: .tabBar)`. Scrolling pages keep their last item clear of it
   (`contentMargins(.bottom, RoamTabBar.reservedHeight + Theme.Spacing.l, for: .scrollContent)`). Tapping a tab returns
   it to its home page, scrolled to the top.
+- **Tab tops (Discover, Friends):** a floating row instead of a navigation bar. Scrolling down swaps it for
+  `ScrolledTitleFade`: the swipe-up cards' dark fade with the page's name small, white and centred. Any scroll back up
+  brings the row back as glass floating on the fade, never on a solid band.
 - **Glass over maps:** `floatingBubble(_:tint:)` gives Liquid Glass on iOS 26 and frosted material before it.
-- **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet. It has three heights:
+- **Swipe-up cards:** `GlobeSheetLayout`, modelled on the Apple Maps sheet, is the only one: every card over a map
+  (My Places, city, place, country and state pages) uses it, so they all drag the same way. Never write another drag
+  for a card. The card follows the finger, then pops to the nearest of its three heights; its width, glass and dark
+  bubble look blend as it moves. It has three heights:
   1. **Peek:** a floating bubble, most see-through.
   2. **Half:** narrow margins, see-through grey inner cards.
   3. **Full:** solid and edge to edge, white inner cards, and the tab bar shows.
@@ -144,14 +151,17 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
 - **Photo gallery** (`PlaceGallery`): swipeable pages with white dots in a dark capsule at the bottom. No counter and
   no arrows.
 - **Segmented selector** (My Places): one track with the chosen segment's pill sliding across in its state colour.
-- **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonList` where rows will. Errors use
+- **Loading:** `SkeletonCards` where photo cards will appear, `SkeletonResults` (places or people) for search results, `SkeletonList` where other rows will. A placeholder has the shape of what replaces it. Errors use
   `InlineRetryView` with Try again.
 - **Reason lines:** a suggestion's card says why in a few words, built by `SuggestionReason` from the server's facts
   (`Domain/Suggestions.swift`). Never invent one; no reason means the plain subtitle. Never repeat Google's stars in it.
 - **Not interested:** long-press a suggestion card (`.notInterested { … }`). It's a context menu, not a button on the
   card.
-- **Search results:** `PlaceSearchResults` is shared by Discover, My Places and city pages. Cities show the signpost
-  icon, countries show their flag, and towns never appear as places.
+- **Search:** only three searches exist (`Features/Search/`): worldwide places and city/area places (`PlaceSearch` +
+  `PlaceSearchResults`, with a `PlaceSearchScope`) and accounts (`AccountSearchResults`). Every field is
+  `RoamSearchField` (`.filled` in cards and sheets, `.glass` over pages, `.bare` inside a lowered card's bubble); a
+  sheet that is only a search uses `SearchSheetBar` (no title bar; the field's × closes the sheet). Never build another search: pick one of these, narrow it with
+  `kinds`, or pass `onPick`. Cities show the signpost icon, countries their flag.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not
   "China mainland").
 

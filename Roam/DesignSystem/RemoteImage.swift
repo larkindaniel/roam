@@ -146,7 +146,6 @@ struct AvatarView: View {
         }
         .frame(width: scaledSize, height: scaledSize)
         .clipShape(Circle())
-        .overlay(Circle().strokeBorder(Theme.hairline.opacity(0.6)))
         .accessibilityHidden(true)
         .task(id: identity) {
             let request = UUID(), currentIdentity = identity

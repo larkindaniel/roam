@@ -8,7 +8,7 @@ import UIKit
 @Observable
 final class ProfileSetupModel {
     enum Step: Int, CaseIterable {
-        case name, handle, photo, home, people, been, rank, visibility
+        case name, handle, photo, people, been, rank, visibility
     }
 
     enum HandleState: Equatable {
@@ -141,20 +141,12 @@ final class ProfileSetupModel {
         }
     }
 
-    func finishPhotoStep() {
-        step = .home
-    }
-
-    func saveHomeAndContinue() async {
+    /// After the photo comes finding friends; home cities are set later, from Settings or My Places.
+    func finishPhotoStep() async {
         busy = true
         error = nil
         defer { busy = false }
         do {
-            if let current = profile, homeCity != current.homeCity {
-                profile = try await services.profiles.updateProfile(ProfileUpdate(displayName: current.displayName, handle: current.handle,
-                                                                                  bio: current.bio, homeCity: homeCity,
-                                                                                  avatarPath: current.avatarPath))
-            }
             profile = try await services.profiles.setSetupCheckpoint(.optionalDetails)
             step = .people
         } catch {

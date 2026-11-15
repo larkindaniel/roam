@@ -8,6 +8,9 @@ struct OnboardingBeenStep: View {
     let onContinue: () -> Void
 
     @State private var query = ""
+    @State private var placeSearch = PlaceSearch()
+    @FocusState private var searchFocused: Bool
+    @Environment(AppServices.self) private var services
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
@@ -18,9 +21,18 @@ struct OnboardingBeenStep: View {
                      ?? "Search for places you've been. Roam learns what you like from them.")
                     .font(.body).foregroundStyle(Theme.secondaryText)
             }
-            searchField
+            RoamSearchField(prompt: "Search places", text: $query, focus: $searchFocused, identifier: "onboarding-search")
+                .frame(height: 44)
             if hasQuery {
-                if !model.searchResults.isEmpty { searchRows }
+                // Search 1, worldwide, places only: ticking one picks it.
+                PlaceSearchResults(query: query, placeSearch: placeSearch, kinds: .places, isPicked: isPicked) { pick in
+                    switch pick {
+                    case .experience(let place): model.toggle(place)
+                    case .place(let hit):
+                        if let place = hit.experience { model.toggle(place) } else { Task { await model.add(hit) } }
+                    default: break
+                    }
+                }
             } else {
                 candidateRows
             }
@@ -29,30 +41,15 @@ struct OnboardingBeenStep: View {
                 .accessibilityIdentifier("onboarding-been-continue")
         }
         .task { if case .idle = model.candidates { await model.loadCandidates(home: home) } }
-        .task(id: query) {
-            try? await Task.sleep(for: Limits.searchDebounce)
-            guard !Task.isCancelled else { return }
-            await model.search(query, near: home)
-        }
+        .task(id: query) { await placeSearch.run(query, services: services) }
     }
 
-    private var searchField: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").foregroundStyle(Roam.inkMuted).accessibilityHidden(true)
-            TextField("Search places", text: $query)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.search)
-                .accessibilityIdentifier("onboarding-search")
-            if hasQuery {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Roam.inkMuted) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-            }
+    private func isPicked(_ pick: PlaceSearchPick) -> Bool {
+        switch pick {
+        case .experience(let place): return model.isSelected(place)
+        case .place(let hit): return hit.experience.map(model.isSelected) ?? model.selected.contains { $0.name == hit.candidate.name }
+        default: return false
         }
-        .padding(.horizontal, Theme.Spacing.m)
-        .frame(height: 44)
-        .background(Capsule().fill(Roam.fill))
     }
 
     @ViewBuilder private var candidateRows: some View {
@@ -76,21 +73,6 @@ struct OnboardingBeenStep: View {
                 .roamCard(padding: Theme.Spacing.m)
             }
         }
-    }
-
-    private var searchRows: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(model.searchResults.enumerated()), id: \.element.id) { index, hit in
-                if index > 0 { RowSeparator() }
-                let picked = hit.experience.map(model.isSelected) ?? model.selected.contains { $0.name == hit.candidate.name }
-                row(name: hit.candidate.name, subtitle: [hit.candidate.locality, hit.candidate.countryName].compactMap { $0 }.joined(separator: ", "),
-                    url: hit.experience?.photoURL, coordinate: CLLocationCoordinate2D(latitude: hit.candidate.latitude, longitude: hit.candidate.longitude),
-                    symbol: hit.experience?.iconName ?? "mappin", picked: picked) {
-                    if let place = hit.experience, picked { model.toggle(place) } else if !picked { Task { await model.add(hit) } }
-                }
-            }
-        }
-        .roamCard(padding: Theme.Spacing.m)
     }
 
     /// The standard row: a photo with a green Been mark once picked, the name and where it is, and a tick on the right.

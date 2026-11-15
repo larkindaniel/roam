@@ -121,6 +121,11 @@ Append entries here with date, affected requirement/milestone, chosen rule, reas
 The app has since moved on from several decisions above. README's "How the app works" describes current behaviour, and
 `docs/design-language.md` covers UI. The main changes:
 
+- **Logs, not posts (November 14):** a log (visit) is the only record. The `activities` table, its functions and the
+  `activity` report type are gone; likes, comments and notifications point at visits, and the Friends tab and profiles
+  read logs. Everything that shows a log checks its audience, so Only me logs appear nowhere but your own screens. This
+  replaces C07, D06 (posting on add-visit and rank-again), D07's activity removal and the M5/M6 post decisions.
+
 | Replaces | Now |
 |---|---|
 | C08 one-way follows, public profiles | Two-way friend requests; friend profile pages kept in the code but switched off for now (`MemberProfiles.available`) |

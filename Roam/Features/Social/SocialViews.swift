@@ -129,7 +129,6 @@ struct FollowListView: View {
     @Environment(SessionStore.self) private var session
     @State private var model: FollowListModel?
     @State private var segment: FollowSegment
-    @State private var query = ""
 
     init(userID: UUID, initialSegment: FollowSegment) {
         self.userID = userID
@@ -138,10 +137,12 @@ struct FollowListView: View {
     }
 
     private var isOwn: Bool { session.userID == userID }
+    /// Opened from Add friends' "Friend requests" row: just your requests.
+    private var requestsOnly: Bool { isOwn && initialSegment == .requests }
 
     var body: some View {
         VStack(spacing: 0) {
-            if isOwn {
+            if isOwn && !requestsOnly {
                 Picker("List", selection: $segment) {
                     ForEach(FollowSegment.allCases) { Text($0.title).tag($0) }
                 }
@@ -156,7 +157,7 @@ struct FollowListView: View {
         .navigationTitle(segment.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isOwn {
+            if isOwn && !requestsOnly {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { router.showFindPeople() } label: { Image(systemName: "person.badge.plus") }
                         .accessibilityLabel("Find people")
@@ -164,16 +165,12 @@ struct FollowListView: View {
                 }
             }
         }
-        .searchable(text: $query, prompt: "Search by name or handle")
-        // Type as you like: no capitalising or correcting.
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-        .task(id: "\(segment.rawValue)|\(query)") {
+        .task(id: segment) {
             if model == nil { model = FollowListModel(userID: userID, segment: segment, service: services.social) }
             model?.segment = segment
             if model?.hasLoaded == true { try? await Task.sleep(for: .milliseconds(300)) }
             guard !Task.isCancelled else { return }
-            await model?.load(query: query)
+            await model?.load(query: "")
         }
         .onChange(of: model?.authError) { _, error in if let error { _ = session.handle(error) } }
         .screenIdentifier("follow-list")
@@ -185,7 +182,7 @@ struct FollowListView: View {
         } else if !model.hasLoaded, let error = model.error {
             ScrollView {
                 EmptyStateView(systemImage: "person.2.slash", title: "Couldn't load this list", message: error,
-                               primaryTitle: "Try again", primaryAction: { Task { await model.load(query: query) } })
+                               primaryTitle: "Try again", primaryAction: { Task { await model.load(query: "") } })
             }
         } else if model.rows.isEmpty {
             ScrollView {
@@ -197,7 +194,7 @@ struct FollowListView: View {
         } else {
             List {
                 Section {
-                    if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: query) } } }
+                    if let error = model.error { InlineRetryView(message: error) { Task { await model.load(query: "") } } }
                     if let error = model.actionError { Text(error).foregroundStyle(Theme.disliked) }
                     ForEach(model.rows) { row in
                         MemberRowView(member: row.member, subtitle: row.friendState == .received && !row.isSelf ? "Wants to be friends" : nil,
@@ -229,10 +226,7 @@ struct FollowListView: View {
     }
 
     @ViewBuilder private func emptyState(_ model: FollowListModel) -> some View {
-        if !model.loadedQuery.isEmpty {
-            EmptyStateView(systemImage: "magnifyingglass", title: "No matches",
-                           message: "No one here matches “\(model.loadedQuery)”. Check the spelling or clear the search.")
-        } else if segment == .requests {
+        if segment == .requests {
             EmptyStateView(systemImage: "person.2", title: "No requests", message: "When someone asks to be your friend, they appear here.")
         } else if isOwn {
             EmptyStateView(systemImage: "person.badge.plus", title: "No friends yet",
