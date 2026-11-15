@@ -3,6 +3,13 @@
 Every screen people can reach: what's on it, what each tap does, and how you move between screens. Keep this current
 when you change a screen. `docs/design-language.md` covers how they look.
 
+## Signing in
+
+- **Welcome:** the Roam logo (the app icon), "Roam", and "Find places you love from people you trust." Continue with
+  Apple (black) and I already have an account (grey) sit at the bottom.
+- **Sign in, and the email steps** (create account, code, forgot password, new password): the round back button at the
+  top left, a big title, grey rounded fields, quiet links under them, and the black action pinned at the bottom.
+
 ## Everywhere
 
 - **Keyboard:** scrolling any page or list puts it away; on a log, tapping anywhere off the note does too.
