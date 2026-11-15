@@ -32,7 +32,7 @@ struct DestinationPickerSheet: View {
                         }
                         .disabled(locating)
                         .roamCard(padding: Theme.Spacing.m)
-                        .accessibilityIdentifier("use-current-location")
+                        .tapID("use-current-location")
                         if let locationMessage {
                             Text(locationMessage).font(.footnote).foregroundStyle(Theme.secondaryText)
                                 .accessibilityIdentifier("location-message")

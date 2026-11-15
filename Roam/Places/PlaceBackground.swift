@@ -238,7 +238,7 @@ struct PlaceGallery: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     .lookAroundViewer(isPresented: $showsLookAround, initialScene: lookAround)
                     .accessibilityLabel("Look Around")
-                    .accessibilityIdentifier("place-look-around")
+                    .tapID("place-look-around")
                 }
             }
             .frame(height: square ? nil : 220)
@@ -424,7 +424,7 @@ struct CityGuideCard: View {
                         Text("From Wikipedia").font(.caption).foregroundStyle(Roam.inkMuted)
                         if let page = guide.pageURL {
                             Button("Read more") { openURL(page) }.font(.caption.weight(.semibold))
-                                .accessibilityIdentifier("city-guide-more")
+                                .tapID("city-guide-more")
                         }
                     }
                 }
@@ -442,7 +442,7 @@ struct CityGuideCard: View {
                         Spacer()
                         if let page = guide.pageURL {
                             Button("Read more") { openURL(page) }.font(.caption.weight(.semibold))
-                                .accessibilityIdentifier("city-guide-more")
+                                .tapID("city-guide-more")
                         }
                     }
                 }

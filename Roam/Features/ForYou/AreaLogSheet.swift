@@ -73,7 +73,7 @@ struct AreaLogSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
                         .disabled(saving || picks.isEmpty)
-                        .accessibilityIdentifier("area-log-save")
+                        .tapID("area-log-save")
                 }
             }
             .task(id: query) { await placeSearch.run(query, services: services, scope: scope) }

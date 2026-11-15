@@ -35,7 +35,7 @@ struct VerifyEmailView: View {
             Button("Send a new code") { Task { await model.resendCode() } }
                 .buttonStyle(QuietButtonStyle())
                 .disabled(model.busy)
-                .accessibilityIdentifier("resend-code")
+                .tapID("resend-code")
         }
         .screenIdentifier("verify-email")
     }
@@ -54,7 +54,7 @@ struct SignInView: View {
         } footer: {
             Button("Forgot password?") { model.path.append(.forgot) }
                 .buttonStyle(QuietButtonStyle())
-                .accessibilityIdentifier("forgot-password")
+                .tapID("forgot-password")
         }
         .screenIdentifier("sign-in")
     }

@@ -226,7 +226,7 @@ struct TripDetailView: View {
         }
         .buttonStyle(.borderless)
         .accessibilityLabel("Add a city to the trip")
-        .accessibilityIdentifier("trip-add-city")
+        .tapID("trip-add-city")
     }
 
     /// Takes a city off the trip (one named for it; a city that's there for a place logged on the trip stays).
@@ -275,7 +275,7 @@ struct TripDetailView: View {
             if value.summary.isOwn {
                 Button { inviting = true } label: { Label("Invite a friend", systemImage: "person.badge.plus") }
                     .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("trip-invite")
+                    .tapID("trip-invite")
             } else {
                 Button("Leave trip", role: .destructive) { confirmingLeave = true }
                     .frame(minHeight: Theme.minimumHitTarget)
@@ -325,7 +325,7 @@ struct TripDetailView: View {
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Edit trip")
-                    .accessibilityIdentifier("trip-edit")
+                    .tapID("trip-edit")
                 }
             }
             // A little more room before the dates.
@@ -383,7 +383,7 @@ struct TripDetailView: View {
                                          cornerRadius: Theme.cornerRadius - Self.groupMargin)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("trip-country-\(code)")
+                    .tapID("trip-country-\(code)")
                     .listRowInsets(EdgeInsets(top: Self.groupMargin, leading: Self.groupMargin, bottom: Self.groupMargin, trailing: Self.groupMargin))
                     .swipeActions {
                         if own, value.summary.countries.contains(where: { $0.uppercased() == code }) {
@@ -406,13 +406,13 @@ struct TripDetailView: View {
                         CountryCoverCard(code: code, title: CountryTitle.text(name: nil, code: code), subtitle: "Pick cities and places as you go")
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("trip-country-\(code)")
+                    .tapID("trip-country-\(code)")
                     .swipeActions { if own { Button("Delete", role: .destructive) { removeCountry(code) }.tint(.red) } }
                 }
                 ForEach(cities) { city in
                     Button { router.push(.city(city)) } label: { CityHeroCard(city: city) }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("trip-city-\(city.name)")
+                        .tapID("trip-city-\(city.name)")
                         .swipeActions { if own { Button("Delete", role: .destructive) { removeCity(city) }.tint(.red) } }
                 }
                 if cities.isEmpty && countries.isEmpty {
@@ -556,7 +556,7 @@ struct TripEditorSheet: View {
                     // Closing with changes asks first.
                     Button { if hasChanges { confirmingDiscard = true } else { dismiss() } } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("Close")
-                        .accessibilityIdentifier("trip-close")
+                        .tapID("trip-close")
                         // Attached to the ×, so it pops up from it rather than mid-screen.
                         .confirmationDialog("Discard your changes?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
                             Button("Discard changes", role: .destructive) { dismiss() }
@@ -597,7 +597,7 @@ struct TripEditorSheet: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-editor-add-city")
+        .tapID("trip-editor-add-city")
     }
 
     /// Where the trip goes, as the same photo cards its page shows; swipe one away to take it off.
@@ -708,10 +708,10 @@ struct AddToTripSheet: View {
                                 }
                                 .frame(minHeight: Theme.minimumHitTarget)
                             }
-                            .accessibilityIdentifier("add-to-trip-\(trip.name)")
+                            .tapID("add-to-trip-\(trip.name)")
                         }
                     }
-                    Button { creating = TripDraft() } label: { Label("New trip", systemImage: "plus") }.accessibilityIdentifier("add-to-trip-new")
+                    Button { creating = TripDraft() } label: { Label("New trip", systemImage: "plus") }.tapID("add-to-trip-new")
                 }
                 if let error { Section { Text(error).foregroundStyle(Roam.signal) } }
             }

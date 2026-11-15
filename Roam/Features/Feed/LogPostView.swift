@@ -200,7 +200,7 @@ struct LogPostView: View {
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
-                    .accessibilityIdentifier("comment-send")
+                    .tapID("comment-send")
                 }
                 .padding(.leading, Theme.Spacing.m)
                 // The same gap to its right as below it.

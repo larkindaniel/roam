@@ -103,6 +103,7 @@ private struct SetupSteps: View {
             .opacity(model.canGoBack ? 1 : 0)
             .disabled(!model.canGoBack)
             .accessibilityLabel("Back")
+            .tapID("setup-back")
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Roam.fill)
@@ -113,7 +114,8 @@ private struct SetupSteps: View {
             .accessibilityElement()
             .accessibilityLabel("Setup progress")
             .accessibilityValue("Step \(model.step.rawValue + 1) of \(ProfileSetupModel.Step.allCases.count)")
-            Color.clear.frame(width: 48, height: 1)
+            // The beta's bug button, always right-most.
+            BugReportButton().frame(width: 48)
         }
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.bottom, Theme.Spacing.s)
@@ -259,7 +261,7 @@ private struct SetupSteps: View {
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.busy)
-            .accessibilityIdentifier("setup-finish")
+            .tapID("setup-finish")
         }
     }
 
@@ -269,7 +271,7 @@ private struct SetupSteps: View {
             if model.busy { ProgressView().tint(quiet ? Roam.ink : Roam.onInk) } else { Text(text) }
         }
         .disabled(!enabled || model.busy)
-        .accessibilityIdentifier("setup-continue")
+        .tapID("setup-continue")
         if quiet { button.buttonStyle(GreyBubbleButtonStyle()) } else { button.buttonStyle(PrimaryButtonStyle()) }
     }
 

@@ -114,7 +114,7 @@ struct TravelProfileSection: View {
             if isSelf {
                 Button("Find a place to log") { router.sheet = .logPlace }
                     .buttonStyle(SecondaryButtonStyle())
-                    .accessibilityIdentifier("travel-empty-log")
+                    .tapID("travel-empty-log")
             }
         }
         .frame(maxWidth: .infinity)
@@ -148,7 +148,7 @@ struct TravelProfileSection: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Shows the places")
-        .accessibilityIdentifier("new-this-year")
+        .tapID("new-this-year")
     }
 
     private func breakdownCard(_ travel: TravelProfile) -> some View {
@@ -174,7 +174,7 @@ struct TravelProfileSection: View {
                 ForEach(rows) { row in
                     Button { router.push(.travelFilter(userID, row.filter)) } label: { rowLabel(row) }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("travel-row-\(row.id)")
+                        .tapID("travel-row-\(row.id)")
                     if row.id != rows.last?.id { Divider() }
                 }
             }
@@ -299,7 +299,7 @@ struct NewThisYearView: View {
                         }
                         .padding(.vertical, 2)
                     }
-                    .accessibilityIdentifier("new-this-year-row-\(pin.name)")
+                    .tapID("new-this-year-row-\(pin.name)")
                 }
             } header: {
                 Text(verbatim: "\(travel.newThisYear.count) \(travel.newThisYear.count == 1 ? "place" : "places") first visited in \(year)")

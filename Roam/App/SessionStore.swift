@@ -101,6 +101,7 @@ final class SessionStore {
         self.profile = nil
         sessionExpired = false
         phase = .launching
+        Log.action("auth.signed_in")
         do {
             let profile = try await loadProfile()
             guard token == generation, self.userID == session.userID else { return }
@@ -136,6 +137,8 @@ final class SessionStore {
     /// Routes an error from any feature: an expired session keeps drafts and asks for sign-in.
     @discardableResult
     func handle(_ error: Error, routeIntent: AppRoute? = nil) -> String {
+        // Every error a screen shows passes through here, so they all land in the beta's trail.
+        Log.error("shown", error)
         if error as? RoamError == .sessionExpired || error as? RoamError == .notSignedIn {
             markSessionExpired(routeIntent: routeIntent)
         }
@@ -159,6 +162,7 @@ final class SessionStore {
     /// and the member signs in again. Another account never sees them.
     func markSessionExpired(routeIntent: AppRoute? = nil) {
         guard let expiredUser = userID else { return }
+        Log.action("auth.session_expired")
         generation += 1
         let token = generation
         pendingRouteAfterReauth = routeIntent
@@ -175,6 +179,7 @@ final class SessionStore {
     private(set) var expiredUserID: UUID?
 
     func signOut() async {
+        Log.action("auth.signed_out")
         generation += 1
         let token = generation
         let userID = session?.userID ?? expiredUserID

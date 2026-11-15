@@ -207,7 +207,7 @@ struct ActivityCardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("activity-place")
+        .tapID("activity-place")
     }
 
     /// The place, as the standard row: its photo, name and where it is, and a chevron.
@@ -228,7 +228,7 @@ struct ActivityCardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("activity-place-row")
+        .tapID("activity-place-row")
     }
 
     private var date: some View {

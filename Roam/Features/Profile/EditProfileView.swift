@@ -182,7 +182,7 @@ struct EditProfileView: View {
                     // Unsaved changes ask before they're thrown away.
                     if model?.hasChanges == true { confirmingDiscard = true } else { dismiss() }
                 }
-                .accessibilityIdentifier("edit-profile-cancel")
+                .tapID("edit-profile-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button {
@@ -191,7 +191,7 @@ struct EditProfileView: View {
                     if model?.saving == true { ProgressView() } else { Text("Save").bold() }
                 }
                 .disabled(model?.canSave != true)
-                .accessibilityIdentifier("edit-profile-save")
+                .tapID("edit-profile-save")
             }
         }
         .sheet(isPresented: $showsHomePicker) { DestinationPickerSheet(purpose: .homeCity) }
@@ -234,7 +234,7 @@ struct EditProfileView: View {
                         model.discard()
                         dismiss()
                     } label: { Text("Discard changes").foregroundStyle(Theme.disliked) }
-                    .accessibilityIdentifier("edit-profile-discard")
+                    .tapID("edit-profile-discard")
                 }
                 .accessibilityIdentifier("edit-profile-restored")
             }
@@ -259,7 +259,7 @@ struct EditProfileView: View {
                         if model.draft.avatarPath != nil {
                             Button { model.removeAvatar() } label: { Text("Remove photo").foregroundStyle(Theme.disliked) }
                                 .disabled(model.avatarBusy)
-                                .accessibilityIdentifier("edit-profile-remove-photo")
+                                .tapID("edit-profile-remove-photo")
                         }
                     }
                 }
@@ -316,7 +316,7 @@ struct EditProfileView: View {
                     }
                 }
                 Button { showsHomePicker = true } label: { Label("Add a home city", systemImage: "plus") }
-                    .accessibilityIdentifier("edit-profile-add-home")
+                    .tapID("edit-profile-add-home")
             }
         }
         .listRowBackground(Roam.paperRaised)

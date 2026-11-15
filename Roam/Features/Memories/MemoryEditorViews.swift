@@ -30,12 +30,12 @@ struct VisitMemoryEditor: View {
                         else {
                             Task { await photos?.discard(); model?.discard(); dismiss() }
                         }
-                    }.disabled(model?.isSaving == true).accessibilityIdentifier("memory-editor-cancel")
+                    }.disabled(model?.isSaving == true).tapID("memory-editor-cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model?.pending == nil ? "Done" : "Retry save") { Task { await save() } }
                         .disabled(model == nil || model?.isSaving == true || (model?.pending == nil && photos?.canCommit == false))
-                        .accessibilityIdentifier("memory-editor-done")
+                        .tapID("memory-editor-done")
                 }
             }
             .confirmationDialog("Saving wasn't confirmed", isPresented: $showsPendingClose, titleVisibility: .visible) {
@@ -83,7 +83,7 @@ struct VisitMemoryEditor: View {
             Section("Visit date") {
                 Toggle("Date unknown", isOn: Binding(get: { model.date.date == nil }, set: { unknown in
                     model.date = VisitDate(date: unknown ? nil : model.today, timeZoneIdentifier: model.zone.identifier)
-                })).disabled(!model.canEdit).accessibilityIdentifier("memory-date-unknown")
+                })).disabled(!model.canEdit).tapID("memory-date-unknown")
                 if model.date.date != nil {
                     DatePicker("Visit date", selection: Binding(get: { (model.date.date ?? model.today).date(in: model.zone) }, set: {
                         model.date = VisitDate(date: LocalDate(date: $0, timeZone: model.zone), timeZoneIdentifier: model.zone.identifier)
@@ -94,7 +94,7 @@ struct VisitMemoryEditor: View {
             if let photos {
                 Section {
                     Button { showsPhotos = true } label: { Label("\(photos.assets.count) visit photos", systemImage: "photo.on.rectangle") }
-                        .disabled(!model.canEdit).frame(minHeight: 44).accessibilityIdentifier("memory-edit-photos")
+                        .disabled(!model.canEdit).frame(minHeight: 44).tapID("memory-edit-photos")
                     if !photos.canCommit { Text("Retry or remove unfinished photos before saving.").foregroundStyle(Theme.disliked) }
                 }
             }
@@ -157,18 +157,18 @@ struct PrivateNoteEditor: View {
                     Button("Cancel") {
                         if model?.pendingID != nil { showsPendingClose = true }
                         else { model?.discard(); dismiss() }
-                    }.disabled(model?.isSaving == true).accessibilityIdentifier("private-note-cancel")
+                    }.disabled(model?.isSaving == true).tapID("private-note-cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model?.pendingID == nil ? "Done" : "Retry save") { Task { await save() } }
                         .disabled(model?.loaded != true || model?.isSaving == true ||
                                   (model?.pendingID == nil && !Self.canSubmit(model?.text ?? "")))
-                        .accessibilityIdentifier("private-note-done")
+                        .tapID("private-note-done")
                 }
             }
             .confirmationDialog("Delete this private note?", isPresented: $showsDelete, titleVisibility: .visible) {
                 Button("Delete private note", role: .destructive) { Task { await save(delete: true) } }
-                    .accessibilityIdentifier("confirm-delete-private-note")
+                    .tapID("confirm-delete-private-note")
                 Button("Cancel", role: .cancel) {}
             }
             .confirmationDialog("Saving wasn't confirmed", isPresented: $showsPendingClose, titleVisibility: .visible) {
@@ -205,14 +205,14 @@ struct PrivateNoteEditor: View {
             if let error = model.persistenceError ?? model.error {
                 Section {
                     Text(error).foregroundStyle(Theme.disliked).accessibilityIdentifier("private-note-error")
-                    if !model.loaded { Button("Retry") { Task { await model.load() } }.accessibilityIdentifier("private-note-retry-load") }
+                    if !model.loaded { Button("Retry") { Task { await model.load() } }.tapID("private-note-retry-load") }
                 }
             }
             if model.isSaving { Section { ProgressView("Saving…").accessibilityIdentifier("private-note-saving") } }
             if model.loaded && model.hasSavedNote && model.pendingID == nil {
                 Section {
                     Button(role: .destructive) { showsDelete = true } label: { Text("Delete private note").foregroundStyle(Theme.disliked) }
-                        .disabled(model.isSaving).accessibilityIdentifier("private-note-delete")
+                        .disabled(model.isSaving).tapID("private-note-delete")
                 }
             }
         }

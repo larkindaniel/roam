@@ -42,7 +42,7 @@ struct ReportSheet: View {
                                 .frame(minHeight: Theme.minimumHitTarget)
                             }
                             .accessibilityAddTraits(reason == option ? .isSelected : [])
-                            .accessibilityIdentifier("report-reason-\(option.rawValue)")
+                            .tapID("report-reason-\(option.rawValue)")
                         }
                     }
                     Section {
@@ -73,7 +73,7 @@ struct ReportSheet: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Send") { Task { await submit() } }
                             .disabled(reason == nil || busy || text.count > Limits.reportTextMax)
-                            .accessibilityIdentifier("report-send")
+                            .tapID("report-send")
                     }
                 }
             }

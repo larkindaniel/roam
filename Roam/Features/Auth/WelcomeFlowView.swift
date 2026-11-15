@@ -116,18 +116,22 @@ struct WelcomeView: View {
                 if showsEmailSignUp {
                     Button("Continue with email") { model.path.append(.signUp) }
                         .buttonStyle(GreyBubbleButtonStyle())
-                        .accessibilityIdentifier("continue-with-email")
+                        .tapID("continue-with-email")
                 }
 
                 Button("Sign in with email") { model.path.append(.signIn) }
                     .buttonStyle(GreyBubbleButtonStyle())
-                    .accessibilityIdentifier("existing-account")
+                    .tapID("existing-account")
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.l)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Roam.paper)
+        // The beta's bug button, top right as on every page.
+        .overlay(alignment: .topTrailing) {
+            BugReportButton().padding(.trailing, Theme.Spacing.l).padding(.top, Theme.Spacing.xs)
+        }
         .toolbar(.hidden, for: .navigationBar)
         .screenIdentifier("welcome")
     }
@@ -226,12 +230,13 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!actionEnabled || busy)
-            .accessibilityIdentifier("auth-primary")
+            .tapID("auth-primary")
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.s)
         }
         // The system back button: on iOS 26 it's the same round glass button as the rest of the app's pages.
         .navigationBarTitleDisplayMode(.inline)
+        .bugReportToolbar()
     }
 }
 

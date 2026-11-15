@@ -54,7 +54,7 @@ struct MyPlacesTabPicker: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(selected ? .isSelected : [])
-                .accessibilityIdentifier("myplaces-tab-\(option.rawValue)")
+                .tapID("myplaces-tab-\(option.rawValue)")
             }
         }
         .padding(3)
@@ -98,7 +98,7 @@ struct BeenTab: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("passport-\(country.code)")
+                        .tapID("passport-\(country.code)")
                     }
                 }
             }
@@ -235,7 +235,7 @@ struct UpcomingTripsCard: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("upcoming-new-trip")
+        .tapID("upcoming-new-trip")
     }
 }
 
@@ -296,7 +296,7 @@ struct SavedTab: View {
                         if countries.count < CountryCardsLayout.gridFrom {
                             Button { router.push(.country(country.id)) } label: { card(country) }
                                 .buttonStyle(.plain)
-                                .accessibilityIdentifier("wishlist-country-\(country.id)")
+                                .tapID("wishlist-country-\(country.id)")
                         } else {
                             switch country {
                             case .group(let group, _): tile(group)
@@ -345,7 +345,7 @@ struct SavedTab: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("wishlist-country-\(code)")
+        .tapID("wishlist-country-\(code)")
     }
 
     private func tile(_ country: PlaceGroups.Country) -> some View {
@@ -372,7 +372,7 @@ struct SavedTab: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("wishlist-country-\(country.code)")
+        .tapID("wishlist-country-\(country.code)")
     }
 }
 

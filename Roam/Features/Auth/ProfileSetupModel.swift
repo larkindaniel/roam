@@ -25,7 +25,9 @@ final class ProfileSetupModel {
         var handle: String
     }
 
-    var step: Step
+    var step: Step {
+        didSet { if step != oldValue { Log.nav("setup.step", ["to": "\(step)", "from": "\(oldValue)"]) } }
+    }
     var displayName: String
     var handle: String
     var handleState: HandleState = .idle

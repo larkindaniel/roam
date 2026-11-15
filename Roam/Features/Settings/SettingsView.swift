@@ -30,29 +30,29 @@ struct SettingsView: View {
                         Text("Edit").foregroundStyle(Theme.accent)
                     }
                 }
-                .accessibilityIdentifier("settings-edit-profile")
+                .tapID("settings-edit-profile")
                 // What you like, for Plan with AI. Suggestions learn from your rankings instead.
                 NavigationLink(value: AppRoute.taste) { Label("Your tastes", systemImage: "heart") }
-                    .accessibilityIdentifier("settings-tastes")
+                    .tapID("settings-tastes")
             }
             // Kept to the essentials for now; preferences and notifications come back later.
             accountSection
             // App Review needs blocking to be reversible and reports to be visible, so Safety stays.
             Section("Safety") {
                 NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked people", systemImage: "hand.raised") }
-                    .accessibilityIdentifier("settings-blocked")
+                    .tapID("settings-blocked")
                 NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted people", systemImage: "speaker.slash") }
-                    .accessibilityIdentifier("settings-muted")
+                    .tapID("settings-muted")
                 NavigationLink(value: AppRoute.reportHistory) { Label("Your reports", systemImage: "flag") }
-                    .accessibilityIdentifier("settings-reports")
+                    .tapID("settings-reports")
             }
             Section("About") {
                 NavigationLink(value: AppRoute.help(.support)) { Label("Support", systemImage: "questionmark.circle") }
-                    .accessibilityIdentifier("settings-help-support")
+                    .tapID("settings-help-support")
                 NavigationLink(value: AppRoute.help(.privacy)) { Label("Privacy", systemImage: "lock") }
-                    .accessibilityIdentifier("settings-help-privacy")
+                    .tapID("settings-help-privacy")
                 NavigationLink(value: AppRoute.help(.terms)) { Label("Terms of use", systemImage: "doc.text") }
-                    .accessibilityIdentifier("settings-help-terms")
+                    .tapID("settings-help-terms")
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
             }
         }
@@ -74,7 +74,7 @@ struct SettingsView: View {
                         Button("Retry") { Task { await settings.retry() } }
                             .font(.subheadline.weight(.semibold))
                             .frame(minHeight: Theme.minimumHitTarget)
-                            .accessibilityIdentifier("settings-retry")
+                            .tapID("settings-retry")
                         Button("Dismiss") { settings.dismissError() }
                             .font(.subheadline)
                             .frame(minHeight: Theme.minimumHitTarget)
@@ -111,11 +111,11 @@ struct SettingsView: View {
             }
             // Theme red rather than system red, which is 3.6:1 on white.
             Button { confirmSignOut = true } label: { Text("Sign out").foregroundStyle(Theme.disliked) }
-                .accessibilityIdentifier("settings-sign-out")
+                .tapID("settings-sign-out")
             NavigationLink(value: AppRoute.deleteAccount) {
                 Text("Delete account").foregroundStyle(Theme.disliked)
             }
-            .accessibilityIdentifier("settings-delete-account")
+            .tapID("settings-delete-account")
         }
     }
 
@@ -128,7 +128,7 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings-distance-unit")
             Toggle("Haptics", isOn: Binding(get: { settings.displayed.hapticsEnabled },
                                             set: { value in Task { await settings.update { $0.hapticsEnabled = value } } }))
-                .accessibilityIdentifier("settings-haptics")
+                .tapID("settings-haptics")
         } header: {
             Text("Preferences")
         } footer: {
@@ -141,13 +141,13 @@ struct SettingsView: View {
         Section {
             Toggle("Friend requests", isOn: Binding(get: { settings.displayed.notifyFollows },
                                                   set: { value in Task { await settings.update { $0.notifyFollows = value } } }))
-                .accessibilityIdentifier("settings-notify-follows")
+                .tapID("settings-notify-follows")
             Toggle("Likes on your posts", isOn: Binding(get: { settings.displayed.notifyLikes },
                                                         set: { value in Task { await settings.update { $0.notifyLikes = value } } }))
-                .accessibilityIdentifier("settings-notify-likes")
+                .tapID("settings-notify-likes")
             Toggle("Comments on your posts", isOn: Binding(get: { settings.displayed.notifyComments },
                                                            set: { value in Task { await settings.update { $0.notifyComments = value } } }))
-                .accessibilityIdentifier("settings-notify-comments")
+                .tapID("settings-notify-comments")
         } header: {
             Text("In-app notifications")
         } footer: {

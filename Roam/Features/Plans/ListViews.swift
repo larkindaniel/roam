@@ -74,7 +74,7 @@ struct PlaceListsView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("list-new")
+        .tapID("list-new")
     }
 
     private func load() async {
@@ -184,7 +184,7 @@ struct PlaceListDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsShare = true } label: { Image(systemName: "paperplane").foregroundStyle(.indigo) }
                         .accessibilityLabel("Send list")
-                        .accessibilityIdentifier("list-send")
+                        .tapID("list-send")
                 }
                 // Two separate round buttons rather than one shared capsule.
                 if #available(iOS 26.0, *) { ToolbarSpacer(.fixed, placement: .topBarTrailing) }
@@ -242,7 +242,7 @@ struct PlaceListDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Rename list")
-                    .accessibilityIdentifier("list-rename")
+                    .tapID("list-rename")
                 }
             }
             // A friend's list says whose, as a small chip that opens their profile.
@@ -288,7 +288,7 @@ struct PlaceListDetailView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(owner.displayName)'s list")
-        .accessibilityIdentifier("list-owner")
+        .tapID("list-owner")
     }
 
     /// Green full-width bubble under the places: opens the place search.
@@ -304,7 +304,7 @@ struct PlaceListDetailView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("list-add-place")
+        .tapID("list-add-place")
     }
 
     private func load() async {
@@ -536,7 +536,7 @@ struct ShareSheet: View {
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
                 .disabled(selection.isEmpty || sending || message.count > 500)
-                .accessibilityIdentifier("share-send")
+                .tapID("share-send")
                 .padding(Theme.Spacing.l)
             }
         }

@@ -98,7 +98,7 @@ struct ResearchBriefSheet: View {
                         Button { copy() } label: { Image(systemName: "doc.on.doc") }
                             .buttonStyle(PillButtonStyle())
                             .accessibilityLabel("Copy prompt")
-                            .accessibilityIdentifier("research-brief-copy")
+                            .tapID("research-brief-copy")
                     }
                     .animation(.easeOut(duration: 0.2), value: copied)
                 }

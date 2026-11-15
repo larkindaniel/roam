@@ -50,10 +50,12 @@ struct MainTabView: View {
             root()
                 .scrollContentBackground(.hidden)
                 .background(Roam.paper)
+                .bugReportToolbar()
                 .navigationDestination(for: AppRoute.self) { route in
                     RouteDestinationView(route: route)
                         .scrollContentBackground(.hidden)
                         .background(Roam.paper)
+                        .bugReportToolbar()
                 }
         }
         // Content scrolls clear of the floating bar.
@@ -149,7 +151,7 @@ struct RoamTabBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
-                .accessibilityIdentifier("tab-\(tab.rawValue)")
+                .tapID("tab-\(tab.rawValue)")
             }
         }
         .padding(4)

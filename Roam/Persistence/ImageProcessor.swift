@@ -24,6 +24,7 @@ enum ImageProcessor {
     }
 
     static func prepare(_ source: Data, maxPixel: Int = Limits.photoLongestSide, maxBytes: Int = Limits.photoMaxBytes) throws -> Processed {
+        let span = Log.span("compute.image_prepare"); defer { span.end() }
         guard maxPixel > 0, maxBytes > 0 else { throw Failure.tooLarge }
         guard let imageSource = CGImageSourceCreateWithData(source as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else {
             throw Failure.unreadable

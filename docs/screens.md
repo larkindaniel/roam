@@ -33,6 +33,14 @@ when you change a screen. `docs/design-language.md` covers how they look.
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
   the card is fully up.
 - **Profile:** your profile picture in a glass circle at the top right of each tab opens your profile and settings.
+- **Bug button (beta):** a red circle with a bug is the right-most button at the top of every page. That covers the
+  tab pages, everything pushed on them, welcome, sign-in and setup. It snaps the screen, then opens **Report a bug**:
+  - What went wrong, in a note card.
+  - The screenshot of the screen you were on, shown as a row with × to remove it.
+  - **Add a screenshot or recording** from Photos.
+  - **Send**, at the bottom.
+
+  Signed out, it's words only. The report is saved with the steps that led to it (see `docs/telemetry.md`).
 - **Swipe-up cards** (city, place, My Places) have three heights:
   - **Peek:** a short bubble.
   - **Half.**

@@ -86,7 +86,7 @@ struct InlineRetryView: View {
                 Button(retryTitle, action: retry)
                     .font(.subheadline.weight(.semibold))
                     .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("retry-button")
+                    .tapID("retry-button")
             }
             Spacer(minLength: 0)
         }
@@ -255,7 +255,7 @@ struct MapListToggle: View {
                 .shadow(color: .black.opacity(0.10), radius: 9, y: 6)
         }
         .frame(minHeight: Theme.minimumHitTarget)
-        .accessibilityIdentifier("map-list-toggle")
+        .tapID("map-list-toggle")
     }
 }
 

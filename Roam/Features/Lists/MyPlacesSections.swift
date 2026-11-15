@@ -152,7 +152,7 @@ struct PlaceRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("place-row-\(item.experience.name)")
+        .tapID("place-row-\(item.experience.name)")
     }
 }
 
@@ -202,7 +202,7 @@ struct TripRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-row-\(trip.name)")
+        .tapID("trip-row-\(trip.name)")
         .task(id: trip.id) {
             guard let city = trip.coverCity else { return }
             photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
@@ -249,7 +249,7 @@ struct CityRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("city-row-\(city.name)")
+        .tapID("city-row-\(city.name)")
         .task(id: city.id) {
             photo = await AreaPhotos.city(services, name: city.name, region: city.region, country: city.countryName, coordinate: city.coordinate)
         }
@@ -389,7 +389,7 @@ struct TripCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("trip-card-\(trip.name)")
+        .tapID("trip-card-\(trip.name)")
     }
 
     private func detailLine(today: LocalDate) -> String {
@@ -431,7 +431,7 @@ struct TripsTimelineSection: View {
                 if !(upcoming + planning).isEmpty { tripGroup("Coming up", upcoming + planning) }
                 Button(action: onNewTrip) { PillLabel(title: "New trip", systemImage: "plus") }
                     .buttonStyle(PillButtonStyle(tint: PlaceState.planned.markerColor))
-                    .accessibilityIdentifier("new-trip")
+                    .tapID("new-trip")
             } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Text("Past").font(.roamTitle()).accessibilityAddTraits(.isHeader)
@@ -490,7 +490,7 @@ struct TripsTimelineSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("timeline-\(entry.title)")
+        .tapID("timeline-\(entry.title)")
     }
 
     private func open(_ entry: TimelineEntry) {
@@ -525,7 +525,7 @@ struct HomeCitiesSection: View {
             }
             Button(action: onAddHome) { PillLabel(title: "Add a home city", systemImage: "house") }
                 .buttonStyle(PillButtonStyle(tint: Roam.home))
-                .accessibilityIdentifier("add-home-city")
+                .tapID("add-home-city")
         }
     }
 
@@ -555,7 +555,7 @@ struct HomeCitiesSection: View {
         .contextMenu {
             Button("Remove home city", role: .destructive) { Task { await model.setHome(city, present: false) } }
         }
-        .accessibilityIdentifier("home-city-\(city.name)")
+        .tapID("home-city-\(city.name)")
     }
 }
 
@@ -634,7 +634,7 @@ struct SavedSection: View {
                         ForEach(countries) { country in
                             Button { router.push(.wishlistCountry(code: country.code, title: country.title)) } label: { countryRow(country) }
                                 .buttonStyle(.plain)
-                                .accessibilityIdentifier("wishlist-country-\(country.code)")
+                                .tapID("wishlist-country-\(country.code)")
                             if country.id != countries.last?.id { Divider() }
                         }
                     }
@@ -647,7 +647,7 @@ struct SavedSection: View {
                     Spacer()
                     Button { newTitle = ""; creatingList = true } label: { Label("New list", systemImage: "plus") }
                         .font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("saved-new-list")
+                        .tapID("saved-new-list")
                 }
                 if model.lists.isEmpty {
                     Text("Make your own lists, like date-night spots or ramen to try.").font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -822,7 +822,7 @@ struct PlanTripSheet: View {
                                         Text(item.experience.category?.title ?? "").font(.footnote).foregroundStyle(Roam.inkMuted)
                                     }
                                 }
-                                .accessibilityIdentifier("plan-pick-\(item.experience.name)")
+                                .tapID("plan-pick-\(item.experience.name)")
                             }
                         }
                     }
@@ -839,7 +839,7 @@ struct PlanTripSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(trip == nil ? "Create" : "Add") { Task { await save() } }
                         .disabled(saving || (trip == nil && name.trimmingCharacters(in: .whitespaces).isEmpty) || (trip != nil && selected.isEmpty))
-                        .accessibilityIdentifier("plan-trip-save")
+                        .tapID("plan-trip-save")
                 }
             }
             .onAppear { if name.isEmpty { name = suggestedName } }
@@ -903,14 +903,14 @@ struct PassportSection: View {
                     ForEach(countries) { country in
                         Button { router.push(PassportCountry.route(ownerID: ownerID, country: country)) } label: { stamp(country) }
                             .buttonStyle(.plain)
-                            .accessibilityIdentifier("passport-\(country.code)")
+                            .tapID("passport-\(country.code)")
                     }
                 }
             }
             if let onMarkCity {
                 Button(action: onMarkCity) { PillLabel(title: "Add a city you've been to", systemImage: "plus") }
                     .buttonStyle(PillButtonStyle(tint: PlaceState.visited.markerColor))
-                    .accessibilityIdentifier("mark-city")
+                    .tapID("mark-city")
             }
         }
     }
@@ -1005,7 +1005,7 @@ struct PassportCountryView: View {
                         CityPhotoCard(destination: city.city, isHome: city.isHome).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("passport-city-\(city.city.name)")
+                    .tapID("passport-city-\(city.city.name)")
                 }
                 if country.otherPlaceCount > 0 {
                     Text("Plus \(country.otherPlaceCount) \(country.otherPlaceCount == 1 ? "place" : "places") outside a city.").font(.footnote).foregroundStyle(Roam.inkMuted)
@@ -1177,7 +1177,7 @@ struct DateRangeRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(date.wrappedValue == nil ? "Select \(title.lowercased()) date" : "\(title) date")
-        .accessibilityIdentifier("date-\(title.lowercased())")
+        .tapID("date-\(title.lowercased())")
         .popover(isPresented: Binding(get: { picking == title }, set: { if !$0 { picking = nil } })) {
             CalendarPopover(title: title, value: date.wrappedValue, fallback: minimum ?? Calendar.current.startOfDay(for: Date()),
                             earliest: minimum, identifier: "date-\(title.lowercased())",
@@ -1223,12 +1223,12 @@ struct CalendarPopover: View {
             HStack {
                 if let onRemove {
                     Button("Remove date", role: .destructive, action: onRemove)
-                        .accessibilityIdentifier("\(identifier)-remove")
+                        .tapID("\(identifier)-remove")
                 }
                 Spacer()
                 Button("Done") { onPick(shown) }
                     .fontWeight(.semibold)
-                    .accessibilityIdentifier("\(identifier)-done")
+                    .tapID("\(identifier)-done")
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, Theme.Spacing.s)

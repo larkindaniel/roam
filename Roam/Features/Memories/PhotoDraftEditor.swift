@@ -50,7 +50,7 @@ struct PhotoDraftEditor: View {
                             if asset.status == .failed {
                                 Button("Retry upload") { Task { await model.retry(assetID: asset.id) } }
                                     .disabled(model.isBusy || restoring)
-                                    .accessibilityIdentifier("photo-retry-\(asset.id.uuidString)")
+                                    .tapID("photo-retry-\(asset.id.uuidString)")
                             }
                             Button(role: .destructive) { Task { await model.remove(assetID: asset.id) } } label: {
                                 Text("Remove").foregroundStyle(Theme.disliked)
@@ -63,13 +63,13 @@ struct PhotoDraftEditor: View {
                             }
                             .disabled(index == 0 || restoring)
                             .accessibilityLabel("Move photo \(index + 1) earlier")
-                            .accessibilityIdentifier("photo-earlier-\(asset.id.uuidString)")
+                            .tapID("photo-earlier-\(asset.id.uuidString)")
                             Button { model.move(fromOffsets: IndexSet(integer: index), toOffset: index + 2) } label: {
                                 Image(systemName: "arrow.down").frame(width: 44, height: 44)
                             }
                             .disabled(index + 1 == model.assets.count || restoring)
                             .accessibilityLabel("Move photo \(index + 1) later")
-                            .accessibilityIdentifier("photo-later-\(asset.id.uuidString)")
+                            .tapID("photo-later-\(asset.id.uuidString)")
                         }
                         .buttonStyle(.borderless)
                         .frame(minHeight: Theme.minimumHitTarget)
@@ -93,7 +93,7 @@ struct PhotoDraftEditor: View {
                             if let checkpoint { await model.restore(checkpoint) }
                             dismiss()
                         }
-                    }.disabled(restoring).accessibilityIdentifier("photo-editor-cancel")
+                    }.disabled(restoring).tapID("photo-editor-cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -101,7 +101,7 @@ struct PhotoDraftEditor: View {
                         else { error = failureMessage() ?? "Your photo changes couldn't be kept. Try again." }
                     }
                     .disabled(!model.canCommit || importing || restoring)
-                    .accessibilityIdentifier("photo-editor-done")
+                    .tapID("photo-editor-done")
                 }
             }
             .interactiveDismissDisabled()
@@ -269,6 +269,7 @@ struct MyPhotoCarousel: View {
 /// A log's note: a roomy box where Return starts a new line, with "Add a note" until you type.
 struct NoteBox: View {
     @Binding var text: String
+    var placeholder = "Add a note"
 
     var body: some View {
         // No Done bar: tapping anywhere off the note puts the keyboard away (the screen around it does that).
@@ -280,7 +281,7 @@ struct NoteBox: View {
             .frame(minHeight: 110)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text("Add a note").foregroundStyle(.tertiary)
+                    Text(placeholder).foregroundStyle(.tertiary)
                         .padding(.top, 8).padding(.leading, 5)
                         .allowsHitTesting(false)
                 }

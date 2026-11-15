@@ -157,7 +157,7 @@ struct CityLogSheet: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("city-log-add-places")
+        .tapID("city-log-add-places")
     }
 
     /// Somewhere you went, as the other rows look: its photo square with the green been mark, its name; the × takes it off.

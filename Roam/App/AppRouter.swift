@@ -155,9 +155,33 @@ struct LogRequest: Hashable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AppRouter {
-    var selectedTab: AppTab
-    var paths: [AppTab: [AppRoute]] = [:]
-    var sheet: SheetRoute?
+    // Every tab change, push, back and sheet goes into the beta's event trail.
+    var selectedTab: AppTab {
+        didSet { if selectedTab != oldValue { Log.nav("tab", ["to": selectedTab.rawValue, "from": oldValue.rawValue]) } }
+    }
+    var paths: [AppTab: [AppRoute]] = [:] {
+        didSet { Self.logPathChanges(from: oldValue, to: paths) }
+    }
+    var sheet: SheetRoute? {
+        didSet {
+            if let sheet { Log.nav("sheet.open", ["sheet": sheet.logName, "detail": sheet.logDetail]) }
+            else if let oldValue { Log.nav("sheet.close", ["sheet": oldValue.logName]) }
+        }
+    }
+
+    private static func logPathChanges(from old: [AppTab: [AppRoute]], to new: [AppTab: [AppRoute]]) {
+        for tab in Set(old.keys).union(new.keys) {
+            let before = old[tab] ?? [], after = new[tab] ?? []
+            guard before != after else { continue }
+            if after.count > before.count, let route = after.last {
+                Log.nav("push", ["tab": tab.rawValue, "route": route.logName, "detail": route.logDetail, "depth": "\(after.count)"])
+            } else if after.isEmpty {
+                Log.nav("pop_to_root", ["tab": tab.rawValue, "from_depth": "\(before.count)"])
+            } else {
+                Log.nav("back", ["tab": tab.rawValue, "to": after.last?.logName ?? "root", "depth": "\(after.count)"])
+            }
+        }
+    }
 
     init(initialTab: AppTab = .forYou) {
         self.selectedTab = initialTab
@@ -209,3 +233,15 @@ final class AppRouter {
 }
 
 
+
+/// Short names for the event trail: the case name, and its values (ids, a city's name) as detail.
+protocol LogNamed {}
+extension LogNamed {
+    var logName: String { Mirror(reflecting: self).children.first?.label ?? "\(self)" }
+    var logDetail: String {
+        guard let value = Mirror(reflecting: self).children.first?.value else { return "" }
+        return String(String(describing: value).prefix(200))
+    }
+}
+extension AppRoute: LogNamed {}
+extension SheetRoute: LogNamed {}

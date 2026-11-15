@@ -60,7 +60,7 @@ struct MyVisitsCard: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .accessibilityHint("Edit this visit")
-        .accessibilityIdentifier("detail-edit-visit-\(visit.id.uuidString)")
+        .tapID("detail-edit-visit-\(visit.id.uuidString)")
     }
 
     /// A light green bubble the full width, like + New trip's in blue.
@@ -76,7 +76,7 @@ struct MyVisitsCard: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
-        .accessibilityIdentifier("detail-add-visit-bottom")
+        .tapID("detail-add-visit-bottom")
     }
 }
 

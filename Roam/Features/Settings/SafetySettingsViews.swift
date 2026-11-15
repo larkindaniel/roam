@@ -85,7 +85,7 @@ struct SafetyMembersView: View {
                     changes.markFeedStale()
                 }
             }
-            .accessibilityIdentifier("confirm-safety-remove")
+            .tapID("confirm-safety-remove")
             Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text(kind == .blocked
@@ -134,7 +134,7 @@ struct SafetyMembersView: View {
                             Button(kind == .blocked ? "Unblock" : "Unmute") { confirming = member }
                                 .buttonStyle(PillButtonStyle())
                                 .disabled(model.removing.contains(member.id))
-                                .accessibilityIdentifier("safety-remove-\(member.handle)")
+                                .tapID("safety-remove-\(member.handle)")
                         }
                         .accessibilityElement(children: .contain)
                     }

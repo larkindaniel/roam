@@ -36,7 +36,7 @@ struct HelpView: View {
                 Link(destination: url) { Label("Read the full privacy policy", systemImage: "arrow.up.right.square") }
                     .font(.body.weight(.semibold))
                     .frame(minHeight: Theme.minimumHitTarget)
-                    .accessibilityIdentifier("help-privacy-policy-link")
+                    .tapID("help-privacy-policy-link")
             }
         case .support, .terms:
             if let email = PublicLinks.supportEmail, let url = PublicLinks.supportMailURL {
@@ -47,7 +47,7 @@ struct HelpView: View {
                     Link(destination: url) { Label(email, systemImage: "envelope") }
                         .font(.body.weight(.semibold))
                         .frame(minHeight: Theme.minimumHitTarget)
-                        .accessibilityIdentifier("help-support-email")
+                        .tapID("help-support-email")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .roamCard()

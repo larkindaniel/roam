@@ -10,9 +10,11 @@ struct RoamApp: App {
     @State private var destinations: DestinationStore
     @State private var activityChanges = ActivityChangeStore()
     @State private var settingsStore: SettingsStore
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let services = AppServices.make()
+        Telemetry.shared.start(transport: services.telemetry)
         _services = State(initialValue: services)
         _session = State(initialValue: SessionStore(services: services))
         _library = State(initialValue: LibraryStore(services: services))
@@ -43,6 +45,13 @@ struct RoamApp: App {
                 .environment(services.images)
                 .tint(Roam.ink)
                 .background(Roam.paper)
+                .onChange(of: scenePhase) { _, phase in
+                    switch phase {
+                    case .active: Telemetry.shared.didBecomeActive()
+                    case .background: Telemetry.shared.didEnterBackground()
+                    default: break
+                    }
+                }
                 .onOpenURL { url in
                     Task { await handleOpenURL(url) }
                 }

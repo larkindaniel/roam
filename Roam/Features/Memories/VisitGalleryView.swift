@@ -106,7 +106,7 @@ struct VisitGalleryView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(label(photo, index: index))
                         .accessibilityHint("Opens the photo")
-                        .accessibilityIdentifier("gallery-photo-\(index)")
+                        .tapID("gallery-photo-\(index)")
                     }
                 }
                 PaginationFooter(isLoading: model.loadingMore, errorMessage: model.pageError, hasMore: model.nextCursor != nil) {
@@ -152,7 +152,7 @@ private struct GalleryPhotoViewer: View {
                 .safeAreaInset(edge: .bottom) { if let selected { footer(selected) } }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { dismiss() }.accessibilityIdentifier("viewer-close")
+                        Button("Close") { dismiss() }.tapID("viewer-close")
                     }
                 }
                 .navigationBarTitleDisplayMode(.inline)
@@ -162,7 +162,7 @@ private struct GalleryPhotoViewer: View {
                 .confirmationDialog("Remove this photo?", isPresented: removalBinding, titleVisibility: .visible,
                                     presenting: confirmingRemoval) { photo in
                     Button("Remove photo", role: .destructive) { Task { await model.remove(photo) } }
-                        .accessibilityIdentifier("confirm-remove-photo")
+                        .tapID("confirm-remove-photo")
                     Button("Cancel", role: .cancel) {}
                 } message: { _ in
                     Text("The photo is removed from this visit and its post. Your visit, note and ranking stay.")
@@ -213,7 +213,7 @@ private struct GalleryPhotoViewer: View {
             .buttonStyle(.plain)
             .allowsHitTesting(MemberProfiles.available)
             .accessibilityHint(MemberProfiles.available ? "Opens the profile" : "")
-            .accessibilityIdentifier("viewer-author")
+            .tapID("viewer-author")
             if let error = model.error {
                 Text(error).font(.footnote).foregroundStyle(Theme.disliked).accessibilityIdentifier("viewer-error")
             }
@@ -222,15 +222,15 @@ private struct GalleryPhotoViewer: View {
                     if model.pendingRemoval != nil {
                         Button("Retry removal") { Task { await model.retryRemoval() } }
                             .disabled(model.isRemoving)
-                            .accessibilityIdentifier("viewer-retry-removal")
+                            .tapID("viewer-retry-removal")
                     } else {
                         Button(role: .destructive) { confirmingRemoval = photo } label: { Text("Remove photo").foregroundStyle(Theme.disliked) }
                             .disabled(model.isRemoving)
-                            .accessibilityIdentifier("viewer-remove")
+                            .tapID("viewer-remove")
                     }
                 } else {
                     Button { reportTarget = .media(photo.media.id) } label: { Label("Report photo", systemImage: "flag") }
-                        .accessibilityIdentifier("viewer-report")
+                        .tapID("viewer-report")
                 }
                 if model.isRemoving { ProgressView().accessibilityIdentifier("viewer-removing") }
                 Spacer(minLength: 0)

@@ -305,7 +305,7 @@ struct PlaceSearchResults: View {
         }
         .buttonStyle(.plain)
         .disabled(opening != nil)
-        .accessibilityIdentifier("search-result-\(row.title)")
+        .tapID("search-result-\(row.title)")
     }
 
     private func pick(_ pick: PlaceSearchPick) async {

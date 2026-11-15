@@ -105,6 +105,10 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   dialog with no title and two choices: Apple Maps and Google Maps.
 - **Profile:** `SettingsToolbarItem` / `ProfileAvatarButton`, your profile picture (or initials) in its own glass circle
   at the top right of each tab. It opens your profile and settings.
+- **Bug button (beta):** `BugReportButton`, dressed like the profile picture: the same 40pt circle, filled
+  `Roam.signal` with a white `BugGlyph`, with the same white ring and shadow. It's always the right-most button at the
+  top of a page. Tab pages get it from `.bugReportToolbar()`. Pages with their own top row place it last in that row.
+- **Button names:** give every button `.tapID("…")`. It's the UI-test identifier and the name its taps log under.
 - **Inside a swipe-up card's header,** use `onTapGesture` with `.accessibilityAddTraits(.isButton)` and an
   `accessibilityAction` instead of `Button`. Buttons there don't receive taps.
 

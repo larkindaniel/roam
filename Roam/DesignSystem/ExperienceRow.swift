@@ -52,7 +52,7 @@ struct ExperienceRow: View {
             }
         }
         .padding(.vertical, Theme.Spacing.s)
-        .screenIdentifier("experience-row-\(name)")
+        .accessibilityElement(children: .contain).accessibilityIdentifier("experience-row-\(name)")
     }
 
     private var info: some View {
@@ -121,7 +121,7 @@ struct ExperienceRow: View {
                 }
                 .buttonStyle(PillButtonStyle(isSelected: false))
                 .accessibilityLabel("\(logTitle ?? "Log") \(name)")
-                .accessibilityIdentifier("log-\(name)")
+                .tapID("log-\(name)")
             }
         }
     }
@@ -152,7 +152,7 @@ struct ExperienceRow: View {
             .buttonStyle(PillButtonStyle(isSelected: saved))
             .roamHaptic(.impact(weight: .light), trigger: saved)
             .accessibilityLabel(saved ? "Saved to Wishlist. Remove \(name)" : "Save \(name) to Wishlist")
-            .accessibilityIdentifier("save-\(name)")
+            .tapID("save-\(name)")
         }
     }
 }
@@ -188,7 +188,7 @@ struct MemberRowView: View {
             }
         }
         .padding(.vertical, Theme.Spacing.s)
-        .screenIdentifier("member-row-\(member.handle)")
+        .accessibilityElement(children: .contain).accessibilityIdentifier("member-row-\(member.handle)")
     }
 }
 
@@ -237,7 +237,7 @@ struct FollowButton: View {
         .disabled(state == .pending)
         .roamHaptic(.impact(weight: .light), trigger: state == .friends)
         .accessibilityLabel(accessibilityText)
-        .accessibilityIdentifier("follow-button")
+        .tapID("follow-button")
         .confirmationDialog("Remove \(name) as a friend?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
             Button("Remove friend", role: .destructive, action: action)
         } message: {

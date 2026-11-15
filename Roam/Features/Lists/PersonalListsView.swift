@@ -190,7 +190,7 @@ private struct ListsContent: View {
                                 PillLabel(title: model.showsMap ? "List" : "Map", systemImage: model.showsMap ? "list.bullet" : "map")
                             }
                             .buttonStyle(PillButtonStyle(isSelected: model.showsMap))
-                            .accessibilityIdentifier("map-list-toggle")
+                            .tapID("map-list-toggle")
                         }
                         facetControls
                     }
@@ -213,7 +213,7 @@ private struct ListsContent: View {
                       systemImage: "line.3.horizontal.decrease")
         }
         .buttonStyle(PillButtonStyle(isSelected: model.filter.activeCount > 0))
-        .accessibilityIdentifier("open-filters")
+        .tapID("open-filters")
         if model.kind == .been {
             Menu {
                 Button("All categories") { model.beenScope = .all }

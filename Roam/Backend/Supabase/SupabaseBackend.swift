@@ -15,7 +15,8 @@ final class SupabaseBackend: @unchecked Sendable {
         sessionConfiguration.timeoutIntervalForRequest = 20
         sessionConfiguration.timeoutIntervalForResource = 60
         sessionConfiguration.waitsForConnectivity = false
-        let networkSession = URLSession(configuration: sessionConfiguration)
+        // Every request is timed for the beta's latency numbers (see NetworkRecorder).
+        let networkSession = URLSession(configuration: sessionConfiguration, delegate: NetworkRecorder.shared, delegateQueue: nil)
         self.rpcFetch = rpcFetch ?? { try await networkSession.data(for: $0) }
         client = SupabaseClient(
             supabaseURL: config.supabaseURL,

@@ -19,6 +19,7 @@ final class ExperienceDetailModel {
 
     /// Refresh keeps the current content on failure.
     func load() async {
+        let span = Log.span("load.place"); defer { span.end() }
         generation += 1
         let token = generation
         if detail == nil { phase = .loading }
@@ -289,7 +290,7 @@ struct ExperienceDetailView: View {
         .alert(pendingDeletion?.title ?? "Confirm removal", isPresented: Binding(
             get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }), presenting: pendingDeletion) { action in
                 Button(action.buttonTitle, role: .destructive) { Task { await confirmDeletion(action) } }
-                    .accessibilityIdentifier(action.confirmID)
+                    .tapID(action.confirmID)
                 Button("Cancel", role: .cancel) {}
             } message: { action in Text(action.message) }
         .safeAreaInset(edge: .bottom) {
@@ -494,7 +495,7 @@ struct ExperienceDetailView: View {
         .floatingBubble(Circle())
         .lookAroundViewer(isPresented: $showsLookAround, initialScene: scene)
         .accessibilityLabel("Look Around")
-        .accessibilityIdentifier("detail-look-around")
+        .tapID("detail-look-around")
     }
 
     /// The place on a map that fills the screen behind the card; pan and zoom freely.
@@ -659,21 +660,21 @@ struct ExperienceDetailView: View {
         Menu {
             if let website = detail.website {
                 Button { openURL(website) } label: { Label("Website", systemImage: "safari") }
-                    .accessibilityIdentifier("detail-website")
+                    .tapID("detail-website")
             }
             if let phone = detail.phone, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
                 Button { openURL(url) } label: { Label("Call", systemImage: "phone") }
-                    .accessibilityIdentifier("detail-call")
+                    .tapID("detail-call")
             }
             if detail.myRating != nil {
                 Button { Task { await openLog(.rerank) } } label: { Label("Rank again", systemImage: "arrow.triangle.2.circlepath") }
                     .disabled(deleting || failedDeletion != nil)
-                    .accessibilityIdentifier("detail-rerank")
+                    .tapID("detail-rerank")
                 Button(role: .destructive) {
                     pendingDeletion = DetailDeletion(experienceID: experienceID, visitID: nil, lastVisit: false)
                 } label: { Label("Remove ranking", systemImage: "minus.circle") }
                 .disabled(deleting || failedDeletion != nil)
-                .accessibilityIdentifier("detail-remove-ranking")
+                .tapID("detail-remove-ranking")
             }
             Button { openInMaps(detail) } label: { Label("Open in Maps", systemImage: "map") }
             if detail.categoryLocked {

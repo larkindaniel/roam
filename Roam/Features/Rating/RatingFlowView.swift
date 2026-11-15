@@ -140,7 +140,7 @@ struct RatingFlowView: View {
                     if !fromComparison { details(model) }
                 case .retry:
                     Button("Retry save") { Task { await model.retrySave() } }
-                        .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier("rating-retry")
+                        .buttonStyle(PrimaryButtonStyle()).tapID("rating-retry")
                 }
             }
             .padding(Theme.Spacing.l)
@@ -234,7 +234,7 @@ struct RatingFlowView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Remove date")
-                .accessibilityIdentifier("rating-clear-date")
+                .tapID("rating-clear-date")
             }
         }
         .padding(.leading, Theme.Spacing.m)
@@ -292,7 +292,7 @@ struct RatingFlowView: View {
                 Button("Skip ranking") { model.logWithoutRanking() }
                     .buttonStyle(QuietButtonStyle())
                     .disabled(model.category == nil)
-                    .accessibilityIdentifier("rating-skip-ranking")
+                    .tapID("rating-skip-ranking")
             }
         }
     }
@@ -346,7 +346,7 @@ struct RatingFlowView: View {
                 }
                 .buttonStyle(.plain)
                 .roamCard(padding: 0)
-                .accessibilityIdentifier("rating-with")
+                .tapID("rating-with")
             }
             // Photos: the system picker straight away; once there are some, they show one at a time, swiping for more.
             if let photos = model.photos {
@@ -451,12 +451,12 @@ struct RatingFlowView: View {
             HStack(spacing: Theme.Spacing.l) {
                 if model.canUndo {
                     Button { model.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                        .accessibilityIdentifier("rating-undo")
+                        .tapID("rating-undo")
                 }
                 Button("Too tough") { Task { await model.choose(.tooTough) } }
-                    .accessibilityIdentifier("rating-too-tough")
+                    .tapID("rating-too-tough")
                 Button("Skip") { Task { await model.choose(.skip) } }
-                    .accessibilityIdentifier("rating-skip")
+                    .tapID("rating-skip")
             }
             .font(.subheadline.weight(.medium))
             .foregroundStyle(Theme.secondaryText)
@@ -479,7 +479,7 @@ struct RatingFlowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier)
+        .tapID(identifier)
     }
 
 }

@@ -111,7 +111,7 @@ struct AccountSearchResults: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(picked ? .isSelected : [])
-                    .accessibilityIdentifier("pick-friend-\(row.member.handle)")
+                    .tapID("pick-friend-\(row.member.handle)")
                     if row.id != visible.last?.id { RowSeparator() }
                 }
                 if visible.isEmpty && friendsCursor == nil {
