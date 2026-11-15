@@ -567,3 +567,59 @@ struct FeelingSlider: View {
         onPick(feeling)
     }
 }
+
+/// The feeling slider's look for any short set of choices (setup's preferences): a grey track with the chosen one as a
+/// raised white pill. Drag or tap to choose; tap the chosen one again to clear it. Nothing chosen shows no pill.
+struct OptionSlider: View {
+    let options: [String]
+    @Binding var selection: String?
+    /// What was chosen when the finger went down, so a tap on it (no drag) clears it.
+    @State private var startSelection: String??
+
+    var body: some View {
+        GeometryReader { proxy in
+            let segment = proxy.size.width / CGFloat(max(options.count, 1))
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.gray.opacity(0.18))
+                if let selection, let index = options.firstIndex(of: selection) {
+                    Capsule().fill(Roam.paperRaised)
+                        .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                        .padding(3)
+                        .frame(width: segment)
+                        .offset(x: segment * CGFloat(index))
+                        .animation(.snappy(duration: 0.25), value: selection)
+                        .allowsHitTesting(false)
+                }
+                HStack(spacing: 0) {
+                    ForEach(options, id: \.self) { option in
+                        Text(option)
+                            .font(.footnote.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .foregroundStyle(selection == option ? Roam.ink : Roam.inkMuted)
+                            .frame(width: segment)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAddTraits(selection == option ? .isSelected : [])
+                            .accessibilityAction { selection = selection == option ? nil : option }
+                    }
+                }
+            }
+            .contentShape(Capsule())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if startSelection == nil { startSelection = .some(selection) }
+                        let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
+                        if selection != option { selection = option }
+                    }
+                    .onEnded { value in
+                        let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
+                        let isTap = abs(value.translation.width) < 6
+                        if isTap, startSelection == .some(option) { selection = nil } else { selection = option }
+                        startSelection = nil
+                    }
+            )
+        }
+        .frame(height: 44)
+    }
+}

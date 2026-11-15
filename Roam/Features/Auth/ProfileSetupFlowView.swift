@@ -37,6 +37,25 @@ private struct SetupSteps: View {
     @Environment(AppServices.self) private var services
 
     var body: some View {
+        // The top bar sits above the scroll view rather than in an inset over it, so its back button always takes the tap.
+        VStack(spacing: 0) {
+            topBar
+            page
+        }
+        .background(Roam.paper)
+        .animation(.easeInOut(duration: 0.2), value: model.step)
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { await model.uploadAvatar(data) }
+                photoItem = nil
+            }
+        }
+        .task(id: cityQuery) { await citySearch.run(cityQuery, services: services) }
+        .screenIdentifier("profile-setup")
+    }
+
+    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 content
@@ -49,19 +68,7 @@ private struct SetupSteps: View {
             .padding(.bottom, Theme.Spacing.l)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Roam.paper)
-        .safeAreaInset(edge: .top, spacing: 0) { topBar }
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomButton.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.s) }
-        .animation(.easeInOut(duration: 0.2), value: model.step)
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { await model.uploadAvatar(data) }
-                photoItem = nil
-            }
-        }
-        .task(id: cityQuery) { await citySearch.run(cityQuery, services: services) }
-        .screenIdentifier("profile-setup")
     }
 
     /// The round back button (where there's a step to go back to) and a thin bar showing how far through you are.
@@ -140,14 +147,11 @@ private struct SetupSteps: View {
             ForEach(TasteProfile.questions) { question in
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     Text(question.title).font(.headline)
-                    HStack(spacing: Theme.Spacing.s) {
-                        ForEach(question.options, id: \.self) { option in
-                            let picked = model.taste[keyPath: question.keyPath] == option
-                            Button(option) { model.taste[keyPath: question.keyPath] = picked ? nil : option }
-                                .buttonStyle(PillButtonStyle(isSelected: picked))
-                                .accessibilityAddTraits(picked ? .isSelected : [])
-                        }
-                    }
+                    // The standard slider, as on the log screen's feeling.
+                    OptionSlider(options: question.options, selection: Binding(
+                        get: { model.taste[keyPath: question.keyPath] },
+                        set: { model.taste[keyPath: question.keyPath] = $0 }))
+                        .accessibilityLabel(question.title)
                 }
             }
             .task { await model.loadTaste() }

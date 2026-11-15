@@ -15,8 +15,8 @@ when you change a screen. `docs/design-language.md` covers how they look.
   1. **What's your name?**, then **your handle** (a tick once it's free). These make the profile. When Apple shared
      their name on first sign-in, setup opens on the handle (suggested from it); back still edits the name.
   2. **A profile photo**: tap the big circle to choose one.
-  3. **What do you like?** Five questions (atmosphere, budget, crowds, familiar or adventurous, pace), three pills each;
-     tap one, tap again to clear. These feed Plan with AI and can be changed in Settings.
+  3. **What do you like?** Five questions (atmosphere, budget, crowds, classics or hidden gems, pace), each a slider
+     like the log screen's feeling: drag or tap to choose, tap the chosen one again to clear. These feed Plan with AI and can be changed in Settings.
   4. **Where's home?** Search cities; the one you pick shows as a row with × to change it. It becomes a home city.
   5. **Add friends:** suggestions, or search for anyone, each with Add. "Start using Roam" finishes.
   Setup never logs places.

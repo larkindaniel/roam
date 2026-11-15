@@ -11,23 +11,23 @@ struct TasteEditorView: View {
     @State private var saving = false
 
     var body: some View {
-        Form { Group {
-            ForEach(TasteProfile.questions) { question in
-                Section(question.title) {
-                    Picker(question.title, selection: Binding(get: { taste[keyPath: question.keyPath] ?? "" },
-                                                              set: { taste[keyPath: question.keyPath] = $0.isEmpty ? nil : $0 })) {
-                        Text("Skip").tag("")
-                        ForEach(question.options, id: \.self) { Text($0).tag($0) }
+        // The same questions and sliders as setup's "What do you like?".
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                ForEach(TasteProfile.questions) { question in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                        Text(question.title).font(.headline)
+                        OptionSlider(options: question.options, selection: Binding(
+                            get: { taste[keyPath: question.keyPath] },
+                            set: { taste[keyPath: question.keyPath] = $0 }))
+                            .accessibilityLabel(question.title)
+                            .accessibilityIdentifier("taste-\(question.title)")
                     }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("taste-\(question.title)")
                 }
-                .listRowBackground(Roam.paperRaised)
+                if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
             }
-            if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
-        }
-        .listRowBackground(Roam.paperRaised)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.l)
         }
         .scrollContentBackground(.hidden)
         .background(Roam.paper)
