@@ -218,7 +218,7 @@ struct BugReportSheet: View {
         .roamSheetStyle()
         .task(id: pickerItems) { await load(pickerItems) }
         .onAppear { Log.action("bug_report.opened", ["screen": context.screen ?? ""]) }
-        .screenIdentifier("bug-report")
+        .screenIdentifier("bug-report", sheet: true)
     }
 
     /// What's attached, the full width of the page so it can be read, one under another with × on each; then a row

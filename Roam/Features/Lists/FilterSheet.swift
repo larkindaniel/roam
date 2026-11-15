@@ -80,7 +80,7 @@ struct FilterSheet: View {
             .onAppear { draft = applied }
         }
         .roamSheetStyle()
-        .screenIdentifier("filter-sheet")
+        .screenIdentifier("filter-sheet", sheet: true)
     }
 
     private func checkRow(_ option: FacetOption, isOn: Bool, toggle: @escaping () -> Void) -> some View {

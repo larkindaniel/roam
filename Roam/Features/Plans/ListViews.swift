@@ -360,7 +360,7 @@ struct AddPlacesToListSheet: View {
         }
         .roamSheetStyle()
         .task(id: query) { await placeSearch.run(query, services: services) }
-        .screenIdentifier("list-add-places")
+        .screenIdentifier("list-add-places", sheet: true)
     }
 
     private func isPicked(_ pick: PlaceSearchPick) -> Bool {

@@ -59,7 +59,7 @@ struct DestinationPickerSheet: View {
             .task(id: query) { await placeSearch.run(query, services: services) }
         }
         .roamSheetStyle()
-        .screenIdentifier("destination-picker")
+        .screenIdentifier("destination-picker", sheet: true)
     }
 
     private func pick(_ destination: Destination) {

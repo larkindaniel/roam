@@ -103,6 +103,7 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         case chain.contains("BarButton") || chain.contains("ButtonBar"): known = "system.toolbar-button"
         case chain.contains("Annotation") || chain.contains("MKMarker"): known = "map.pin"
         case chain.contains("MKMapView") || chain.contains("MKMap"): known = "map"
+        case chain.contains("TextView") || chain.contains("TextField") || chain.contains("TextInput"): known = "text-field"
         case chain.contains("NavigationBar"): known = "system.navigation-bar"
         default: known = nil
         }

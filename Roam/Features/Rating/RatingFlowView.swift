@@ -81,7 +81,7 @@ struct RatingFlowView: View {
             }
         }
         .roamSheetStyle()
-        .screenIdentifier("rating-flow")
+        .screenIdentifier("rating-flow", sheet: true)
     }
 
     private func savingFromComparison(_ model: RatingFlowModel) -> Bool {
@@ -403,7 +403,7 @@ struct RatingFlowView: View {
                 }
             }
         }
-        .screenIdentifier("rating-details")
+        .screenIdentifier("rating-details", sheet: true)
     }
 
     /// Near one of your home cities, a visit goes with that home. Otherwise it joins a trip covering this city
@@ -464,7 +464,7 @@ struct RatingFlowView: View {
             .frame(minHeight: Theme.minimumHitTarget)
             .padding(.top, Theme.Spacing.s)
         }
-        .screenIdentifier("rating-comparison")
+        .screenIdentifier("rating-comparison", sheet: true)
     }
 
     private func comparisonCard(name: String, city: String?, identifier: String, action: @escaping () -> Void) -> some View {

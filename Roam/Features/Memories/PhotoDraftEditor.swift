@@ -133,7 +133,7 @@ struct PhotoDraftEditor: View {
             .onDisappear { importGeneration += 1; importTask?.cancel() }
         }
         .roamSheetStyle()
-        .screenIdentifier("photo-editor")
+        .screenIdentifier("photo-editor", sheet: true)
     }
 
     @ViewBuilder private func thumbnail(_ asset: PhotoDraftAsset) -> some View {

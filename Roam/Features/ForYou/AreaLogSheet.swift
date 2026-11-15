@@ -80,7 +80,7 @@ struct AreaLogSheet: View {
         }
         .roamSheetStyle()
         .presentationDetents([.large])
-        .screenIdentifier("area-log")
+        .screenIdentifier("area-log", sheet: true)
     }
 
     private func pickRow(_ pick: Pick) -> some View {

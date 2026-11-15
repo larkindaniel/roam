@@ -217,16 +217,20 @@ struct RoamSection<Content: View>: View {
 extension View {
     /// Identifies a whole screen for UI tests without overwriting child identifiers
     /// (a bare identifier on a container propagates to every child).
-    /// Names the screen for UI tests and the beta's event trail: each time it shows, a `screen` event is logged.
-    func screenIdentifier(_ identifier: String) -> some View {
+    /// Names the screen for UI tests and the beta's event trail: each time it shows, a `screen` event is logged. Pass
+    /// `sheet: true` for a sheet or full-screen cover, so it counts as the current screen until it closes (pages pushed
+    /// on a tab take their place from AppRouter instead).
+    func screenIdentifier(_ identifier: String, sheet: Bool = false) -> some View {
         accessibilityElement(children: .contain).accessibilityIdentifier(identifier)
             .onAppear {
                 let sinceTap = Telemetry.shared.lastTapAt?.elapsedMilliseconds
+                if sheet { Telemetry.shared.overlayShown(identifier) }
                 Telemetry.shared.record(.screen, identifier, screen: identifier,
                                         props: sinceTap.map { $0 < 10_000 ? ["since_tap_ms": "\($0)"] : [:] } ?? [:])
             }
-            .onDisappear { Telemetry.shared.screenDisappeared(identifier) }
+            .onDisappear { if sheet { Telemetry.shared.overlayClosed(identifier) } }
     }
+
 }
 
 extension View {

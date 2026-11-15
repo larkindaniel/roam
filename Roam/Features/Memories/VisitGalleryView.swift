@@ -172,7 +172,7 @@ private struct GalleryPhotoViewer: View {
                 }
         }
         .roamSheetStyle()
-        .screenIdentifier("photo-viewer")
+        .screenIdentifier("photo-viewer", sheet: true)
     }
 
     private var removalBinding: Binding<Bool> {

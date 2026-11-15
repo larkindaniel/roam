@@ -31,7 +31,10 @@ Signed-out screens log too; a session is tied to whoever signs in during it.
 - **Failures:** logged on their own. Every backend failure logs its real reason (`error` / `backend`: the server's
   code and message, the network error, or the field that didn't decode). Every message a screen shows logs as
   `error` / `shown`.
-- **Screens:** give each new screen `.screenIdentifier("name")`.
+- **Screens:** give each new screen `.screenIdentifier("name")`. If it's a sheet or full-screen cover, use
+  `.screenIdentifier("name", sheet: true)`, so it counts as the current screen until it closes. Pages pushed on a tab
+  take the current screen from `AppRouter`; give a new route a name in `AppRouter.screenName`. Sections inside a page
+  use a plain `accessibilityIdentifier`, not `screenIdentifier`.
 - **Things that matter:** `Log.action("log.saved", ["score": "8.1"])`.
 - **Failures you handle quietly:** `Log.error("photo.upload", error)`.
 - **Slow things:** `let span = Log.span("load.trip"); defer { span.end() }`, or wrap in `Log.measure("x") { … }`.

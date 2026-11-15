@@ -147,12 +147,17 @@ final class Telemetry: @unchecked Sendable {
     let session = TelemetrySession.current()
     /// The settings in force (last server answer, or defaults).
     private(set) var settings: TelemetrySettings
-    private(set) var currentScreen: String?
+    /// The screen the member is on: an open sheet if there is one, else the top page of the current tab, else the
+    /// last screen that showed (before the tabs exist: welcome, sign-in, setup).
+    var currentScreen: String? { lock.withLock { overlays.last ?? pageScreen ?? lastShownScreen } }
+    /// The top page of the current tab, from AppRouter.
+    private var pageScreen: String?
+    /// Sheets and full-screen covers showing over it, newest last.
+    private var overlays: [String] = []
+    private var lastShownScreen: String?
     private(set) var lastTapAt: ContinuousClock.Instant?
 
     private let lock = NSLock()
-    /// Screens showing, newest last; closing one goes back to the one under it.
-    private var screenStack: [String] = []
     private var seq = 0
     private var pending: [TelemetryEvent] = []
     /// The last events of this session, for a bug report's summary.
@@ -215,16 +220,12 @@ final class Telemetry: @unchecked Sendable {
     func record(_ kind: TelemetryEvent.Kind, _ name: String, screen: String? = nil, durationMs: Int? = nil,
                 props: [String: String] = [:]) {
         let event: TelemetryEvent? = lock.withLock {
-            if kind == .screen {
-                screenStack.removeAll { $0 == name }
-                screenStack.append(name)
-                currentScreen = name
-            }
+            if kind == .screen { lastShownScreen = name }
             if kind == .tap { lastTapAt = .now }
             seq += 1
             let trimmed = props.isEmpty ? nil : props.mapValues { String($0.prefix(500)) }
             let event = TelemetryEvent(session: session.id, seq: seq, at: Date(), kind: kind, name: String(name.prefix(120)),
-                                       screen: screen ?? currentScreen, durationMs: durationMs, props: trimmed)
+                                       screen: screen ?? overlays.last ?? pageScreen ?? lastShownScreen, durationMs: durationMs, props: trimmed)
             recent.append(event)
             if recent.count > 300 { recent.removeFirst(recent.count - 300) }
             guard recording, settings.eventsEnabled, !settings.mutedKinds.contains(kind.rawValue) else { return nil }
@@ -241,28 +242,28 @@ final class Telemetry: @unchecked Sendable {
         io.async { [self] in append(event) }
     }
 
-    /// A screen went away (a sheet closed, a page popped): the one under it is current again.
-    func screenDisappeared(_ name: String) {
-        let revealed: String?? = lock.withLock {
-            screenStack.removeAll { $0 == name }
-            guard currentScreen == name else { return .none }
-            currentScreen = screenStack.last
-            return .some(screenStack.last)
-        }
-        // A screen or sheet closing (by back, ×, or a swipe down) shows in the trail, with what's under it.
-        if case .some(let under) = revealed {
-            record(.nav, "closed", screen: under ?? name, props: ["screen": name, "back_to": under ?? "unknown"])
+    /// A sheet (or full-screen cover) showed: it's the current screen until it closes.
+    func overlayShown(_ name: String) {
+        lock.withLock {
+            overlays.removeAll { $0 == name }
+            overlays.append(name)
         }
     }
 
-    /// Switching tabs: the tab's top screen is current (tab pages stay alive, so they don't appear again), and it goes
-    /// to the top of the stack so closing a sheet later comes back to it.
-    func setCurrentScreen(_ name: String) {
-        lock.withLock {
-            screenStack.removeAll { $0 == name }
-            screenStack.append(name)
-            currentScreen = name
+    /// A sheet closed (by ×, Done or a swipe down): logged, with the screen it went back to.
+    func overlayClosed(_ name: String) {
+        let under: String? = lock.withLock {
+            guard overlays.contains(name) else { return nil }
+            overlays.removeAll { $0 == name }
+            return overlays.last ?? pageScreen ?? "unknown"
         }
+        guard let under else { return }
+        record(.nav, "closed", screen: under, props: ["screen": name, "back_to": under])
+    }
+
+    /// The top page of the current tab changed (a push, back, tab switch); nil when the tabs go away.
+    func setPageScreen(_ name: String?) {
+        lock.withLock { pageScreen = name }
     }
 
     /// The same error shown twice in a row (a message made twice) is logged once.

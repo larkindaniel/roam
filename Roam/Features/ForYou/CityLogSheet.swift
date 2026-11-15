@@ -97,7 +97,7 @@ struct CityLogSheet: View {
         .roamSheetStyle()
         .presentationDetents([.large])
         .interactiveDismissDisabled(hasChanges)
-        .screenIdentifier("city-log")
+        .screenIdentifier("city-log", sheet: true)
     }
 
     /// Photos as on a place's log: Add photos opens the picker; once there are some, they show one at a time.
