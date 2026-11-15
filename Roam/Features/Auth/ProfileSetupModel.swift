@@ -54,11 +54,15 @@ final class ProfileSetupModel {
         avatarPath = profile?.avatarPath
         homeCity = profile?.homeCity
         switch profile?.setupCheckpoint {
-        case .none: step = (draft?.displayName.isEmpty == false) ? .handle : .name
+        // A name typed before, or one Apple gave on first sign-in, skips straight to the handle (back still edits it).
+        case .none:
+            let hasName = draft?.displayName.isEmpty == false || prefillName?.trimmingCharacters(in: .whitespaces).isEmpty == false
+            step = hasName ? .handle : .name
         case .profileCreated?: step = .photo
         case .optionalDetails?: step = .preferences
         case .complete?: step = .friends
         }
+        if profile == nil, handle.isEmpty, !displayName.isEmpty { handle = Self.suggestedHandle(from: displayName) }
     }
 
     var progress: Double { Double(step.rawValue + 1) / Double(Step.allCases.count) }
@@ -70,12 +74,15 @@ final class ProfileSetupModel {
 
     var nameIssue: ValidationIssue? { Validation.displayName(displayName) }
 
+    /// Their name in lowercase letters and numbers only, as long as a handle may be.
+    static func suggestedHandle(from name: String) -> String {
+        let base = name.lowercased().filter { $0.isLetter || $0.isNumber }
+        return String(base.unicodeScalars.filter { $0.isASCII }.map(Character.init).prefix(Limits.handleRange.upperBound))
+    }
+
     func continueFromName() {
         guard nameIssue == nil else { return }
-        if handle.isEmpty {
-            let base = displayName.lowercased().filter { $0.isLetter || $0.isNumber }
-            handle = String(base.unicodeScalars.filter { $0.isASCII }.map(Character.init).prefix(Limits.handleRange.upperBound))
-        }
+        if handle.isEmpty { handle = Self.suggestedHandle(from: displayName) }
         saveDraft()
         step = .handle
     }
