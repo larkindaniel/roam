@@ -77,7 +77,7 @@ struct WelcomeView: View {
                         .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Find places you love from people you trust.")
+                    Text("Find places you love\nfrom people you trust.")
                         .font(.title3)
                         .foregroundStyle(Roam.inkMuted)
                         .multilineTextAlignment(.center)
