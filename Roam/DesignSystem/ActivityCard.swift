@@ -56,7 +56,11 @@ struct ActivityCardView: View {
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
-        .sheet(isPresented: $showsCollaborators) { CollaboratorsSheet(people: [item.author] + collaborators) }
+        // A small white card in the middle of the screen, over a dimmed page; tapping outside closes it.
+        .fullScreenCover(isPresented: $showsCollaborators) {
+            CollaboratorsSheet(people: [item.author] + collaborators)
+                .presentationBackground(.clear)
+        }
     }
 
     /// Everyone else on the log: friends who logged it with them, then anyone else they tagged with "With".
@@ -66,6 +70,13 @@ struct ActivityCardView: View {
             people.append(person)
         }
         return people
+    }
+
+    /// The popup fades in on its own, without the cover's slide up from the bottom.
+    private func openCollaborators() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { showsCollaborators = true }
     }
 
     private func openProfile(_ person: MemberSummary) {
@@ -110,7 +121,7 @@ struct ActivityCardView: View {
                                 .onTapGesture { openProfile(others[0]) }
                         } else {
                             Text("\(others.count) others").font(.subheadline.weight(.semibold))
-                                .onTapGesture { showsCollaborators = true }
+                                .onTapGesture { openCollaborators() }
                                 .accessibilityAddTraits(.isButton)
                                 .accessibilityIdentifier("activity-collaborators")
                         }
@@ -225,41 +236,65 @@ struct ActivityCardView: View {
     }
 }
 
-/// Who went together, from "with 2 others" on a friend's log: a small popup listing them; tapping one opens their profile.
+/// Who went together, from "with 2 others": a small solid white card in the middle of the screen over a dimmed page,
+/// listing everyone; tapping one opens their profile, tapping outside closes it.
 private struct CollaboratorsSheet: View {
     let people: [MemberSummary]
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
+    @State private var shown = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("Went together").font(.headline).accessibilityAddTraits(.isHeader)
-            VStack(spacing: 0) {
-                ForEach(people) { person in
-                    Button {
-                        dismiss()
-                        if MemberProfiles.available { router.push(.member(person.id)) }
-                    } label: {
-                        HStack(spacing: Theme.Spacing.m) {
-                            AvatarView(member: person, size: 40)
-                            VStack(alignment: .leading, spacing: -2) {
-                                Text(person.displayName).font(.headline).lineLimit(1)
-                                Text("@\(person.handle)").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+        ZStack {
+            Color.black.opacity(shown ? 0.4 : 0)
+                .ignoresSafeArea()
+                .onTapGesture { close() }
+                .accessibilityLabel("Close")
+                .accessibilityAddTraits(.isButton)
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text("Went together").font(.headline).accessibilityAddTraits(.isHeader)
+                VStack(spacing: 0) {
+                    ForEach(people) { person in
+                        Button {
+                            dismiss()
+                            if MemberProfiles.available { router.push(.member(person.id)) }
+                        } label: {
+                            HStack(spacing: Theme.Spacing.m) {
+                                AvatarView(member: person, size: 40)
+                                VStack(alignment: .leading, spacing: -2) {
+                                    Text(person.displayName).font(.headline).lineLimit(1)
+                                    Text("@\(person.handle)").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
                             }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                            .padding(.vertical, Theme.Spacing.s)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.vertical, Theme.Spacing.s)
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        if person.id != people.last?.id { RowSeparator(inset: 40 + Theme.Spacing.m) }
                     }
-                    .buttonStyle(.plain)
-                    if person.id != people.last?.id { RowSeparator() }
                 }
             }
+            .padding(Theme.Spacing.l)
+            .frame(maxWidth: 340)
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Roam.paperRaised))
+            .shadow(color: .black.opacity(0.2), radius: 24, y: 8)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .scaleEffect(shown ? 1 : 0.92)
+            .opacity(shown ? 1 : 0)
+            .accessibilityIdentifier("collaborators-sheet")
         }
-        .padding(Theme.Spacing.l)
-        .presentationDetents([.height(CGFloat(people.count) * 58 + 90)])
-        .presentationDragIndicator(.visible)
-        .accessibilityIdentifier("collaborators-sheet")
+        .onAppear { withAnimation(.snappy(duration: 0.25)) { shown = true } }
+    }
+
+    private func close() {
+        withAnimation(.easeOut(duration: 0.18)) { shown = false }
+        Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { dismiss() }
+        }
     }
 }
