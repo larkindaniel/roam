@@ -83,7 +83,8 @@ async function commitAttachments(files: Array<{ path: string; bytes: Uint8Array 
     ? await github(`git/refs/heads/${attachmentsBranch}`, { method: "PATCH", body: JSON.stringify({ sha }) })
     : await github("git/refs", { method: "POST", body: JSON.stringify({ ref: `refs/heads/${attachmentsBranch}`, sha }) });
   if (!moved.ok) { console.error("bug-report-issue: moving the branch failed", moved.status); return null; }
-  return files.map(file => `https://raw.githubusercontent.com/${repo}/${sha}/${file.path}`);
+  // github.com's raw form works on public and private repos alike (raw.githubusercontent.com is public-only).
+  return files.map(file => `https://github.com/${repo}/blob/${sha}/${file.path}?raw=true`);
 }
 
 /// A link to the file in Supabase storage, from a copy under a random name (the upload's own folder is the tester's
