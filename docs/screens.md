@@ -3,9 +3,31 @@
 Every screen people can reach: what's on it, what each tap does, and how you move between screens. Keep this current
 when you change a screen. `docs/design-language.md` covers how they look.
 
+## Signing in
+
+- **Welcome:** the Roam logo (the app icon, as big as the screen allows), "Roam", and "Find places you love from people
+  you trust." Continue with Apple (black; new and returning
+  people both use it) and Sign in with email (grey; for accounts with a password) sit at the bottom.
+- **Sign in, and the email steps** (create account, code, forgot password, new password): the round glass back button,
+  a big title (no line under it), grey rounded fields, quiet links under them, and the black action pinned at the bottom.
+- **Setup** (a new account), one page per step (just a title, no line under it) with a round back button and a thin
+  progress bar at the top, and the
+  step's button pinned at the bottom (grey "Skip for now" when nothing's chosen, black "Continue" once something is):
+  1. **What's your name?**, then **your handle** (a tick once it's free). These make the profile. When Apple shared
+     their name on first sign-in, setup opens on the handle (suggested from it); back still edits the name.
+  2. **A profile photo**: tap the big circle to choose one.
+  3. **What do you like?** Five questions (atmosphere, budget, crowds, classics or hidden gems, pace), each a slider
+     like the log screen's feeling: drag or tap to choose, tap the chosen one again to clear. These feed Plan with AI and can be changed in Settings.
+  4. **Where's home?** Search cities and pick as many as you like; each shows as a row with × to take it off, and the
+     search stays to add another. They become your home cities.
+  5. **Add friends:** suggestions, or search for anyone, each with Add. "Start using Roam" finishes.
+  Every step can go back. Nothing is saved until you continue from home: then the profile is made (name, handle,
+  photo, preferences, homes) but nobody can find it yet. The people you add are only asked, and the profile only becomes
+  findable, when you tap "Start using Roam". Setup never logs places.
+
 ## Everywhere
 
-- **Keyboard:** scrolling any page or list puts it away; notes have their own Done.
+- **Keyboard:** scrolling any page or list puts it away; on a log, tapping anywhere off the note does too.
 
 - **Tab bar:** Roam's own floating glass bar with Discover, Friends and My Places. Tapping a tab always goes back to its
   home page, scrolled to the top. On screens with a full-screen map (city, place, My Places), the bar steps aside until
@@ -32,19 +54,6 @@ when you change a screen. `docs/design-language.md` covers how they look.
   - The field's own × ends the search, and leaving the tab clears it. On Discover, tapping anywhere but a result ends it
     too.
 
-## Onboarding (end of setup)
-
-After name, handle, photo, home and Find friends, two steps teach Roam what you like. Both can be skipped.
-
-- **Where have you been?** Up to 12 places around your home city as standard rows, the ones your friends have been to
-  first, then the most rated. A search field finds anything else. Tapping a row ticks it (green Been mark). The button
-  says "Skip for now" until something is ticked, then "Continue". With no home city it's search only.
-- **One place at a time** ("1 of 3"): "How was it?" with the feeling picker, then "Which did you like more?" against
-  your other places, with Undo, Too tough and Skip, like the log screen. After 10 comparisons in all, places go to the
-  middle of where they'd fit without asking. Each place is saved as soon as it's placed: a visit with no date, seen by
-  friends, so it's on your Been list but never on anyone's Friends tab. "Skip the rest" stops; what's saved stays.
-- Then the visibility explainer and Start using Roam.
-
 ## Discover
 
 - **Top:** a search bar and your profile picture. Scrolling down swaps them for a dark fade with "Discover" centred;
@@ -66,10 +75,15 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   brings it back as glass on the fade.
 - One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
   audience allows show (Only me never does), with the log's own note and photos.
+- Friends who went somewhere together (logs of the same place where one tagged the other with "With") show as one card
+  with all their photos; the note, likes and comments are the newest log's.
+- The top of a log, like Instagram: with no one else, "picture, name · date". With others (friends who logged it too, or
+  anyone tagged with "With"), the pictures stacked with the author's on top, "Daniel Larkin with Nihal Menon" or "Daniel
+  Larkin with 2 others", and the date on the line below. Each picture and name opens that person's profile; "2 others"
+  opens a small white card in the middle of the screen listing everyone (tap outside to close), each opening their profile. There's no separate "With…" line.
 - Logs sit straight on the page, with no card around them; the photos set them apart. Each log: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
   place's Google photo at its usual size. Set into the top of the photo is one small line: their picture, name · date,
-  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo opens the log's own page; double-tapping likes it. Under the photo, a slim card with the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then their
-  note and who they went with. Like and comment sit in white in the photo's bottom right, on a dark fade (under the card when there's no photo); comment opens the log as its own page (the log, then its comments as plain rows, long-press to delete yours or report someone else's, and a white field pinned at the bottom with your picture (which slides away once the comment wraps) and a send arrow). Double-tapping a photo likes it. A card never opens a page of its own.
+  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo opens the log's own page; double-tapping likes it. Under the photo, a slim card with the place's name, city and country opens the place (with no photo, it's the standard place row instead). The note's first line (with "…" if there's more) sits bottom left in the photo, level with like and comment in white on the bottom right, on a dark fade (under the card when there's no photo); comment opens the log as its own page (the log, then the author's note as the first comment, then the comments as plain rows, with no "Comments" heading, long-press to delete yours or report someone else's, and a white field pinned at the bottom with your picture (which slides away once the comment wraps) and a send arrow). Double-tapping a photo likes it. A card never opens a page of its own.
 - Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
   deleted from its place page; a tagged friend can remove their own tag.
 
@@ -119,19 +133,20 @@ the country in view.
 - **Peek:** "Search <city>" in the tab bar's spot, with a blue directions circle beside it that asks Apple Maps or
   Google Maps. Searching stays within the city and its surroundings.
 - **Opened:**
-  - **Name and home:** the name, with Set as home beside it. A home city shows a solid black house instead.
+  - **Name:** the name, with its country under it.
   - **Round buttons:**
     - **Log** (green): ticks straight away and shows Start → End dates under the buttons. The visit saves once both
       dates are picked or you leave. Once you've been, the dates you gave show there.
     - **Wishlist** (yellow): saves the city. It greys out once you've been.
     - **Trip** (blue): add the city to an upcoming trip or start a new one.
-    - **Send:** greyed out on city pages.
+    - **Send:** send the city to one or more friends, with an optional note. It shows in their Sent to you, with the
+      city's photo, and opens its city page.
     - **Plan** (pink): opens the Plan with AI sheet (ChatGPT, Claude or copy).
-  - A home city shows only the house and Plan.
+    - **Home**, last: makes it one of your homes.
+  - A home city has no round buttons: a solid house (tap to remove it as home) and Plan sit beside the name.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
-  - **Friends who’ve been** shows friends with shared visits in the city. Tap a friend to see their places, then a
-    place to see their visits there. The city map keeps showing your own pins.
+  - **Friends who’ve been** shows friends with shared visits in the city. Tapping a friend opens their profile. The city map keeps showing your own pins.
   - **Suggestions:** big place photo cards, ranked by Roam, each with its reason line ("Theo sent you this", "On
     Maya's Lisbon list", "Maya and Theo loved it", "Maya has been", "Like the cafés you loved", "Like places you loved",
     "Popular on Roam"; the
@@ -156,8 +171,7 @@ the country in view.
   - Suggested cities as photo cards, ranked by Roam, each with its reason line (or the state when there's none).
     A card opens the city. Long-press: Not interested hides it.
 - A state page also has a chip that opens its country.
-- **Friends who’ve been** shows the cities friends visited in the country or state. Tap a friend to open their cities,
-  then a city to see their shared places. Suggested city cards use the same short reason line as Discover.
+- **Friends who’ve been** shows the cities friends visited in the country or state. Tapping a friend opens their profile. Suggested city cards use the same short reason line as Discover.
 
 ## Place page
 
@@ -170,7 +184,7 @@ tapping another place or pin swaps the card to it.
   - **Log / Been:** Log opens the log sheet. Once you've been, the button shows Been, and tapping it offers only
     Delete, with one confirmation, which removes your visits and ranking.
   - **Save:** saves or unsaves the place. It's greyed out once you've been.
-  - **Send:** choose a current friend and add an optional note. Friends can open it from Sent to you in My Places or
+  - **Send:** choose one or more friends and add an optional note (tap off it to put the keyboard away); each friend gets it. Friends can open it from Sent to you in My Places or
     from Discover. The place page shows who sent it and their note.
 - **Card:**
   - **Photos:** a swipeable gallery with dots, your own photos first. The Wikipedia blurb sits under it when there is
@@ -183,8 +197,7 @@ tapping another place or pin swaps the card to it.
     - New logs start with Friends. Public is visible to signed-in Roam members. Editing a log keeps its saved
       audience unless you change it.
   - **People who've been:** a titleless card. "You" comes first with your stars, then each friend with when they last
-    went and their stars. Tap a friend to see their shared visits, notes, and photos for this place. Tap a photo to open
-    it full screen. Long-pressing a friend offers Report.
+    went and their stars. Tapping a friend opens their profile. Long-pressing a friend offers Report.
   - **Everyone else:** other people's visits, with All photos opening the photo viewer.
 
 ## Trip page
@@ -205,8 +218,14 @@ tapping another place or pin swaps the card to it.
 
 ## Lists and Sent to you
 
-- Create a private list in My Places › Saved › Lists. Add places from their detail page. The owner can rename the
-  list, edit its places, send it to friends, or revoke their access in Manage access.
+- **Lists** (My Places › Saved › Lists): your lists as standard rows (name, number of places), then lists friends sent
+  you, and a New list bubble that names it and opens it.
+- **A list:** its name big, with an edit pencil on your own (rename) and, at the top right, Send (indigo) then a red bin (delete). A list is private: only friends you send it to can
+  open it. A friend's
+  list has a small chip with their picture and name, opening their profile. Then
+  its places as standard rows in one card (swipe left to remove one from your own list), then a green "Add a place"
+  bubble. That opens the place search: tapping a result adds it with a tick, tapping again takes it off; × closes.
+- From a place's page, Add to list shows your lists as rows (tap one to add), a new list by name, and an optional note.
 - Recipients open the current contents from Lists or Sent to you. Sent to you includes the sender and their note.
 
 ## Settings
@@ -229,7 +248,7 @@ tapping another place or pin swaps the card to it.
   - The name with its city under it.
   - The feeling picker: Didn't like, Neutral or Liked it. It starts at Neutral.
   - A date chip: × clears it, and tapping it opens a calendar. Tapping a day picks it; Done picks the day shown.
-  - The note has a Done button above the keyboard. Scrolling any page puts the keyboard away.
+  - The note has no Done button: tapping anywhere off it drops the cursor and puts the keyboard away, as does scrolling.
   - "Part of": a trip happening nearby, or Home, or any trip.
   - Add photos opens the picker; photos then swipe in a carousel.
   - A note, and who can see the visit.

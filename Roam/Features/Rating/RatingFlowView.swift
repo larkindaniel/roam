@@ -18,6 +18,8 @@ struct RatingFlowView: View {
     @State private var home: Destination?
     /// Saving straight from a comparison: the log form stays away while it saves and closes.
     @State private var fromComparison = false
+    /// Where the note box is, so a tap anywhere else on the form puts the keyboard away.
+    @State private var noteFrame: CGRect = .zero
 
     var body: some View {
         NavigationStack {
@@ -144,6 +146,11 @@ struct RatingFlowView: View {
             .padding(Theme.Spacing.l)
         }
         .accessibilityIdentifier("rating-scroll")
+        // Tapping off the note (or any field) drops the cursor and the keyboard; there's no Done button.
+        .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
+            guard !noteFrame.contains(tap.location) else { return }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        })
         // Save sits where the other bottom buttons do: the tab bar's width and height, the same low gap from the bottom of
         // the screen, with room left above it for the content.
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -380,6 +387,7 @@ struct RatingFlowView: View {
             NoteBox(text: Binding(get: { model.visit.publicNote },
                                   set: { _ = model.updateDetails(note: $0, date: model.visit.date) }))
                 .accessibilityIdentifier("rating-note")
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { noteFrame = $0 }
             if request.mode == .rerank { Text("This updates your ranking and existing visit without adding another one.").font(.footnote).foregroundStyle(Theme.secondaryText) }
             if request.mode != .rerank {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -557,5 +565,61 @@ struct FeelingSlider: View {
     private func pick(_ feeling: Sentiment) {
         selection = feeling
         onPick(feeling)
+    }
+}
+
+/// The feeling slider's look for any short set of choices (setup's preferences): a grey track with the chosen one as a
+/// raised white pill. Drag or tap to choose; tap the chosen one again to clear it. Nothing chosen shows no pill.
+struct OptionSlider: View {
+    let options: [String]
+    @Binding var selection: String?
+    /// What was chosen when the finger went down, so a tap on it (no drag) clears it.
+    @State private var startSelection: String??
+
+    var body: some View {
+        GeometryReader { proxy in
+            let segment = proxy.size.width / CGFloat(max(options.count, 1))
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.gray.opacity(0.18))
+                if let selection, let index = options.firstIndex(of: selection) {
+                    Capsule().fill(Roam.paperRaised)
+                        .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                        .padding(3)
+                        .frame(width: segment)
+                        .offset(x: segment * CGFloat(index))
+                        .animation(.snappy(duration: 0.25), value: selection)
+                        .allowsHitTesting(false)
+                }
+                HStack(spacing: 0) {
+                    ForEach(options, id: \.self) { option in
+                        Text(option)
+                            .font(.footnote.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .foregroundStyle(selection == option ? Roam.ink : Roam.inkMuted)
+                            .frame(width: segment)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAddTraits(selection == option ? .isSelected : [])
+                            .accessibilityAction { selection = selection == option ? nil : option }
+                    }
+                }
+            }
+            .contentShape(Capsule())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if startSelection == nil { startSelection = .some(selection) }
+                        let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
+                        if selection != option { selection = option }
+                    }
+                    .onEnded { value in
+                        let option = options[min(max(Int(value.location.x / segment), 0), options.count - 1)]
+                        let isTap = abs(value.translation.width) < 6
+                        if isTap, startSelection == .some(option) { selection = nil } else { selection = option }
+                        startSelection = nil
+                    }
+            )
+        }
+        .frame(height: 44)
     }
 }

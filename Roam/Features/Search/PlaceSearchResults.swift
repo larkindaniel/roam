@@ -329,9 +329,7 @@ struct PlaceSearchResults: View {
 /// puts the keyboard away. `style` only changes what's behind it.
 struct RoamSearchField: View {
     enum Style {
-        /// A grey capsule, inside cards and sheets.
-        case filled
-        /// A floating glass capsule, over pages (Discover).
+        /// The white glass capsule, as on Discover: every search bar looks like this.
         case glass
         /// Nothing behind it: it sits in something that already has its own shape (a lowered card's bubble).
         case bare
@@ -340,7 +338,7 @@ struct RoamSearchField: View {
     let prompt: String
     @Binding var text: String
     var focus: FocusState<Bool>.Binding
-    var style: Style = .filled
+    var style: Style = .glass
     /// White text, for dark glass over the globe.
     var onDark = false
     var identifier = "search-field"
@@ -380,7 +378,6 @@ struct RoamSearchField: View {
         .padding(.horizontal, style == .bare ? 0 : Theme.Spacing.m)
         .frame(height: style == .glass ? 48 : 40)
         .frame(maxWidth: .infinity)
-        .background { if style == .filled { Capsule().fill(Roam.ink.opacity(0.12)) } }
         .modifier(GlassIfNeeded(enabled: style == .glass))
     }
 
@@ -402,7 +399,6 @@ struct SearchSheetBar: View {
 
     var body: some View {
         RoamSearchField(prompt: prompt, text: $text, focus: focus, identifier: identifier, onClear: onClose, alwaysCancel: true)
-            .frame(height: 44)
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.top, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.s)

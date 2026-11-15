@@ -12,6 +12,8 @@ and patterns, then add it to this page. `docs/screens.md` describes each screen 
   "12 places" on a city). Don't repeat what's already on screen.
 - **Marks over headings.** Cards are usually untitled: the coloured mark on each row says what it is (been, saved,
   trip, home).
+- **Titles stand alone.** No subtitle or explanation line under a title unless the screen can't be understood without
+  it. Sign-in and setup have none.
 - **Short, plain words.** "Been", not "Been here". A destructive choice is just "Delete".
 - **Reuse before you build.** Every row, card, button and chip below already exists. Match it exactly (sizes, fonts,
   spacing). If a new screen needs a row, it's the standard row.
@@ -50,7 +52,7 @@ Get colours from `PlaceState.markerColor` and symbols from `markerSymbol`. Never
 
 - **Been beats wishlist** everywhere: once you've been somewhere it's off your wishlist, and Save/Wishlist shows
   greyed out.
-- **Send** opens a friend picker with an optional note on a place. Cities keep the greyed-out (`inkFaint`) button.
+- **Send** opens a friend picker with an optional note on a place. Cities, lists and places all send this way. The Send button is indigo.
 
 ## Cards
 
@@ -159,7 +161,7 @@ Every list of places, cities, trips, visits and friends uses one row anatomy:
   card.
 - **Search:** only three searches exist (`Features/Search/`): worldwide places and city/area places (`PlaceSearch` +
   `PlaceSearchResults`, with a `PlaceSearchScope`) and accounts (`AccountSearchResults`). Every field is
-  `RoamSearchField` (`.filled` in cards and sheets, `.glass` over pages, `.bare` inside a lowered card's bubble); a
+  `RoamSearchField`, always Discover's white glass bar (48pt), in cards, sheets and pages alike; only `.bare` inside a lowered card's bubble; a
   sheet that is only a search uses `SearchSheetBar` (no title bar; the field's × closes the sheet). Never build another search: pick one of these, narrow it with
   `kinds`, or pass `onPick`. Cities show the signpost icon, countries their flag.
 - **Flags:** write the country, then its flag: `Japan 🇯🇵` (`TripTitle.flag`). Country names are plain ("China", not

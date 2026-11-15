@@ -427,7 +427,8 @@ struct ExperienceDetailView: View {
                 }
                 // Your own stars from your ranking come first, then friends' visits at this place.
                 FriendMemoriesSection(memories: friendMemories, yours: yours(detail), onOpenVisits: { friend in
-                    router.push(.friendPlaceVisits(placeID: summary.id, placeName: summary.name, friend: friend))
+                    // A friend who's been opens their profile.
+                    router.push(.member(friend.id))
                 },
                                       onReport: { target in reportReason = nil; reportTarget = target })
                 if detail.isLocality {
@@ -565,7 +566,7 @@ struct ExperienceDetailView: View {
                              inactive: visited) {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
-                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Send", identifier: "detail-recommend") {
+                circleAction("paperplane", tint: .indigo, filled: false, caption: "Send", label: "Send", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)

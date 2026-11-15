@@ -142,12 +142,6 @@ final class SessionStore {
         return error.roamMessage
     }
 
-    func markBeenIntroSeen() async {
-        guard var current = profile, !current.hasSeenBeenIntro else { return }
-        current.hasSeenBeenIntro = true
-        profile = current
-        try? await services.profiles.markBeenIntroSeen()
-    }
 
     func completeSetup(_ profile: OwnProfile) {
         guard profile.id == userID else { return }

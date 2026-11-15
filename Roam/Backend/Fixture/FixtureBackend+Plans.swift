@@ -328,7 +328,7 @@ extension FixtureBackend: PlanService {
         let me = try await authenticatedActor()
         guard areFriends(me, recipient) else { throw RoamError.forbidden }
         switch target {
-        case .place: break
+        case .place, .city: break
         case .list(let id): guard placeLists[id]?.owner == me else { throw RoamError.notFound }
         case .trip(let id): guard trips[id]?.owner == me else { throw RoamError.notFound }
         }
@@ -363,6 +363,7 @@ extension FixtureBackend: PlanService {
                 var share = DirectShare(id: row.id, sender: memberSummary(row.sender), message: row.message, createdAt: row.createdAt)
                 switch row.target {
                 case .place(let id): share.experience = summary(id, viewer: me)
+                case .city(let destination): share.city = destination
                 case .list(let id): share.list = placeLists[id].map { listSummary($0, viewer: me) }
                 case .trip(let id): share.trip = trips[id].map { tripSummary($0, viewer: me) }
                 }

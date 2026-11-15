@@ -87,18 +87,20 @@ struct RootView: View {
     }
 }
 
+/// While Roam opens: just the name, as on the welcome screen, and a spinner.
 struct LaunchView: View {
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 72
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
             Text("Roam")
                 .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.accent)
-            ProgressView("Opening your travels…")
+                .foregroundStyle(Roam.ink)
+            ProgressView()
+                .accessibilityLabel("Opening Roam")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.groupedCanvas)
+        .background(Roam.paper)
         .screenIdentifier("launch-view")
     }
 }

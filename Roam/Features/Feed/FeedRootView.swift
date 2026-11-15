@@ -100,7 +100,9 @@ struct FeedRootView: View {
         .task(id: session.userID) {
             guard session.userID != nil else { model = nil; return }
             let feed = services.feed
-            model = FeedModel(service: feed, notifications: services.notifications) { cursor in
+            let plans = services.plans
+            model = FeedModel(service: feed, notifications: services.notifications,
+                              fetchPlacePhotos: { await plans.refreshGoogleDetails(experienceIDs: $0) }) { cursor in
                 try await feed.friendsActivity(cursor: cursor)
             }
             await refresh()
@@ -138,7 +140,7 @@ struct FeedRootView: View {
                 if let error = model.actionError ?? model.error {
                     InlineRetryView(message: error) { Task { await refresh() } }
                 }
-                ForEach(model.items) { item in
+                ForEach(model.cards) { item in
                     FeedCard(item: item, likePending: model.likePending.contains(item.id)) { liked in
                         Task {
                             await model.setLike(item.id, liked: liked)
@@ -171,6 +173,14 @@ struct FeedCard: View {
 
     private func actions(onPhoto: Bool) -> some View {
         HStack(spacing: Theme.Spacing.m) {
+            // The note's first line, left, level with like and comment; the rest is on the log's page.
+            Text(Self.firstLine(of: item.note))
+                .font(.subheadline)
+                .foregroundStyle(onPhoto ? Color.white : Roam.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("feed-note")
             LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: likePending, tint: onPhoto ? .white : Roam.ink) {
                 onLike(!item.likedByViewer)
             }
@@ -185,6 +195,13 @@ struct FeedCard: View {
             .accessibilityIdentifier("feed-comments-\(item.id.uuidString)")
         }
         .buttonStyle(.plain)
+    }
+
+    /// The note's first line, with "…" when there's more than fits or more lines after it.
+    static func firstLine(of note: String) -> String {
+        let lines = note.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard let first = lines.first else { return "" }
+        return lines.count > 1 ? first + "…" : first
     }
 
     var body: some View {

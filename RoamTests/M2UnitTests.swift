@@ -108,7 +108,7 @@ final class ProfileSetupModelTests: XCTestCase {
         let created = try await services.profiles.createProfile(displayName: "Avery", handle: "avery_resume")
         XCTAssertEqual(ProfileSetupModel(services: services, auth: auth, profile: created, prefillName: nil).step, .photo)
         let optional = try await services.profiles.setSetupCheckpoint(.optionalDetails)
-        XCTAssertEqual(ProfileSetupModel(services: services, auth: auth, profile: optional, prefillName: nil).step, .people)
+        XCTAssertEqual(ProfileSetupModel(services: services, auth: auth, profile: optional, prefillName: nil).step, .preferences)
     }
 
     func testSuggestionsNeverPreselectFollows() async throws {

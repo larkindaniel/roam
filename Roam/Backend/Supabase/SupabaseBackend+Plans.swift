@@ -157,15 +157,16 @@ extension SupabaseBackend: PlanService {
     }
 
     func share(_ target: ShareTarget, with recipient: UUID, message: String, operationID: UUID) async throws {
-        var place: UUID?, list: UUID?, trip: UUID?
+        var place: UUID?, list: UUID?, trip: UUID?, city: Destination?
         switch target {
         case .place(let id): place = id
+        case .city(let destination): city = destination
         case .list(let id): list = id
         case .trip(let id): trip = id
         }
         let _: UUID = try await rpc("send_share", [
             "p_recipient": RPC.uuid(recipient), "p_experience_id": RPC.uuid(place), "p_list_id": RPC.uuid(list), "p_trip_id": RPC.uuid(trip),
-            "p_message": RPC.string(message), "p_operation_id": RPC.uuid(operationID),
+            "p_city": try RPC.json(city), "p_message": RPC.string(message), "p_operation_id": RPC.uuid(operationID),
         ])
     }
 

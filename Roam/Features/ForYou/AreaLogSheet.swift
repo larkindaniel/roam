@@ -61,7 +61,6 @@ struct AreaLogSheet: View {
             .background(Roam.paper)
             .safeAreaInset(edge: .top, spacing: 0) {
                 RoamSearchField(prompt: "Cities and places in \(name)", text: $query, focus: $searchFocused, identifier: "area-search")
-                    .frame(height: 44)
                     .padding(.horizontal, Theme.Spacing.l)
                     .padding(.vertical, Theme.Spacing.s)
             }

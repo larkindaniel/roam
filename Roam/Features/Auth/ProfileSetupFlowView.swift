@@ -24,122 +24,236 @@ struct ProfileSetupFlowView: View {
     }
 }
 
+/// Setup, one question per page, laid out like the app's other pages: the round back button and a thin progress bar at
+/// the top, a big title with one short line, the step, and its button pinned at the bottom.
 private struct SetupSteps: View {
     @Bindable var model: ProfileSetupModel
     @Environment(SessionStore.self) private var session
     @State private var photoItem: PhotosPickerItem?
+    @State private var cityQuery = ""
+    @State private var citySearch = PlaceSearch()
+    @State private var friendQuery = ""
+    @State private var friendResults: LoadPhase<[MemberRow]> = .idle
+    @State private var friendSearchToken = 0
+    @FocusState private var focused: Bool
+    @Environment(AppServices.self) private var services
 
     var body: some View {
+        // The top bar sits above the scroll view rather than in an inset over it, so its back button always takes the tap.
         VStack(spacing: 0) {
-            HStack {
-                if model.step == .handle {
-                    Button { model.step = .name } label: { Image(systemName: "chevron.left").frame(width: 44, height: 44) }
-                        .accessibilityLabel("Back")
-                }
-                ProgressView(value: model.progress)
-                    .tint(Theme.accent)
-                    .accessibilityLabel("Setup progress")
-                    .accessibilityValue("Step \(model.step.rawValue + 1) of \(ProfileSetupModel.Step.allCases.count)")
-            }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.top, Theme.Spacing.s)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    content
-                    if let error = model.error { ErrorText(error) }
-                }
-                .padding(Theme.Spacing.xl)
-            }
-            .scrollDismissesKeyboard(.interactively)
+            topBar
+            page
         }
-        .background(Theme.groupedCanvas)
+        .background(Roam.paper)
+        .animation(.easeInOut(duration: 0.2), value: model.step)
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { await model.uploadAvatar(data) }
+                if let data = try? await item.loadTransferable(type: Data.self) { model.pickAvatar(data) }
                 photoItem = nil
             }
         }
+        // Signed out underneath (the account was reset, say): back to sign in rather than a stuck error.
+        .onChange(of: model.signInLost) { _, lost in if let lost { _ = session.handle(lost) } }
+        .task(id: cityQuery) { await citySearch.run(cityQuery, services: services) }
+        .task(id: "\(friendQuery)|\(friendSearchToken)") { await searchFriends() }
         .screenIdentifier("profile-setup")
+    }
+
+    private func searchFriends() async {
+        let query = friendQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { friendResults = .idle; return }
+        friendResults = .loading
+        try? await Task.sleep(for: Limits.searchDebounce)
+        guard !Task.isCancelled else { return }
+        do {
+            let page = try await services.social.searchMembers(query: query, cursor: nil)
+            guard !Task.isCancelled else { return }
+            friendResults = .loaded(page.items.filter { !$0.isSelf })
+        } catch {
+            guard !Task.isCancelled else { return }
+            friendResults = .failed(error.roamMessage)
+        }
+    }
+
+    private var page: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                content
+                if let error = model.error { ErrorText(error) }
+            }
+            // Full width, so every step lines up on the same left margin.
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.top, Theme.Spacing.s)
+            .padding(.bottom, Theme.Spacing.l)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomButton.padding(.horizontal, Theme.Spacing.l).padding(.bottom, Theme.Spacing.s) }
+    }
+
+    /// The round back button (where there's a step to go back to) and a thin bar showing how far through you are.
+    private var topBar: some View {
+        HStack(spacing: Theme.Spacing.m) {
+            Button { focused = false; model.goBack() } label: {
+                Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
+            }
+            .buttonStyle(.plain)
+            .floatingBubble(Circle())
+            .opacity(model.canGoBack ? 1 : 0)
+            .disabled(!model.canGoBack)
+            .accessibilityLabel("Back")
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Roam.fill)
+                    Capsule().fill(Roam.ink).frame(width: proxy.size.width * model.progress)
+                }
+            }
+            .frame(height: 6)
+            .accessibilityElement()
+            .accessibilityLabel("Setup progress")
+            .accessibilityValue("Step \(model.step.rawValue + 1) of \(ProfileSetupModel.Step.allCases.count)")
+            Color.clear.frame(width: 48, height: 1)
+        }
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.bottom, Theme.Spacing.s)
     }
 
     @ViewBuilder private var content: some View {
         switch model.step {
         case .name:
-            question("What should we call you?", "This is how other people see you. You can change it later.")
-            RoamTextField(title: "Display name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
+            title("What's your name?")
+            RoamTextField(title: "Your name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
+                .focused($focused)
                 .onChange(of: model.displayName) { _, _ in model.saveDraft() }
-            Button("Continue") { model.continueFromName() }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.nameIssue != nil)
-                .accessibilityIdentifier("setup-continue")
         case .handle:
-            question("Choose your handle", "Lowercase letters, numbers and underscores, 3–20 characters. You can change it later.")
-            HStack(spacing: Theme.Spacing.s) {
-                Text("@").font(.title3.weight(.semibold)).foregroundStyle(Theme.secondaryText)
-                RoamTextField(title: "Handle", text: $model.handle, identifier: "handle-field")
-                    .onChange(of: model.handle) { _, value in
-                        let normalized = Validation.normalizedHandleInput(value)
-                        if normalized != value { model.handle = normalized }
-                        model.saveDraft()
-                    }
-            }
+            title("Choose your handle")
+            RoamTextField(title: "Handle", text: $model.handle, identifier: "handle-field")
+                .focused($focused)
+                .overlay(alignment: .trailing) { handleMark.padding(.trailing, Theme.Spacing.l) }
+                .onChange(of: model.handle) { _, value in
+                    let normalized = Validation.normalizedHandleInput(value)
+                    if normalized != value { model.handle = normalized }
+                    model.saveDraft()
+                }
+                .task(id: model.handle) { await model.checkHandle() }
             handleStatus
-            Button {
-                Task { await model.createProfile() }
-            } label: {
-                if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Continue") }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(Validation.handle(model.handle) != nil || model.busy || model.handleState == .checking)
-            .accessibilityIdentifier("setup-continue")
-            .task(id: model.handle) { await model.checkHandle() }
         case .photo:
-            question("Add a profile photo", "Optional. It helps friends recognise you.")
-            HStack {
-                Spacer()
+            title("Add a profile photo")
+            PhotosPicker(selection: $photoItem, matching: .images) {
                 ZStack {
                     if let image = model.avatarImage {
                         Image(uiImage: image).resizable().scaledToFill()
-                    } else if let profile = model.profile {
-                        AvatarView(member: profile.summary, size: 120)
+                    } else if let profile = model.profile, profile.avatarPath != nil {
+                        AvatarView(member: profile.summary, size: 160)
+                    } else {
+                        // No photo yet: a grey circle with your initials.
+                        Circle().fill(Roam.fill)
+                        Text(initials).font(.system(size: 52, weight: .semibold, design: .rounded)).foregroundStyle(Roam.inkMuted)
                     }
-                    if model.avatarBusy { ProgressView() }
                 }
-                .frame(width: 120, height: 120)
+                .frame(width: 160, height: 160)
                 .clipShape(Circle())
-                Spacer()
-            }
-            PhotosPicker(model.avatarPath == nil ? "Choose a photo" : "Choose a different photo", selection: $photoItem, matching: .images)
-            .buttonStyle(SecondaryButtonStyle())
-            .disabled(model.avatarBusy)
-            .accessibilityIdentifier("choose-avatar")
-            if model.avatarPath == nil {
-                Button("Not now") { Task { await model.finishPhotoStep() } }.buttonStyle(QuietButtonStyle()).disabled(model.avatarBusy || model.busy).accessibilityIdentifier("setup-continue")
-            } else {
-                Button("Continue") { Task { await model.finishPhotoStep() } }.buttonStyle(PrimaryButtonStyle()).disabled(model.avatarBusy || model.busy).accessibilityIdentifier("setup-continue")
-            }
-        case .people:
-            question("Find friends", "Optional. Friends see each other's places once both of you agree. Nobody is added unless you choose.")
-            peopleList
-            Button(model.following.isEmpty ? "Skip for now" : "Continue") { model.step = .been }
-                .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("setup-continue")
-        case .been:
-            OnboardingBeenStep(model: model.taste, home: model.homeCity) {
-                model.taste.startRanking()
-                model.step = model.taste.stage == .done ? .visibility : .rank
-            }
-        case .rank:
-            OnboardingRankStep(model: model.taste)
-                .onChange(of: model.taste.stage) { _, stage in if stage == .done { model.step = .visibility } }
-        case .visibility:
-            question("You choose who sees what", "Each entry can be for friends, only you, or everyone. Your name, photo and bio are visible to members.")
-            VisibilityExplainer()
-            Button {
-                Task {
-                    if let profile = await model.finish() { session.completeSetup(profile) }
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: "camera.fill").font(.headline).foregroundStyle(Roam.onInk)
+                        .frame(width: 44, height: 44).background(Circle().fill(Roam.ink))
+                        .overlay(Circle().strokeBorder(Roam.paper, lineWidth: 3))
                 }
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+            .padding(.top, Theme.Spacing.l)
+            .accessibilityLabel(model.hasPhoto ? "Choose a different photo" : "Choose a photo")
+            .accessibilityIdentifier("choose-avatar")
+        case .preferences:
+            title("What do you like?")
+            ForEach(TasteProfile.questions) { question in
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    Text(question.title).font(.headline)
+                    // The standard slider, as on the log screen's feeling.
+                    OptionSlider(options: question.options, selection: Binding(
+                        get: { model.taste[keyPath: question.keyPath] },
+                        set: { model.taste[keyPath: question.keyPath] = $0 }))
+                        .accessibilityLabel(question.title)
+                }
+            }
+            .task { await model.loadTaste() }
+        case .home:
+            title("Where's home?")
+            // The cities picked so far, each with × to take it off; the search stays, to add more.
+            if !model.homeCities.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(model.homeCities) { city in
+                        HStack(spacing: Theme.Spacing.m) {
+                            CityThumbnail(destination: city, size: 48)
+                            VStack(alignment: .leading, spacing: -2) {
+                                Text(city.name).font(.headline).lineLimit(1)
+                                Text(city.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Button { model.removeHome(city) } label: {
+                                Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
+                                    .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove \(city.name)")
+                        }
+                        .padding(.vertical, Theme.Spacing.s)
+                        if city.id != model.homeCities.last?.id { RowSeparator() }
+                    }
+                }
+                .roamCard(padding: Theme.Spacing.m)
+            }
+            // Search 1, worldwide, cities only.
+            RoamSearchField(prompt: model.homeCities.isEmpty ? "Search cities" : "Add another city", text: $cityQuery,
+                            focus: $focused, identifier: "setup-home-search")
+            if !cityQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                PlaceSearchResults(query: cityQuery, placeSearch: citySearch, kinds: .cities,
+                                   isPicked: { pick in if case .city(let city) = pick { model.homeCities.contains { $0.id == city.id } } else { false } }) { pick in
+                    if case .city(let city) = pick { model.addHome(city); cityQuery = ""; focused = false }
+                }
+            }
+        case .friends:
+            title("Add friends")
+            RoamSearchField(prompt: "Search for friends", text: $friendQuery, focus: $focused, identifier: "setup-friend-search")
+            if friendQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                peopleList
+            } else {
+                // Search 3: everyone, each with Add; the requests go when setup finishes.
+                friendSearchResults
+            }
+        }
+    }
+
+    private var initials: String {
+        model.displayName.split(separator: " ").prefix(2).compactMap(\.first).map { String($0).uppercased() }.joined()
+    }
+
+    /// The button pinned at the bottom of each step.
+    @ViewBuilder private var bottomButton: some View {
+        switch model.step {
+        case .name:
+            primary("Continue", enabled: model.nameIssue == nil) { model.continueFromName() }
+        case .handle:
+            primary("Continue", enabled: Validation.handle(model.handle) == nil
+                        && (model.handleState == .available || model.profile?.handle == model.handle)) {
+                model.continueFromHandle()
+            }
+        case .photo:
+            primary(model.hasPhoto ? "Continue" : "Skip for now", enabled: true, quiet: !model.hasPhoto) {
+                model.finishPhotoStep()
+            }
+        case .preferences:
+            primary(model.taste == .empty ? "Skip for now" : "Continue", enabled: true, quiet: model.taste == .empty) {
+                model.savePreferences()
+            }
+        case .home:
+            primary(model.homeCities.isEmpty ? "Skip for now" : "Continue", enabled: true, quiet: model.homeCities.isEmpty) {
+                Task { await model.saveHome() }
+            }
+        case .friends:
+            Button {
+                Task { if let profile = await model.finish() { session.completeSetup(profile) } }
             } label: {
                 if model.busy { ProgressView().tint(Roam.onInk) } else { Text("Start using Roam") }
             }
@@ -149,69 +263,88 @@ private struct SetupSteps: View {
         }
     }
 
-    private func question(_ title: String, _ message: String) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-            Text(message).font(.body).foregroundStyle(Theme.secondaryText)
+    /// Black when there's something to save; grey when it would only skip.
+    @ViewBuilder private func primary(_ text: String, enabled: Bool, quiet: Bool = false, action: @escaping () -> Void) -> some View {
+        let button = Button { focused = false; action() } label: {
+            if model.busy { ProgressView().tint(quiet ? Roam.ink : Roam.onInk) } else { Text(text) }
+        }
+        .disabled(!enabled || model.busy)
+        .accessibilityIdentifier("setup-continue")
+        if quiet { button.buttonStyle(GreyBubbleButtonStyle()) } else { button.buttonStyle(PrimaryButtonStyle()) }
+    }
+
+    /// Just the question: no line under it.
+    private func title(_ title: String) -> some View {
+        Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
+    }
+
+    @ViewBuilder private var handleMark: some View {
+        switch model.handleState {
+        case .checking: ProgressView()
+        case .available: Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.liked)
+        default: EmptyView()
         }
     }
 
     @ViewBuilder private var handleStatus: some View {
         switch model.handleState {
-        case .idle:
-            EmptyView()
-        case .checking:
-            Label("Checking…", systemImage: "hourglass").font(.footnote).foregroundStyle(Theme.secondaryText)
         case .available:
-            Label("@\(model.handle) is available", systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.liked)
+            Text("@\(model.handle) is available").font(.footnote).foregroundStyle(Roam.inkMuted)
+                .padding(.horizontal, Theme.Spacing.l)
                 .accessibilityIdentifier("handle-available")
         case .unavailable(let message):
-            Label(message, systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Theme.disliked)
+            Text(message).font(.footnote).foregroundStyle(Theme.disliked)
+                .padding(.horizontal, Theme.Spacing.l)
                 .accessibilityIdentifier("handle-unavailable")
+        default:
+            EmptyView()
+        }
+    }
+
+    /// A person with Add (Requested once chosen); nothing is sent until "Start using Roam".
+    private func friendRow(_ row: MemberRow) -> some View {
+        let chosen = model.following.contains(row.member.id)
+        return MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
+                             followState: chosen ? .requested : FollowButtonState(row.friendState),
+                             onToggleFollow: { model.toggleFollow(row.member) })
+    }
+
+    @ViewBuilder private var friendSearchResults: some View {
+        switch friendResults {
+        case .idle, .loading:
+            SkeletonResults(kind: .people, rows: 3)
+        case .failed(let message):
+            InlineRetryView(message: message) { friendSearchToken += 1 }
+        case .loaded(let rows) where rows.isEmpty:
+            Text("No one matches \u{201C}\(friendQuery)\u{201D}.").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .loaded(let rows):
+            VStack(spacing: 0) {
+                ForEach(rows) { row in
+                    friendRow(row)
+                    if row.id != rows.last?.id { RowSeparator() }
+                }
+            }
+            .roamCard(padding: Theme.Spacing.m)
         }
     }
 
     @ViewBuilder private var peopleList: some View {
         switch model.suggestions {
         case .idle, .loading:
-            SkeletonList(rows: 3).task { if case .idle = model.suggestions { await model.loadSuggestions() } }
+            SkeletonResults(kind: .people, rows: 3).task { if case .idle = model.suggestions { await model.loadSuggestions() } }
         case .failed(let message):
             InlineRetryView(message: message) { Task { await model.loadSuggestions() } }
         case .loaded(let rows) where rows.isEmpty:
-            Text("No suggestions yet. You can find people any time from Search.").foregroundStyle(Theme.secondaryText)
+            EmptyView()
         case .loaded(let rows):
             VStack(spacing: 0) {
                 ForEach(rows) { row in
-                    MemberRowView(member: row.member, subtitle: row.friendState == .received ? "Wants to be friends" : nil,
-                                  followState: model.pendingFollows.contains(row.member.id) ? .pending
-                                      : (model.following.contains(row.member.id) ? .requested : FollowButtonState(row.friendState)),
-                                  onToggleFollow: { Task { await model.toggleFollow(row.member) } })
-                    Divider()
+                    friendRow(row)
+                    if row.id != rows.last?.id { RowSeparator() }
                 }
             }
             .roamCard(padding: Theme.Spacing.m)
         }
-    }
-}
-
-struct VisibilityExplainer: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            row("person.crop.circle", "Visible to everyone on Roam", "Your name, handle, photo, bio, home city and wishlist, plus any visit you mark Public.")
-            row("dot.radiowaves.left.and.right", "Shared with friends", "Visits are for friends unless you choose otherwise, and appear in their Friends tab.")
-            row("lock.fill", "Only you", "Private notes, your email, your settings and who you've blocked or muted.")
-        }
-        .roamCard()
-    }
-
-    private func row(_ symbol: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            Image(systemName: symbol).foregroundStyle(Theme.accent).frame(width: 28).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                Text(detail).font(.subheadline).foregroundStyle(Theme.secondaryText).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
     }
 }

@@ -52,55 +52,46 @@ private struct WelcomeNavigation: View {
     }
 }
 
+/// The first screen: the Roam logo (the app icon), the name and what it's for, then Continue with Apple and a grey
+/// "Sign in with email" bubble pinned at the bottom, like the app's other bottom buttons.
 struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
     @Environment(AppServices.self) private var services
-    /// The wordmark scales with Dynamic Type like the large title it replaces.
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 46
+    /// The name, big under the logo; it scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 72
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                WelcomeArtwork()
-                    .frame(height: 260)
-                    .accessibilityHidden(true)
-                VStack(spacing: Theme.Spacing.s) {
+        VStack(spacing: 0) {
+            Spacer(minLength: Theme.Spacing.xl)
+            // More room between the logo and the name; the tagline sits close under the name.
+            VStack(spacing: Theme.Spacing.xxl) {
+                // As big as the screen allows: the full width inside the margins, short of crowding the words and buttons.
+                GeometryReader { proxy in
+                    RoamLogo(size: min(proxy.size.width, proxy.size.height))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxHeight: 340)
+                VStack(spacing: 2) {
                     Text("Roam")
                         .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Find places you'll love, starting with people you trust.")
-                        .font(.roamTitle(.title2))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal)
-
-                VStack(spacing: Theme.Spacing.m) {
-                    SignInWithAppleButton(.continue) { request in
-                        model.prepareAppleRequest(request)
-                    } onCompletion: { result in
-                        Task { await model.completeApple(result) }
+                    // Two lines, set close together.
+                    VStack(spacing: -3) {
+                        Text("Find places you love")
+                        Text("from people you trust")
                     }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(height: 50)
-                    .clipShape(Capsule())
-                    .accessibilityIdentifier("sign-in-with-apple")
-
-                    // Email sign-up is hidden for the beta (no hosted email sender yet). The flow stays
-                    // in the app; Debug UI tests still reach it to keep it covered.
-                    if showsEmailSignUp {
-                        Button("Continue with email") { model.path.append(.signUp) }
-                            .buttonStyle(PrimaryButtonStyle())
-                            .accessibilityIdentifier("continue-with-email")
-                    }
-
-                    Button("I already have an account") { model.path.append(.signIn) }
-                        .buttonStyle(QuietButtonStyle())
-                        .accessibilityIdentifier("existing-account")
+                    .font(.title3)
+                    .foregroundStyle(Roam.inkMuted)
+                    .multilineTextAlignment(.center)
+                    .accessibilityElement(children: .combine)
                 }
-                .padding(.horizontal, Theme.Spacing.xl)
-
+            }
+            .padding(.horizontal, Theme.Spacing.xl)
+            Spacer(minLength: Theme.Spacing.xl)
+            VStack(spacing: Theme.Spacing.m) {
                 if let error = model.error ?? session.callbackError {
                     ErrorText(error)
                 }
@@ -108,13 +99,35 @@ struct WelcomeView: View {
                     Label(notice, systemImage: "checkmark.circle")
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, Theme.Spacing.xl)
                         .accessibilityIdentifier("deletion-notice")
                 }
+                SignInWithAppleButton(.continue) { request in
+                    model.prepareAppleRequest(request)
+                } onCompletion: { result in
+                    Task { await model.completeApple(result) }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 50)
+                .clipShape(Capsule())
+                .accessibilityIdentifier("sign-in-with-apple")
+
+                // Email sign-up is hidden for the beta (no hosted email sender yet). The flow stays
+                // in the app; Debug UI tests still reach it to keep it covered.
+                if showsEmailSignUp {
+                    Button("Continue with email") { model.path.append(.signUp) }
+                        .buttonStyle(GreyBubbleButtonStyle())
+                        .accessibilityIdentifier("continue-with-email")
+                }
+
+                Button("Sign in with email") { model.path.append(.signIn) }
+                    .buttonStyle(GreyBubbleButtonStyle())
+                    .accessibilityIdentifier("existing-account")
             }
-            .padding(.vertical, Theme.Spacing.xl)
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.l)
         }
-        .background(Theme.groupedCanvas)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Roam.paper)
         .toolbar(.hidden, for: .navigationBar)
         .screenIdentifier("welcome")
     }
@@ -128,33 +141,31 @@ struct WelcomeView: View {
     }
 }
 
-/// Original Roam artwork: a stylised globe with floating score markers.
-struct WelcomeArtwork: View {
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(LinearGradient(colors: [Theme.accent.opacity(0.85), Theme.accent.opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 200, height: 200)
-            Image(systemName: "globe.europe.africa.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 170, height: 170)
-                .foregroundStyle(.white.opacity(0.9))
-            marker("9.1", .liked).offset(x: -110, y: -70)
-            marker("7.4", .liked).offset(x: 105, y: -95)
-            marker("5.0", .fine).offset(x: 120, y: 50)
-            marker("8.4", .liked).offset(x: -95, y: 85)
-        }
-    }
+/// The Roam logo: the app icon, with its rounded-square corners and a soft shadow.
+struct RoamLogo: View {
+    var size: CGFloat = 180
 
-    private func marker(_ text: String, _ sentiment: Sentiment) -> some View {
-        Text(text)
-            .font(.system(.subheadline, design: .rounded).weight(.bold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .foregroundStyle(Theme.color(for: sentiment))
-            .background(Capsule().fill(Theme.raisedCard))
-            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+    var body: some View {
+        Image("Logo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.225, style: .continuous))
+            .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
+            .accessibilityLabel("Roam")
+    }
+}
+
+/// A full-width grey capsule, 50pt like the black one above it: the app's quieter bottom button.
+struct GreyBubbleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(Roam.ink)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(Capsule().fill(Roam.fill))
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .contentShape(Capsule())
     }
 }
 
@@ -185,10 +196,10 @@ struct InfoText: View {
     }
 }
 
-/// Shared form chrome: serif question title, explanation, fields, primary action.
+/// Shared form chrome, like the app's other pages: the system's round glass back button, a big title, the fields, and
+/// the black action pinned at the bottom.
 struct AuthFormScaffold<Fields: View, Footer: View>: View {
     let title: String
-    let message: String
     let actionTitle: String
     let actionEnabled: Bool
     let busy: Bool
@@ -199,24 +210,32 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                // Just the title: no line under it.
                 Text(title).font(.roamDisplay(.title)).accessibilityAddTraits(.isHeader)
-                Text(message).font(.body).foregroundStyle(Theme.secondaryText)
-                fields
-                Button(action: action) {
-                    if busy { ProgressView().tint(Roam.onInk) } else { Text(actionTitle) }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(!actionEnabled || busy)
-                .accessibilityIdentifier("auth-primary")
+                VStack(spacing: Theme.Spacing.s) { fields }
                 footer
             }
-            .padding(Theme.Spacing.xl)
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.top, Theme.Spacing.s)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Theme.groupedCanvas)
+        .background(Roam.paper)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button(action: action) {
+                if busy { ProgressView().tint(Roam.onInk) } else { Text(actionTitle) }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(!actionEnabled || busy)
+            .accessibilityIdentifier("auth-primary")
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.s)
+        }
+        // The system back button: on iOS 26 it's the same round glass button as the rest of the app's pages.
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
+/// A form field like the app's search: a grey capsule with the prompt inside it, no border or label above.
 struct RoamTextField: View {
     let title: String
     @Binding var text: String
@@ -228,7 +247,6 @@ struct RoamTextField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.subheadline.weight(.semibold))
             Group {
                 if isSecure {
                     SecureField(title, text: $text)
@@ -240,13 +258,13 @@ struct RoamTextField: View {
                 }
             }
             .textContentType(contentType)
-            .padding(Theme.Spacing.m)
-            .frame(minHeight: Theme.minimumHitTarget)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.raisedCard))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
+            .padding(.horizontal, Theme.Spacing.l)
+            .frame(height: 50)
+            .background(Capsule().fill(Roam.fill))
+            .accessibilityLabel(title)
             .accessibilityIdentifier(identifier)
             if let hint {
-                Text(hint).font(.caption).foregroundStyle(Theme.secondaryText)
+                Text(hint).font(.caption).foregroundStyle(Roam.inkMuted).padding(.horizontal, Theme.Spacing.l)
             }
         }
     }

@@ -1,55 +1,56 @@
 import SwiftUI
 import UIKit
 
-/// Your tastes (Settings): short, skippable and editable at any time. The answers go into Plan with AI prompts.
+/// Your tastes (Settings): short, skippable and editable at any time. The answers go into Plan with AI prompts. Each
+/// change saves itself; there's no Save button, just back.
 struct TasteEditorView: View {
     @Environment(AppServices.self) private var services
-    @Environment(\.dismiss) private var dismiss
     @State private var taste = TasteProfile.empty
     @State private var loaded = false
     @State private var error: String?
-    @State private var saving = false
 
     var body: some View {
-        Form { Group {
-            ForEach(TasteProfile.questions) { question in
-                Section(question.title) {
-                    Picker(question.title, selection: Binding(get: { taste[keyPath: question.keyPath] ?? "" },
-                                                              set: { taste[keyPath: question.keyPath] = $0.isEmpty ? nil : $0 })) {
-                        Text("Skip").tag("")
-                        ForEach(question.options, id: \.self) { Text($0).tag($0) }
+        // The same questions and sliders as setup's "What do you like?".
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                ForEach(TasteProfile.questions) { question in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                        Text(question.title).font(.headline)
+                        OptionSlider(options: question.options, selection: Binding(
+                            get: { taste[keyPath: question.keyPath] },
+                            set: { taste[keyPath: question.keyPath] = $0 }))
+                            .accessibilityLabel(question.title)
+                            .accessibilityIdentifier("taste-\(question.title)")
                     }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("taste-\(question.title)")
                 }
-                .listRowBackground(Roam.paperRaised)
+                if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
             }
-            if let error { Section { Text(error).foregroundStyle(Roam.signal) }.listRowBackground(Roam.paperRaised) }
-        }
-        .listRowBackground(Roam.paperRaised)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.l)
         }
         .scrollContentBackground(.hidden)
         .background(Roam.paper)
         .navigationTitle("Your tastes")
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }.disabled(saving || !loaded).accessibilityIdentifier("taste-save")
-            }
-        }
         .task {
             do { taste = try await services.plans.taste(); loaded = true }
             catch { self.error = error.roamMessage }
         }
+        // Saves a moment after each change (the latest wins if you move several in a row).
+        .task(id: taste) {
+            guard loaded else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await save()
+        }
+        // Going back straight after a change still saves it.
+        .onDisappear { if loaded { let latest = taste; Task { _ = try? await services.plans.saveTaste(latest) } } }
         .screenIdentifier("taste-editor")
     }
 
     private func save() async {
-        saving = true
-        defer { saving = false }
         do {
-            taste = try await services.plans.saveTaste(taste)
-            dismiss()
+            _ = try await services.plans.saveTaste(taste)
+            error = nil
         } catch { self.error = error.roamMessage }
     }
 }

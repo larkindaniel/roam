@@ -14,11 +14,15 @@ struct ActivityCardView: View {
     var onDoubleTap: (() -> Void)? = nil
     /// Tapping the photo once (the Friends tab opens the log's own page).
     var onTap: (() -> Void)? = nil
+    /// The Friends tab shows the note's first line beside like and comment; the log's page shows it as the first comment.
+    /// So the full note under the card is off by default.
+    var showsNote = false
 
     static func hasPhoto(_ item: ActivityItem) -> Bool { !item.media.isEmpty || item.experience.photoURL != nil }
 
     @Environment(AppRouter.self) private var router
     @State private var expanded = false
+    @State private var showsCollaborators = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -29,7 +33,7 @@ struct ActivityCardView: View {
                     placeChip
                 }
             }
-            if !item.note.isEmpty {
+            if showsNote && !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
                     .lineLimit(compact && !expanded && item.note.count >= 160 ? 3 : nil)
@@ -39,11 +43,6 @@ struct ActivityCardView: View {
                         .font(.footnote.weight(.semibold))
                         .frame(minHeight: Theme.minimumHitTarget)
                 }
-            }
-            if let companions = item.companions, !companions.isEmpty {
-                Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
-                    .font(.footnote)
-                    .foregroundStyle(Roam.inkMuted)
             }
             // With a photo, the place is a slim card under it; without, the line and the standard row in a card.
             if !hasPhoto {
@@ -57,18 +56,81 @@ struct ActivityCardView: View {
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
+        // A small white card in the middle of the screen, over a dimmed page; tapping outside closes it.
+        .fullScreenCover(isPresented: $showsCollaborators) {
+            CollaboratorsSheet(people: [item.author] + collaborators)
+                .presentationBackground(.clear)
+        }
+    }
+
+    /// Everyone else on the log: friends who logged it with them, then anyone else they tagged with "With".
+    private var collaborators: [MemberSummary] {
+        var people = item.together
+        for person in item.companions ?? [] where person.id != item.author.id && !people.contains(where: { $0.id == person.id }) {
+            people.append(person)
+        }
+        return people
+    }
+
+    /// The popup fades in on its own, without the cover's slide up from the bottom.
+    private func openCollaborators() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { showsCollaborators = true }
+    }
+
+    private func openProfile(_ person: MemberSummary) {
+        if MemberProfiles.available { router.push(.member(person.id)) }
     }
 
     private var hasPhoto: Bool { Self.hasPhoto(item) }
 
-    /// One small line: their picture, name · date. Set into the top of the photo (white, on a soft dark fade), or on its
-    /// own when there's no photo at all. It opens their profile.
+    /// Their picture, name · date, set into the top of the photo (white, on a soft dark fade), or on its own when there's
+    /// no photo. With others, like Instagram: the pictures stacked, "Daniel Larkin with Nihal Menon" (or "with 2 others",
+    /// which lists them in a small popup), and the date on the line below. Names open profiles.
     private func byline(onPhoto: Bool) -> some View {
-        HStack(spacing: Theme.Spacing.s) {
-            AvatarView(member: item.author, size: 28)
-            Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-            Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
-            date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+        let others = collaborators
+        let people = [item.author] + others
+        return HStack(spacing: Theme.Spacing.s) {
+            HStack(spacing: -10) {
+                ForEach(Array(people.prefix(3).enumerated()), id: \.element.id) { index, person in
+                    // Each picture opens that person's profile. The author's sits on top, then the next, and so on.
+                    AvatarView(member: person, size: 28)
+                        .overlay { if people.count > 1 { Circle().stroke(onPhoto ? Color.black.opacity(0.35) : Roam.paper, lineWidth: 1.5) } }
+                        .contentShape(Circle())
+                        .onTapGesture { openProfile(person) }
+                        .zIndex(Double(3 - index))
+                }
+            }
+            if others.isEmpty {
+                HStack(spacing: Theme.Spacing.s) {
+                    Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
+                    date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { openProfile(item.author) }
+            } else {
+                VStack(alignment: .leading, spacing: -1) {
+                    HStack(spacing: 4) {
+                        Text(item.author.displayName).font(.subheadline.weight(.semibold))
+                            .onTapGesture { openProfile(item.author) }
+                        Text("with").font(.subheadline)
+                        if others.count == 1 {
+                            Text(others[0].displayName).font(.subheadline.weight(.semibold))
+                                .onTapGesture { openProfile(others[0]) }
+                        } else {
+                            Text("\(others.count) others").font(.subheadline.weight(.semibold))
+                                .onTapGesture { openCollaborators() }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityIdentifier("activity-collaborators")
+                        }
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    date.font(.caption).lineLimit(1).opacity(onPhoto ? 0.9 : 0.75)
+                }
+            }
             Spacer(minLength: 0)
         }
         .foregroundStyle(onPhoto ? Color.white : Roam.ink)
@@ -78,12 +140,11 @@ struct ActivityCardView: View {
         .background {
             if onPhoto {
                 LinearGradient(colors: [.black.opacity(0.7), .black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)
+                    // The fade itself doesn't take taps; the photo under it does.
+                    .allowsHitTesting(false)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { if MemberProfiles.available { router.push(.member(item.author.id)) } }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-author")
     }
 
@@ -112,11 +173,11 @@ struct ActivityCardView: View {
         .overlay(alignment: .bottom) {
             if let actions {
                 actions
-                    .padding(.leading, Theme.Spacing.s)
+                    .padding(.leading, Theme.Spacing.m)
                     .padding(.trailing, Theme.Spacing.m)
                     .padding(.bottom, Theme.Spacing.xs)
                     .padding(.top, Theme.Spacing.xl)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(LinearGradient(colors: [.clear, .black.opacity(0.4), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom))
                     .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: Self.corner, bottomTrailingRadius: Self.corner, style: .continuous))
             }
@@ -172,5 +233,68 @@ struct ActivityCardView: View {
 
     private var date: some View {
         Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
+    }
+}
+
+/// Who went together, from "with 2 others": a small solid white card in the middle of the screen over a dimmed page,
+/// listing everyone; tapping one opens their profile, tapping outside closes it.
+private struct CollaboratorsSheet: View {
+    let people: [MemberSummary]
+    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
+    @State private var shown = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(shown ? 0.4 : 0)
+                .ignoresSafeArea()
+                .onTapGesture { close() }
+                .accessibilityLabel("Close")
+                .accessibilityAddTraits(.isButton)
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text("Went together").font(.headline).accessibilityAddTraits(.isHeader)
+                VStack(spacing: 0) {
+                    ForEach(people) { person in
+                        Button {
+                            dismiss()
+                            if MemberProfiles.available { router.push(.member(person.id)) }
+                        } label: {
+                            HStack(spacing: Theme.Spacing.m) {
+                                AvatarView(member: person, size: 40)
+                                VStack(alignment: .leading, spacing: -2) {
+                                    Text(person.displayName).font(.headline).lineLimit(1)
+                                    Text("@\(person.handle)").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                            }
+                            .padding(.vertical, Theme.Spacing.s)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if person.id != people.last?.id { RowSeparator(inset: 40 + Theme.Spacing.m) }
+                    }
+                }
+            }
+            .padding(Theme.Spacing.l)
+            .frame(maxWidth: 340)
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Roam.paperRaised))
+            .shadow(color: .black.opacity(0.2), radius: 24, y: 8)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .scaleEffect(shown ? 1 : 0.92)
+            .opacity(shown ? 1 : 0)
+            .accessibilityIdentifier("collaborators-sheet")
+        }
+        .onAppear { withAnimation(.snappy(duration: 0.25)) { shown = true } }
+    }
+
+    private func close() {
+        withAnimation(.easeOut(duration: 0.18)) { shown = false }
+        Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { dismiss() }
+        }
     }
 }

@@ -475,6 +475,7 @@ struct TripFeedCard: Codable, Hashable, Identifiable, Sendable {
 
 enum ShareTarget: Hashable, Sendable {
     case place(UUID)
+    case city(Destination)
     case list(UUID)
     case trip(UUID)
 }
@@ -488,8 +489,9 @@ struct DirectShare: Codable, Hashable, Identifiable, Sendable {
     var experience: ExperienceSummary?
     var list: PlaceList?
     var trip: TripSummary?
+    var city: Destination?
 
-    var title: String { experience?.name ?? list?.title ?? trip?.name ?? "" }
+    var title: String { experience?.name ?? city?.name ?? list?.title ?? trip?.name ?? "" }
 }
 
 /// Declared preferences only. Roam never presents these as something it learned.
@@ -511,10 +513,10 @@ struct TasteProfile: Codable, Hashable, Sendable {
     }
 
     static let questions = [
-        Question(keyPath: \.atmosphere, title: "What atmosphere do you like?", options: ["Quiet", "Lively", "Local"]),
+        Question(keyPath: \.atmosphere, title: "What atmosphere do you like?", options: ["Quiet", "A mix", "Lively"]),
         Question(keyPath: \.budget, title: "What's your usual budget?", options: ["Low", "Mid", "High"]),
         Question(keyPath: \.crowds, title: "How do you feel about crowds?", options: ["Avoid them", "Don't mind", "Love the buzz"]),
-        Question(keyPath: \.novelty, title: "Familiar or adventurous?", options: ["Familiar", "A bit of both", "Adventurous"]),
+        Question(keyPath: \.novelty, title: "Classics or hidden gems?", options: ["Classics", "A mix", "Hidden gems"]),
         Question(keyPath: \.pace, title: "What pace do you travel at?", options: ["Slow", "Steady", "Packed"]),
     ]
 }
@@ -525,7 +527,7 @@ enum ResearchBrief {
     static func text(destination: Destination, taste: TasteProfile, liked: [String], leanings: [String] = []) -> String {
         var lines = ["I'm planning time in \(destination.displayName). Recommend places I'd enjoy."]
         var answers = [("Atmosphere", taste.atmosphere), ("Budget", taste.budget), ("Crowds", taste.crowds),
-                       ("Novelty", taste.novelty), ("Pace", taste.pace)]
+                       ("Classics or hidden gems", taste.novelty), ("Pace", taste.pace)]
             .compactMap { label, value in value.map { "- \(label): \($0)" } }
         if !leanings.isEmpty { answers.append("- Places I tend to love: " + leanings.joined(separator: ", ")) }
         if !answers.isEmpty { lines += ["", "What I like:"] + answers }

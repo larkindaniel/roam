@@ -101,8 +101,9 @@ struct ProfileView: View {
     private func load() async {
         if profile.value == nil { profile = .loading }
         if activity == nil {
-            let feed = services.feed, id = userID
+            let feed = services.feed, id = userID, plans = services.plans
             activity = FeedModel(service: feed, notifications: services.notifications,
+                                 fetchPlacePhotos: { await plans.refreshGoogleDetails(experienceIDs: $0) },
                                  source: { try await feed.profileActivity(userID: id, cursor: $0) })
         }
         do {
@@ -262,14 +263,17 @@ struct ProfileView: View {
                         .font(.subheadline).foregroundStyle(Theme.secondaryText)
                         .accessibilityIdentifier("profile-activity-empty")
                 } else {
-                    ForEach(activity.items) { item in
-                        FeedCard(item: item, likePending: activity.likePending.contains(item.id),
-                                 onLike: { liked in
-                            Task {
-                                await activity.setLike(item.id, liked: liked)
-                                if let updated = activity.items.first(where: { $0.id == item.id }) { changes.publish(updated) }
-                            }
-                        })
+                    // The same gap between logs as the Friends tab.
+                    VStack(spacing: Theme.Spacing.xl) {
+                        ForEach(activity.items) { item in
+                            FeedCard(item: item, likePending: activity.likePending.contains(item.id),
+                                     onLike: { liked in
+                                Task {
+                                    await activity.setLike(item.id, liked: liked)
+                                    if let updated = activity.items.first(where: { $0.id == item.id }) { changes.publish(updated) }
+                                }
+                            })
+                        }
                     }
                     if activity.nextCursor != nil || activity.pageError != nil {
                         PaginationFooter(isLoading: activity.loadingMore, errorMessage: activity.pageError, hasMore: false) {

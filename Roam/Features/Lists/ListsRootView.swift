@@ -168,7 +168,6 @@ struct MyPlacesRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
-    @State private var showsCoachmark = false
     @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
@@ -184,7 +183,7 @@ struct MyPlacesRootView: View {
         // Lowered over the dark globe it's plain glass like the buttons there, with a more solid field and white text.
         let overGlobe = detent == .peek
         // White text only while it rests as dark glass on the globe (the card says so); dragged up, it's ordinary.
-        return RoamSearchField(prompt: "Search places", text: $query, focus: $searching, style: overGlobe ? .bare : .filled,
+        return RoamSearchField(prompt: "Search places", text: $query, focus: $searching, style: overGlobe ? .bare : .glass,
                                identifier: "myplaces-search")
         .onChange(of: searching) { _, focused in
             guard focused, detent != .full else { return }
@@ -300,22 +299,6 @@ struct MyPlacesRootView: View {
         // Switching tabs turns the globe to that tab's places.
         .onChange(of: tab) { _, _ in showWorld() }
         .onChange(of: router.path(for: .myPlaces).isEmpty) { _, isRoot in if isRoot { Task { await model?.load() } } }
-        .overlay {
-            if session.profile?.hasSeenBeenIntro == false {
-                ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    BeenIntroCard {
-                        Task {
-                            await session.markBeenIntroSeen()
-                            showsCoachmark = true
-                        }
-                    }
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if showsCoachmark { LogCoachmark { showsCoachmark = false } }
-        }
         .screenIdentifier("myplaces-root")
     }
 
