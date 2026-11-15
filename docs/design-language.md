@@ -50,7 +50,7 @@ Get colours from `PlaceState.markerColor` and symbols from `markerSymbol`. Never
 
 - **Been beats wishlist** everywhere: once you've been somewhere it's off your wishlist, and Save/Wishlist shows
   greyed out.
-- **Send** opens a friend picker with an optional note on a place. Cities keep the greyed-out (`inkFaint`) button.
+- **Send** opens a friend picker with an optional note on a place. Cities, lists and places all send this way. The Send button is indigo.
 
 ## Cards
 

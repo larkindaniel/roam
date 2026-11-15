@@ -708,7 +708,7 @@ struct CityHeader: View {
                 .accessibilityIdentifier("city-trip")
             }
             // Send the city to friends, as on a place.
-            circle("paperplane", tint: Roam.ink, filled: false, caption: "Send", identifier: "city-send") {
+            circle("paperplane", tint: .indigo, filled: false, caption: "Send", identifier: "city-send") {
                 router.sheet = .share(.city(destination), title: destination.name)
             }
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {

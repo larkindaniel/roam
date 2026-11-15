@@ -566,7 +566,7 @@ struct ExperienceDetailView: View {
                              inactive: visited) {
                     Task { await library.setBookmark(id, saved: !library.isBookmarked(id)) }
                 }
-                circleAction("paperplane", tint: Roam.ink, filled: false, caption: "Send", label: "Send", identifier: "detail-recommend") {
+                circleAction("paperplane", tint: .indigo, filled: false, caption: "Send", label: "Send", identifier: "detail-recommend") {
                     router.sheet = .share(.place(id), title: detail.summary.name)
                 }
                 Spacer(minLength: 0)
