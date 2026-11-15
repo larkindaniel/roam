@@ -201,6 +201,8 @@ struct BugReportSheet: View {
                             if sending { ProgressView() } else { Text("Send").fontWeight(.semibold) }
                         }
                         .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+                        // The whole bubble takes the tap, not just the word.
+                        .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     // Glass with a near-solid white wash, so it reads clearly over the screenshots behind it.

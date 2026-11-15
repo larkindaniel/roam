@@ -532,6 +532,8 @@ struct ShareSheet: View {
                         if sending { ProgressView() } else { Text(selection.count > 1 ? "Send to \(selection.count) friends" : "Send").fontWeight(.semibold) }
                     }
                     .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
+                    // The whole bubble takes the tap, not just the words.
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .floatingBubble(Capsule())
