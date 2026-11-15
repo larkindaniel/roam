@@ -22,6 +22,7 @@ struct ActivityCardView: View {
 
     @Environment(AppRouter.self) private var router
     @State private var expanded = false
+    @State private var showsCollaborators = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -43,13 +44,6 @@ struct ActivityCardView: View {
                         .frame(minHeight: Theme.minimumHitTarget)
                 }
             }
-            // Anyone they went with who isn't already named at the top.
-            let companions = (item.companions ?? []).filter { person in !item.authors.contains { $0.id == person.id } }
-            if !companions.isEmpty {
-                Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
-                    .font(.footnote)
-                    .foregroundStyle(Roam.inkMuted)
-            }
             // With a photo, the place is a slim card under it; without, the line and the standard row in a card.
             if !hasPhoto {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -62,29 +56,67 @@ struct ActivityCardView: View {
         .foregroundStyle(Roam.ink)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-card-\(item.id.uuidString)")
+        .sheet(isPresented: $showsCollaborators) { CollaboratorsSheet(people: [item.author] + collaborators) }
+    }
+
+    /// Everyone else on the log: friends who logged it with them, then anyone else they tagged with "With".
+    private var collaborators: [MemberSummary] {
+        var people = item.together
+        for person in item.companions ?? [] where person.id != item.author.id && !people.contains(where: { $0.id == person.id }) {
+            people.append(person)
+        }
+        return people
+    }
+
+    private func openProfile(_ person: MemberSummary) {
+        if MemberProfiles.available { router.push(.member(person.id)) }
     }
 
     private var hasPhoto: Bool { Self.hasPhoto(item) }
 
-    /// One small line: their picture, name · date. Set into the top of the photo (white, on a soft dark fade), or on its
-    /// own when there's no photo at all. It opens their profile.
+    /// Their picture, name · date, set into the top of the photo (white, on a soft dark fade), or on its own when there's
+    /// no photo. With others, like Instagram: the pictures stacked, "Daniel Larkin with Nihal Menon" (or "with 2 others",
+    /// which lists them in a small popup), and the date on the line below. Names open profiles.
     private func byline(onPhoto: Bool) -> some View {
-        HStack(spacing: Theme.Spacing.s) {
-            // Friends who went together: their pictures overlapping, and their first names.
+        let others = collaborators
+        let people = [item.author] + others
+        return HStack(spacing: Theme.Spacing.s) {
             HStack(spacing: -10) {
-                ForEach(item.authors) { person in
+                ForEach(Array(people.prefix(3).enumerated()), id: \.element.id) { index, person in
+                    // Each picture opens that person's profile. The author's sits on top, then the next, and so on.
                     AvatarView(member: person, size: 28)
-                        .overlay { if item.authors.count > 1 { Circle().stroke(onPhoto ? Color.black.opacity(0.35) : Roam.paper, lineWidth: 1.5) } }
+                        .overlay { if people.count > 1 { Circle().stroke(onPhoto ? Color.black.opacity(0.35) : Roam.paper, lineWidth: 1.5) } }
+                        .contentShape(Circle())
+                        .onTapGesture { openProfile(person) }
+                        .zIndex(Double(3 - index))
                 }
             }
-            if item.together.isEmpty {
-                Text(names).font(.subheadline.weight(.semibold)).lineLimit(1)
-                Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
-                date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+            if others.isEmpty {
+                HStack(spacing: Theme.Spacing.s) {
+                    Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
+                    date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { openProfile(item.author) }
             } else {
-                // Several names need the room, so the date goes under them.
                 VStack(alignment: .leading, spacing: -1) {
-                    Text(names).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
+                    HStack(spacing: 4) {
+                        Text(item.author.displayName).font(.subheadline.weight(.semibold))
+                            .onTapGesture { openProfile(item.author) }
+                        Text("with").font(.subheadline)
+                        if others.count == 1 {
+                            Text(others[0].displayName).font(.subheadline.weight(.semibold))
+                                .onTapGesture { openProfile(others[0]) }
+                        } else {
+                            Text("\(others.count) others").font(.subheadline.weight(.semibold))
+                                .onTapGesture { showsCollaborators = true }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityIdentifier("activity-collaborators")
+                        }
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                     date.font(.caption).lineLimit(1).opacity(onPhoto ? 0.9 : 0.75)
                 }
             }
@@ -97,12 +129,11 @@ struct ActivityCardView: View {
         .background {
             if onPhoto {
                 LinearGradient(colors: [.black.opacity(0.7), .black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)
+                    // The fade itself doesn't take taps; the photo under it does.
+                    .allowsHitTesting(false)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { if MemberProfiles.available { router.push(.member(item.author.id)) } }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("activity-author")
     }
 
@@ -189,14 +220,46 @@ struct ActivityCardView: View {
         .accessibilityIdentifier("activity-place-row")
     }
 
-    /// One name in full; several as first names ("Daniel, Dhyan and Nihal").
-    private var names: String {
-        guard !item.together.isEmpty else { return item.author.displayName }
-        return item.authors.map { $0.displayName.split(separator: " ").first.map(String.init) ?? $0.displayName }
-            .formatted(.list(type: .and))
-    }
-
     private var date: some View {
         Text(item.visitDate.date?.displayString ?? item.publishedAt.formatted(.relative(presentation: .named)))
+    }
+}
+
+/// Who went together, from "with 2 others" on a friend's log: a small popup listing them; tapping one opens their profile.
+private struct CollaboratorsSheet: View {
+    let people: [MemberSummary]
+    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            Text("Went together").font(.headline).accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(people) { person in
+                    Button {
+                        dismiss()
+                        if MemberProfiles.available { router.push(.member(person.id)) }
+                    } label: {
+                        HStack(spacing: Theme.Spacing.m) {
+                            AvatarView(member: person, size: 40)
+                            VStack(alignment: .leading, spacing: -2) {
+                                Text(person.displayName).font(.headline).lineLimit(1)
+                                Text("@\(person.handle)").font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                        }
+                        .padding(.vertical, Theme.Spacing.s)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if person.id != people.last?.id { RowSeparator() }
+                }
+            }
+        }
+        .padding(Theme.Spacing.l)
+        .presentationDetents([.height(CGFloat(people.count) * 58 + 90)])
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier("collaborators-sheet")
     }
 }
