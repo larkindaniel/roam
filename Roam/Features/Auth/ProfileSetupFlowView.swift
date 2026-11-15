@@ -53,6 +53,8 @@ private struct SetupSteps: View {
                 photoItem = nil
             }
         }
+        // Signed out underneath (the account was reset, say): back to sign in rather than a stuck error.
+        .onChange(of: model.signInLost) { _, lost in if let lost { _ = session.handle(lost) } }
         .task(id: cityQuery) { await citySearch.run(cityQuery, services: services) }
         .task(id: "\(friendQuery)|\(friendSearchToken)") { await searchFriends() }
         .screenIdentifier("profile-setup")

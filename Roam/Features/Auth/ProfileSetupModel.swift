@@ -42,7 +42,12 @@ final class ProfileSetupModel {
     /// Your answers to the preference questions (each optional).
     var taste = TasteProfile.empty
     var busy = false
-    var error: String?
+    var error: String? {
+        didSet { if error != nil, let lost = lastSignInError { signInLost = lost } }
+    }
+    /// Set when the server says you're no longer signed in, so setup can send you back to sign in.
+    var signInLost: RoamError?
+    private var lastSignInError: RoamError?
     private(set) var profile: OwnProfile?
 
     private let services: AppServices
@@ -127,7 +132,7 @@ final class ProfileSetupModel {
             avatarImage = UIImage(data: processed.data)
             error = nil
         } catch {
-            self.error = error.roamMessage
+            record(error)
         }
     }
 
@@ -184,7 +189,7 @@ final class ProfileSetupModel {
             handleState = .unavailable(message)
             step = .handle
         } catch {
-            self.error = error.roamMessage
+            record(error)
         }
     }
 
@@ -193,6 +198,11 @@ final class ProfileSetupModel {
     }
 
     func removeHome(_ city: Destination) { homeCities.removeAll { $0.id == city.id } }
+
+    private func record(_ failure: Error) {
+        if let roam = failure as? RoamError, roam == .notSignedIn || roam == .sessionExpired { lastSignInError = roam } else { lastSignInError = nil }
+        error = failure.roamMessage
+    }
 
     /// Every step but the first can go back.
     var canGoBack: Bool { step != .name }
@@ -230,7 +240,7 @@ final class ProfileSetupModel {
             profile = completed
             return completed
         } catch {
-            self.error = error.roamMessage
+            record(error)
             return nil
         }
     }
