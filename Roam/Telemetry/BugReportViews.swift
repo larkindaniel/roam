@@ -218,9 +218,6 @@ struct BugReportSheet: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("bug-report-photos")
-            Text("Record your screen from Control Center to show what happened.")
-                .font(.footnote).foregroundStyle(Roam.inkMuted)
-                .padding(.horizontal, Theme.Spacing.xs)
         }
     }
 
