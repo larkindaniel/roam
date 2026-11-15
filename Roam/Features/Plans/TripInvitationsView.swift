@@ -22,7 +22,14 @@ struct TripInvitationsView: View {
                         EmptyStateView(systemImage: "airplane", title: "No trip invitations",
                                        message: "Invitations from friends appear here.")
                     } else {
-                        ForEach(invitations) { invitation in card(invitation) }
+                        // One card of standard rows, with the usual lines between them, like Sent to you and Lists.
+                        VStack(spacing: 0) {
+                            ForEach(invitations) { invitation in
+                                row(invitation)
+                                if invitation.id != invitations.last?.id { RowSeparator() }
+                            }
+                        }
+                        .roamCard(padding: Theme.Spacing.m)
                     }
                 }
             }
@@ -37,30 +44,34 @@ struct TripInvitationsView: View {
         .screenIdentifier("trip-invitations")
     }
 
-    private func card(_ invitation: TripInvitation) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(spacing: Theme.Spacing.m) {
-                AvatarView(member: invitation.owner, size: 48)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(invitation.name).font(.headline)
-                    Text("From \(invitation.owner.displayName)").font(.footnote).foregroundStyle(Roam.inkMuted)
-                    if let dates = MyTimeline.range(invitation.startDate, invitation.endDate) {
-                        Text(dates).font(.footnote).foregroundStyle(Roam.inkMuted)
-                    }
-                }
-                Spacer(minLength: 0)
+    /// Their picture, the trip's name, who it's from and when, then Accept and a small × to decline.
+    private func row(_ invitation: TripInvitation) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            AvatarView(member: invitation.owner, size: 48)
+            VStack(alignment: .leading, spacing: -2) {
+                Text(invitation.name).font(.headline).lineLimit(1).truncationMode(.tail)
+                Text([("From " + invitation.owner.displayName), MyTimeline.range(invitation.startDate, invitation.endDate)]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
             }
-            HStack {
+            Spacer(minLength: 0)
+            if pending == invitation.id {
+                ProgressView()
+            } else {
                 Button("Accept") { Task { await respond(.accept, to: invitation) } }
                     .buttonStyle(PillButtonStyle(isSelected: true))
                     .accessibilityIdentifier("accept-trip-invitation")
-                Button("Decline") { Task { await respond(.decline, to: invitation) } }
-                    .buttonStyle(PillButtonStyle())
-                if pending == invitation.id { ProgressView() }
+                Button { Task { await respond(.decline, to: invitation) } } label: {
+                    Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
+                        .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Decline")
+                .accessibilityIdentifier("decline-trip-invitation")
             }
-            .disabled(pending != nil)
         }
-        .roamCard()
+        .padding(.vertical, Theme.Spacing.s)
+        .disabled(pending != nil)
     }
 
     private func load() async {
