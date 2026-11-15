@@ -120,7 +120,7 @@ To turn it on for the hosted beta:
    write** and **Contents: read and write**. Contents is for committing attachments to their branch. Protect `main`
    (Settings → Branches) so the token can't change it.
 2. Run `supabase secrets set GITHUB_TOKEN=… GITHUB_REPO=larkindaniel/roam --project-ref xnjzuotytfzyppubjcfi`
-3. Run `supabase functions deploy bug-report-issue --project-ref xnjzuotytfzyppubjcfi`
+3. Deploy it with the rest: `python3 -I scripts/deploy-beta.py deploy` (see `docs/hosted-beta.md`)
 
 Without those secrets the function does nothing, and the reports are still saved. Locally, put the two values in
 `supabase/functions/.env` and restart Supabase.

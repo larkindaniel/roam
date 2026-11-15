@@ -60,14 +60,34 @@ user approves a token with that additional permission. Read-back verification wo
 
 ## Repeatable commands
 
+### One-time set-up
+
+1. In the Supabase dashboard, open your account menu → **Access Tokens** → **Generate new token**. If it offers
+   project and permission limits, limit it to `roam-beta` with read-write Database, Migrations and Edge Functions,
+   and read for API keys and project settings. Copy the token (`sbp_…`); it's shown once.
+2. In the repo root, create `.env.beta`. Git ignores it through the `.env.*` rule, and it stays on your machine:
+   ```
+   SUPABASE_PROJECT_REF=xnjzuotytfzyppubjcfi
+   SUPABASE_ACCESS_TOKEN=sbp_…
+   ```
+   Then run `chmod 600 .env.beta`.
+3. Have the Supabase CLI on your PATH (`export PATH="$HOME/.local/bin:$PATH"`, or `brew install supabase/tap/supabase`).
+   It's only used to deploy functions, bundled on Supabase's side, so Docker isn't needed.
+
+### Each deploy (from an up-to-date `main`)
+
 ```sh
-python3 -I scripts/deploy-beta.py plan
-python3 -I scripts/deploy-beta.py migrate
-python3 -I scripts/deploy-beta.py check
-set -a
-source .env.beta
-set +a
-supabase functions deploy prepare-media --project-ref "$SUPABASE_PROJECT_REF" --use-api
+python3 -I scripts/deploy-beta.py plan        # what's pending, and the functions there now
+python3 -I scripts/deploy-beta.py deploy      # migrate, deploy every function, then check
+```
+
+Or step by step: `migrate`, then `functions` (or `functions bug-report-issue` for just one), then `check`. Function
+secrets (`GITHUB_TOKEN`, `GITHUB_REPO`, `GOOGLE_PLACES_KEY`, the Apple keys) are set in the dashboard under Edge
+Functions → Secrets, never by the script.
+
+Other commands:
+
+```sh
 node scripts/provision-beta.mjs
 ./scripts/archive-beta.sh
 ```
