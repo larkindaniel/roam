@@ -6,7 +6,9 @@ import SwiftUI
 struct LogPostView: View {
     /// The comment field's height, matching your picture beside it.
     private static let rowHeight: CGFloat = 36
-    private static let sendSize: CGFloat = 28
+    private static let sendSize: CGFloat = 26
+    /// The gap below and to the right of the send circle.
+    private static let sendInset: CGFloat = 6
 
     let visitID: UUID
     /// Puts the cursor in the comment field as it opens.
@@ -166,12 +168,12 @@ struct LogPostView: View {
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
                     // The same gap below and to the right of the circle.
-                    .padding(.bottom, (Self.rowHeight - Self.sendSize) / 2)
+                    .padding(.bottom, Self.sendInset)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
                     .accessibilityIdentifier("comment-send")
                 }
                 .padding(.leading, Theme.Spacing.m)
-                .padding(.trailing, (Self.rowHeight - Self.sendSize) / 2)
+                .padding(.trailing, Self.sendInset)
                 // Floating Liquid Glass over the comments, which scroll on underneath.
                 .floatingBubble(RoundedRectangle(cornerRadius: Self.rowHeight / 2, style: .continuous))
             }
