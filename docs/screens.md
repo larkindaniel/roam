@@ -6,7 +6,8 @@ when you change a screen. `docs/design-language.md` covers how they look.
 ## Signing in
 
 - **Welcome:** the Roam logo (the app icon, as big as the screen allows), "Roam", and "Find places you love from people
-  you trust." Continue with Apple (black) and I already have an account (grey) sit at the bottom.
+  you trust." Continue with Apple (black; new and returning
+  people both use it) and Sign in with email (grey; for accounts with a password) sit at the bottom.
 - **Sign in, and the email steps** (create account, code, forgot password, new password): the round glass back button,
   a big title (no line under it), grey rounded fields, quiet links under them, and the black action pinned at the bottom.
 - **Setup** (a new account), one page per step (just a title, no line under it) with a round back button and a thin

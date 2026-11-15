@@ -53,7 +53,7 @@ private struct WelcomeNavigation: View {
 }
 
 /// The first screen: the Roam logo (the app icon), the name and what it's for, then Continue with Apple and a grey
-/// "I already have an account" bubble pinned at the bottom, like the app's other bottom buttons.
+/// "Sign in with email" bubble pinned at the bottom, like the app's other bottom buttons.
 struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
@@ -119,7 +119,7 @@ struct WelcomeView: View {
                         .accessibilityIdentifier("continue-with-email")
                 }
 
-                Button("I already have an account") { model.path.append(.signIn) }
+                Button("Sign in with email") { model.path.append(.signIn) }
                     .buttonStyle(GreyBubbleButtonStyle())
                     .accessibilityIdentifier("existing-account")
             }
