@@ -15,7 +15,7 @@ const token = Deno.env.get("GITHUB_TOKEN");
 const repo = Deno.env.get("GITHUB_REPO");
 // Attachment links last a year, so the pictures keep showing in the issue.
 const linkLifetime = 60 * 60 * 24 * 365;
-const stepCount = 80;
+const stepCount = 100;
 
 /// Takes out what could identify someone: emails, phone numbers and ids (user, session and place ids alike).
 function scrub(text: string): string {

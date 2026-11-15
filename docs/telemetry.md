@@ -91,7 +91,7 @@ the tester:
   - recordings, as links (attachment links last a year)
   - the app version, iOS version and device
   - the screen it was sent from
-  - the last 80 steps with their details
+  - the last 100 steps with their details
 - **Out:**
   - who sent it
   - account, session and other ids (shown as `[id]`)
