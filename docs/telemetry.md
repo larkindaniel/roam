@@ -106,7 +106,10 @@ To turn it on for the hosted beta:
 3. Run `supabase functions deploy bug-report-issue --project-ref xnjzuotytfzyppubjcfi`
 
 Without those secrets the function does nothing, and the reports are still saved. Locally, put the two values in
-`supabase/functions/.env` and restart Supabase. Issues get the `bug` and `user-reported-bug` labels. Create `user-reported-bug` in the repo once (Issues → Labels), because the token can only add labels that already exist.
+`supabase/functions/.env` and restart Supabase.
+
+Issues get the `bug` and `user-reported-bug` labels. Create `user-reported-bug` in the repo once (Issues → Labels),
+because the token can only add labels that already exist.
 
 ## Why not a hosted tool
 
