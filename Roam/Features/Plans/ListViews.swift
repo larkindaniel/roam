@@ -340,17 +340,25 @@ struct ShareSheet: View {
     @State private var message = ""
     @State private var error: String?
     @State private var sending = false
-    @State private var submitted: (recipient: UUID, note: String, operation: UUID)?
+    /// Each friend's send has its own operation ID for this note, so a retry never sends twice; friends it already reached
+    /// are skipped.
+    @State private var operations: [UUID: (note: String, operation: UUID)] = [:]
+    @State private var sent: Set<UUID> = []
+    @FocusState private var noteFocused: Bool
+    @State private var noteFrame: CGRect = .zero
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     Text(title).font(.roamTitle()).accessibilityAddTraits(.isHeader)
-                    FriendPickerRows(selection: $selection)
+                    // Pick as many friends as you like.
+                    FriendPickerRows(selection: $selection, multiple: true)
                     TextField("Add a note (optional)", text: $message, axis: .vertical)
                         .lineLimit(2...5)
+                        .focused($noteFocused)
                         .roamCard()
+                        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { noteFrame = $0 }
                         .accessibilityIdentifier("share-message")
                     if let error { Text(error).font(.footnote).foregroundStyle(Roam.signal) }
                 }
@@ -358,6 +366,10 @@ struct ShareSheet: View {
                 .padding(Theme.Spacing.l)
             }
             .scrollDismissesKeyboard(.interactively)
+            // Tapping anywhere off the note drops the cursor.
+            .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { tap in
+                if !noteFrame.contains(tap.location) { noteFocused = false }
+            })
             .background(Roam.paper)
             .navigationTitle("Send")
             .navigationBarTitleDisplayMode(.inline)
@@ -371,7 +383,7 @@ struct ShareSheet: View {
             .safeAreaInset(edge: .bottom) {
                 Button { Task { await send() } } label: {
                     Group {
-                        if sending { ProgressView() } else { Text("Send").fontWeight(.semibold) }
+                        if sending { ProgressView() } else { Text(selection.count > 1 ? "Send to \(selection.count) friends" : "Send").fontWeight(.semibold) }
                     }
                     .frame(maxWidth: .infinity, minHeight: Theme.minimumHitTarget)
                 }
@@ -387,16 +399,22 @@ struct ShareSheet: View {
     }
 
     private func send() async {
-        guard !sending, let recipient = selection.first else { return }
+        guard !sending, !selection.isEmpty else { return }
         let note = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        let operation = submitted.flatMap { $0.recipient == recipient && $0.note == note ? $0.operation : nil } ?? UUID()
-        submitted = (recipient, note, operation)
         sending = true
         error = nil
         defer { sending = false }
-        do {
-            try await services.plans.share(target, with: recipient, message: note, operationID: operation)
-            dismiss()
-        } catch { self.error = session.handle(error) }
+        for recipient in selection.sorted(by: { $0.uuidString < $1.uuidString }) where !sent.contains(recipient) {
+            let operation = operations[recipient].flatMap { $0.note == note ? $0.operation : nil } ?? UUID()
+            operations[recipient] = (note, operation)
+            do {
+                try await services.plans.share(target, with: recipient, message: note, operationID: operation)
+                sent.insert(recipient)
+            } catch {
+                self.error = session.handle(error)
+                return
+            }
+        }
+        dismiss()
     }
 }

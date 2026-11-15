@@ -175,7 +175,7 @@ tapping another place or pin swaps the card to it.
   - **Log / Been:** Log opens the log sheet. Once you've been, the button shows Been, and tapping it offers only
     Delete, with one confirmation, which removes your visits and ranking.
   - **Save:** saves or unsaves the place. It's greyed out once you've been.
-  - **Send:** choose a current friend and add an optional note. Friends can open it from Sent to you in My Places or
+  - **Send:** choose one or more friends and add an optional note (tap off it to put the keyboard away); each friend gets it. Friends can open it from Sent to you in My Places or
     from Discover. The place page shows who sent it and their note.
 - **Card:**
   - **Photos:** a swipeable gallery with dots, your own photos first. The Wikipedia blurb sits under it when there is
