@@ -58,6 +58,8 @@ struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
     @Environment(SessionStore.self) private var session
     @Environment(AppServices.self) private var services
+    /// The name, big under the logo; it scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 64
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +74,7 @@ struct WelcomeView: View {
                 .frame(maxHeight: 340)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("Roam")
-                        .font(.roamDisplay(.largeTitle))
+                        .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
                     Text("Find places you love from people you trust.")

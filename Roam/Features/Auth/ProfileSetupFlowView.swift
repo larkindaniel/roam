@@ -42,6 +42,8 @@ private struct SetupSteps: View {
                 content
                 if let error = model.error { ErrorText(error) }
             }
+            // Full width, so every step lines up on the same left margin.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.top, Theme.Spacing.s)
             .padding(.bottom, Theme.Spacing.l)
@@ -92,7 +94,7 @@ private struct SetupSteps: View {
     @ViewBuilder private var content: some View {
         switch model.step {
         case .name:
-            title("What should we call you?", "This is how other people see you.")
+            title("What's your name?", "This is how other people see you.")
             RoamTextField(title: "Your name", text: $model.displayName, contentType: .name, identifier: "display-name-field")
                 .focused($focused)
                 .onChange(of: model.displayName) { _, _ in model.saveDraft() }

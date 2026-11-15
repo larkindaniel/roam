@@ -11,7 +11,7 @@ when you change a screen. `docs/design-language.md` covers how they look.
   a big title, grey rounded fields, quiet links under them, and the black action pinned at the bottom.
 - **Setup** (a new account), one page per step with a round back button and a thin progress bar at the top, and the
   step's button pinned at the bottom (grey "Skip for now" when nothing's chosen, black "Continue" once something is):
-  1. **Your name**, then **your handle** (a tick once it's free). These make the profile.
+  1. **What's your name?**, then **your handle** (a tick once it's free). These make the profile.
   2. **A profile photo**: tap the big circle to choose one.
   3. **What do you like?** Five questions (atmosphere, budget, crowds, familiar or adventurous, pace), three pills each;
      tap one, tap again to clear. These feed Plan with AI and can be changed in Settings.
