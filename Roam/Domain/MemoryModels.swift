@@ -173,6 +173,47 @@ struct ActivityItem: Codable, Hashable, Identifiable, Sendable {
     var isOwn: Bool
     var trip: ActivityTrip? = nil
     var companions: [MemberSummary]? = nil
+    /// Friends who logged the same place together with the author (they tagged each other with "With"), so their logs
+    /// show as this one card. Set on the Friends tab, never by the server.
+    var together: [MemberSummary] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case id, type, author, experience, category, scoreSnapshot, rankSnapshot, sentimentSnapshot, visitID, visitDate, note,
+             media, publishedAt, likeCount, commentCount, likedByViewer, isOwn, trip, companions
+    }
+
+    /// Everyone on the card: the author, then whoever went with them.
+    var authors: [MemberSummary] { [author] + together }
+}
+
+extension Array where Element == ActivityItem {
+    /// Logs of the same place by friends who went together (one tagged the other with "With") become one card: the newest
+    /// log, with everyone's names and all their photos. Likes and comments stay on that newest log.
+    func mergingTogether() -> [ActivityItem] {
+        var groupOf = [Int](indices)
+        func root(_ i: Int) -> Int { var i = i; while groupOf[i] != i { i = groupOf[i] }; return i }
+        for i in indices {
+            for j in indices where j > i && self[i].experience.id == self[j].experience.id && self[i].author.id != self[j].author.id {
+                let a = self[i], b = self[j]
+                let tagged = (a.companions ?? []).contains { $0.id == b.author.id } || (b.companions ?? []).contains { $0.id == a.author.id }
+                if tagged { groupOf[root(j)] = root(i) }
+            }
+        }
+        var merged: [Int: ActivityItem] = [:]
+        var order: [Int] = []
+        for i in indices {
+            let r = root(i)
+            guard var card = merged[r] else { merged[r] = self[i]; order.append(r); continue }
+            let other = self[i]
+            if !card.authors.contains(where: { $0.id == other.author.id }) { card.together.append(other.author) }
+            let offset = (card.media.map(\.position).max() ?? -1) + 1
+            card.media += other.media.sorted { $0.position < $1.position }.enumerated().map { index, ref in
+                var ref = ref; ref.position = offset + index; return ref
+            }
+            merged[r] = card
+        }
+        return order.compactMap { merged[$0] }
+    }
 }
 
 struct Comment: Codable, Hashable, Identifiable, Sendable {

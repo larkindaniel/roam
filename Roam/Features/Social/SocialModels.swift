@@ -28,7 +28,9 @@ private func uniqueByID<Item: Identifiable>(_ items: [Item]) -> [Item] where Ite
 @MainActor
 @Observable
 final class FeedModel {
-    private(set) var items: [ActivityItem] = []
+    private(set) var items: [ActivityItem] = [] { didSet { cards = items.mergingTogether() } }
+    /// What the list shows: logs of friends who went somewhere together merged into one card.
+    private(set) var cards: [ActivityItem] = []
     private(set) var hasLoaded = false
     private(set) var isLoading = false
     private(set) var loadingMore = false

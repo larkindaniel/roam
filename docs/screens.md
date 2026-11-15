@@ -66,10 +66,13 @@ After name, handle, photo, home and Find friends, two steps teach Roam what you 
   brings it back as glass on the fade.
 - One card per dated friend log, newest first. A log is a visit; there are no separate posts. Only logs the log's
   audience allows show (Only me never does), with the log's own note and photos.
+- Friends who went somewhere together (logs of the same place where one tagged the other with "With") show as one card:
+  their pictures overlapping and first names ("Daniel, Dhyan and Nihal") at the top with the date under, and all their
+  photos. The note, likes and comments are the newest log's.
 - Logs sit straight on the page, with no card around them; the photos set them apart. Each log: a photo, either theirs (square; swipe between several, with dots at the bottom) or, with none, the
   place's Google photo at its usual size. Set into the top of the photo is one small line: their picture, name · date,
-  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo opens the log's own page; double-tapping likes it. Under the photo, a slim card with the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then their
-  note and who they went with. Like and comment sit in white in the photo's bottom right, on a dark fade (under the card when there's no photo); comment opens the log as its own page (the log, then its comments as plain rows, long-press to delete yours or report someone else's, and a white field pinned at the bottom with your picture (which slides away once the comment wraps) and a send arrow). Double-tapping a photo likes it. A card never opens a page of its own.
+  which opens their profile (with no photo at all, the line sits on its own). Tapping a photo opens the log's own page; double-tapping likes it. Under the photo, a slim card with the place's name, city and country opens the place (with no photo, it's the standard place row instead). Then who
+  they went with. The note's first line (with "…" if there's more) sits bottom left in the photo, level with like and comment in white on the bottom right, on a dark fade (under the card when there's no photo); comment opens the log as its own page (the log, then the author's note as the first comment, then the comments as plain rows, with no "Comments" heading, long-press to delete yours or report someone else's, and a white field pinned at the bottom with your picture (which slides away once the comment wraps) and a send arrow). Double-tapping a photo likes it. A card never opens a page of its own.
 - Likes and comments belong to the log. The comment field stays above the keyboard, and retry keeps the draft. A log is
   deleted from its place page; a tagged friend can remove their own tag.
 

@@ -72,6 +72,7 @@ struct LogPostView: View {
     /// Like and comment, as on the Friends tab; comment puts the cursor in the field.
     private func actions(_ model: ActivityDetailModel, item: ActivityItem) -> some View {
         HStack(spacing: Theme.Spacing.m) {
+            Spacer(minLength: 0)
             LikeButton(liked: item.likedByViewer, count: item.likeCount, pending: model.likePending, tint: .white) {
                 Task { await model.setLike(!item.likedByViewer) }
             }
@@ -88,11 +89,15 @@ struct LogPostView: View {
 
     @ViewBuilder private func list(_ model: ActivityDetailModel) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-            if model.item != nil { Text("Comments").font(.headline).accessibilityAddTraits(.isHeader) }
+            // The author's note comes first, as a comment like any other (no "Comments" heading).
+            if let item = model.item, !item.note.isEmpty {
+                commentRow(author: item.author, date: item.publishedAt, body: item.note)
+                    .accessibilityIdentifier("log-note")
+            }
             if let error = model.commentsError ?? model.loadError {
                 InlineRetryView(message: error) { Task { await model.load() } }
             }
-            if model.commentsLoaded && model.comments.isEmpty {
+            if model.commentsLoaded && model.comments.isEmpty && (model.item?.note ?? "").isEmpty {
                 VStack(spacing: Theme.Spacing.xs) {
                     Text("No comments yet").font(.headline)
                     Text("Start the conversation.").font(.subheadline).foregroundStyle(Roam.inkMuted)
@@ -116,21 +121,26 @@ struct LogPostView: View {
         }
     }
 
-    private func row(_ comment: Comment, deleting: Bool) -> some View {
+    /// One comment: their picture, name and how long ago, then what they said.
+    private func commentRow(author: MemberSummary, date: Date, body: String, deleting: Bool = false) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
-            AvatarView(member: comment.author, size: 36)
-                .onTapGesture { router.push(.member(comment.author.id)) }
+            AvatarView(member: author, size: 36)
+                .onTapGesture { router.push(.member(author.id)) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: Theme.Spacing.s) {
-                    Text(comment.author.displayName).font(.subheadline.weight(.semibold))
-                    Text(comment.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(Roam.inkMuted)
+                    Text(author.displayName).font(.subheadline.weight(.semibold))
+                    Text(date.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(Roam.inkMuted)
                 }
-                Text(comment.body).font(.body).fixedSize(horizontal: false, vertical: true)
+                Text(body).font(.body).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
             if deleting { ProgressView() }
         }
         .contentShape(Rectangle())
+    }
+
+    private func row(_ comment: Comment, deleting: Bool) -> some View {
+        commentRow(author: comment.author, date: comment.createdAt, body: comment.body, deleting: deleting)
         .contextMenu {
             if comment.isOwn {
                 Button(role: .destructive) { commentToDelete = comment } label: { Label("Delete", systemImage: "trash") }

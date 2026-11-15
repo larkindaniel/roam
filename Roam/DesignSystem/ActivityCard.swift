@@ -14,6 +14,9 @@ struct ActivityCardView: View {
     var onDoubleTap: (() -> Void)? = nil
     /// Tapping the photo once (the Friends tab opens the log's own page).
     var onTap: (() -> Void)? = nil
+    /// The Friends tab shows the note's first line beside like and comment; the log's page shows it as the first comment.
+    /// So the full note under the card is off by default.
+    var showsNote = false
 
     static func hasPhoto(_ item: ActivityItem) -> Bool { !item.media.isEmpty || item.experience.photoURL != nil }
 
@@ -29,7 +32,7 @@ struct ActivityCardView: View {
                     placeChip
                 }
             }
-            if !item.note.isEmpty {
+            if showsNote && !item.note.isEmpty {
                 Text(item.note)
                     .font(.body)
                     .lineLimit(compact && !expanded && item.note.count >= 160 ? 3 : nil)
@@ -40,7 +43,9 @@ struct ActivityCardView: View {
                         .frame(minHeight: Theme.minimumHitTarget)
                 }
             }
-            if let companions = item.companions, !companions.isEmpty {
+            // Anyone they went with who isn't already named at the top.
+            let companions = (item.companions ?? []).filter { person in !item.authors.contains { $0.id == person.id } }
+            if !companions.isEmpty {
                 Text("With \(companions.map(\.displayName).formatted(.list(type: .and)))")
                     .font(.footnote)
                     .foregroundStyle(Roam.inkMuted)
@@ -65,10 +70,24 @@ struct ActivityCardView: View {
     /// own when there's no photo at all. It opens their profile.
     private func byline(onPhoto: Bool) -> some View {
         HStack(spacing: Theme.Spacing.s) {
-            AvatarView(member: item.author, size: 28)
-            Text(item.author.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-            Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
-            date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+            // Friends who went together: their pictures overlapping, and their first names.
+            HStack(spacing: -10) {
+                ForEach(item.authors) { person in
+                    AvatarView(member: person, size: 28)
+                        .overlay { if item.authors.count > 1 { Circle().stroke(onPhoto ? Color.black.opacity(0.35) : Roam.paper, lineWidth: 1.5) } }
+                }
+            }
+            if item.together.isEmpty {
+                Text(names).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Text("·").font(.subheadline).opacity(onPhoto ? 1 : 0.7)
+                date.font(.subheadline).lineLimit(1).opacity(onPhoto ? 1 : 0.75)
+            } else {
+                // Several names need the room, so the date goes under them.
+                VStack(alignment: .leading, spacing: -1) {
+                    Text(names).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.85)
+                    date.font(.caption).lineLimit(1).opacity(onPhoto ? 0.9 : 0.75)
+                }
+            }
             Spacer(minLength: 0)
         }
         .foregroundStyle(onPhoto ? Color.white : Roam.ink)
@@ -112,11 +131,11 @@ struct ActivityCardView: View {
         .overlay(alignment: .bottom) {
             if let actions {
                 actions
-                    .padding(.leading, Theme.Spacing.s)
+                    .padding(.leading, Theme.Spacing.m)
                     .padding(.trailing, Theme.Spacing.m)
                     .padding(.bottom, Theme.Spacing.xs)
                     .padding(.top, Theme.Spacing.xl)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(LinearGradient(colors: [.clear, .black.opacity(0.4), .black.opacity(0.65)], startPoint: .top, endPoint: .bottom))
                     .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: Self.corner, bottomTrailingRadius: Self.corner, style: .continuous))
             }
@@ -168,6 +187,13 @@ struct ActivityCardView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("activity-place-row")
+    }
+
+    /// One name in full; several as first names ("Daniel, Dhyan and Nihal").
+    private var names: String {
+        guard !item.together.isEmpty else { return item.author.displayName }
+        return item.authors.map { $0.displayName.split(separator: " ").first.map(String.init) ?? $0.displayName }
+            .formatted(.list(type: .and))
     }
 
     private var date: some View {
