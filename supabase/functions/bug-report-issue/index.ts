@@ -95,7 +95,7 @@ Deno.serve(async request => {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json",
                  "User-Agent": "roam-bug-reports" },
-      body: JSON.stringify({ title: `Bug: ${firstLine}`, body, labels }),
+      body: JSON.stringify({ title: firstLine, body, labels }),
       signal: AbortSignal.timeout(15_000),
     });
     // Labels the repo doesn't have can be refused; the issue matters more than its labels.
