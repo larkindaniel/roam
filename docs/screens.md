@@ -209,8 +209,13 @@ tapping another place or pin swaps the card to it.
 
 ## Lists and Sent to you
 
-- Create a private list in My Places › Saved › Lists. Add places from their detail page. The owner can rename the
-  list, edit its places, send it to friends, or revoke their access in Manage access.
+- **Lists** (My Places › Saved › Lists): your lists as standard rows (name, number of places), then lists friends sent
+  you, and a New list bubble that names it and opens it.
+- **A list:** its name big, with an edit pencil on your own (rename) and a round red bin at the top (delete). A friend's
+  list has a small chip with their picture and name, opening their profile. Round Send (indigo) and Access buttons, then
+  its places as standard rows in one card (swipe left to remove one from your own list), then a green "Add a place"
+  bubble. That opens the place search: tapping a result adds it with a tick, tapping again takes it off; × closes.
+- From a place's page, Add to list shows your lists as rows (tap one to add), a new list by name, and an optional note.
 - Recipients open the current contents from Lists or Sent to you. Sent to you includes the sender and their note.
 
 ## Settings

@@ -136,7 +136,7 @@ private struct ListRow: View {
 }
 
 /// One list, laid out like the app's other pages: its name (with an edit pencil on your own), whose it is as a small chip
-/// on a friend's, round Add, Send and Access buttons, then its places as standard rows in one card (swipe to remove).
+/// on a friend's, round Send and Access buttons, then its places as standard rows in one card (swipe to remove).
 /// Add a place opens the worldwide place search; Delete is a round bin at the top.
 struct PlaceListDetailView: View {
     let listID: UUID
@@ -286,14 +286,13 @@ struct PlaceListDetailView: View {
         .accessibilityIdentifier("list-owner")
     }
 
-    /// Round actions with a caption under each, as on a place or city: add places (green), send (indigo), who has it.
+    /// Round actions with a caption under each, as on a place or city, the same widths: send (indigo) and who has it.
+    /// Adding places is the green bubble under them.
     private var actionRow: some View {
         HStack(spacing: 0) {
-            roundAction("plus", tint: PlaceState.visited.markerColor, caption: "Add", identifier: "list-add") { addingPlaces = true }
             roundAction("paperplane", tint: .indigo, caption: "Send", identifier: "list-send") { showsShare = true }
             roundAction("person.2", tint: Roam.ink, caption: "Access", identifier: "list-access") { showingAccess = true }
-            Spacer(minLength: 0).frame(maxWidth: .infinity)
-            Spacer(minLength: 0).frame(maxWidth: .infinity)
+            ForEach(0..<3, id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 1) }
         }
     }
 
