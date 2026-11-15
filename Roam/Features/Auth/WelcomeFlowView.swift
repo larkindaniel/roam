@@ -64,7 +64,8 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: Theme.Spacing.xl)
-            VStack(spacing: Theme.Spacing.l) {
+            // More room between the logo and the name; the tagline sits close under the name.
+            VStack(spacing: Theme.Spacing.xxl) {
                 // As big as the screen allows: the full width inside the margins, short of crowding the words and buttons.
                 GeometryReader { proxy in
                     RoamLogo(size: min(proxy.size.width, proxy.size.height))
@@ -72,15 +73,20 @@ struct WelcomeView: View {
                 }
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxHeight: 340)
-                VStack(spacing: Theme.Spacing.s) {
+                VStack(spacing: -4) {
                     Text("Roam")
                         .font(.system(size: wordmarkSize, weight: .bold, design: .rounded))
                         .foregroundStyle(Roam.ink)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Find places you love\nfrom people you trust.")
-                        .font(.title3)
-                        .foregroundStyle(Roam.inkMuted)
-                        .multilineTextAlignment(.center)
+                    // Two lines, set close together.
+                    VStack(spacing: -3) {
+                        Text("Find places you love")
+                        Text("from people you trust")
+                    }
+                    .font(.title3)
+                    .foregroundStyle(Roam.inkMuted)
+                    .multilineTextAlignment(.center)
+                    .accessibilityElement(children: .combine)
                 }
             }
             .padding(.horizontal, Theme.Spacing.xl)
