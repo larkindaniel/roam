@@ -145,12 +145,15 @@ struct BugReportSheet: View {
 
     private var signedIn: Bool { session.userID != nil }
 
+    private var title: some View {
+        Text("Report a bug").font(.roamTitle()).fixedSize().accessibilityAddTraits(.isHeader)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                // Laid out like Send: a title, the note in a white card, then what's attached.
+                // Laid out like Send: the note in a white card, then what's attached.
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    Text("Report a bug").font(.roamTitle()).accessibilityAddTraits(.isHeader)
                     if sent {
                         Label("Sent. Thanks, we'll look into it.", systemImage: "checkmark.circle.fill")
                             .font(.headline)
@@ -166,7 +169,9 @@ struct BugReportSheet: View {
                     }
                 }
                 .disabled(sending)
-                .padding(Theme.Spacing.l)
+                .padding(.horizontal, Theme.Spacing.l)
+                .padding(.top, Theme.Spacing.m)
+                .padding(.bottom, Theme.Spacing.l)
             }
             .scrollDismissesKeyboard(.interactively)
             // Tapping anywhere off the note drops the cursor.
@@ -176,6 +181,12 @@ struct BugReportSheet: View {
             .background(Roam.paper)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // The title sits top left, level with the ×.
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .topBarLeading) { title }.sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .topBarLeading) { title }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
                         .disabled(sending)
@@ -206,46 +217,30 @@ struct BugReportSheet: View {
         .screenIdentifier("bug-report")
     }
 
-    /// What's attached, big enough to read: a row of tall previews with × on each, then a tile to add another.
-    /// With nothing attached it's the grey "Add" bubble from the log sheets. Signed out, it's words only.
+    /// What's attached, the full width of the page so it can be read, one under another with × on each; then a row
+    /// to add another from Photos. Signed out, it's words only.
     @ViewBuilder private var attachmentSection: some View {
-        if !attachments.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.s) {
-                    ForEach(attachments) { attachment in preview(attachment) }
-                    if signedIn, attachments.count < Self.maxAttachments {
-                        picker {
-                            VStack(spacing: Theme.Spacing.xs) {
-                                Image(systemName: "plus").font(.title2.weight(.semibold))
-                                Text("Add another").font(.subheadline.weight(.semibold))
-                            }
-                            .foregroundStyle(Roam.ink)
-                            .frame(width: 120, height: Self.previewHeight)
-                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Roam.fill))
-                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                    }
-                }
-                .padding(.vertical, Theme.Spacing.xs)
-            }
-            .scrollClipDisabled()
-        }
+        ForEach(attachments) { attachment in preview(attachment) }
         if loadingAttachment { ProgressView().frame(maxWidth: .infinity) }
-        if signedIn, attachments.isEmpty {
+        if signedIn, attachments.count < Self.maxAttachments {
             picker {
-                Label("Add screenshots or recordings", systemImage: "photo.on.rectangle")
-                    .font(.subheadline.weight(.semibold))
-                    .imageScale(.small)
-                    .foregroundStyle(Roam.ink)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Capsule().fill(Roam.fill))
-                    .contentShape(Capsule())
+                HStack(spacing: Theme.Spacing.m) {
+                    Image(systemName: "photo.on.rectangle")
+                        .font(.headline)
+                        .foregroundStyle(Roam.ink)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(Roam.fill))
+                    Text(attachments.isEmpty ? "Add screenshots or recordings" : "Add another")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Roam.ink)
+                    Spacer(minLength: 0)
+                    Image(systemName: "plus").font(.subheadline.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                }
+                .roamCard(padding: Theme.Spacing.m)
+                .contentShape(Rectangle())
             }
         }
     }
-
-    private static let previewHeight: CGFloat = 340
 
     private func picker<Label: View>(@ViewBuilder label: () -> Label) -> some View {
         PhotosPicker(selection: $pickerItems, maxSelectionCount: Self.maxAttachments - attachments.count,
@@ -254,7 +249,7 @@ struct BugReportSheet: View {
             .accessibilityIdentifier("bug-report-photos")
     }
 
-    /// A screenshot (or a recording's first frame) at its own shape, tall enough to read, with × to remove it.
+    /// A screenshot (or a recording's first frame) the full width of the page at its own shape, with × to remove it.
     private func preview(_ attachment: Attachment) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         let image = attachment.preview
@@ -270,7 +265,8 @@ struct BugReportSheet: View {
                     .frame(width: 52, height: 52).background(Circle().fill(.black.opacity(0.45)))
             }
         }
-        .frame(width: Self.previewHeight * ratio, height: Self.previewHeight)
+        .frame(maxWidth: .infinity)
+        .aspectRatio(ratio, contentMode: .fit)
         .clipShape(shape)
         .overlay(shape.stroke(Roam.ink.opacity(0.08)))
         .shadow(color: .black.opacity(0.12), radius: 6, y: 1)

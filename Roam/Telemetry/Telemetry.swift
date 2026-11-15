@@ -151,6 +151,8 @@ final class Telemetry: @unchecked Sendable {
     private(set) var lastTapAt: ContinuousClock.Instant?
 
     private let lock = NSLock()
+    /// Screens showing, newest last; closing one goes back to the one under it.
+    private var screenStack: [String] = []
     private var seq = 0
     private var pending: [TelemetryEvent] = []
     /// The last events of this session, for a bug report's summary.
@@ -213,7 +215,11 @@ final class Telemetry: @unchecked Sendable {
     func record(_ kind: TelemetryEvent.Kind, _ name: String, screen: String? = nil, durationMs: Int? = nil,
                 props: [String: String] = [:]) {
         let event: TelemetryEvent? = lock.withLock {
-            if kind == .screen { currentScreen = name }
+            if kind == .screen {
+                screenStack.removeAll { $0 == name }
+                screenStack.append(name)
+                currentScreen = name
+            }
             if kind == .tap { lastTapAt = .now }
             seq += 1
             let trimmed = props.isEmpty ? nil : props.mapValues { String($0.prefix(500)) }
@@ -233,6 +239,19 @@ final class Telemetry: @unchecked Sendable {
         #endif
         guard let event else { return }
         io.async { [self] in append(event) }
+    }
+
+    /// A screen went away (a sheet closed, a page popped): the one under it is current again.
+    func screenDisappeared(_ name: String) {
+        lock.withLock {
+            screenStack.removeAll { $0 == name }
+            if currentScreen == name { currentScreen = screenStack.last }
+        }
+    }
+
+    /// Switching tabs: the tab's top screen is current (tab pages stay alive, so they don't appear again).
+    func setCurrentScreen(_ name: String) {
+        lock.withLock { currentScreen = name }
     }
 
     // MARK: Disk

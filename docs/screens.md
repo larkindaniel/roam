@@ -34,11 +34,12 @@ when you change a screen. `docs/design-language.md` covers how they look.
   the card is fully up.
 - **Profile:** your profile picture in a glass circle at the top right of each tab opens your profile and settings.
 - **Bug button (beta):** a red circle with a bug is the right-most button at the top of every page. That covers the
-  tab pages, everything pushed on them, welcome, sign-in and setup. It snaps the screen, then opens **Report a bug**:
+  tab pages, everything pushed on them, welcome, sign-in and setup. It snaps the screen, then opens **Report a bug**
+  (its title top left, level with the ×):
   - What went wrong, in a note card.
-  - The screenshot of the screen you were on, shown big enough to read, with × to remove it.
-  - **Add another** beside it, for more screenshots or recordings from Photos (up to six). With none attached, it's
-    a grey **Add screenshots or recordings** bubble.
+  - The screenshot of the screen you were on, the full width of the page, with × to remove it. More appear under it.
+  - An **Add another** row with a photos icon, for more screenshots or recordings from Photos (up to six). With none
+    attached it says **Add screenshots or recordings**.
   - **Send**, at the bottom.
 
   Signed out, it's words only. The report is saved with the steps that led to it (see `docs/telemetry.md`).

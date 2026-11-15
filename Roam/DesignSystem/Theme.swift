@@ -225,6 +225,7 @@ extension View {
                 Telemetry.shared.record(.screen, identifier, screen: identifier,
                                         props: sinceTap.map { $0 < 10_000 ? ["since_tap_ms": "\($0)"] : [:] } ?? [:])
             }
+            .onDisappear { Telemetry.shared.screenDisappeared(identifier) }
     }
 }
 

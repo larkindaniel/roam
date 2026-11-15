@@ -157,7 +157,12 @@ struct LogRequest: Hashable, Identifiable, Sendable {
 final class AppRouter {
     // Every tab change, push, back and sheet goes into the beta's event trail.
     var selectedTab: AppTab {
-        didSet { if selectedTab != oldValue { Log.nav("tab", ["to": selectedTab.rawValue, "from": oldValue.rawValue]) } }
+        didSet {
+            guard selectedTab != oldValue else { return }
+            let roots: [AppTab: String] = [.forYou: "foryou-root", .friends: "feed-root", .myPlaces: "myplaces-root"]
+            Telemetry.shared.setCurrentScreen(paths[selectedTab]?.last?.logName ?? roots[selectedTab] ?? selectedTab.rawValue)
+            Log.nav("tab", ["to": selectedTab.rawValue, "from": oldValue.rawValue])
+        }
     }
     var paths: [AppTab: [AppRoute]] = [:] {
         didSet { Self.logPathChanges(from: oldValue, to: paths) }
