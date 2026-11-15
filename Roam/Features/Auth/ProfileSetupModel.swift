@@ -7,8 +7,9 @@ import UIKit
 @MainActor
 @Observable
 final class ProfileSetupModel {
+    /// Name, handle and photo make the profile; then what you like, your home city and friends. Setup never logs places.
     enum Step: Int, CaseIterable {
-        case name, handle, photo, people, been, rank, visibility
+        case name, handle, photo, preferences, home, friends
     }
 
     enum HandleState: Equatable {
@@ -34,8 +35,8 @@ final class ProfileSetupModel {
     var suggestions: LoadPhase<[MemberRow]> = .idle
     var following: Set<UUID> = []
     var pendingFollows: Set<UUID> = []
-    /// Where have you been, then ranking those places.
-    let taste: OnboardingTasteModel
+    /// Your answers to the preference questions (each optional).
+    var taste = TasteProfile.empty
     var busy = false
     var error: String?
     private(set) var profile: OwnProfile?
@@ -47,7 +48,6 @@ final class ProfileSetupModel {
         self.services = services
         self.auth = auth
         self.profile = profile
-        taste = OnboardingTasteModel(services: services)
         let draft = services.storage.read(Draft.self, name: "setup-draft", userID: auth.userID)
         displayName = profile?.displayName ?? draft?.displayName ?? prefillName ?? ""
         handle = profile?.handle ?? draft?.handle ?? ""
@@ -56,8 +56,8 @@ final class ProfileSetupModel {
         switch profile?.setupCheckpoint {
         case .none: step = (draft?.displayName.isEmpty == false) ? .handle : .name
         case .profileCreated?: step = .photo
-        case .optionalDetails?: step = .people
-        case .complete?: step = .visibility
+        case .optionalDetails?: step = .preferences
+        case .complete?: step = .friends
         }
     }
 
@@ -141,17 +141,55 @@ final class ProfileSetupModel {
         }
     }
 
-    /// After the photo comes finding friends; home cities are set later, from Settings or My Places.
+    /// After the photo come your preferences.
     func finishPhotoStep() async {
         busy = true
         error = nil
         defer { busy = false }
         do {
             profile = try await services.profiles.setSetupCheckpoint(.optionalDetails)
-            step = .people
+            step = .preferences
         } catch {
             self.error = error.roamMessage
         }
+    }
+
+    func loadTaste() async {
+        if let saved = try? await services.plans.taste() { taste = saved }
+    }
+
+    /// Saves whichever questions were answered (none is fine), then on to your home city.
+    func savePreferences() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if taste != .empty { taste = try await services.plans.saveTaste(taste) }
+            step = .home
+        } catch {
+            self.error = error.roamMessage
+        }
+    }
+
+    /// Makes the chosen city a home (optional), then on to friends.
+    func saveHome() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if let homeCity { _ = try await services.plans.setHomeCity(homeCity, present: true) }
+            step = .friends
+        } catch {
+            self.error = error.roamMessage
+        }
+    }
+
+    /// One step back (the profile, once made, isn't undone: back from the photo goes nowhere).
+    var canGoBack: Bool { step == .handle || step.rawValue > Step.photo.rawValue }
+
+    func goBack() {
+        guard canGoBack, let previous = Step(rawValue: step.rawValue - 1) else { return }
+        step = previous
     }
 
     func loadSuggestions() async {

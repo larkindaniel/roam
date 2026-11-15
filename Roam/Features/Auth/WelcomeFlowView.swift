@@ -63,7 +63,13 @@ struct WelcomeView: View {
         VStack(spacing: 0) {
             Spacer(minLength: Theme.Spacing.xl)
             VStack(spacing: Theme.Spacing.l) {
-                RoamLogo(size: 128)
+                // As big as the screen allows: the full width inside the margins, short of crowding the words and buttons.
+                GeometryReader { proxy in
+                    RoamLogo(size: min(proxy.size.width, proxy.size.height))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxHeight: 340)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("Roam")
                         .font(.roamDisplay(.largeTitle))
@@ -129,7 +135,7 @@ struct WelcomeView: View {
 
 /// The Roam logo: the app icon, with its rounded-square corners and a soft shadow.
 struct RoamLogo: View {
-    var size: CGFloat = 128
+    var size: CGFloat = 180
 
     var body: some View {
         Image("Logo")
@@ -137,7 +143,7 @@ struct RoamLogo: View {
             .scaledToFit()
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.225, style: .continuous))
-            .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+            .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
             .accessibilityLabel("Roam")
     }
 }
@@ -182,7 +188,7 @@ struct InfoText: View {
     }
 }
 
-/// Shared form chrome, like the app's other pages: the round glass back button at the top, a big title, a short line under
+/// Shared form chrome, like the app's other pages: the system's round glass back button, a big title, a short line under
 /// it, the fields, and the black action pinned at the bottom.
 struct AuthFormScaffold<Fields: View, Footer: View>: View {
     let title: String
@@ -193,9 +199,6 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
     let action: () -> Void
     @ViewBuilder var fields: Fields
     @ViewBuilder var footer: Footer
-    @Environment(\.dismiss) private var dismiss
-    /// Pushed from the welcome screen; choosing a new password is a page of its own, with nowhere to go back to.
-    @Environment(\.isPresented) private var isPresented
 
     var body: some View {
         ScrollView {
@@ -214,9 +217,6 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Roam.paper)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if isPresented { backButton }
-        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button(action: action) {
                 if busy { ProgressView().tint(Roam.onInk) } else { Text(actionTitle) }
@@ -227,21 +227,8 @@ struct AuthFormScaffold<Fields: View, Footer: View>: View {
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.bottom, Theme.Spacing.s)
         }
-        .toolbar(.hidden, for: .navigationBar)
-    }
-
-    private var backButton: some View {
-            HStack {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left").font(.headline).foregroundStyle(Roam.ink).frame(width: 48, height: 48)
-                }
-                .buttonStyle(.plain)
-                .floatingBubble(Circle())
-                .accessibilityLabel("Back")
-                Spacer()
-            }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.bottom, Theme.Spacing.s)
+        // The system back button: on iOS 26 it's the same round glass button as the rest of the app's pages.
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

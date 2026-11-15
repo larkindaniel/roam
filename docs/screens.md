@@ -5,10 +5,19 @@ when you change a screen. `docs/design-language.md` covers how they look.
 
 ## Signing in
 
-- **Welcome:** the Roam logo (the app icon), "Roam", and "Find places you love from people you trust." Continue with
-  Apple (black) and I already have an account (grey) sit at the bottom.
-- **Sign in, and the email steps** (create account, code, forgot password, new password): the round back button at the
-  top left, a big title, grey rounded fields, quiet links under them, and the black action pinned at the bottom.
+- **Welcome:** the Roam logo (the app icon, as big as the screen allows), "Roam", and "Find places you love from people
+  you trust." Continue with Apple (black) and I already have an account (grey) sit at the bottom.
+- **Sign in, and the email steps** (create account, code, forgot password, new password): the round glass back button,
+  a big title, grey rounded fields, quiet links under them, and the black action pinned at the bottom.
+- **Setup** (a new account), one page per step with a round back button and a thin progress bar at the top, and the
+  step's button pinned at the bottom (grey "Skip for now" when nothing's chosen, black "Continue" once something is):
+  1. **Your name**, then **your handle** (a tick once it's free). These make the profile.
+  2. **A profile photo**: tap the big circle to choose one.
+  3. **What do you like?** Five questions (atmosphere, budget, crowds, familiar or adventurous, pace), three pills each;
+     tap one, tap again to clear. These feed Plan with AI and can be changed in Settings.
+  4. **Where's home?** Search cities; the one you pick shows as a row with × to change it. It becomes a home city.
+  5. **Add friends:** suggestions, or search for anyone, each with Add. "Start using Roam" finishes.
+  Setup never logs places.
 
 ## Everywhere
 
@@ -38,19 +47,6 @@ when you change a screen. `docs/design-language.md` covers how they look.
   - Results look the same everywhere. Tapping one opens it, unless the screen is picking something.
   - The field's own × ends the search, and leaving the tab clears it. On Discover, tapping anywhere but a result ends it
     too.
-
-## Onboarding (end of setup)
-
-After name, handle, photo, home and Find friends, two steps teach Roam what you like. Both can be skipped.
-
-- **Where have you been?** Up to 12 places around your home city as standard rows, the ones your friends have been to
-  first, then the most rated. A search field finds anything else. Tapping a row ticks it (green Been mark). The button
-  says "Skip for now" until something is ticked, then "Continue". With no home city it's search only.
-- **One place at a time** ("1 of 3"): "How was it?" with the feeling picker, then "Which did you like more?" against
-  your other places, with Undo, Too tough and Skip, like the log screen. After 10 comparisons in all, places go to the
-  middle of where they'd fit without asking. Each place is saved as soon as it's placed: a visit with no date, seen by
-  friends, so it's on your Been list but never on anyone's Friends tab. "Skip the rest" stops; what's saved stays.
-- Then the visibility explainer and Start using Roam.
 
 ## Discover
 
