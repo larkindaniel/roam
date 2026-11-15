@@ -59,7 +59,7 @@ struct WelcomeView: View {
     @Environment(SessionStore.self) private var session
     @Environment(AppServices.self) private var services
     /// The name, big under the logo; it scales with Dynamic Type.
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 64
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 72
 
     var body: some View {
         VStack(spacing: 0) {

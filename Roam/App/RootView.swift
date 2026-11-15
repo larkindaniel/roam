@@ -89,7 +89,7 @@ struct RootView: View {
 
 /// While Roam opens: just the name, as on the welcome screen, and a spinner.
 struct LaunchView: View {
-    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 64
+    @ScaledMetric(relativeTo: .largeTitle) private var wordmarkSize: CGFloat = 72
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
