@@ -64,7 +64,8 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
             if let named = Self.lastNamedAt, named >= began { return }
             var props = ["x": "\(Int(start.x))", "y": "\(Int(start.y))"]
             if let label = system?.label, system?.identifier != nil { props["label"] = label }
-            Log.tap(system?.identifier ?? system?.label ?? "unnamed", props)
+            if let kind = system?.kind { props["view"] = kind }
+            Log.tap(system?.identifier ?? system?.label ?? system?.known ?? "unnamed", props)
         }
     }
 
@@ -79,17 +80,33 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
 
     /// The UIKit view under the point and its accessibility name, walking up to the first that has one. SwiftUI's own
     /// views don't answer here (their names only exist while VoiceOver or a UI test is running), UIKit's always do.
-    private static func uikitName(at point: CGPoint, in window: UIWindow) -> (identifier: String?, label: String?)? {
-        var view = window.hitTest(point, with: nil)
+    /// What was tapped, from UIKit: its accessibility name if it has one, else a name for iOS's own controls we know
+    /// (the back button, map pins, the keyboard), and the view's type so an unknown one can still be looked up.
+    private static func uikitName(at point: CGPoint, in window: UIWindow) -> (identifier: String?, label: String?, known: String?, kind: String?)? {
+        guard let hit = window.hitTest(point, with: nil) else { return nil }
+        var view: UIView? = hit
         var steps = 0
-        while let current = view, steps < 8 {
+        var classes: [String] = []
+        while let current = view, steps < 10 {
+            let type = String(describing: Swift.type(of: current))
+            classes.append(type)
             let identifier = current.accessibilityIdentifier.flatMap { $0.isEmpty ? nil : $0 }
             let label = current.accessibilityLabel.flatMap { $0.isEmpty ? nil : String($0.prefix(80)) }
-            if identifier != nil || label != nil { return (identifier, label) }
+            if identifier != nil || label != nil { return (identifier, label, nil, type) }
             view = current.superview
             steps += 1
         }
-        return nil
+        let chain = classes.joined(separator: " ")
+        let known: String?
+        switch true {
+        case chain.contains("BackButton") || chain.contains("_UIButtonBarButton") && point.x < 90: known = "system.back"
+        case chain.contains("BarButton") || chain.contains("ButtonBar"): known = "system.toolbar-button"
+        case chain.contains("Annotation") || chain.contains("MKMarker"): known = "map.pin"
+        case chain.contains("MKMapView") || chain.contains("MKMap"): known = "map"
+        case chain.contains("NavigationBar"): known = "system.navigation-bar"
+        default: known = nil
+        }
+        return (nil, nil, known, classes.first)
     }
 }
 

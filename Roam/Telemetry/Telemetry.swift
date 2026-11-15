@@ -243,15 +243,26 @@ final class Telemetry: @unchecked Sendable {
 
     /// A screen went away (a sheet closed, a page popped): the one under it is current again.
     func screenDisappeared(_ name: String) {
-        lock.withLock {
+        let revealed: String?? = lock.withLock {
             screenStack.removeAll { $0 == name }
-            if currentScreen == name { currentScreen = screenStack.last }
+            guard currentScreen == name else { return .none }
+            currentScreen = screenStack.last
+            return .some(screenStack.last)
+        }
+        // A screen or sheet closing (by back, ×, or a swipe down) shows in the trail, with what's under it.
+        if case .some(let under) = revealed {
+            record(.nav, "closed", screen: under ?? name, props: ["screen": name, "back_to": under ?? "unknown"])
         }
     }
 
-    /// Switching tabs: the tab's top screen is current (tab pages stay alive, so they don't appear again).
+    /// Switching tabs: the tab's top screen is current (tab pages stay alive, so they don't appear again), and it goes
+    /// to the top of the stack so closing a sheet later comes back to it.
     func setCurrentScreen(_ name: String) {
-        lock.withLock { currentScreen = name }
+        lock.withLock {
+            screenStack.removeAll { $0 == name }
+            screenStack.append(name)
+            currentScreen = name
+        }
     }
 
     /// The same error shown twice in a row (a message made twice) is logged once.
