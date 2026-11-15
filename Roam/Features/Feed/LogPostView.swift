@@ -1,14 +1,15 @@
 import SwiftUI
 
 /// A friend's log as its own page, from its comment button: the log as it is on the Friends tab, then the comments as
-/// plain rows (their picture, name and how long ago, then what they said), and a round field pinned at the bottom with
-/// your picture and a send arrow. Long-press a comment to delete yours or report someone else's.
+/// plain rows (their picture, name and how long ago, then what they said), and a round white field pinned at the bottom
+/// with your picture (it slides away once the comment wraps) and a send arrow. Long-press a comment to delete yours or report someone else's.
 struct LogPostView: View {
-    /// The comment field's height, matching your picture beside it.
-    private static let rowHeight: CGFloat = 36
-    private static let sendSize: CGFloat = 26
+    /// The comment field's height on one line, matching your picture beside it.
+    private static let rowHeight: CGFloat = 46
+    private static let sendSize: CGFloat = 32
     /// The gap below and to the right of the send circle.
-    private static let sendInset: CGFloat = 6
+    /// The gap below and to the right of the send circle: half the difference, so it's centred on one line.
+    private static let sendInset: CGFloat = (rowHeight - sendSize) / 2
 
     let visitID: UUID
     /// Puts the cursor in the comment field as it opens.
@@ -22,6 +23,8 @@ struct LogPostView: View {
     @State private var commentToDelete: Comment?
     @State private var reportTarget: ReportTarget?
     @FocusState private var composerFocused: Bool
+    /// The comment has wrapped onto more than one line.
+    @State private var composerWraps = false
 
     var body: some View {
         ScrollView {
@@ -143,17 +146,28 @@ struct LogPostView: View {
                     .font(.footnote).foregroundStyle(Theme.destructive)
                     .accessibilityIdentifier("comment-error")
             }
-            // Your picture and the field, the same height and centred on each other while it's one line. As the comment
-            // grows, the field becomes a rounded box (not a stretched pill) and they line up along the bottom.
+            // Your picture and the field, the same height and centred on each other. Once the comment wraps, the picture
+            // slides away so the field can take the whole width; it's a pill on one line, a rounded box beyond.
             HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
-                if let me = session.profile?.summary { AvatarView(member: me, size: Self.rowHeight) }
+                if !composerWraps, let me = session.profile?.summary {
+                    AvatarView(member: me, size: Self.rowHeight)
+                        // A thin white ring sets it apart from the comments behind.
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                        .shadow(color: .black.opacity(0.12), radius: 6, y: 1)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                // Along the bottom: on one line the send circle is centred; as the comment grows it stays at the bottom.
                 HStack(alignment: .bottom, spacing: Theme.Spacing.xs) {
                     TextField("Add a comment", text: $model.draft, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($composerFocused)
                         .disabled(model.isPosting)
-                        .padding(.vertical, 8)
+                        // Less than the field's height, so one line is exactly `rowHeight` tall and the circle's maths holds.
+                        .padding(.vertical, 10)
                         .frame(minHeight: Self.rowHeight)
+                        .onGeometryChange(for: Bool.self) { $0.size.height > Self.rowHeight + 4 } action: { wraps in
+                            withAnimation(.easeOut(duration: 0.2)) { composerWraps = wraps }
+                        }
                         .accessibilityIdentifier("comment-field")
                     Button {
                         Task { if await model.post() { composerFocused = false } }
@@ -167,15 +181,18 @@ struct LogPostView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
-                    // The same gap below and to the right of the circle.
                     .padding(.bottom, Self.sendInset)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
                     .accessibilityIdentifier("comment-send")
                 }
                 .padding(.leading, Theme.Spacing.m)
+                // The same gap to its right as below it.
                 .padding(.trailing, Self.sendInset)
                 // Floating Liquid Glass over the comments, which scroll on underneath.
-                .floatingBubble(RoundedRectangle(cornerRadius: Self.rowHeight / 2, style: .continuous))
+                // A generous radius: one line reads as a full pill; longer, a rounded box.
+                // Solid white, lifted off the comments by a soft shadow.
+                .background(RoundedRectangle(cornerRadius: 26, style: .circular).fill(Roam.paperRaised))
+                .shadow(color: .black.opacity(0.12), radius: 12, y: 2)
             }
         }
         // No band behind it; inset from the screen's curved corners, low on the screen.
