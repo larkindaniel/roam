@@ -157,31 +157,38 @@ private struct SetupSteps: View {
             .task { await model.loadTaste() }
         case .home:
             title("Where's home?")
-            if let city = model.homeCity {
-                HStack(spacing: Theme.Spacing.m) {
-                    CityThumbnail(destination: city, size: 48)
-                    VStack(alignment: .leading, spacing: -2) {
-                        Text(city.name).font(.headline).lineLimit(1)
-                        Text(city.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+            // The cities picked so far, each with × to take it off; the search stays, to add more.
+            if !model.homeCities.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(model.homeCities) { city in
+                        HStack(spacing: Theme.Spacing.m) {
+                            CityThumbnail(destination: city, size: 48)
+                            VStack(alignment: .leading, spacing: -2) {
+                                Text(city.name).font(.headline).lineLimit(1)
+                                Text(city.subtitle).font(.footnote).foregroundStyle(Roam.inkMuted).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Button { model.removeHome(city) } label: {
+                                Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
+                                    .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove \(city.name)")
+                        }
+                        .padding(.vertical, Theme.Spacing.s)
+                        if city.id != model.homeCities.last?.id { RowSeparator() }
                     }
-                    Spacer(minLength: 0)
-                    Button { model.homeCity = nil } label: {
-                        Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Roam.inkMuted)
-                            .frame(width: 32, height: 32).background(Circle().fill(Roam.fill))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Choose a different city")
                 }
-                .padding(.vertical, Theme.Spacing.s)
                 .roamCard(padding: Theme.Spacing.m)
-            } else {
-                // Search 1, worldwide, cities only.
-                RoamSearchField(prompt: "Search cities", text: $cityQuery, focus: $focused, identifier: "setup-home-search")
-                    .frame(height: 44)
-                if !cityQuery.trimmingCharacters(in: .whitespaces).isEmpty {
-                    PlaceSearchResults(query: cityQuery, placeSearch: citySearch, kinds: .cities) { pick in
-                        if case .city(let city) = pick { model.homeCity = city; cityQuery = ""; focused = false }
-                    }
+            }
+            // Search 1, worldwide, cities only.
+            RoamSearchField(prompt: model.homeCities.isEmpty ? "Search cities" : "Add another city", text: $cityQuery,
+                            focus: $focused, identifier: "setup-home-search")
+                .frame(height: 44)
+            if !cityQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                PlaceSearchResults(query: cityQuery, placeSearch: citySearch, kinds: .cities,
+                                   isPicked: { pick in if case .city(let city) = pick { model.homeCities.contains { $0.id == city.id } } else { false } }) { pick in
+                    if case .city(let city) = pick { model.addHome(city); cityQuery = ""; focused = false }
                 }
             }
         case .friends:
@@ -215,7 +222,7 @@ private struct SetupSteps: View {
                 Task { await model.savePreferences() }
             }
         case .home:
-            primary(model.homeCity == nil ? "Skip for now" : "Continue", enabled: true, quiet: model.homeCity == nil) {
+            primary(model.homeCities.isEmpty ? "Skip for now" : "Continue", enabled: true, quiet: model.homeCities.isEmpty) {
                 Task { await model.saveHome() }
             }
         case .friends:

@@ -17,7 +17,8 @@ when you change a screen. `docs/design-language.md` covers how they look.
   2. **A profile photo**: tap the big circle to choose one.
   3. **What do you like?** Five questions (atmosphere, budget, crowds, classics or hidden gems, pace), each a slider
      like the log screen's feeling: drag or tap to choose, tap the chosen one again to clear. These feed Plan with AI and can be changed in Settings.
-  4. **Where's home?** Search cities; the one you pick shows as a row with × to change it. It becomes a home city.
+  4. **Where's home?** Search cities and pick as many as you like; each shows as a row with × to take it off, and the
+     search stays to add another. They become your home cities.
   5. **Add friends:** suggestions, or search for anyone, each with Add. "Start using Roam" finishes.
   Setup never logs places.
 

@@ -31,7 +31,8 @@ final class ProfileSetupModel {
     var avatarImage: UIImage?
     var avatarPath: String?
     var avatarBusy = false
-    var homeCity: Destination?
+    /// Your home cities (as many as you like); the profile's own home city, if any, starts the list.
+    var homeCities: [Destination] = []
     var suggestions: LoadPhase<[MemberRow]> = .idle
     var following: Set<UUID> = []
     var pendingFollows: Set<UUID> = []
@@ -52,7 +53,7 @@ final class ProfileSetupModel {
         displayName = profile?.displayName ?? draft?.displayName ?? prefillName ?? ""
         handle = profile?.handle ?? draft?.handle ?? ""
         avatarPath = profile?.avatarPath
-        homeCity = profile?.homeCity
+        homeCities = profile?.homeCity.map { [$0] } ?? []
         switch profile?.setupCheckpoint {
         // A name typed before, or one Apple gave on first sign-in, skips straight to the handle (back still edits it).
         case .none:
@@ -178,18 +179,24 @@ final class ProfileSetupModel {
         }
     }
 
-    /// Makes the chosen city a home (optional), then on to friends.
+    /// Makes each chosen city a home (optional), then on to friends.
     func saveHome() async {
         busy = true
         error = nil
         defer { busy = false }
         do {
-            if let homeCity { _ = try await services.plans.setHomeCity(homeCity, present: true) }
+            for city in homeCities { _ = try await services.plans.setHomeCity(city, present: true) }
             step = .friends
         } catch {
             self.error = error.roamMessage
         }
     }
+
+    func addHome(_ city: Destination) {
+        if !homeCities.contains(where: { $0.id == city.id }) { homeCities.append(city) }
+    }
+
+    func removeHome(_ city: Destination) { homeCities.removeAll { $0.id == city.id } }
 
     /// One step back (the profile, once made, isn't undone: back from the photo goes nowhere).
     var canGoBack: Bool { step == .handle || step.rawValue > Step.photo.rawValue }
