@@ -153,7 +153,13 @@ Deno.serve(async request => {
       "\n\n### Where",
       `- Screen: \`${report.screen ?? "?"}\``,
       `- App ${report.app_version} (${report.build}), iOS ${report.os_version}, ${report.device_model}`,
-      `\n### Logs\nEverything the tester did in the app up to sending this. Paste into Supabase's SQL editor:\n\n\`\`\`sql\nselect seq, at, kind, name, screen, duration_ms, props\nfrom bug_report_trail\nwhere report_id = '${report.id}'\norder by seq;\n\`\`\``,
+      `\n### Logs\nEverything the tester did, up to sending this (and their previous session, if the app was reopened to report). ` +
+        `Paste into Supabase's SQL editor.\n\nWhat they did: screens, taps, navigation, actions, errors and crashes\n\n` +
+        "```sql\nselect session, seq, at, kind, name, screen, duration_ms, props\nfrom bug_report_trail\n" +
+        `where report_id = '${report.id}' and kind <> 'network'\norder by part, seq;\n` + "```\n\n" +
+        "Network calls: what the app asked the server for, how long each took, and any that failed\n\n" +
+        "```sql\nselect session, seq, at, name, duration_ms, props ->> 'status' as status, props\nfrom bug_report_trail\n" +
+        `where report_id = '${report.id}' and kind = 'network'\norder by part, seq;\n` + "```",
     ].join("\n");
 
     const open = (labels: string[]) => fetch(`https://api.github.com/repos/${repo}/issues`, {

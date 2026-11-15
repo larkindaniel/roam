@@ -60,7 +60,9 @@ final class SupabaseBackend: @unchecked Sendable {
     func rpc<T: Decodable>(_ function: String, _ params: some Encodable) async throws -> T {
         do {
             let scoped = try await requestClient()
-            return try await scoped.rpc(function, params: params).execute().value
+            let value: T = try await scoped.rpc(function, params: params).execute().value
+            Self.logAction(function, params)
+            return value
         } catch {
             throw Self.map(error)
         }
@@ -79,9 +81,56 @@ final class SupabaseBackend: @unchecked Sendable {
         do {
             let scoped = try await requestClient()
             try await scoped.rpc(function, params: params).execute()
+            Self.logAction(function, params)
         } catch {
             throw Self.map(error)
         }
+    }
+
+    /// What the member did, in plain words, for the beta's trail: logged when a call that changes something succeeds.
+    static let actionNames: [String: String] = [
+        "commit_rating": "place.logged", "add_visit": "visit.added", "update_visit": "visit.edited",
+        "delete_visit": "visit.deleted", "remove_rating": "rating.removed", "set_visit_audience": "visit.audience_changed",
+        "set_visit_trip": "visit.trip_changed", "remove_my_visit_tag": "visit.tag_removed", "add_custom_place": "place.added",
+        "save_private_note": "note.saved", "delete_private_note": "note.deleted",
+        "set_bookmark": "wishlist.changed", "set_city_saved": "city.saved_changed", "set_country_saved": "country.saved_changed",
+        "set_region_saved": "region.saved_changed", "set_city_visited": "city.visited_changed", "mark_city_visited": "city.marked_visited",
+        "log_city": "city.logged", "set_home_city": "home.changed",
+        "save_trip": "trip.saved", "delete_trip": "trip.deleted", "set_trip_dates": "trip.dates_changed",
+        "set_trip_membership": "trip.membership_changed", "set_trip_place": "trip.place_changed",
+        "set_trip_country": "trip.country_changed", "set_trip_city": "trip.city_changed",
+        "save_list": "list.saved", "delete_list": "list.deleted", "set_list_item": "list.place_changed",
+        "revoke_list_share": "list.share_revoked", "send_share": "share.sent",
+        "friend_action": "friend.action", "set_block": "member.block_changed", "set_mute": "member.mute_changed",
+        "set_like": "like.changed", "post_comment": "comment.posted", "delete_comment": "comment.deleted",
+        "submit_report": "content.reported", "hide_suggestion": "suggestion.hidden",
+        "create_profile": "profile.created", "update_profile": "profile.updated", "set_setup_checkpoint": "setup.checkpoint",
+        "save_taste": "taste.saved", "update_settings": "settings.updated", "request_account_deletion": "account.deletion_requested",
+        "mark_all_notifications_read": "notifications.read_all",
+    ]
+
+    /// Logs the action with the call's ids, switches and numbers. Text (notes, names, messages) never goes in.
+    static func logAction(_ function: String, _ params: some Encodable) {
+        guard let action = actionNames[function] else { return }
+        let textKeys: Set<String> = ["name", "handle", "display_name", "bio", "message", "text", "note", "query", "title",
+                                     "description", "comment", "body", "email", "password", "reason_text", "details"]
+        var props: [String: String] = [:]
+        if let data = try? RoamJSON.encoder.encode(params),
+           let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+            for (key, value) in object {
+                let name = key.hasPrefix("p_") ? String(key.dropFirst(2)) : key
+                if textKeys.contains(name) { continue }
+                switch value {
+                case let flag as Bool: props[name] = flag ? "true" : "false"
+                case let number as NSNumber: props[name] = number.stringValue
+                case let text as String where UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }):
+                    // Ids and short codes ("request", "accepted", "CA", "2026-11-15"), not free text.
+                    props[name] = text
+                default: break
+                }
+            }
+        }
+        Log.action(action, props)
     }
 
     /// Maps transport, auth and `roam:`-prefixed database errors to user-presentable errors.

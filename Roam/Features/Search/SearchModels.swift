@@ -98,6 +98,9 @@ final class ExperienceSearchModel {
             hits = candidates.map { SearchHit(candidate: $0, experience: matches[$0.id]) }
             lastQuery = trimmed
             phase = hits.isEmpty ? .noResults : .results
+            // How long the search was and what came back, never the words.
+            Log.action("search.places", ["query_length": "\(trimmed.count)", "results": "\(hits.count)",
+                                         "already_logged_or_saved": "\(matches.count)", "near": destination?.name ?? "anywhere"])
         } catch is CancellationError {
             if current == generation { phase = hits.isEmpty ? .idle : .results }
         } catch {
@@ -209,6 +212,7 @@ final class MemberSearchModel {
             rows = page.items
             nextCursor = page.nextCursor
             lastQuery = trimmed
+            Log.action("search.people", ["query_length": "\(trimmed.count)", "results": "\(page.items.count)"])
             pageError = nil
             phase = .loaded(())
         } catch is CancellationError {

@@ -63,9 +63,14 @@ update telemetry_settings set event_retention_days = 14;       -- how long event
 ## Reading it
 
 ```sql
--- A bug report, and the steps that led up to it
+-- A bug report, and what the tester did up to it (with their previous session first, if they reopened the app to report)
 select * from bug_reports order by created_at desc;
-select * from bug_report_trail where report_id = '…';
+select session, seq, at, kind, name, screen, duration_ms, props
+from bug_report_trail where report_id = '…' and kind <> 'network' order by part, seq;
+
+-- The same report's network calls
+select session, seq, at, name, duration_ms, props ->> 'status' as status, props
+from bug_report_trail where report_id = '…' and kind = 'network' order by part, seq;
 
 -- Everything someone did in a session
 select seq, at, kind, name, screen, duration_ms, props from app_events where session_id = '…' order by seq;
@@ -99,7 +104,7 @@ the tester:
   tester's account id isn't in the link, and the link lasts a year.
   - the app version, iOS version and device
   - the screen it was sent from
-  - the SQL that lists every step before the report (the steps stay in Supabase)
+  - two SQL queries, one for what the tester did and one for the network calls (the steps themselves stay in Supabase)
 - **Out:**
   - who sent it
   - emails (`[email]`) and phone numbers (`[number]`), in the description too

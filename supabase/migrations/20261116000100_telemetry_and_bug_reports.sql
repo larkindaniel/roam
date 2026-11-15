@@ -233,12 +233,30 @@ create policy roam_bug_report_objects_insert on storage.objects for insert to au
   and (storage.foldername(name))[1] = (select auth.uid()::text)
 );
 
--- For the team: a report with the steps that led up to it, oldest first.
+-- For the team: a report with the steps that led up to it. If the tester's previous session was active in the 15
+-- minutes before this one began (the app broke, they closed it and opened it again to report), its steps come first.
+-- Order by part, then seq.
 create or replace view public.bug_report_trail as
-select r.id as report_id, e.seq, e.at, e.kind, e.name, e.screen, e.duration_ms, e.props
-from public.bug_reports r
-join public.app_events e on e.session_id = r.session_id and (r.last_seq is null or e.seq <= r.last_seq)
-order by r.id, e.seq;
+with reports as (
+  select r.id, r.session_id, r.last_seq, s.user_id, s.started_at
+  from public.bug_reports r
+  join public.app_sessions s on s.id = r.session_id
+),
+previous as (
+  select distinct on (rp.id) rp.id as report_id, p.id as session_id
+  from reports rp
+  join public.app_sessions p on p.user_id = rp.user_id and p.id <> rp.session_id and p.started_at < rp.started_at
+  where exists (select 1 from public.app_events e
+                where e.session_id = p.id and e.at > rp.started_at - interval '15 minutes')
+  order by rp.id, p.started_at desc
+)
+select pv.report_id, 1 as part, 'previous' as session, e.seq, e.at, e.kind, e.name, e.screen, e.duration_ms, e.props
+from previous pv
+join public.app_events e on e.session_id = pv.session_id
+union all
+select rp.id, 2, 'this', e.seq, e.at, e.kind, e.name, e.screen, e.duration_ms, e.props
+from reports rp
+join public.app_events e on e.session_id = rp.session_id and (rp.last_seq is null or e.seq <= rp.last_seq);
 
 -- For the team: how long things take over the last week, slowest first.
 create or replace view public.latency_last_7_days as
