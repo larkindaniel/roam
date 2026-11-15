@@ -205,7 +205,8 @@ struct BugReportSheet: View {
                     .buttonStyle(.plain)
                     // Glass with a near-solid white wash, so it reads clearly over the screenshots behind it.
                     .floatingBubble(Capsule(), tint: Roam.paperRaised.opacity(0.85))
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending || loadingAttachment)
+                    // Only off while sending: a tap on an empty report says why instead of doing nothing.
+                    .disabled(sending)
                     .tapID("bug-report-send")
                     .padding(Theme.Spacing.l)
                 }
@@ -318,6 +319,17 @@ struct BugReportSheet: View {
     // MARK: Sending
 
     private func send() async {
+        guard !sending else { return }
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            error = "Say what went wrong first."
+            focused = true
+            Log.action("bug_report.send_empty")
+            return
+        }
+        if loadingAttachment {
+            error = "Wait for the attachment to finish loading."
+            return
+        }
         sending = true
         error = nil
         defer { sending = false }
