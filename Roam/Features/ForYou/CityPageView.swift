@@ -754,7 +754,7 @@ struct CityHeader: View {
                     Spacer(minLength: Theme.Spacing.xs)
                     if let onToggleHome {
                         Button(action: onToggleHome) { Image(systemName: "house.fill") }
-                            .buttonStyle(PillButtonStyle(isSelected: true, tint: Roam.home))
+                            .buttonStyle(PillButtonStyle(isSelected: true))  // Ink with paper text (home is ink), so the house shows in dark mode too.
                             .accessibilityLabel("Home")
                             .accessibilityHint("Removes it as a home city")
                             .tapID("city-toggle-home")
