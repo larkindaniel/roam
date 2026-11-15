@@ -15,49 +15,76 @@ struct SettingsView: View {
     @State private var confirmSignOut = false
 
     var body: some View {
-        List { Group {
-            Section("Profile") {
-                Button { router.push(.editProfile) } label: {
-                    HStack(spacing: Theme.Spacing.m) {
-                        if let profile = session.profile {
-                            AvatarView(member: profile.summary, size: 44)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(profile.displayName).font(.headline).foregroundStyle(Color.primary)
-                                Text("@\(profile.handle)").font(.subheadline).foregroundStyle(Theme.secondaryText)
+        // White cards of standard rows with the app's own separators, like Trip invitations and Lists.
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                section("Profile") {
+                    Button { router.push(.editProfile) } label: {
+                        HStack(spacing: Theme.Spacing.m) {
+                            if let profile = session.profile {
+                                AvatarView(member: profile.summary, size: 44)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(profile.displayName).font(.headline).foregroundStyle(Roam.ink)
+                                    Text("@\(profile.handle)").font(.subheadline).foregroundStyle(Roam.inkMuted)
+                                }
                             }
+                            Spacer(minLength: 0)
+                            Text("Edit").foregroundStyle(Roam.ink)
                         }
-                        Spacer()
-                        Text("Edit").foregroundStyle(Theme.accent)
+                        .padding(.vertical, Theme.Spacing.s)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .tapID("settings-edit-profile")
+                    RowSeparator(inset: 44 + Theme.Spacing.m)
+                    // What you like, for Plan with AI. Suggestions learn from your rankings instead.
+                    row("Your tastes", icon: "heart", id: "settings-tastes") { router.push(.taste) }
                 }
-                .tapID("settings-edit-profile")
-                // What you like, for Plan with AI. Suggestions learn from your rankings instead.
-                NavigationLink(value: AppRoute.taste) { Label("Your tastes", systemImage: "heart") }
-                    .tapID("settings-tastes")
+                // Kept to the essentials for now; preferences and notifications come back later.
+                section("Account") {
+                    if let email = session.session?.email {
+                        HStack {
+                            Text("Email").foregroundStyle(Roam.ink)
+                            Spacer(minLength: Theme.Spacing.m)
+                            Text(email).foregroundStyle(Roam.inkMuted).lineLimit(1).truncationMode(.middle)
+                        }
+                        .padding(.vertical, Theme.Spacing.m)
+                        RowSeparator(inset: 0)
+                    }
+                    // Theme red rather than system red, which is 3.6:1 on white.
+                    row("Sign out", tint: Theme.disliked, chevron: false, id: "settings-sign-out") { confirmSignOut = true }
+                    RowSeparator(inset: 0)
+                    row("Delete account", tint: Theme.disliked, id: "settings-delete-account") { router.push(.deleteAccount) }
+                }
+                // App Review needs blocking to be reversible and reports to be visible, so Safety stays.
+                section("Safety") {
+                    row("Blocked people", icon: "hand.raised", id: "settings-blocked") { router.push(.safetyList(.blocked)) }
+                    RowSeparator(inset: Self.iconInset)
+                    row("Muted people", icon: "speaker.slash", id: "settings-muted") { router.push(.safetyList(.muted)) }
+                    RowSeparator(inset: Self.iconInset)
+                    row("Your reports", icon: "flag", id: "settings-reports") { router.push(.reportHistory) }
+                }
+                section("About") {
+                    row("Support", icon: "questionmark.circle", id: "settings-help-support") { router.push(.help(.support)) }
+                    RowSeparator(inset: Self.iconInset)
+                    row("Privacy", icon: "lock", id: "settings-help-privacy") { router.push(.help(.privacy)) }
+                    RowSeparator(inset: Self.iconInset)
+                    row("Terms of use", icon: "doc.text", id: "settings-help-terms") { router.push(.help(.terms)) }
+                    RowSeparator(inset: Self.iconInset)
+                    HStack(spacing: Theme.Spacing.m) {
+                        Image(systemName: "info.circle").frame(width: Self.iconWidth).foregroundStyle(Roam.ink)
+                        Text("Version").foregroundStyle(Roam.ink)
+                        Spacer(minLength: 0)
+                        Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                            .foregroundStyle(Roam.inkMuted)
+                    }
+                    .padding(.vertical, Theme.Spacing.m)
+                }
             }
-            // Kept to the essentials for now; preferences and notifications come back later.
-            accountSection
-            // App Review needs blocking to be reversible and reports to be visible, so Safety stays.
-            Section("Safety") {
-                NavigationLink(value: AppRoute.safetyList(.blocked)) { Label("Blocked people", systemImage: "hand.raised") }
-                    .tapID("settings-blocked")
-                NavigationLink(value: AppRoute.safetyList(.muted)) { Label("Muted people", systemImage: "speaker.slash") }
-                    .tapID("settings-muted")
-                NavigationLink(value: AppRoute.reportHistory) { Label("Your reports", systemImage: "flag") }
-                    .tapID("settings-reports")
-            }
-            Section("About") {
-                NavigationLink(value: AppRoute.help(.support)) { Label("Support", systemImage: "questionmark.circle") }
-                    .tapID("settings-help-support")
-                NavigationLink(value: AppRoute.help(.privacy)) { Label("Privacy", systemImage: "lock") }
-                    .tapID("settings-help-privacy")
-                NavigationLink(value: AppRoute.help(.terms)) { Label("Terms of use", systemImage: "doc.text") }
-                    .tapID("settings-help-terms")
-                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
-            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.vertical, Theme.Spacing.s)
         }
-        .listRowBackground(Roam.paperRaised)
-        }
+        .background(Roam.paper)
         .navigationTitle("Settings")
         // Just the back button here, no tab bar.
         .roamTabBar(hidden: true)
@@ -104,19 +131,38 @@ struct SettingsView: View {
         .screenIdentifier("settings")
     }
 
-    private var accountSection: some View {
-        Section("Account") {
-            if let email = session.session?.email {
-                LabeledContent("Email", value: email)
-            }
-            // Theme red rather than system red, which is 3.6:1 on white.
-            Button { confirmSignOut = true } label: { Text("Sign out").foregroundStyle(Theme.disliked) }
-                .tapID("settings-sign-out")
-            NavigationLink(value: AppRoute.deleteAccount) {
-                Text("Delete account").foregroundStyle(Theme.disliked)
-            }
-            .tapID("settings-delete-account")
+    private static let iconWidth: CGFloat = 28
+    /// Where a line starts in an icon row: past the icon, at the text.
+    private static var iconInset: CGFloat { iconWidth + Theme.Spacing.m }
+
+    /// A section: its name, small and grey, over a white card of rows.
+    private func section<Rows: View>(_ title: String, @ViewBuilder rows: () -> Rows) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text(title).font(.footnote.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                .padding(.leading, Theme.Spacing.m)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) { rows() }
+                .roamCard(padding: Theme.Spacing.m)
         }
+    }
+
+    /// One standard row: an icon (if any), the title, and a chevron when it opens a page.
+    private func row(_ title: String, icon: String? = nil, tint: Color = Roam.ink, chevron: Bool = true, id: String,
+                     action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.m) {
+                if let icon { Image(systemName: icon).frame(width: Self.iconWidth).foregroundStyle(Roam.ink) }
+                Text(title).foregroundStyle(tint)
+                Spacer(minLength: 0)
+                if chevron {
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Roam.inkMuted)
+                }
+            }
+            .padding(.vertical, Theme.Spacing.m)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .tapID(id)
     }
 
     private var preferencesSection: some View {

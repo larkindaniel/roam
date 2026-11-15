@@ -240,6 +240,9 @@ tapping another place or pin swaps the card to it.
 
 ## Settings
 
+White cards of standard rows, one per section (Profile, Account, Safety, About), each under a small grey name, with
+the standard `RowSeparator` between rows, starting at the text.
+
 - Your profile row opens Edit profile: photo, name, handle, bio, and home cities (add any number, swipe to remove).
   Cancel with changes asks to discard them.
 - Your tastes: five optional questions (atmosphere, budget, crowds, novelty, pace) that go into Plan with AI prompts.

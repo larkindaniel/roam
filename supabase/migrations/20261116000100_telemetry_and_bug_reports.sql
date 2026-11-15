@@ -99,8 +99,10 @@ $$;
 revoke execute on function public.telemetry_settings() from public;
 grant execute on function public.telemetry_settings() to anon, authenticated;
 
--- Takes one session's batch of events. Signed-out screens (welcome, sign-in) log too, so anon may call it; the
--- session is claimed by whoever signs in during it, and a signed-in session can't be taken over by someone else.
+-- Takes one session's batch of events. Signed-out screens (welcome, sign-in) log too, so anon may call it. The session
+-- is claimed by the first person signed in while it uploads and is never handed to anyone else. Its last steps may
+-- arrive after signing out or from the next account on the phone, so they're taken in whoever sends them; the session
+-- id is random, so only the phone that made it has it.
 create or replace function public.log_events(p_session jsonb, p_events jsonb)
 returns integer
 language plpgsql
@@ -111,18 +113,12 @@ declare
   settings public.telemetry_settings;
   v_session uuid := (p_session ->> 'id')::uuid;
   actor uuid := auth.uid();
-  owner uuid;
   inserted integer;
 begin
   select * into settings from public.telemetry_settings;
   if not settings.events_enabled then return 0; end if;
   if v_session is null or jsonb_typeof(p_events) <> 'array' then raise exception 'roam:validation:Bad batch.'; end if;
   if jsonb_array_length(p_events) > 200 then raise exception 'roam:validation:Too many events in one batch.'; end if;
-
-  select user_id into owner from public.app_sessions where id = v_session;
-  if found and owner is not null and owner is distinct from actor then
-    raise exception 'roam:forbidden';
-  end if;
 
   insert into public.app_sessions as s (id, user_id, started_at, app_version, build, os_version, device_model, locale)
   values (v_session, actor,

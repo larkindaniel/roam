@@ -131,7 +131,7 @@ final class SupabaseBackend: @unchecked Sendable {
                 case let text as String where leaf == "name" && depth == 1 && text.count <= 60:
                     // A place's or city's name says which one it was (a list's name, typed by the member, isn't kept).
                     props[name] = text
-                case let text as String where leaf != "name" && (UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" })):
+                case let text as String where leaf != "name" && (UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" || $0 == " " })):
                     // Ids and short codes ("liked", "friends", "CA", "2026-11-15"), not free text.
                     props[name] = text
                 default: break
@@ -195,6 +195,7 @@ final class SupabaseBackend: @unchecked Sendable {
     /// The real reason a call failed, for the beta's trail: the server's code and message, the network error, or what
     /// didn't decode. The member only ever sees the friendly version.
     static func logFailure(_ error: Error) {
+        if Telemetry.quiet { return }
         var props: [String: String] = ["type": String(describing: type(of: error))]
         switch error {
         case let roam as RoamError: props["roam"] = String(describing: roam)

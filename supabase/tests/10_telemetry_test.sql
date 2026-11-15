@@ -64,13 +64,15 @@ reset role;
 select is((select user_id from public.app_sessions where id = 'b1000000-0000-4000-8000-000000000001'),
           'a1000000-0000-4000-8000-000000000001'::uuid, 'signing in claims the session');
 
--- Someone else can't add to it, or mark it.
+-- Its last steps can arrive from the next account on the phone (or signed out), but it never changes hands.
 set local role authenticated;
 select pg_temp.actor('other');
-select throws_ok($$select public.log_events(pg_temp.session('b1000000-0000-4000-8000-000000000001'), pg_temp.events(6, 6))$$,
-                 'P0001', 'roam:forbidden', 'another member cannot write into a claimed session');
+select is(public.log_events(pg_temp.session('b1000000-0000-4000-8000-000000000001'), pg_temp.events(6, 6)), 1,
+          'a session''s last steps are taken in after the account changes');
 select public.mark_session_unclean('b1000000-0000-4000-8000-000000000001');
 reset role;
+select is((select user_id from public.app_sessions where id = 'b1000000-0000-4000-8000-000000000001'),
+          'a1000000-0000-4000-8000-000000000001'::uuid, 'the session still belongs to whoever signed in first');
 select is((select ended_uncleanly from public.app_sessions where id = 'b1000000-0000-4000-8000-000000000001'), false,
           'another member cannot mark the session as crashed');
 

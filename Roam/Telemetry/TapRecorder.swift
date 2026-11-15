@@ -4,14 +4,84 @@ import UIKit
 extension View {
     /// Names a button for UI tests (its accessibility identifier) and for the beta's event trail: each tap logs a
     /// `tap` event under this name. Use it on every button, link and toggle in place of `.accessibilityIdentifier`.
+    ///
+    /// It adds no gesture (one would steal taps from buttons inside a List or Form): an invisible marker behind the
+    /// button says where it is, and the tap recorder names a tap by the marker under the finger.
     func tapID(_ id: String) -> some View {
         accessibilityIdentifier(id)
-            .simultaneousGesture(TapGesture().onEnded { TapRecorder.named(id) })
+            .background(TapMarker(id: id).allowsHitTesting(false))
+    }
+}
+
+/// An invisible UIKit view behind a named button, so a tap on the window can be matched to the button's name.
+struct TapMarker: UIViewRepresentable {
+    let id: String
+
+    func makeUIView(context: Context) -> MarkerView {
+        let view = MarkerView()
+        view.markerID = id
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        return view
+    }
+
+    func updateUIView(_ view: MarkerView, context: Context) { view.markerID = id }
+
+    final class MarkerView: UIView {
+        var markerID = ""
+        /// Every marker on screen (weakly held), for the recorder to search.
+        nonisolated(unsafe) static let all = NSHashTable<MarkerView>.weakObjects()
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil { Self.all.add(self) } else { Self.all.remove(self) }
+        }
+
+        /// Showing: in a window, and no view above it hidden or see-through (tabs not on screen are faded out).
+        var isShowing: Bool {
+            guard window != nil else { return false }
+            var view: UIView? = self
+            while let current = view {
+                if current.isHidden || current.alpha < 0.01 || current.layer.opacity < 0.01 { return false }
+                view = current.superview
+            }
+            return true
+        }
+    }
+
+    /// The smallest showing marker under the point, on the same layer as the view the touch hit (so a sheet's buttons
+    /// win over the page under it).
+    static func name(at point: CGPoint, in window: UIWindow, hit: UIView?) -> String? {
+        let layer = hit.flatMap(Self.presentationRoot)
+        var best: (id: String, area: CGFloat)?
+        for marker in MarkerView.all.allObjects where marker.window === window && !marker.markerID.isEmpty {
+            let frame = marker.convert(marker.bounds, to: window)
+            guard frame.contains(point), marker.isShowing else { continue }
+            if let layer, let markerLayer = Self.presentationRoot(marker), markerLayer !== layer { continue }
+            let area = frame.width * frame.height
+            if best == nil || area < best!.area { best = (marker.markerID, area) }
+        }
+        return best?.id
+    }
+
+    /// The view of the view controller a view belongs to that's presented on its own (the app, or a sheet).
+    private static func presentationRoot(_ view: UIView) -> UIView? {
+        var responder: UIResponder? = view
+        var root: UIView?
+        while let current = responder {
+            if let controller = current as? UIViewController {
+                root = controller.view
+                if controller.presentingViewController != nil || controller.parent == nil { return root }
+            }
+            responder = current.next
+        }
+        return root
     }
 }
 
 /// Logs every tap in the app as a `tap` event. It watches touches on the window (never stopping or delaying them):
-/// - a button with `.tapID(_:)` logs under that name,
+/// - a button with `.tapID(_:)` logs under that name (found by its marker, see `TapMarker`),
+/// - a slider or tappable view that calls `TapRecorder.named` logs under its name,
 /// - a system control (the back button, toolbar and keyboard buttons) logs under its UIKit accessibility name,
 /// - anything else logs as `unnamed` with where on the screen it was, which with the screen, the navigation and the
 ///   network calls around it is usually enough to tell what it was.
@@ -31,7 +101,7 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         delegate = self
     }
 
-    /// A `.tapID` button was tapped.
+    /// Something named was tapped that has no marker: a slider stop, a view with onTapGesture.
     static func named(_ id: String) {
         var props: [String: String] = [:]
         if let touch = lastTouch, touch.at.elapsedMilliseconds < 600 {
@@ -59,6 +129,12 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         guard let start, let window = view as? UIWindow else { return }
         let began = began
         let touchedAt = Date()
+        // A .tapID button: named by its marker, straight away.
+        if let id = TapMarker.name(at: start, in: window, hit: window.hitTest(start, with: nil)) {
+            Self.lastNamedAt = .now
+            Log.tap(id, ["x": "\(Int(start.x))", "y": "\(Int(start.y))"], at: touchedAt)
+            return
+        }
         let system = Self.uikitName(at: start, in: window)
         // iOS's own controls (back, toolbar buttons, the keyboard, map pins) can't be .tapID buttons: log them now, so
         // they come before what they cause.
@@ -116,7 +192,8 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         case chain.contains("BarButton") || chain.contains("ButtonBar") || chain.contains("BarItem"): known = "system.toolbar-button"
         case chain.contains("Annotation") || chain.contains("Marker"): known = "map.pin"
         case chain.contains("MKMapView") || chain.contains("MKMap"): known = "map"
-        case chain.contains("TextView") || chain.contains("TextField") || chain.contains("TextInput"): known = "text-field"
+        case chain.contains("AlertControllerAction") || chain.contains("ActionSheet"): known = "system.alert-action"
+case chain.contains("TextView") || chain.contains("TextField") || chain.contains("TextInput"): known = "text-field"
         case chain.contains("NavigationBar"): known = "system.navigation-bar"
         default: known = nil
         }

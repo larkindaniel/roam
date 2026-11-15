@@ -144,7 +144,13 @@ protocol TelemetryTransport: Sendable {
 final class Telemetry: @unchecked Sendable {
     static let shared = Telemetry()
 
-    let session = TelemetrySession.current()
+    /// This session: one app launch, or since the account last changed.
+    var session: TelemetrySession { lock.withLock { currentSession } }
+    private var currentSession = TelemetrySession.current()
+    /// Who the session belongs to, so a different account (or signing out) starts a new one.
+    private var account: UUID?
+    /// Set while the trail uploads: the uploader's own failures aren't logged (they'd only add to what's waiting).
+    @TaskLocal static var quiet = false
     /// The settings in force (last server answer, or defaults).
     private(set) var settings: TelemetrySettings
     /// The screen the member is on: an open sheet if there is one, else the top page of the current tab, else the
@@ -165,6 +171,8 @@ final class Telemetry: @unchecked Sendable {
     private var transport: (any TelemetryTransport)?
     private var recording = false
     private var uploading = false
+    /// Earlier sessions being uploaded right now, so two uploads don't send the same file.
+    private var uploadingEarlier: Set<String> = []
     private let io = DispatchQueue(label: "roam.telemetry.io")
     private let directory: URL
     private var handle: FileHandle?
@@ -201,7 +209,7 @@ final class Telemetry: @unchecked Sendable {
         io.sync { openSessionFile() }
         CrashRecorder.shared.start()
         let previousUnclean = CrashRecorder.shared.previousSessionEndedUncleanly
-        Log.lifecycle("app.launch", ["session": session.id.uuidString,
+        Log.lifecycle("app.launch", ["session": currentSession.id.uuidString,
                                      "previous_unclean": previousUnclean.map(\.uuidString) ?? "none"])
         if let previousUnclean {
             record(.crash, "unclean_exit", props: ["previous_session": previousUnclean.uuidString,
@@ -224,7 +232,7 @@ final class Telemetry: @unchecked Sendable {
             if kind == .tap { lastTapAt = .now }
             seq += 1
             let trimmed = props.isEmpty ? nil : props.mapValues { String($0.prefix(500)) }
-            let event = TelemetryEvent(session: session.id, seq: seq, at: at ?? Date(), kind: kind, name: String(name.prefix(120)),
+            let event = TelemetryEvent(session: currentSession.id, seq: seq, at: at ?? Date(), kind: kind, name: String(name.prefix(120)),
                                        screen: screen ?? overlays.last ?? pageScreen ?? lastShownScreen, durationMs: durationMs, props: trimmed)
             recent.append(event)
             if recent.count > 300 { recent.removeFirst(recent.count - 300) }
@@ -270,7 +278,7 @@ final class Telemetry: @unchecked Sendable {
     private var lastShownError: (key: String, at: ContinuousClock.Instant)?
 
     func recordShownError(_ error: Error, message: String) {
-        if error is CancellationError { return }
+        if error is CancellationError || Telemetry.quiet { return }
         let detail = String(String(describing: error).prefix(300))
         let key = detail + message
         let skip = lock.withLock { () -> Bool in
@@ -284,14 +292,38 @@ final class Telemetry: @unchecked Sendable {
 
     // MARK: Disk
 
-    private var eventsFile: URL { directory.appendingPathComponent("\(session.id.uuidString).events.jsonl") }
-
     private func openSessionFile() {
+        let current = session
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let info = directory.appendingPathComponent("\(session.id.uuidString).session.json")
-        try? RoamJSON.encoder.encode(session).write(to: info, options: .atomic)
-        FileManager.default.createFile(atPath: eventsFile.path, contents: nil)
-        handle = try? FileHandle(forWritingTo: eventsFile)
+        let info = directory.appendingPathComponent("\(current.id.uuidString).session.json")
+        try? RoamJSON.encoder.encode(current).write(to: info, options: .atomic)
+        let events = directory.appendingPathComponent("\(current.id.uuidString).events.jsonl")
+        FileManager.default.createFile(atPath: events.path, contents: nil)
+        try? handle?.close()
+        handle = try? FileHandle(forWritingTo: events)
+    }
+
+    // MARK: Accounts
+
+    /// The signed-in account changed. Signing out, or a different account signing in, starts a new session, so each
+    /// account's steps stay in its own; what the old session hadn't sent yet still goes up.
+    func accountChanged(to newAccount: UUID?) {
+        let rotate = lock.withLock { () -> Bool in
+            defer { account = newAccount }
+            return recording && account != nil && account != newAccount
+        }
+        guard rotate else { return }
+        lock.withLock {
+            currentSession = TelemetrySession.current()
+            seq = 0
+            pending.removeAll()
+            recent.removeAll()
+        }
+        // The old session's file holds what it hadn't sent; it goes up as an earlier session.
+        io.sync { openSessionFile() }
+        CrashRecorder.shared.markForeground(session: session.id)
+        Log.lifecycle("session.new", ["why": newAccount == nil ? "signed out" : "another account signed in"])
+        Task.detached(priority: .utility) { [self] in await uploadEarlierSessions() }
     }
 
     private func append(_ event: TelemetryEvent) {
@@ -342,19 +374,31 @@ final class Telemetry: @unchecked Sendable {
             return transport
         }) else { return }
         defer { lock.withLock { uploading = false } }
-        while let batch = lock.withLock({ pending.isEmpty ? nil : Array(pending.prefix(Self.batchSize)) }) {
+        while let (sending, batch) = lock.withLock({ () -> (TelemetrySession, [TelemetryEvent])? in
+            pending.isEmpty ? nil : (currentSession, Array(pending.prefix(Self.batchSize)))
+        }) {
+            var rejected = false
             do {
-                try await transport.send(session: session, events: batch)
+                try await Telemetry.$quiet.withValue(true) { try await transport.send(session: sending, events: batch) }
+            } catch let error as RoamError where error == .forbidden || Self.isValidation(error) {
+                // The server won't ever take this batch; drop it rather than retry forever.
+                rejected = true
             } catch {
                 return
             }
             let lastSent = batch.last?.seq ?? 0
-            let remaining = lock.withLock { () -> [TelemetryEvent] in
-                pending.removeAll { $0.seq <= lastSent }
-                return pending
+            let remaining = lock.withLock { () -> [TelemetryEvent]? in
+                pending.removeAll { $0.session == sending.id && $0.seq <= lastSent }
+                return currentSession.id == sending.id ? pending : nil
             }
-            io.async { [self] in rewrite(remaining) }
+            if let remaining { io.async { [self] in rewrite(remaining) } }
+            if rejected { return }
         }
+    }
+
+    private static func isValidation(_ error: RoamError) -> Bool {
+        if case .validation = error { return true }
+        return false
     }
 
     /// Earlier sessions' leftovers (the app was killed or offline before they went), then their files are removed.
@@ -363,7 +407,9 @@ final class Telemetry: @unchecked Sendable {
         let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
         for info in files where info.lastPathComponent.hasSuffix(".session.json") {
             let id = info.lastPathComponent.replacingOccurrences(of: ".session.json", with: "")
-            guard id != session.id.uuidString else { continue }
+            guard id != session.id.uuidString, !uploadingEarlier.contains(id) else { continue }
+            lock.withLock { _ = uploadingEarlier.insert(id) }
+            defer { lock.withLock { _ = uploadingEarlier.remove(id) } }
             let eventsURL = directory.appendingPathComponent("\(id).events.jsonl")
             guard let data = try? Data(contentsOf: info), let earlier = try? RoamJSON.decoder.decode(TelemetrySession.self, from: data) else {
                 try? FileManager.default.removeItem(at: info)
@@ -375,7 +421,11 @@ final class Telemetry: @unchecked Sendable {
             var sent = true
             for start in stride(from: 0, to: events.count, by: Self.batchSize) {
                 let batch = Array(events[start..<min(start + Self.batchSize, events.count)])
-                do { try await transport.send(session: earlier, events: batch) } catch { sent = false; break }
+                do {
+                    try await Telemetry.$quiet.withValue(true) { try await transport.send(session: earlier, events: batch) }
+                } catch let error as RoamError where error == .forbidden || Self.isValidation(error) {
+                    continue
+                } catch { sent = false; break }
             }
             // Old leftovers that can't be sent after a week aren't worth keeping.
             let stale = earlier.startedAt < Date().addingTimeInterval(-7 * 86_400)
