@@ -12,6 +12,8 @@ struct ActivityCardView: View {
     var actions: AnyView? = nil
     /// Double-tapping the photo likes it.
     var onDoubleTap: (() -> Void)? = nil
+    /// Tapping the photo once (the Friends tab opens the log's own page).
+    var onTap: (() -> Void)? = nil
 
     static func hasPhoto(_ item: ActivityItem) -> Bool { !item.media.isEmpty || item.experience.photoURL != nil }
 
@@ -99,7 +101,9 @@ struct ActivityCardView: View {
             }
         }
         .contentShape(Rectangle())
+        // Double first, so a single tap waits to be sure it isn't one.
         .onTapGesture(count: 2) { onDoubleTap?() }
+        .onTapGesture { onTap?() }
         .overlay(alignment: .top) {
             byline(onPhoto: true)
                 // The photo's own corners, so the fade follows them.

@@ -191,7 +191,8 @@ struct FeedCard: View {
         // With a photo, like and comment sit in its bottom right (white); without, under the card.
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             ActivityCardView(item: item, actions: AnyView(actions(onPhoto: true)),
-                             onDoubleTap: { if !item.likedByViewer { onLike(true) } })
+                             onDoubleTap: { if !item.likedByViewer { onLike(true) } },
+                             onTap: { router.push(.activity(item.id)) })
             if !ActivityCardView.hasPhoto(item) { actions(onPhoto: false) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

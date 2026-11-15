@@ -23,8 +23,10 @@ struct LogPostView: View {
     @State private var commentToDelete: Comment?
     @State private var reportTarget: ReportTarget?
     @FocusState private var composerFocused: Bool
-    /// The comment has wrapped onto more than one line.
+    /// The comment wouldn't fit on one line beside your picture, so the picture steps aside.
     @State private var composerWraps = false
+    /// The width of the whole comment row, for working out the text's room when the picture is showing.
+    @State private var composerRowWidth: CGFloat = 0
 
     var body: some View {
         ScrollView {
@@ -44,6 +46,8 @@ struct LogPostView: View {
             .padding(.vertical, Theme.Spacing.m)
         }
         .scrollDismissesKeyboard(.interactively)
+        // Tapping anywhere off the field puts the keyboard away (buttons on the page still work).
+        .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
         .safeAreaInset(edge: .bottom, spacing: 0) { if let model, model.item != nil { composer(model) } }
         .background(Roam.paper)
         // The comment field sits at the bottom, where the tab bar would be.
@@ -138,6 +142,11 @@ struct LogPostView: View {
         .accessibilityIdentifier("comment-\(comment.id.uuidString)")
     }
 
+    /// The text's width when your picture sits beside the field: the row less the picture, the gaps and the send circle.
+    private var narrowTextWidth: CGFloat {
+        composerRowWidth - Self.rowHeight - Theme.Spacing.s - Theme.Spacing.m - Theme.Spacing.xs - Self.sendSize - Self.sendInset
+    }
+
     private func composer(_ model: ActivityDetailModel) -> some View {
         @Bindable var model = model
         return VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -146,8 +155,9 @@ struct LogPostView: View {
                     .font(.footnote).foregroundStyle(Theme.destructive)
                     .accessibilityIdentifier("comment-error")
             }
-            // Your picture and the field, the same height and centred on each other. Once the comment wraps, the picture
-            // slides away so the field can take the whole width; it's a pill on one line, a rounded box beyond.
+            // Your picture and the field, the same height and centred on each other. Once the comment won't fit on one
+            // line beside the picture, the picture slides away so the field takes the whole width; shorten it to one line
+            // again and the picture comes back. A pill on one line, a rounded box beyond.
             HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
                 if !composerWraps, let me = session.profile?.summary {
                     AvatarView(member: me, size: Self.rowHeight)
@@ -165,9 +175,6 @@ struct LogPostView: View {
                         // Less than the field's height, so one line is exactly `rowHeight` tall and the circle's maths holds.
                         .padding(.vertical, 10)
                         .frame(minHeight: Self.rowHeight)
-                        .onGeometryChange(for: Bool.self) { $0.size.height > Self.rowHeight + 4 } action: { wraps in
-                            withAnimation(.easeOut(duration: 0.2)) { composerWraps = wraps }
-                        }
                         .accessibilityIdentifier("comment-field")
                     Button {
                         Task { if await model.post() { composerFocused = false } }
@@ -194,6 +201,18 @@ struct LogPostView: View {
                 .background(RoundedRectangle(cornerRadius: 26, style: .circular).fill(Roam.paperRaised))
                 .shadow(color: .black.opacity(0.12), radius: 12, y: 2)
             }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { composerRowWidth = $0 }
+        // Whether the comment fits on one line in the room it has beside your picture.
+        .background(alignment: .topLeading) {
+            Text(model.draft.isEmpty ? " " : model.draft)
+                .font(.body)
+                .frame(width: max(narrowTextWidth, 1), alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .hidden()
+                .onGeometryChange(for: Bool.self) { $0.size.height > 30 } action: { wraps in
+                    withAnimation(.easeOut(duration: 0.2)) { composerWraps = wraps }
+                }
         }
         // No band behind it; inset from the screen's curved corners, low on the screen.
         .padding(.horizontal, Theme.Spacing.xl)
