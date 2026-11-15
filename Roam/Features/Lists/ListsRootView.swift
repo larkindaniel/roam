@@ -168,7 +168,6 @@ struct MyPlacesRootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
     @State private var model: MyPlacesModel?
-    @State private var showsCoachmark = false
     @State private var detent = GlobeSheetDetent.half
     @State private var recenterToken = 0
     @State private var sheet: MyPlacesSheet?
@@ -300,22 +299,6 @@ struct MyPlacesRootView: View {
         // Switching tabs turns the globe to that tab's places.
         .onChange(of: tab) { _, _ in showWorld() }
         .onChange(of: router.path(for: .myPlaces).isEmpty) { _, isRoot in if isRoot { Task { await model?.load() } } }
-        .overlay {
-            if session.profile?.hasSeenBeenIntro == false {
-                ZStack {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    BeenIntroCard {
-                        Task {
-                            await session.markBeenIntroSeen()
-                            showsCoachmark = true
-                        }
-                    }
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if showsCoachmark { LogCoachmark { showsCoachmark = false } }
-        }
         .screenIdentifier("myplaces-root")
     }
 
