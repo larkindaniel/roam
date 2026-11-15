@@ -79,7 +79,7 @@ Deno.serve(async request => {
       signal: AbortSignal.timeout(15_000),
     });
     // Labels the repo doesn't have can be refused; the issue matters more than its labels.
-    let issue = await open(["bug", "beta-report"]);
+    let issue = await open(["bug", "user-reported-bug"]);
     if (issue.status === 422) issue = await open([]);
     if (!issue.ok) return json({ message: "GitHub didn't take it." }, 502);
     const { html_url } = await issue.json();
