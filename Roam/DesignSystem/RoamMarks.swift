@@ -93,7 +93,10 @@ struct ProfileAvatarButton: View {
         // Your profile picture (or initials) opens your profile and settings.
         Button { router.push(.ownProfile) } label: {
             if let me = session.profile?.summary {
+                // A thin white ring and soft shadow, like your picture by the comment field.
                 AvatarView(member: me, size: size)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .shadow(color: .black.opacity(0.12), radius: 6, y: 1)
             } else {
                 Image(systemName: "person.crop.circle")
                     .font(.system(size: size * 0.6, weight: .regular))
