@@ -4,6 +4,10 @@ import SwiftUI
 /// plain rows (their picture, name and how long ago, then what they said), and a round field pinned at the bottom with
 /// your picture and a send arrow. Long-press a comment to delete yours or report someone else's.
 struct LogPostView: View {
+    /// The comment field's height, matching your picture beside it.
+    private static let rowHeight: CGFloat = 36
+    private static let sendSize: CGFloat = 28
+
     let visitID: UUID
     /// Puts the cursor in the comment field as it opens.
     var focusComment = false
@@ -137,41 +141,43 @@ struct LogPostView: View {
                     .font(.footnote).foregroundStyle(Theme.destructive)
                     .accessibilityIdentifier("comment-error")
             }
+            // Your picture and the field, the same height and centred on each other while it's one line. As the comment
+            // grows, the field becomes a rounded box (not a stretched pill) and they line up along the bottom.
             HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
-                if let me = session.profile?.summary { AvatarView(member: me, size: 36) }
-                // The send circle sits the same distance from the field's top, bottom and right edge.
-                HStack(alignment: .bottom, spacing: Theme.Spacing.s) {
+                if let me = session.profile?.summary { AvatarView(member: me, size: Self.rowHeight) }
+                HStack(alignment: .bottom, spacing: Theme.Spacing.xs) {
                     TextField("Add a comment", text: $model.draft, axis: .vertical)
-                        .lineLimit(1...5)
+                        .lineLimit(1...4)
                         .focused($composerFocused)
                         .disabled(model.isPosting)
-                        .padding(.vertical, 6)
-                        .frame(minHeight: 32)
+                        .padding(.vertical, 8)
+                        .frame(minHeight: Self.rowHeight)
                         .accessibilityIdentifier("comment-field")
                     Button {
                         Task { if await model.post() { composerFocused = false } }
                     } label: {
                         Group {
-                            if model.isPosting { ProgressView() } else { Image(systemName: "arrow.up").font(.subheadline.weight(.bold)) }
+                            if model.isPosting { ProgressView() } else { Image(systemName: "arrow.up").font(.footnote.weight(.bold)) }
                         }
                         .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
+                        .frame(width: Self.sendSize, height: Self.sendSize)
                         .background(Circle().fill(model.canPost ? Roam.ink : Roam.inkFaint))
                     }
                     .buttonStyle(.plain)
                     .disabled(!model.canPost)
+                    // The same gap below and to the right of the circle.
+                    .padding(.bottom, (Self.rowHeight - Self.sendSize) / 2)
                     .accessibilityLabel(model.pending != nil ? "Retry sending comment" : "Send comment")
                     .accessibilityIdentifier("comment-send")
                 }
                 .padding(.leading, Theme.Spacing.m)
-                .padding(.trailing, 6)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Roam.fill))
+                .padding(.trailing, (Self.rowHeight - Self.sendSize) / 2)
+                // Floating Liquid Glass over the comments, which scroll on underneath.
+                .floatingBubble(RoundedRectangle(cornerRadius: Self.rowHeight / 2, style: .continuous))
             }
         }
-        .padding(.horizontal, Theme.Spacing.l)
+        // No band behind it; inset from the screen's curved corners, low on the screen.
+        .padding(.horizontal, Theme.Spacing.xl)
         .padding(.top, Theme.Spacing.s)
-        .padding(.bottom, Theme.Spacing.s)
-        .background(.bar)
     }
 }
