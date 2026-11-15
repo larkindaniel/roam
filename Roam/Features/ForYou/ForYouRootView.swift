@@ -151,7 +151,7 @@ struct ForYouRootView: View {
                 // Your profile on the far right, the same on every tab.
                 // The same glass circle the system toolbar gives your picture on My Places.
                 // Just the picture, no glass ring around it.
-                ProfileAvatarButton(size: 48)
+                ProfileAvatarButton()
             }
         }
         .animation(.spring(duration: 0.3), value: searchActive)

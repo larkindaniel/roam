@@ -29,7 +29,7 @@ struct FeedRootView: View {
             .accessibilityIdentifier("open-friends")
             .floatingBubble(Circle())
             // Just the picture, no glass ring around it.
-            ProfileAvatarButton(size: Self.barHeight)
+            ProfileAvatarButton()
         }
         .frame(height: Self.barHeight)
     }

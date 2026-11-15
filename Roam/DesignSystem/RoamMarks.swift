@@ -85,7 +85,9 @@ struct StatusMark: View {
 /// The signed-in member's avatar, opening their profile from any tab's navigation bar.
 struct ProfileAvatarButton: View {
     /// The picture's size; the system toolbar draws its own glass circle around it, so its copy passes a smaller one.
-    var size: CGFloat = 40
+    /// The same size on every tab.
+    static let standardSize: CGFloat = 40
+    var size: CGFloat = standardSize
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
 
@@ -119,10 +121,10 @@ struct SettingsToolbarItem: ToolbarContent {
         }
         if #available(iOS 26.0, *) {
             // Just the picture: the toolbar's own glass ring is hidden.
-            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 36) }
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
                 .sharedBackgroundVisibility(.hidden)
         } else {
-            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton(size: 36) }
+            ToolbarItem(placement: .topBarTrailing) { ProfileAvatarButton() }
         }
     }
 }
