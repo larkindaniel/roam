@@ -673,7 +673,7 @@ struct CityHeader: View {
     }
 
     /// Round actions with a caption under each, laid out like a place's: been here (green), wishlist (yellow), add to a
-    /// trip (blue), send (indigo), plan with AI (pink), then Set as home. A home city keeps just send, AI and home.
+    /// trip (blue), send (indigo), plan with AI (pink), then Home. A home city shows its house and Plan by the name instead.
     private var actionRow: some View {
         // Spread evenly across the card's width.
         HStack(spacing: 0) {
@@ -715,12 +715,11 @@ struct CityHeader: View {
             circle("sparkles", tint: .pink, filled: false, caption: "Plan", identifier: "foryou-research-open") {
                 router.sheet = .researchBrief(destination)
             }
-            // Home, last: a solid house once it's one of your homes.
+            // Home, last (a home city has its house up by the name instead).
             if let onToggleHome {
-                circle(isHome ? "house.fill" : "house", tint: Roam.home, filled: isHome, caption: "Home",
-                       identifier: "city-toggle-home", action: onToggleHome)
-                    .accessibilityLabel(isHome ? "Home" : "Set as home")
-                    .accessibilityHint(isHome ? "Removes it as a home city" : "Makes it a home city")
+                circle("house", tint: Roam.home, filled: false, caption: "Home", identifier: "city-toggle-home", action: onToggleHome)
+                    .accessibilityLabel("Set as home")
+                    .accessibilityHint("Makes it a home city")
             }
         }
     }
@@ -748,9 +747,28 @@ struct CityHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            // The name, then the actions underneath, as on a place; Set as home is the last of them.
-            title
-            actionRow
+            if isHome {
+                // A home city needs no row of actions: just its solid house (tap to remove it as home), then Plan, beside the name.
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    title.layoutPriority(-1)
+                    Spacer(minLength: Theme.Spacing.xs)
+                    if let onToggleHome {
+                        Button(action: onToggleHome) { Image(systemName: "house.fill") }
+                            .buttonStyle(PillButtonStyle(isSelected: true, tint: Roam.home))
+                            .accessibilityLabel("Home")
+                            .accessibilityHint("Removes it as a home city")
+                            .accessibilityIdentifier("city-toggle-home")
+                    }
+                    Button { router.sheet = .researchBrief(destination) } label: { Label("Plan", systemImage: "sparkles") }
+                        .buttonStyle(PillButtonStyle(tint: .pink))
+                        .accessibilityLabel("Plan with AI")
+                        .accessibilityIdentifier("foryou-research-open")
+                }
+            } else {
+                // The name, then the actions underneath, as on a place; Home is the last of them.
+                title
+                actionRow
+            }
             // Credited once, under the blurb that follows.
             if showsPhoto { CityPhoto(destination: destination) }
         }

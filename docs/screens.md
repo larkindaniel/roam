@@ -132,8 +132,8 @@ the country in view.
     - **Trip** (blue): add the city to an upcoming trip or start a new one.
     - **Send:** greyed out on city pages.
     - **Plan** (pink): opens the Plan with AI sheet (ChatGPT, Claude or copy).
-    - **Home**, last: makes it one of your homes (a solid house once it is); tap again to remove it.
-  - A home city shows only Send, Plan and Home.
+    - **Home**, last: makes it one of your homes.
+  - A home city has no round buttons: a solid house (tap to remove it as home) and Plan sit beside the name.
   - **Below the buttons:** the city's photo and Wikipedia blurb, then an untitled card of the places there you've saved,
     then one of the places you've been. Rows open the place.
   - **Friends who’ve been** shows friends with shared visits in the city. Tapping a friend opens their profile. The city map keeps showing your own pins.
