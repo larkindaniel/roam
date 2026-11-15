@@ -205,7 +205,7 @@ final class AppRouter {
             guard before != after else { continue }
             if after.count > before.count, let route = after.last {
                 Log.nav("push", ["tab": tab.rawValue, "route": route.logName, "detail": route.logDetail, "depth": "\(after.count)"])
-            } else if after.isEmpty {
+            } else if after.isEmpty && before.count > 1 {
                 Log.nav("pop_to_root", ["tab": tab.rawValue, "from_depth": "\(before.count)"])
             } else {
                 Log.nav("back", ["tab": tab.rawValue, "to": after.last?.logName ?? "root", "depth": "\(after.count)"])

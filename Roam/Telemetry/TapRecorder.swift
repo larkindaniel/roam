@@ -59,6 +59,17 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         guard let start, let window = view as? UIWindow else { return }
         let began = began
         let system = Self.uikitName(at: start, in: window)
+        // iOS's own controls (back, toolbar buttons, the keyboard, map pins) can't be .tapID buttons: log them now, so
+        // they come before what they cause.
+        // Toolbar items can hold a .tapID button, so they wait for its name like everything else.
+        if let system, system.known != "system.toolbar-button",
+           system.identifier != nil || system.label != nil || system.known != nil {
+            var props = ["x": "\(Int(start.x))", "y": "\(Int(start.y))"]
+            if let label = system.label, system.identifier != nil { props["label"] = label }
+            if let kind = system.kind { props["view"] = kind }
+            Log.tap(system.identifier ?? system.label ?? system.known ?? "unnamed", props)
+            return
+        }
         // A named button reports itself right after this; only log here if none does.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             if let named = Self.lastNamedAt, named >= began { return }
@@ -100,8 +111,8 @@ final class TapRecorder: UIGestureRecognizer, UIGestureRecognizerDelegate {
         let known: String?
         switch true {
         case chain.contains("BackButton") || chain.contains("_UIButtonBarButton") && point.x < 90: known = "system.back"
-        case chain.contains("BarButton") || chain.contains("ButtonBar"): known = "system.toolbar-button"
-        case chain.contains("Annotation") || chain.contains("MKMarker"): known = "map.pin"
+        case chain.contains("BarButton") || chain.contains("ButtonBar") || chain.contains("BarItem"): known = "system.toolbar-button"
+        case chain.contains("Annotation") || chain.contains("Marker"): known = "map.pin"
         case chain.contains("MKMapView") || chain.contains("MKMap"): known = "map"
         case chain.contains("TextView") || chain.contains("TextField") || chain.contains("TextInput"): known = "text-field"
         case chain.contains("NavigationBar"): known = "system.navigation-bar"

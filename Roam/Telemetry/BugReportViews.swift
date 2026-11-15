@@ -348,6 +348,9 @@ struct BugReportSheet: View {
             sent = true
             try? await Task.sleep(for: .seconds(1.2))
             dismiss()
+        } catch RoamError.unavailable {
+            error = "Bug reports are off right now. Try again later."
+            Log.error("bug_report.send", RoamError.unavailable)
         } catch {
             self.error = session.handle(error)
             Log.error("bug_report.send", error)

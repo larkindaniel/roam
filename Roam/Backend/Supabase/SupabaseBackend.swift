@@ -123,6 +123,11 @@ final class SupabaseBackend: @unchecked Sendable {
                 switch value {
                 case let flag as Bool: props[name] = flag ? "true" : "false"
                 case let number as NSNumber: props[name] = number.stringValue
+                case let object as [String: Any]:
+                    // A place, city or similar sent whole: just what says which one it is.
+                    for field in ["id", "name", "countryCode", "region", "kind"] {
+                        if let value = object[field], !(value is NSNull) { props["\(name).\(field)"] = "\(value)".prefix(60).description }
+                    }
                 case let text as String where UUID(uuidString: text) != nil || text.count <= 24 && text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }):
                     // Ids and short codes ("request", "accepted", "CA", "2026-11-15"), not free text.
                     props[name] = text

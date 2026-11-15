@@ -134,3 +134,20 @@ Sentry (crashes, traces, breadcrumbs) or PostHog (product analytics and session 
 symbolicated stacks for free. But each is another SDK, another account and another place the data lives. At beta
 scale Postgres handles this volume easily, and percentiles in SQL are enough. ClickHouse only pays off at millions of
 events a day. If crash stacks become the bottleneck, add Sentry for crashes alone and keep this trail.
+
+## Testing it
+
+- `supabase/tests/10_telemetry_test.sql` (run with `supabase test db --local`) covers:
+  - members can't read the tables or views, and the settings are readable signed out
+  - signed-out sessions are claimed at sign-in, and nobody else can write to or mark someone's session
+  - repeated batches are ignored, unknown kinds dropped, and batches over 200 refused
+  - the switches: events off, bug reports off, muted kinds
+  - report rules: a description, at most six attachments, only your own files, words only when signed out
+  - the trail stops at the report and puts the previous session first, but only when it was recent
+  - the server can read reports and record the issue
+  - clean-up removes old events
+- `node --test supabase/functions/bug-report-issue/scrub.test.mjs` checks what's taken out of public issues: emails,
+  phone numbers and ids. Dates, times, coordinates, sizes and place names stay.
+- `python3 scripts/tap_ids.py --check` lists any button or tap gesture without a name.
+- An end-to-end check is to use the app for a minute, send a report, and read its trail with the two queries in the
+  issue.

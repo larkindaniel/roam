@@ -8,6 +8,8 @@
 //   in:  their description, the screenshots (shown inline) and recordings (linked), app, iOS and device, the screen,
 //        and the SQL that lists the steps before the report (the steps themselves stay in Supabase)
 //   out: who sent it, emails and phone numbers
+import { issueTitle, scrub } from "./scrub.mjs";
+
 const url = Deno.env.get("SUPABASE_URL")!;
 const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
 const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -16,14 +18,6 @@ const repo = Deno.env.get("GITHUB_REPO");
 // Attachment links last a year, so the pictures keep showing in the issue.
 const linkLifetime = 60 * 60 * 24 * 365;
 
-/// Takes out what could identify someone: emails, phone numbers and ids (user, session and place ids alike).
-function scrub(text: string): string {
-  return text
-    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email]")
-    .replace(/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g, "[id]")
-    // Ten or more digits in a run (with spaces, dashes or brackets) reads as a phone number; dates and sizes don't.
-    .replace(/\+?\d[\d ().-]{8,}\d/g, match => match.replace(/\D/g, "").length >= 10 ? "[number]" : match);
-}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -146,7 +140,7 @@ Deno.serve(async request => {
     if (shown.length) attachment = `\n\n### Screenshots and recordings\n${shown.join("\n")}`;
 
     const description = scrub(String(report.description));
-    const firstLine = description.split("\n")[0].slice(0, 80);
+    const firstLine = issueTitle(String(report.description));
     const body = [
       description,
       attachment,
