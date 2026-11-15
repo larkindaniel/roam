@@ -164,7 +164,8 @@ struct LogPostView: View {
                         // A thin white ring sets it apart from the comments behind.
                         .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                         .shadow(color: .black.opacity(0.12), radius: 6, y: 1)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+                        // Slides off the left edge of the screen and back, no fade.
+                        .transition(.offset(x: -(Self.rowHeight + Theme.Spacing.xl + Theme.Spacing.s)))
                 }
                 // The send circle stays centred top to bottom, rising as the comment grows.
                 HStack(alignment: .center, spacing: Theme.Spacing.xs) {
