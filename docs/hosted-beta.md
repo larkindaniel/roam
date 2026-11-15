@@ -65,7 +65,8 @@ user approves a token with that additional permission. Read-back verification wo
 1. In the Supabase dashboard, open your account menu → **Access Tokens** → **Generate new token**. If it offers
    project and permission limits, limit it to `roam-beta` with read-write Database, Migrations and Edge Functions,
    and read for API keys and project settings. Copy the token (`sbp_…`); it's shown once.
-2. In the repo root, create `.env.beta`. Git ignores it through the `.env.*` rule, and it stays on your machine:
+2. Copy `.env.beta.example` to `.env.beta` in the repo root and paste the token in. Git ignores `.env.beta`, and it
+   stays on your machine:
    ```
    SUPABASE_PROJECT_REF=xnjzuotytfzyppubjcfi
    SUPABASE_ACCESS_TOKEN=sbp_…
