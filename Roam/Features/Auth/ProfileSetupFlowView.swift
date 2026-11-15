@@ -142,8 +142,12 @@ private struct SetupSteps: View {
                 ZStack {
                     if let image = model.avatarImage {
                         Image(uiImage: image).resizable().scaledToFill()
-                    } else if let profile = model.profile {
+                    } else if let profile = model.profile, profile.avatarPath != nil {
                         AvatarView(member: profile.summary, size: 160)
+                    } else {
+                        // No photo yet: a grey circle with your initials.
+                        Circle().fill(Roam.fill)
+                        Text(initials).font(.system(size: 52, weight: .semibold, design: .rounded)).foregroundStyle(Roam.inkMuted)
                     }
                 }
                 .frame(width: 160, height: 160)
@@ -217,6 +221,10 @@ private struct SetupSteps: View {
                 friendSearchResults
             }
         }
+    }
+
+    private var initials: String {
+        model.displayName.split(separator: " ").prefix(2).compactMap(\.first).map { String($0).uppercased() }.joined()
     }
 
     /// The button pinned at the bottom of each step.
